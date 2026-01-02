@@ -15,22 +15,11 @@ const GeneralDisclaimerPage = () => {
   return (
     <div className="font-poppins mb-10">
 
-      {/* Banner Section */}
-      <div className="w-full h-[260px] relative mb-10">
-        <Image
-          src={bannerImage}
-          alt="General Disclaimer Banner"
-          fill
-          priority
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-          <h1 className="text-white text-4xl md:text-5xl font-semibold tracking-wide font-inter">
-            General Disclaimer
-          </h1>
+      <div className="w-full bg-[#D9D9D9] py-12 text-center mb-6">
+        <h1 className="text-[36px] font-bold mb-2"> General Disclaimer</h1>
         </div>
-      </div>
 
+   
       {/* Content Section */}
       <div className="max-w-6xl mx-auto px-4 pb-2">
 

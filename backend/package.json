@@ -36,6 +36,7 @@
     "dompurify": "^3.3.1",
     "express": "^5.1.0",
     "flatpickr": "^4.6.13",
+    "intl-tel-input": "^25.14.0",
     "jodit": "^4.7.9",
     "jodit-react": "^5.2.38",
     "jwt-decode": "^4.0.0",

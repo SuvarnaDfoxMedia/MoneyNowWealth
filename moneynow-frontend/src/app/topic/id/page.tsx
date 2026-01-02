@@ -5,8 +5,8 @@ import Image from "next/image";
 import DOMPurify from "dompurify";
 import { useParams } from "next/navigation";
 
-import MostPopularBlogs from "@/components/blog-listing/MostPopularBlogs";
-import SeniorCitizen from "@/components/blog-details-Page/SeniorCitizen";
+import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
+import SeniorCitizen from "@/components/Blog-details-Page/SeniorCitizen";
 
 import {
   FaFacebookF,

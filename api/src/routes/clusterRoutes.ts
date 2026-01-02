@@ -64,6 +64,8 @@ import {
   updateCluster,
   deleteCluster,
   toggleClusterStatus,
+  getClusterBySlug,
+  getAllClustersFirstTopicWithArticle,
 } from "../controllers/clusterController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 import { uploadClusterThumbnail } from "../middlewares/uploadMiddleware";
@@ -73,6 +75,10 @@ const router = express.Router();
 /* -------------------- PUBLIC ROUTES -------------------- */
 router.get("/cluster", getClusters);
 router.get("/cluster/:id", getClusterById);
+
+router.get("/clusters/slug/:slug", getClusterBySlug);
+router.get("/cluster/first-topic-article/all", getAllClustersFirstTopicWithArticle);
+
 
 /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
 const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);

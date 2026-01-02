@@ -356,7 +356,7 @@
 "use client";
 
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { FiSave, FiRefreshCw, FiArrowLeft, FiUpload, FiX } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
@@ -379,6 +379,9 @@ interface ClusterResponse {
 export default function AddCluster() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const page = searchParams.get("page") || "1";
+  const limit = searchParams.get("limit") || "10";
   const { getOne, createRecord, updateRecord } = useCommonCrud({
     role: "admin",
     module: "cluster",
@@ -537,7 +540,7 @@ export default function AddCluster() {
         toast.success("Cluster created successfully");
       }
 
-      navigate("/admin/cluster");
+      navigate(`/admin/cluster?page=${page}&limit=${limit}`);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || "Failed to save cluster");
@@ -578,7 +581,7 @@ export default function AddCluster() {
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-semibold text-gray-800">{id ? "Edit Cluster" : "Add Cluster"}</h2>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate(`/admin/cluster?page=${page}&limit=${limit}`)}
           className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition"
         >
           <FiArrowLeft /> Back

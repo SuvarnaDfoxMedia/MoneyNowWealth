@@ -575,7 +575,7 @@ export default function AddTopic() {
 
       toast.success(id ? "Topic updated successfully" : "Topic created successfully");
       navigate(`/admin/topic?page=${page}&limit=${limit}`);
-      setPage(1);
+      // setPage(1);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Something went wrong");
     } finally {

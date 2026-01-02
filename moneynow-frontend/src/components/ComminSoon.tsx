@@ -2,14 +2,14 @@ import React from "react";
 import Image from "next/image";
 
 import bgDesktop from "@/app/assets/Coming-Soon.jpg";
-import bgMobile from "@/app/assets/Coming-Soon-mb.jpg";
+import bgMobile from "@/app/assets/Coming-Soon-mb.png";
 
 const ComingSoon: React.FC = () => {
   return (
-    <section className="w-screen h-screen overflow-hidden">
+    <section className="w-screen  overflow-hidden">
       
       {/* Desktop */}
-      <div className="hidden sm:block w-full h-full ">
+      <div className="hidden sm:block w-full h-[100vh] py-8">
         <Image
           src={bgDesktop}
           alt="Coming Soon Desktop"
@@ -19,7 +19,7 @@ const ComingSoon: React.FC = () => {
       </div>
 
       {/* Mobile */}
-      <div className="sm:hidden w-full h-full">
+      <div className="sm:hidden w-full">
         <Image
           src={bgMobile}
           alt="Coming Soon Mobile"

@@ -1,7 +1,7 @@
 
 
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { FiSave, FiRefreshCw, FiArrowLeft, FiPlus, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { RichTextField } from "../components/PagesComponent/RichTextField";
@@ -40,6 +40,9 @@ const generateSlug = (text: string) =>
 export default function AddArticle() {
   const { id, role } = useParams<{ id?: string; role?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const page = searchParams.get("page") || "1";
+  const limit = searchParams.get("limit") || "10";
   const { getOne, createRecord, updateRecord } = useCommonCrud({ role, module: "article" });
 
   const [values, setValues] = useState<ArticleForm>({
@@ -291,7 +294,7 @@ useEffect(() => {
       if (id) await updateRecord(id, formData);
       else await createRecord(formData);
       toast.success(`Article ${id ? "updated" : "created"}`);
-      navigate(`/${role}/article`);
+      navigate(`/${role}/article?page=${page}&limit=${limit}`);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to save article");
@@ -305,7 +308,7 @@ useEffect(() => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-[#043f79]">{id ? "Edit Article" : "Add New Article"}</h2>
         <button
-          onClick={() => navigate(`/${role}/article`)}
+          onClick={() => navigate(`/${role}/article?page=${page}&limit=${limit}`)}
           className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow hover:opacity-90 flex items-center gap-2"
         >
           <FiArrowLeft /> Back

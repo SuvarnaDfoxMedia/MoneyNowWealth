@@ -34,47 +34,42 @@ export default function HomeInvestTrack({ data }: HomeInvestTrackProps) {
   height={496}
   className="object-contain w-auto h-auto md:w-[260px] md:h-[496px]"
 />
-
-        </div>
+  </div>
 
         {/* RIGHT: Text */}
         <div className="w-full md:w-3/5 text-white text-center">
 
           {/* First line */}
-<h1 className="font-poppins font-bold text-[30px] leading-[34px] md:text-[61px] md:leading-[61px] whitespace-nowrap">
+<h1 className="font-poppins font-bold text-[30px] leading-[34px] md:text-[41px] md:leading-[60px] lg:text-[61px] lg:leading-[73px]  whitespace-nowrap">
             {titleLine1}
           </h1>
 
           {/* Subtitle lines */}
-<p className="font-poppins font-bold text-[25px] leading-[34px] mt-4 md:text-[46px] md:leading-[73px]">
+<p className="font-poppins font-bold text-[25px] leading-[34px] mt-4 md:text-[36px] md:leading-[60px]  lg:text-[46px] lg:leading-[73px]">
             {titleLine2}
             <br />
             {titleLine3}
           </p>
 
-{/* App Store + Play Store */}
 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
   <Image
     src={appStoreImg}
     alt="App Store"
-    width={260}   // required by Next.js
-    height={89}   // required by Next.js
-    className="w-[180px] h-[60px] sm:w-auto sm:h-auto md:w-[260px] md:h-[89px]"
+    width={260}   
+    height={89}   
+    className="w-[180px] h-[60px] sm:w-auto sm:h-auto md:w-[256px] md:h-[89px] lg:w-[250px] lg:h-[79px]"
   />
 
   <Image
     src={playStoreImg}
     alt="Google Play"
-    width={256}   // required by Next.js
-    height={89}   // required by Next.js
-    className="w-[180px] h-[60px] sm:w-auto sm:h-auto md:w-[256px] md:h-[89px]"
+    width={256}   
+    height={89}   
+    className="w-[180px] h-[60px] sm:w-auto sm:h-auto md:w-[256px] md:h-[89px] lg:w-[250px] lg:h-[79px]"
   />
 </div>
 
-
-
         </div>
-
       </div>
     </section>
   );

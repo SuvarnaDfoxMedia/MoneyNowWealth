@@ -448,9 +448,52 @@ export const resetPassword = async (req: Request, res: Response) => {
 
 
 
+// export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
+//   try {
+//     const userId = req.userId;   
+//     if (!userId) {
+//       return res.status(401).json({ message: "Not authorized" });
+//     }
+
+//     const { oldPassword, newPassword } = req.body;
+
+//     if (!oldPassword || !newPassword) {
+//       return res.status(400).json({ message: "Old and new password are required" });
+//     }
+
+//     const user = await User.findById(userId).select("+password");
+//     if (!user || !user.password) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     const isMatch = await bcrypt.compare(oldPassword, user.password);
+//     if (!isMatch) {
+//       return res.status(401).json({ message: "Old password is incorrect" });
+//     }
+
+//     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+//     if (!passwordRegex.test(newPassword)) {
+//       return res.status(400).json({
+//         message:
+//           "New password must be at least 8 characters, include 1 uppercase, 1 number, and 1 special character.",
+//       });
+//     }
+
+//     user.password = await bcrypt.hash(newPassword, 10);
+//     await user.save();
+
+//     return res.status(200).json({ message: "Password changed successfully" });
+//   } catch (error: any) {
+//     console.error("Change password error:", error.message);
+//     return res.status(500).json({ message: "Server error during password change" });
+//   }
+// };
+
+
 export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.userId;   
+    const userId = req.user?.id;   
+
     if (!userId) {
       return res.status(401).json({ message: "Not authorized" });
     }
@@ -488,8 +531,6 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response) =
     return res.status(500).json({ message: "Server error during password change" });
   }
 };
-
-
 
 
 

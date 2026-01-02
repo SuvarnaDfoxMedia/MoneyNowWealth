@@ -187,6 +187,8 @@
 import type { Request, Response } from "express";
 import * as clusterService from "../services/clusterService";
 import slugify from "slugify";
+import Cluster from "../models/clusterModel";
+
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -253,6 +255,41 @@ export const getClusters = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to fetch clusters",
+    });
+  }
+};
+
+
+
+export const getClusterBySlug = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params; // slug will come from the route, e.g., /clusters/:slug
+
+    if (!slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Slug is required",
+      });
+    }
+
+    const cluster = await clusterService.getClusterBySlug(slug);
+
+    if (!cluster) {
+      return res.status(404).json({
+        success: false,
+        message: "Cluster not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: cluster,
+    });
+  } catch (error: any) {
+    console.error("Get cluster by slug failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch cluster",
     });
   }
 };
@@ -411,6 +448,120 @@ export const deleteCluster = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to delete cluster",
+    });
+  }
+};
+
+
+export const getAllClustersFirstTopicWithArticle = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { status = "published" } = req.query;
+
+    const clusters = await Cluster.aggregate([
+      {
+        $match: {
+          is_deleted: false,
+          status: status,
+        },
+      },
+
+      /* ---------------- FIRST TOPIC ---------------- */
+      {
+        $lookup: {
+          from: "topics",
+          let: { clusterId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$cluster_id", "$$clusterId"] },
+                is_deleted: false,
+                status: "published",
+              },
+            },
+            { $sort: { sort_order: 1, created_at: 1 } },
+            { $limit: 1 },
+
+            /* ---------------- FIRST ARTICLE ---------------- */
+            {
+              $lookup: {
+                from: "articles",
+                let: { topicId: "$_id" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: { $eq: ["$topic_id", "$$topicId"] },
+                      is_deleted: false,
+                      status: "published",
+                    },
+                  },
+                  { $sort: { publish_date: -1, created_at: -1 } },
+                  { $limit: 1 },
+                ],
+                as: "article",
+              },
+            },
+            {
+              $unwind: {
+                path: "$article",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                title: 1,
+                slug: 1,
+                article: 1,
+              },
+            },
+          ],
+          as: "topic",
+        },
+      },
+
+      {
+        $unwind: {
+          path: "$topic",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      /* ---------------- FINAL SHAPE ---------------- */
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          slug: 1,
+          thumbnail: 1,
+          created_at: 1,
+          topic: 1,
+        },
+      },
+
+      /* Optional: remove clusters without article */
+      {
+        $match: {
+          "topic.article._id": { $exists: true },
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      total: clusters.length,
+      clusters,
+    });
+  } catch (error: any) {
+    console.error(
+      "Error fetching all clusters first topic & article:",
+      error
+    );
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch data",
     });
   }
 };

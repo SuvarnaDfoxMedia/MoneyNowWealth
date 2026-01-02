@@ -435,9 +435,9 @@ const Footer = () => {
   // ------------------ LINKS ------------------
   const quickLinks = [
     { label: "Home", href: "/" },
-    { label: "Contact Us", href: "/contact" },
-    { label: "Login", href: "/login" },
-    { label: "Sign Up", href: "/signup" },
+    { label: "Contact Us", href: "/contact-us" },
+    { label: "Login", href: "/auth/login" },
+    { label: "Sign Up", href: "/auth/register" },
   ];
 
   const mutualFundLinks = [

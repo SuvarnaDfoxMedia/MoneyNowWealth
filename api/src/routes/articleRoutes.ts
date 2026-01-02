@@ -1,83 +1,3 @@
-// import express, { Request, Response } from "express";
-// import {
-//   getArticles,
-//   getArticleById,
-//   addArticle,
-//   updateArticle,
-//   deleteArticle,
-//   toggleArticleStatus,
-// } from "../controllers/articleController";
-// import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
-// import { uploadHeroImage, uploadArticleImage } from "../middlewares/uploadMiddleware";
-
-// const router = express.Router();
-
-// /* -------------------- PUBLIC ROUTES -------------------- */
-// router.get("/article", getArticles);
-// router.get("/article/:id", getArticleById);
-
-// /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
-// const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);
-
-// router.post(
-//   "/:role/article/create",
-//   adminEditorMiddleware,
-//   uploadHeroImage,
-//   addArticle
-// );
-
-// router.put(
-//   "/:role/article/edit/:id",
-//   adminEditorMiddleware,
-//   uploadHeroImage,
-//   updateArticle
-// );
-
-// // router.patch(
-// //   "/:role/article/change/:id/status",
-// //   adminEditorMiddleware,
-// //   toggleArticleStatus
-// // );
-
-// router.patch(
-//   "/:role/article/toggle-status/:id",
-//   adminEditorMiddleware,
-//   toggleArticleStatus
-// );
-
-
-// router.delete(
-//   "/:role/article/delete/:id",
-//   adminEditorMiddleware,
-//   deleteArticle
-// );
-
-// /* -------------------- SECTION IMAGE UPLOAD (used by RichTextField) -------------------- */
-// router.post(
-//   "/:role/article/upload-section-image",
-//   adminEditorMiddleware,
-//   uploadArticleImage,
-//   (req: Request, res: Response) => {
-//     if (!req.file) {
-//       return res.status(400).json({ success: false, message: "No image uploaded." });
-//     }
-
-//     // Use optional chaining and proper typing
-//     const file = req.file as unknown as {
-//       pathUrl?: string;
-//       relativePath?: string;
-//     };
-
-//     return res.status(200).json({
-//       success: true,
-//       url: file.pathUrl || "",
-//       relativePath: file.relativePath || "",
-//     });
-//   }
-// );
-
-// export default router;
-
 
 import express, { Request, Response } from "express";
 import {
@@ -87,6 +7,8 @@ import {
   updateArticle,
   deleteArticle,
   toggleArticleStatus,
+  getClusterHierarchy,
+getClusterHierarchyBySlug,
 } from "../controllers/articleController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 import { uploadHeroImage, uploadArticleImage } from "../middlewares/uploadMiddleware";
@@ -96,7 +18,9 @@ const router = express.Router();
 /* -------------------- PUBLIC ROUTES -------------------- */
 router.get("/article", getArticles);
 router.get("/article/:id", getArticleById);
+router.get("/cluster/:clusterId/hierarchy", getClusterHierarchy);
 
+router.get("/cluster/slug/:slug/", getClusterHierarchyBySlug);
 /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
 const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);
 

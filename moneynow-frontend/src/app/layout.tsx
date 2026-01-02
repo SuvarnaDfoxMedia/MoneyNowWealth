@@ -30,7 +30,7 @@
 
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
-import LayoutWrapper from "@/components/LayoutWrapper";
+import LayoutWrapper from "@/app/LayoutWrapper";
 import { Toaster } from "react-hot-toast";
 import ScrollToTop from "@/components/ScrollToTop";
 

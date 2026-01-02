@@ -51,9 +51,9 @@ export const useDataTableStore = create<TableState>((set) => ({
 
   setPage: (page) => set({ page }),
   setRecordsPerPage: (recordsPerPage) =>
-    set({ recordsPerPage, page: 1 }),
+    set({ recordsPerPage }), // Remove page: 1
   setSearchValue: (searchValue) =>
-    set({ searchValue, page: 1 }),
+    set({ searchValue }),   // Remove page: 1
   setSort: (sortField, sortOrder) =>
-    set({ sortField, sortOrder, page: 1 }),
+    set({ sortField, sortOrder }), // Remove page: 1
 }));

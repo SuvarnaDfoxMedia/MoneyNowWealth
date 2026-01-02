@@ -10,6 +10,7 @@ export interface User {
   profileImage?: string | null;
   phone?: string;
   address?: string;
+  countryCode?: string;
 }
 
 interface AuthContextType {

@@ -716,7 +716,7 @@
 
 
 import React, { useState, useEffect, ChangeEvent } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { FiSave, FiRefreshCw, FiArrowLeft, FiPlus, FiTrash2 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
@@ -748,6 +748,9 @@ const generateSlug = (text: string) =>
 export default function AddCmsPage() {
   const { role, id } = useParams<{ role?: string; id?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const page = searchParams.get("page") || searchParams.get("limit") ? searchParams.get("page") : sessionStorage.getItem("lastCmsPagePage") || "1";
+  const limit = searchParams.get("limit") || sessionStorage.getItem("lastCmsPageLimit") || "10";
 
   const { getOne, createRecord, updateRecord } = useCommonCrud({
     role: role || "admin",
@@ -877,7 +880,7 @@ export default function AddCmsPage() {
         toast.success("CMS page created successfully");
       }
 
-      navigate("/admin/cmspages");
+      navigate(`/admin/cmspages?page=${page}&limit=${limit}`);
     } catch (error: any) {
       toast.error(error?.message || "Failed to save CMS page");
     } finally {
@@ -909,7 +912,7 @@ export default function AddCmsPage() {
 
         <button
           type="button"
-          onClick={() => navigate("/admin/cmspages")}
+          onClick={() => navigate(`/admin/cmspages?page=${page}&limit=${limit}`)}
           className="bg-[#043f79] text-white px-3 py-1 rounded-md shadow flex items-center gap-2"
         >
           <FiArrowLeft /> Back

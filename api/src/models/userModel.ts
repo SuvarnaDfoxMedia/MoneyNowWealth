@@ -103,15 +103,14 @@
 
 import mongoose, { Document, Schema, Model } from "mongoose";
 
-// User TypeScript Type
-// ------------------------
+
 export type IUser = Document & {
   title: "Mr" | "Mrs";
   firstname: string;
   lastname: string;
   email: string;
   password?: string;
-  countryCode: string;      //  New field
+  countryCode: string;      
   mobile: string;
   role: "user" | "editor" | "admin";
   isTermsAccepted: boolean;
@@ -126,9 +125,7 @@ export type IUser = Document & {
   updated_at: Date;
 };
 
-// ------------------------
-// Mongoose Schema
-// ------------------------
+
 const userSchema: Schema<IUser> = new Schema(
   {
     title: { type: String, enum: ["Mr", "Mrs"], required: true },
@@ -156,15 +153,11 @@ const userSchema: Schema<IUser> = new Schema(
   }
 );
 
-// ------------------------
-// Indexes for fast lookup
-// ------------------------
-userSchema.index({ mobile: 1 });
-userSchema.index({ countryCode: 1, mobile: 1 }, { unique: true }); // optional unique combo
 
-// ------------------------
-// Model Export
-// ------------------------
+userSchema.index({ mobile: 1 });
+userSchema.index({ countryCode: 1, mobile: 1 }, { unique: true }); 
+
+
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
 
 export default User;

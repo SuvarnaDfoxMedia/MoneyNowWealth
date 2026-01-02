@@ -125,9 +125,9 @@ const StayConnected = () => {
         </p>
 
         {/* ICONS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-10">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-10">
           {features.map((item, index) => (
-            <div key={index} className="flex flex-col items-center text-white mb-[20px] sm:mb-0">
+            <div key={index} className="flex flex-col items-center text-white mb-[20px] sm:mb-0  md:mb-4">
               <div className="bg-[#D9D9D9] p-4 rounded-[10px] flex items-center justify-center mb-4">
                 <Image src={item.imageSrc} alt={item.text} width={75} height={75} />
               </div>
@@ -137,40 +137,44 @@ const StayConnected = () => {
         </div>
 
         {/* SUBSCRIBE FORM */}
-        <div className="bg-white rounded-[12px] flex flex-col md:flex-row items-center p-7 gap-4 md:gap-5 max-w-full mx-auto">
+      <div className="bg-white rounded-[12px] flex flex-col lg:flex-row items-center p-7 gap-4 lg:gap-5 max-w-full mx-auto">
 
-          {/* NAME */}
-          <input
-            type="text"
-            placeholder="Enter your name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full md:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
-            placeholder-[#043F79] focus:outline-blue-600"
-          />
+  {/* NAME */}
+  <input
+    type="text"
+    placeholder="Enter your name"
+    value={name}
+    onChange={(e) => setName(e.target.value)}
+    className="w-full lg:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
+    placeholder-[#043F79] focus:outline-blue-600"
+  />
 
-          {/* EMAIL */}
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full md:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
-            placeholder-[#043F79] focus:outline-blue-600"
-          />
+  {/* EMAIL */}
+  <input
+    type="email"
+    placeholder="Enter your email"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+    className="w-full lg:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
+    placeholder-[#043F79] focus:outline-blue-600"
+  />
 
-          {/* BUTTON */}
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="bg-[#043F79] text-white text-[18px] px-[30px] py-3 rounded-[5px] uppercase whitespace-nowrap hover:bg-[#032F59] transition"
-          >
-            {loading ? "Submitting..." : "SUBSCRIBE NOW"}
-          </button>
-        </div>
+  {/* BUTTON */}
+  <button
+    onClick={handleSubmit}
+    disabled={loading}
+    className="w-full lg:w-auto bg-[#043F79] text-white text-[18px] px-[30px] py-3 rounded-[5px] uppercase whitespace-nowrap hover:bg-[#032F59] transition"
+  >
+    {loading ? "Submitting..." : "SUBSCRIBE NOW"}
+  </button>
+
+</div>
+
 
         {/* ERROR / SUCCESS MESSAGE */}
-        {error && <p className="text-red-300 mt-3">{error}</p>}
+        {/* {error && <p className="text-red-300 mt-3">{error}</p>} */}
+        {error && <p className="text-red-300 mt-3">Something went wrong. Please try again.</p>}
+
         {success && <p className="text-green-300 mt-3">{success}</p>}
       </div>
     </section>

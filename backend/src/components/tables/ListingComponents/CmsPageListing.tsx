@@ -337,6 +337,10 @@ export default function CmsPageListing() {
       page: String(page),
       limit: String(recordsPerPage),
     });
+    
+    // Save to sessionStorage for AddCmsPage fallback
+    sessionStorage.setItem("lastCmsPagePage", String(page));
+    sessionStorage.setItem("lastCmsPageLimit", String(recordsPerPage));
   }, [page, recordsPerPage]);
 
   /** Debounced search + sort + pagination */
@@ -485,7 +489,7 @@ export default function CmsPageListing() {
       <div className="flex justify-between mb-6">
         <h2 className="text-xl font-medium">CMS Pages</h2>
         <button
-          onClick={() => navigate(`/admin/cmspages/create`)}
+          onClick={() => navigate(`/admin/cmspages/create?page=${page}&limit=${recordsPerPage}`)}
           className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow-md flex items-center gap-2"
         >
           <FiPlus /> Add

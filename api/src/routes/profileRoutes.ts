@@ -27,10 +27,26 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// /* -------------------- VALIDATION -------------------- */
+// const updateValidation = [
+//   body("name").optional().isString().withMessage("Name must be a string"),
+//   body("phone").optional().isMobilePhone("any").withMessage("Invalid phone number"),
+//   body("address").optional().isString().withMessage("Address must be a string"),
+// ];
+
+
 /* -------------------- VALIDATION -------------------- */
 const updateValidation = [
   body("name").optional().isString().withMessage("Name must be a string"),
-  body("phone").optional().isMobilePhone("any").withMessage("Invalid phone number"),
+  
+  // CHANGED: Removed .isMobilePhone("any") 
+  // We now just check that it's a string and has a minimum length (e.g., 5 digits)
+  body("phone")
+    .optional()
+    .isString()
+    .isLength({ min: 5 })
+    .withMessage("Phone number is too short"),
+    
   body("address").optional().isString().withMessage("Address must be a string"),
 ];
 
