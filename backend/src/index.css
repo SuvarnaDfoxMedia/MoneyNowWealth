@@ -1,3 +1,5 @@
+
+
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap")
 layer(base);
 
@@ -781,4 +783,33 @@ span.flatpickr-weekday,
 
 .menu-dropdown-item {
   padding-block: calc(var(--spacing) * 1);
+}
+
+
+.jodit-wysiwyg {
+  margin-bottom: 0 !important;
+}
+
+.jodit-container {
+  margin-bottom: 0 !important;
+}
+
+.jodit-workplace {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+
+
+/* REQUIRED FIXES */
+.iti {
+  width: 100%;
+}
+
+.iti__country-list {
+  z-index: 9999;
+}
+
+html {
+  scroll-padding-top: 100px;
 }

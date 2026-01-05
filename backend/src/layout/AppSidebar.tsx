@@ -9,9 +9,9 @@ import {
   FiGrid,
   FiFileText,
   FiUsers,
-  FiMail,
   FiMessageSquare,
   FiFile,
+  FiMail,
 } from "react-icons/fi";
 import { BsThreeDots } from "react-icons/bs";
 import { useSidebar } from "../context/SidebarContext";
@@ -74,12 +74,12 @@ const AppSidebar: React.FC = () => {
       path: `/customers`,
       roles: ["admin"],
     },
-    // {
-    //   name: "Newsletter",
-    //   icon: <FiMail />,
-    //   path: `/${role}/newsletter`,
-    //   roles: ["admin"],
-    // },
+    {
+      name: "Newsletter",
+      icon: <FiMail />,
+      path: `/${role}/newsletter`,
+      roles: ["admin"],
+    },
      
     {
       name: "Contact Enquiry",
@@ -92,7 +92,7 @@ const AppSidebar: React.FC = () => {
       icon: <FiSettings />,
       roles: ["admin"],
       subItems: [
-        { name: "Cluster", path: `/${role}/cluster`, roles: ["admin", "editor"] },
+        // { name: "Cluster", path: `/${role}/cluster`, roles: ["admin", "editor"] },
       ],
     },
   ];
@@ -152,7 +152,7 @@ const AppSidebar: React.FC = () => {
                 )}
               </button>
               <div
-                ref={(el) => (subMenuRefs.current[index] = el)}
+            ref={(el) => { subMenuRefs.current[index] = el; }}
                 className="overflow-hidden transition-all duration-300"
                 style={{
                   height: openSubmenu === index

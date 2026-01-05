@@ -1,206 +1,340 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom"; // <-- import navigate hook
+// "use client";
 
-interface Newsletter {
+// import React, { useEffect, useState } from "react";
+// import { useParams } from "react-router-dom";
+// import { toast } from "react-hot-toast";
+// import { FiTrash2, FiMoreVertical } from "react-icons/fi";
+// import { createPortal } from "react-dom";
+// import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
+// import { useCommonCrud } from "../../../hooks/useCommonCrud";
+// import { useDataTableStore } from "../../../store/dataTableStore";
+
+// interface Subscriber {
+//   _id: string;
+//   name: string;
+//   email: string;
+//   created_at: string;
+//   is_deleted: boolean;
+// }
+
+// export default function NewsletterListing() {
+//   const { role } = useParams<{ role: string }>();
+
+//   const { page, recordsPerPage, searchValue, sortField, sortOrder, setPage, setRecordsPerPage, setSearchValue, setSort } =
+//     useDataTableStore();
+
+//   // ------------------- Fetch Data (CRUD Hook) -------------------
+//   const { data, extractList, refetch, deleteRecord, isLoading } = useCommonCrud<Subscriber>({
+//     role,
+//     module: "newsletter",
+//     page,
+//     limit: recordsPerPage,
+//     searchValue,
+//     sortField,
+//     sortOrder,
+//   });
+
+//   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+
+//   useEffect(() => {
+//     setSubscribers(extractList);
+//   }, [extractList]);
+
+//   const totalRecords = data.total ?? 0;
+//   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
+
+//   /* ------------------- Debounced Refetch ------------------- */
+//   useEffect(() => {
+//     const timer = setTimeout(() => refetch(), 300);
+//     return () => clearTimeout(timer);
+//   }, [searchValue, sortField, sortOrder, page]);
+
+//   /* ------------------- Dropdown & Delete ------------------- */
+//   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+//   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+//   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
+//   const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+//     const rect = e.currentTarget.getBoundingClientRect();
+//     setDropdownPos({
+//       top: rect.bottom + window.scrollY,
+//       left: rect.right - 144,
+//     });
+//     setOpenDropdownId((prev) => (prev === id ? null : id));
+//   };
+
+//   const handleDelete = async () => {
+//     if (!deleteModalId) return;
+
+//     const res = await deleteRecord(deleteModalId);
+//     if (res?.success) {
+//       toast.success("Subscriber deleted");
+//       refetch();
+//     } else {
+//       toast.error(res?.message || "Delete failed");
+//     }
+//     setDeleteModalId(null);
+//   };
+
+//   const Dropdown = ({ id, top, left }: { id: string; top: number; left: number }) =>
+//     createPortal(
+//       <div className="absolute bg-white border rounded-xl shadow-lg z-50" style={{ top, left, width: "8rem" }}>
+//         <button
+//           onClick={() => {
+//             setDeleteModalId(id);
+//             setOpenDropdownId(null);
+//           }}
+//           className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 w-full text-left text-red-600 transition"
+//         >
+//           <FiTrash2 /> Delete
+//         </button>
+//       </div>,
+//       document.body
+//     );
+
+//   /* ------------------- Table Columns ------------------- */
+//   const columns: TableColumn<Subscriber>[] = [
+//     { key: "index", label: "#", render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1 },
+//     { key: "name", label: "Name", sortable: true, render: (r) => r.name },
+//     { key: "email", label: "Email", sortable: true, render: (r) => r.email },
+//     {
+//       key: "created_at",
+//       label: "Subscribed Date",
+//       sortable: true,
+//       render: (r) => new Date(r.created_at).toLocaleString(),
+//     },
+//     {
+//       key: "actions",
+//       label: "Actions",
+//       render: (row) => (
+//         <>
+//           <button onClick={(e) => handleDropdownClick(e, row._id)} className="p-2 hover:bg-gray-100 rounded-full">
+//             <FiMoreVertical size={18} />
+//           </button>
+//           {openDropdownId === row._id && <Dropdown id={row._id} top={dropdownPos.top} left={dropdownPos.left} />}
+//         </>
+//       ),
+//     },
+//   ];
+
+//   return (
+//     <div className="p-4 bg-gray-50 min-h-screen">
+//       <h2 className="text-xl font-medium mb-6">Newsletter Subscribers</h2>
+
+//       <DataTable
+//         columns={columns}
+//         data={subscribers}
+//         page={page}
+//         totalPages={totalPages}
+//         totalRecords={totalRecords}
+//         recordsPerPage={recordsPerPage}
+//         onPageChange={setPage}
+//         onRecordsPerPageChange={setRecordsPerPage}
+//         searchValue={searchValue}
+//         onSearchChange={setSearchValue}
+//         sortField={sortField}
+//         sortOrder={sortOrder}
+//         onSortChange={(field, order) => setSort(field, order)}
+//         loading={isLoading}
+//       />
+
+//       {/* Delete Modal */}
+//       {deleteModalId &&
+//         createPortal(
+//           <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[9999]">
+//             <div className="bg-white p-6 rounded-xl shadow-xl w-80">
+//               <h2 className="text-lg font-medium mb-4">Delete Subscriber?</h2>
+//               <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this subscriber?</p>
+
+//               <div className="flex justify-end gap-3">
+//                 <button onClick={() => setDeleteModalId(null)} className="px-4 py-2 rounded bg-gray-200">
+//                   Cancel
+//                 </button>
+
+//                 <button onClick={handleDelete} className="px-4 py-2 rounded bg-red-600 text-white">
+//                   Delete
+//                 </button>
+//               </div>
+//             </div>
+//           </div>,
+//           document.body
+//         )}
+//     </div>
+//   );
+// }
+
+
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { FiTrash2, FiMoreVertical } from "react-icons/fi";
+import { createPortal } from "react-dom";
+import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
+import { useCommonCrud } from "../../../hooks/useCommonCrud";
+import { useDataTableStore } from "../../../store/dataTableStore";
+
+interface Subscriber {
   _id: string;
-  newsletter_code: string;
-  title: string;
-  content: string;
-  status: "draft" | "published" | "archived";
+  name: string;
+  email: string;
   created_at: string;
-  updated_at: string;
+  is_deleted: boolean;
 }
 
-const NewsletterListing: React.FC = () => {
-  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<Newsletter | null>(null);
+export default function NewsletterListing() {
+  const { role } = useParams<{ role: string }>();
 
-  const navigate = useNavigate(); // <-- initialize navigate
+  const {
+    page,
+    recordsPerPage,
+    searchValue,
+    sortField,
+    sortOrder,
+    setPage,
+    setRecordsPerPage,
+    setSearchValue,
+    setSort,
+  } = useDataTableStore();
 
-  // Fetch newsletters on mount
+  // ------------------- Fetch Data (CRUD Hook) -------------------
+  const { data, extractList, refetch, deleteRecord, isLoading } = useCommonCrud<Subscriber>({
+    role,
+    module: "newsletter",
+    page,
+    limit: recordsPerPage,
+    searchValue,
+    sortField,
+    sortOrder,
+  });
+
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+
   useEffect(() => {
-    const fetchNewsletters = async () => {
-      try {
-        setLoading(true);
-        const res = await axios.get("http://localhost:5000/api/newsletters");
-        setNewsletters(res.data);
-      } catch (error) {
-        console.error("Error fetching newsletters:", error);
-        alert("Failed to load newsletters");
-      } finally {
-        setLoading(false);
-      }
-    };
+    setSubscribers(extractList);
+  }, [extractList]);
 
-    fetchNewsletters();
-  }, []);
+  // ✅ Fix: optional chaining
+  const totalRecords = data?.total ?? 0;
+  const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
+
+  /* ------------------- Debounced Refetch ------------------- */
+  useEffect(() => {
+    const timer = setTimeout(() => refetch(), 300);
+    return () => clearTimeout(timer);
+  }, [searchValue, sortField, sortOrder, page]);
+
+  /* ------------------- Dropdown & Delete ------------------- */
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
+  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownPos({
+      top: rect.bottom + window.scrollY,
+      left: rect.right - 144,
+    });
+    setOpenDropdownId((prev) => (prev === id ? null : id));
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModalId) return;
+
+    const res = await deleteRecord(deleteModalId);
+    if (res?.success) {
+      toast.success("Subscriber deleted");
+      refetch();
+    } else {
+      toast.error(res?.message || "Delete failed");
+    }
+    setDeleteModalId(null);
+  };
+
+  const Dropdown = ({ id, top, left }: { id: string; top: number; left: number }) =>
+    createPortal(
+      <div className="absolute bg-white border rounded-xl shadow-lg z-50" style={{ top, left, width: "8rem" }}>
+        <button
+          onClick={() => {
+            setDeleteModalId(id);
+            setOpenDropdownId(null);
+          }}
+          className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 w-full text-left text-red-600 transition"
+        >
+          <FiTrash2 /> Delete
+        </button>
+      </div>,
+      document.body
+    );
+
+  /* ------------------- Table Columns ------------------- */
+  const columns: TableColumn<Subscriber>[] = [
+    { key: "index", label: "#", render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1 },
+    { key: "name", label: "Name", sortable: true, render: (r) => r.name },
+    { key: "email", label: "Email", sortable: true, render: (r) => r.email },
+    {
+      key: "created_at",
+      label: "Subscribed Date",
+      sortable: true,
+      render: (r) => new Date(r.created_at).toLocaleString(),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (row) => (
+        <>
+          <button onClick={(e) => handleDropdownClick(e, row._id)} className="p-2 hover:bg-gray-100 rounded-full">
+            <FiMoreVertical size={18} />
+          </button>
+          {openDropdownId === row._id && <Dropdown id={row._id} top={dropdownPos.top} left={dropdownPos.left} />}
+        </>
+      ),
+    },
+  ];
 
   return (
-    <div style={{ padding: 20, maxWidth: "900px", margin: "auto" }}>
-      <h2 style={{ marginBottom: "20px" }}> Newsletter Listing</h2>
+    <div className="p-4 bg-gray-50 min-h-screen">
+      <h2 className="text-xl font-medium mb-6">Newsletter Subscribers</h2>
 
-      {/* Add Newsletter Button */}
-      <div style={{ marginBottom: "20px" }}>
-        <button
-          onClick={() => navigate("/newsletter/add")}
-          style={{
-            backgroundColor: "#28a745",
-            color: "#fff",
-            border: "none",
-            padding: "8px 15px",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          + Add Newsletter
-        </button>
-      </div>
+      <DataTable
+        columns={columns}
+        data={subscribers}
+        page={page}
+        totalPages={totalPages}
+        totalRecords={totalRecords}
+        recordsPerPage={recordsPerPage}
+        onPageChange={setPage}
+        onRecordsPerPageChange={setRecordsPerPage}
+        searchValue={searchValue}
+        onSearchChange={setSearchValue}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        onSortChange={(field, order) => setSort(field, order)}
+        loading={isLoading}
+      />
 
-      {loading ? (
-        <p>Loading newsletters...</p>
-      ) : newsletters.length === 0 ? (
-        <p>No newsletters found.</p>
-      ) : (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            marginBottom: "20px",
-          }}
-        >
-          <thead>
-            <tr style={{ backgroundColor: "#f4f4f4" }}>
-              <th style={thStyle}>Code</th>
-              <th style={thStyle}>Title</th>
-              <th style={thStyle}>Status</th>
-              <th style={thStyle}>Created</th>
-              <th style={thStyle}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {newsletters.map((n) => (
-              <tr key={n._id}>
-                <td style={tdStyle}>{n.newsletter_code}</td>
-                <td style={tdStyle}>{n.title}</td>
-                <td style={tdStyle}>
-                  <span style={statusStyle(n.status)}>{n.status}</span>
-                </td>
-                <td style={tdStyle}>
-                  {new Date(n.created_at).toLocaleDateString()}
-                </td>
-                <td style={tdStyle}>
-                  <button
-                    onClick={() => setSelected(n)}
-                    style={{
-                      backgroundColor: "#007bff",
-                      color: "white",
-                      border: "none",
-                      padding: "5px 10px",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {/* Delete Modal */}
+      {deleteModalId &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[9999]">
+            <div className="bg-white p-6 rounded-xl shadow-xl w-80">
+              <h2 className="text-lg font-medium mb-4">Delete Subscriber?</h2>
+              <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this subscriber?</p>
 
-      {/* Modal / Viewer */}
-      {selected && (
-        <div style={modalOverlay}>
-          <div style={modalContent}>
-            <h3 style={{ marginTop: 0 }}>{selected.title}</h3>
-            <p>
-              <strong>Status:</strong>{" "}
-              <span style={statusStyle(selected.status)}>{selected.status}</span>
-            </p>
-            <hr />
-            <div
-              dangerouslySetInnerHTML={{ __html: selected.content }}
-              style={{
-                marginTop: "10px",
-                padding: "10px",
-                border: "1px solid #ddd",
-                background: "#fafafa",
-                borderRadius: "5px",
-              }}
-            />
-            <button
-              onClick={() => setSelected(null)}
-              style={{
-                marginTop: "20px",
-                backgroundColor: "#dc3545",
-                color: "white",
-                border: "none",
-                padding: "8px 15px",
-                borderRadius: "5px",
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setDeleteModalId(null)} className="px-4 py-2 rounded bg-gray-200">
+                  Cancel
+                </button>
+
+                <button onClick={handleDelete} className="px-4 py-2 rounded bg-red-600 text-white">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
-};
-
-// --- Styling Helpers ---
-const thStyle: React.CSSProperties = {
-  border: "1px solid #ddd",
-  padding: "8px",
-  textAlign: "left",
-};
-
-const tdStyle: React.CSSProperties = {
-  border: "1px solid #ddd",
-  padding: "8px",
-};
-
-const statusStyle = (status: string): React.CSSProperties => {
-  const colors: Record<string, string> = {
-    draft: "#6c757d",
-    published: "#28a745",
-    archived: "#dc3545",
-  };
-  return {
-    color: "#fff",
-    backgroundColor: colors[status] || "#6c757d",
-    padding: "3px 8px",
-    borderRadius: "4px",
-    fontSize: "0.9em",
-  };
-};
-
-const modalOverlay: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
-  backgroundColor: "rgba(0,0,0,0.5)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
-
-const modalContent: React.CSSProperties = {
-  backgroundColor: "#fff",
-  padding: "20px",
-  borderRadius: "8px",
-  width: "80%",
-  maxWidth: "800px",
-  maxHeight: "90vh",
-  overflowY: "auto",
-  boxShadow: "0 2px 10px rgba(0,0,0,0.3)",
-};
-
-export default NewsletterListing;
+}

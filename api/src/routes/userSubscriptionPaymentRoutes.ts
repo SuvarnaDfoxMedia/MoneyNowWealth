@@ -1,50 +1,47 @@
+
+
 import express from "express";
 import {
-  getSubscriptionPaymentById,
   addSubscriptionPayment,
   updateSubscriptionPayment,
-  deleteSubscriptionPayment,
-  toggleSubscriptionPaymentStatus,
-  restoreSubscriptionPayment,
- 
-getUserSubscriptionPayments} from "../controllers/userSubscriptionPaymentController.ts";
-import { roleFromUrl } from "../middleware/roleUrlMiddleware.ts";
+  getSubscriptionPaymentById,
+  getLatestPaymentByUser,
+  getUserSubscriptionHistory
+} from "../controllers/userSubscriptionPaymentController";
+
+import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 
 const router = express.Router();
 
-/* ---------------------------------------------------
-   Public Routes (any logged-in user)
---------------------------------------------------- */
+// Get a specific subscription payment by ID
 router.get("/subscription-payment/:id", getSubscriptionPaymentById);
 
+router.get("/subscription/:subscription_id/payments", getSubscriptionPaymentById);
 
-/* ---------------------------------------------------
-   Admin Routes (protected by role middleware)
---------------------------------------------------- */
+router.get("/subscription-payment/history/:userId", getUserSubscriptionHistory);
+
+/* -------------------- ADMIN ROUTES -------------------- */
 const adminMiddleware = roleFromUrl(["admin"]);
 
-// Create a new payment
-router.post("/subscription-payment/create", addSubscriptionPayment);
-// router.get("/user/:user_id/subscription-payments", getUserPayments); // Update a payment
-
-// router.get("/:role/user/:user_id/subscription-payments", adminMiddleware, getUserPayments); 
-router.put("/subscription-payment/edit/:id", updateSubscriptionPayment);
-// Fetch all subscription payments for a user
-// router.get("/:role/user/:user_id/subscription-payments", adminMiddleware, getUserSubscriptionPayments);
-
-router.get(
-  "/:role/subscription/:subscription_id/payments",
-  adminMiddleware,
-  getUserSubscriptionPayments
+/* -------------------- CREATE -------------------- */
+router.post(
+  "/:role/subscription-payment/create",
+  ...adminMiddleware,
+  addSubscriptionPayment
 );
-// Toggle payment status (active/inactive)
-router.patch("/:role/subscription-payment/change/:id/status", adminMiddleware, toggleSubscriptionPaymentStatus);
 
-// Soft delete a payment
-router.delete("/:role/subscription-payment/delete/:id", adminMiddleware, deleteSubscriptionPayment);
+/* -------------------- UPDATE -------------------- */
+router.put(
+  "/:role/subscription-payment/edit/:id",
+  ...adminMiddleware,
+  updateSubscriptionPayment
+);
 
-// Restore a deleted payment
-router.patch("/:role/subscription-payment/restore/:id", adminMiddleware, restoreSubscriptionPayment);
+// GET latest payment by user ID
+router.get("/:role/subscription-payment/user/:user_id/latest",   ...adminMiddleware,
+ getLatestPaymentByUser);
 
 
 export default router;
+
+

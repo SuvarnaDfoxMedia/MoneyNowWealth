@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-interface SendEmailParams {
+export interface SendEmailParams {
   to: string;
   subject: string;
   text?: string;
@@ -13,22 +13,29 @@ export const sendEmail = async ({
   text = "",
   html = "",
 }: SendEmailParams): Promise<void> => {
+  // Validate required environment variables
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    throw new Error(
+      "SMTP configuration missing. Ensure SMTP_HOST, SMTP_USER, and SMTP_PASS are set in .env"
+    );
+  }
+
   try {
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, // e.g., smtp.gmail.com
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: false, // true for 465
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS, // Gmail App Password if using Gmail
-      },
-      tls: {
-        rejectUnauthorized: false, // dev only
-      },
+      host,
+      port,
+      secure: port === 465, // SSL if port 465
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false }, // dev only
     });
 
     await transporter.sendMail({
-      from: `"MoneyNow Wealth" <${process.env.SMTP_USER}>`,
+      from: `"MoneyNow Wealth" <${user}>`,
       to,
       subject,
       text,
@@ -36,7 +43,12 @@ export const sendEmail = async ({
     });
 
     console.log(`Email sent successfully to ${to}`);
-  } catch (err: any) {
-    console.error("Email sending error:", err.message);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error("Email sending error:", err.message);
+    } else {
+      console.error("Email sending error:", err);
+    }
+    throw err; // rethrow to allow upstream handling
   }
 };

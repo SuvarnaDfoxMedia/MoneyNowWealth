@@ -1,6 +1,13 @@
-import mongoose, { Document, Schema, Model } from "mongoose";
-import AutoIncrementFactory from "mongoose-sequence";
+import mongoose, { Document, Schema, Model, Query } from "mongoose";
+import { createRequire } from "module";
 
+const require = createRequire(import.meta.url);
+const AutoIncrementFactory = require("mongoose-sequence");
+const AutoIncrement = AutoIncrementFactory(mongoose);
+
+// -------------------------
+// Interfaces
+// -------------------------
 export interface ISection {
   title?: string;
   content?: string;
@@ -30,14 +37,36 @@ export interface ICmsPage extends Document {
   updated_at: Date;
 }
 
+// -------------------------
+// Schema
+// -------------------------
 const cmsPageSchema = new Schema<ICmsPage>(
   {
     page_code: { type: String, unique: true, index: true },
     page_number: { type: Number, unique: true },
     title: { type: String, required: true, trim: true },
     slug: { type: String, required: true, trim: true, unique: true },
-    sections: { type: [Object], default: [] },
-    faqs: { type: [Object], default: [] },
+    sections: {
+      type: [
+        {
+          title: String,
+          content: String,
+          images: [String],
+          videos: [String],
+          cta: { text: String, url: String },
+        },
+      ],
+      default: [],
+    },
+    faqs: {
+      type: [
+        {
+          question: String,
+          answer: String,
+        },
+      ],
+      default: [],
+    },
     status: {
       type: String,
       enum: ["draft", "published", "archived"],
@@ -54,26 +83,58 @@ const cmsPageSchema = new Schema<ICmsPage>(
   }
 );
 
-const AutoIncrement = AutoIncrementFactory(mongoose);
-
+// -------------------------
+// Apply Auto-Increment Plugin
+// -------------------------
 cmsPageSchema.plugin(AutoIncrement, {
   id: "cms_page_seq",
   inc_field: "page_number",
   start_seq: 1,
 });
 
-cmsPageSchema.post("save", async function (doc, next) {
+// -------------------------
+// Post-save: generate page_code
+// -------------------------
+cmsPageSchema.post("save", async function (doc: ICmsPage) {
   if (!doc.page_code && doc.page_number) {
     const number = String(doc.page_number).padStart(3, "0");
     doc.page_code = `PAGE_${number}`;
     await doc.updateOne({ page_code: doc.page_code });
   }
+});
+
+// -------------------------
+// Pre-find: exclude soft-deleted
+// -------------------------
+cmsPageSchema.pre<Query<ICmsPage[], ICmsPage>>(/^find/, function (this: Query<ICmsPage[], ICmsPage>, next: (err?: any) => void) {
+  this.where({ is_deleted: false });
   next();
 });
 
+// -------------------------
+// Pre deleteOne: soft delete
+// -------------------------
+cmsPageSchema.pre("deleteOne", { document: true, query: false }, async function (this: ICmsPage, next: (err?: any) => void) {
+  this.is_deleted = true;
+  this.is_active = 0;
+  this.deleted_at = new Date();
+  await this.save();
+  next();
+});
+
+// -------------------------
+// Indexes
+// -------------------------
 cmsPageSchema.index({ is_active: 1, is_deleted: 1, status: 1, created_at: -1 });
 
-cmsPageSchema.statics.softDelete = async function (id: string) {
+// -------------------------
+// Static Method: softDelete
+// -------------------------
+interface CmsPageModel extends Model<ICmsPage> {
+  softDelete(id: string): Promise<ICmsPage>;
+}
+
+cmsPageSchema.statics.softDelete = async function (id: string): Promise<ICmsPage> {
   const page = await this.findById(id);
   if (!page) throw new Error("CMS Page not found");
   page.is_deleted = true;
@@ -83,23 +144,8 @@ cmsPageSchema.statics.softDelete = async function (id: string) {
   return page;
 };
 
-cmsPageSchema.pre(/^find/, function (next) {
-  this.where({ is_deleted: false });
-  next();
-});
-
-cmsPageSchema.pre("deleteOne", { document: true, query: false }, async function (next) {
-  // @ts-ignore
-  this.is_deleted = true;
-  // @ts-ignore
-  this.is_active = 0;
-  // @ts-ignore
-  this.deleted_at = new Date();
-  await this.save();
-  next(new Error("Soft delete: document not actually removed"));
-});
-
-const CmsPage: Model<ICmsPage> & { softDelete(id: string): Promise<ICmsPage> } =
-  mongoose.model<ICmsPage>("CmsPage", cmsPageSchema) as any;
-
+// -------------------------
+// Model Export
+// -------------------------
+const CmsPage: CmsPageModel = mongoose.model<ICmsPage, CmsPageModel>("CmsPage", cmsPageSchema);
 export default CmsPage;

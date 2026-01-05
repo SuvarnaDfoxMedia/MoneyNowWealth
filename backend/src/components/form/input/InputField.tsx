@@ -1,4 +1,4 @@
-import type { FC, ReactNode, InputHTMLAttributes } from "react";
+import type { FC,  InputHTMLAttributes } from "react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   success?: boolean;

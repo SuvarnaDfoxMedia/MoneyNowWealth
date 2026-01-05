@@ -1,24 +1,42 @@
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import type { Request, Response } from "express";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
+import SubscriptionPlanModel from "../models/subscriptionPlan.model";
+import { userSubscriptionService } from "@/services/userSubscriptionService";
 
-import User from "../models/userModel.ts";
-import UserSubscription from "../models/userSubscriptionModel.ts";
-import SubscriptionPlanModel from "../models/subscriptionPlan.model.ts";
-import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel.ts";
-import { sendEmail } from "../utils/emails.ts";
+import User, { IUser } from "../models/userModel"; 
+import UserSubscription from "../models/userSubscriptionModel";
+import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel";
+import { sendEmail } from "../utils/emails";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 dotenv.config();
 
+// JWT expiration
 const JWT_EXPIRES = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+// Generate JWT token
 const generateToken = (userId: string, role: string) =>
   jwt.sign({ id: userId, role }, process.env.JWT_KEY!, { expiresIn: "7d" });
 
-// ---------------------- Helpers ----------------------
-const addDurationToDate = (date: Date, value: number, unit: "day" | "month" | "year") => {
+/* ------------------------------------------------------------------
+   Define AuthenticatedRequest for routes with logged-in user
+------------------------------------------------------------------ */
+export interface AuthenticatedRequest extends Request {
+  userId?: string;
+}
+
+/* ------------------------------------------------------------------
+   ADD DURATION TO DATE
+------------------------------------------------------------------ */
+const addDurationToDate = (
+  date: Date,
+  value: number,
+  unit: "day" | "month" | "year"
+) => {
   const result = new Date(date);
   switch (unit) {
     case "day":
@@ -30,185 +48,231 @@ const addDurationToDate = (date: Date, value: number, unit: "day" | "month" | "y
     case "year":
       result.setFullYear(result.getFullYear() + value);
       break;
-    default:
-      throw new Error(`Unsupported duration unit: ${unit}`);
   }
   return result;
 };
 
-// ---------------------- Create or Update Subscription ----------------------
+
+
+
+
 export const createOrUpdateSubscription = async (
   userId: string,
-  planDoc: any,
-  opts?: {
-    planType?: "Free" | "Premium";
-    trialType?: "free_sample" | "premium_sample";
-    amount?: number;
-    currency?: string;
-    note?: string;
-  }
+  planId: string,
+  durationValue: number,
+  durationUnit: "day" | "month" | "year",
+  trialType?: "free_sample" | "premium_sample",
+  status: "new" | "upgrade" | "downgrade" = "new"
 ) => {
-  const now = new Date();
-  if (!planDoc.duration || !planDoc.duration.value || !planDoc.duration.unit) {
-    throw new Error("Plan duration is missing or invalid");
-  }
-  const durationUnit = planDoc.duration.unit as "day" | "month" | "year";
-  const endDate = addDurationToDate(now, planDoc.duration.value, durationUnit);
+  try {
+    const resolvedTrialType = trialType || "free_sample";
+    const planType = resolvedTrialType === "free_sample" ? "Free" : "Premium";
 
-  const amount = opts?.amount ?? planDoc.price ?? 0;
-  const currency = opts?.currency || planDoc.currency || "INR";
-  const planType = opts?.planType || planDoc.name;
-  const trialType =
-    opts?.trialType || (planType === "Free" ? "free_sample" : "premium_sample");
+    // Get plan details (for price)
+  const plan = await SubscriptionPlanModel.findById(planId);
+if (!plan) throw new Error("Subscription plan not found");
 
-  // Check for existing subscription
-  const existing = await UserSubscription.findOne({
-    user_id: userId,
-    is_deleted: false,
-  }).sort({ created_at: -1 });
 
-  let subscription;
-  if (existing) {
-    existing.plan_id = planDoc._id;
-    existing.plan_type = planType;
-    existing.trial_type = trialType;
-    existing.start_date = now;
-    existing.end_date = endDate;
-    existing.status = planType === "Premium" ? "upgrade" : "new";
-    existing.auto_renew = false;
-    existing.last_payment_id = null;
-    existing.is_active = true;
-    subscription = await existing.save();
-  } else {
-    subscription = await UserSubscription.create({
+    const endDate = addDurationToDate(new Date(), durationValue, durationUnit);
+
+    // -----------------------------------------------
+    // 1️⃣ Deactivate all old active subscriptions
+    // -----------------------------------------------
+    await UserSubscription.updateMany(
+      { user_id: new Types.ObjectId(userId), is_active: true },
+      { is_active: false }
+    );
+
+    // -----------------------------------------------
+    // 2️⃣ Create new subscription entry
+    // -----------------------------------------------
+    const subscription = await UserSubscription.create({
       user_id: new Types.ObjectId(userId),
-      plan_id: planDoc._id,
+      plan_id: new Types.ObjectId(planId),
       plan_type: planType,
-      trial_type: trialType,
-      start_date: now,
+      trial_type: resolvedTrialType,
+      start_date: new Date(),
       end_date: endDate,
-      status: planType === "Premium" ? "upgrade" : "new",
+      status,                     // new | upgrade | downgrade
       auto_renew: false,
-      is_deleted: false,
       is_active: true,
+      is_deleted: false,
     });
+
+    // -----------------------------------------------
+    // 3️⃣ Create payment entry for this subscription
+    // -----------------------------------------------
+    await UserSubscriptionPayment.create({
+      user_id: new Types.ObjectId(userId),
+      plan_id: new Types.ObjectId(planId),
+      user_subscription_id: subscription._id,
+
+      amount: planType === "Free" ? 0 : plan.price,   // FREE → 0
+      currency: "INR",
+      payment_method: "system",
+
+      transaction_id: `${status.toUpperCase()}-${Date.now()}`,
+      order_id: `${status.toUpperCase()}-${Date.now()}`,
+
+      payment_status: "success",
+      payment_date: new Date(),
+      type: status,                                   // store correct type
+
+      metadata: {
+        note: `Auto-generated for ${status} subscription`,
+      },
+    });
+
+    // -----------------------------------------------
+    // 4️⃣ Populate and return subscription
+    // -----------------------------------------------
+    await subscription.populate([
+      { path: "user_id", select: "firstname lastname email mobile" },
+      { path: "plan_id" },
+    ]);
+
+    return subscription;
+
+  } catch (err) {
+    console.error("Error creating/updating subscription:", err);
+    throw err;
   }
-
-  // ---------------------- Create Payment Record ----------------------
-  await UserSubscriptionPayment.createPaymentForSubscription({
-    user_id: subscription.user_id,
-    user_subscription_id: subscription._id,
-    plan_id: planDoc._id,
-    amount,
-    currency,
-    payment_method: planType === "Free" ? "free_plan" : "online",
-    transaction_id: `TXN-${subscription._id}-${Date.now()}`, // dummy transaction
-    order_id: `ORD-${subscription._id}-${Date.now()}`, // dummy order
-    payment_status: "success",
-    type: planType === "Free" ? "new" : "payment",
-    payment_date: new Date(),
-    metadata: { note: opts?.note || `Subscription created: ${planType}` },
-  });
-
-  return subscription;
 };
 
-// ---------------------- Assign Free Plan ----------------------
+
+
+/* ------------------------------------------------------------------
+   ASSIGN FREE PLAN (during registration)
+------------------------------------------------------------------ */
 export const assignFreePlan = async (userId: string) => {
-  const freePlan = await SubscriptionPlanModel.findOne({
-    name: "Free",
-    is_active: true,
-    is_deleted: false,
-  }).lean();
+  try {
+    const freePlan = await SubscriptionPlanModel.findOne({
+      name: "Free",
+      is_active: true,
+      is_deleted: false,
+    });
 
-  if (!freePlan) throw new Error("Free Plan not found");
+    if (!freePlan) throw new Error("Free plan not found!");
 
-  return createOrUpdateSubscription(userId, freePlan, {
-    planType: "Free",
-    trialType: "free_sample",
-  });
+    // createOrUpdateSubscription NOW auto-creates payment entry
+    const subscription = await createOrUpdateSubscription(
+      userId,
+      freePlan._id.toString(),
+      freePlan.duration.value,
+      freePlan.duration.unit,
+      "free_sample",
+      "new"
+    );
+
+    return { subscription };
+  } catch (err) {
+    console.error("Failed to assign free plan:", err);
+    throw err;
+  }
 };
 
-// ---------------------- REGISTER USER ----------------------
+
+
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    let { firstname, lastname, email, password, mobile, termsAccepted } = req.body;
+    const { title, firstname, lastname, email, password, mobile, countryCode, termsAccepted } =
+      req.body;
 
-    // ---------------- Validation ----------------
+    // ------------------ Validations ------------------
+    if (!title || !["Mr", "Mrs"].includes(title))
+      return res.status(400).json({ message: "Title must be Mr or Mrs" });
+
     if (!firstname || !lastname || !email || !password || !mobile)
       return res.status(400).json({ message: "All fields are required" });
 
     if (termsAccepted !== true)
-      return res.status(400).json({ message: "You must accept the terms and conditions" });
+      return res.status(400).json({ message: "Please accept the terms" });
 
-    email = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    // Email validation
+    const emailTrim = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim))
       return res.status(400).json({ message: "Invalid email format" });
 
+    // Password validation
     if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,128}$/.test(password))
       return res.status(400).json({
-        message: "Password must be 8-128 chars, include 1 uppercase, 1 number, and 1 special character",
+        message:
+          "Password must be 8+ chars, include 1 uppercase, 1 number & 1 special character",
       });
 
-    // ---------------- Check unique email ----------------
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already exists" });
+    // Check if email exists
+    const existingUser = await User.findOne({ email: emailTrim });
+    if (existingUser)
+      return res.status(400).json({ message: "Email already exists" });
 
-    // ---------------- Hash password ----------------
+    // ------------------ Phone Validation ------------------
+    const fullPhone = `${countryCode}${mobile}`;
+    const phoneNumber = parsePhoneNumberFromString(fullPhone);
+
+    if (!phoneNumber || !phoneNumber.isValid())
+      return res.status(400).json({ message: "Invalid phone number" });
+
+    // Optional: normalize phone number for storage
+    const normalizedMobile = phoneNumber.nationalNumber.toString();
+    const normalizedCountryCode = `+${phoneNumber.countryCallingCode}`;
+
+    // ------------------ Hash Password ------------------
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ---------------- Create User ----------------
-    const newUser = await User.create({
-      firstname,
-      lastname,
-      email,
-      mobile, // duplicate mobile allowed
+    // ------------------ Create user ------------------
+    const newUser: IUser = await User.create({
+      title,
+      firstname: firstname.trim(),
+      lastname: lastname.trim(),
+      email: emailTrim,
       password: hashedPassword,
+      countryCode: normalizedCountryCode,
+      mobile: normalizedMobile,
       role: "user",
       isTermsAccepted: termsAccepted,
     });
 
-    // ---------------- Assign Free Plan ----------------
+    // ------------------ Assign free plan ------------------
     let subscription;
     try {
-      subscription = await assignFreePlan(newUser._id);
+      subscription = await assignFreePlan(newUser._id.toString());
     } catch (err: any) {
-      console.error("Free Plan assignment failed:", err.message || err);
-      return res.status(500).json({ message: "Free plan assignment failed", error: err.message });
+      return res.status(500).json({
+        message: "Free plan assignment failed",
+        error: err.message,
+      });
     }
 
-    // ---------------- Generate JWT ----------------
+    // ------------------ Generate JWT ------------------
     const token = generateToken(newUser._id.toString(), newUser.role);
 
-    // ---------------- Send Welcome Email ----------------
+    // ------------------ Send welcome email ------------------
     const html = `
-      <div style="font-family: sans-serif; max-width:600px; margin:auto; padding:30px; border-radius:12px; background:#f7f9fc;">
-        <div style="text-align:center;">
-          <h1 style="color:#140084; font-size:28px;">Welcome, ${newUser.firstname}!</h1>
-          <p style="color:#555;">Your account has been successfully created.</p>
-          <a href="${process.env.FRONTEND_URL}/signin" style="display:inline-block; background:#140084;color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:20px;">Sign In</a>
-        </div>
-        <p style="color:#777; text-align:center; margin-top:20px;">If you did not register, please ignore this email.</p>
-        <p style="color:#999; text-align:center; margin-top:20px;">— Team</p>
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:30px;background:#f7f9fc;border-radius:12px;">
+        <h1 style="text-align:center;color:#140084;">Welcome, ${newUser.firstname}!</h1>
+        <p style="text-align:center;">Your account has been created successfully.</p>
       </div>
     `;
-    import("../utils/emails.ts").then(({ sendEmail }) => {
-      sendEmail({ to: newUser.email, subject: "Welcome!", html }).catch(err =>
-        console.error("Email error:", err?.message || err)
-      );
-    });
+    sendEmail({ to: newUser.email, subject: "Welcome!", html });
 
-    // ---------------- Response ----------------
+    // ------------------ Response ------------------
     res
-      .cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax", maxAge: JWT_EXPIRES })
+      .cookie("token", token, {
+        httpOnly: true,
+        secure: false, // set true in production with HTTPS
+        sameSite: "lax",
+        maxAge: JWT_EXPIRES,
+      })
       .status(201)
       .json({
-        message: "User registered successfully. Free Plan assigned.",
+        message: "User registered successfully. Free plan assigned.",
         user: {
           id: newUser._id,
+          title: newUser.title,
           firstname: newUser.firstname,
           lastname: newUser.lastname,
           email: newUser.email,
+          countryCode: newUser.countryCode,
           mobile: newUser.mobile,
           role: newUser.role,
         },
@@ -216,12 +280,13 @@ export const registerUser = async (req: Request, res: Response) => {
         token,
       });
   } catch (error: any) {
-    console.error("Registration error:", error?.message || error);
+    console.error("Registration error:", error.message);
     res.status(500).json({ message: "Server error during registration" });
   }
 };
 
 
+// ================= LOGIN USER =================
 
 export const loginUser = async (req: Request, res: Response) => {
   try {
@@ -229,8 +294,6 @@ export const loginUser = async (req: Request, res: Response) => {
     if (!email || !password) return res.status(400).json({ message: "Email and password are required" });
 
     email = email.trim().toLowerCase();
-
-    // Include password explicitly
     const user: IUser | null = await User.findOne({ email }).select("+password");
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
@@ -250,6 +313,9 @@ export const loginUser = async (req: Request, res: Response) => {
           lastname: user.lastname,
           email: user.email,
           role: user.role,
+          phone: user.mobile,
+          address: user.address,
+          profileImage: user.profileImage ? `/uploads/profiles/${user.profileImage}` : null,
         },
         token,
       });
@@ -259,127 +325,216 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-
 // ================= LOGOUT =================
 export const logoutUser = (req: Request, res: Response) => {
   res.cookie("token", "", { httpOnly: true, secure: false, sameSite: "lax", expires: new Date(0) })
-     .status(200).json({ message: "Logged out successfully" });
+     .status(200)
+     .json({ message: "Logged out successfully" });
 };
 
 
-// ================= FORGOT PASSWORD =================
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     const user: IUser | null = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Unique token for each user, expires in 10 minutes
-    const resetToken = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_KEY!, { expiresIn: "10m" });
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_KEY!,
+      { expiresIn: "10m" }
+    );
+
+    // 👉 Open exactly your given page
+    const resetUrl = `${process.env.WEBSITE_URL}/auth/set-new-password?token=${resetToken}`;
+
+    const html = `
+      <div style="font-family:sans-serif; max-width:600px; margin:auto; padding:30px; border-radius:12px; background:#f7f9fc;">
+        <h2 style="color:#140084;">Hi ${user.firstname || "User"},</h2>
+        <p>We received a request to reset your password. Click the link below to set a new password. This link expires in 10 minutes:</p>
+        <p style="word-break: break-all; font-size:16px; line-height:1.5;">
+          <a href="${resetUrl}" style="color:#140084; text-decoration:underline;">${resetUrl}</a>
+        </p>
+        <p style="font-size:14px;color:#777;">If you did not request a password reset, please ignore this email.</p>
+        <p style="font-size:14px;color:#999;margin-top:20px;">— MoneyNow Wealth Team</p>
+      </div>
+    `;
+
+    sendEmail({
+      to: user.email,
+      subject: "Reset Your Password",
+      html,
+    }).catch(err => console.error("Email error:", err.message));
 
     res.json({ message: "Password reset link sent to your email" });
-
-   const html = `
-  <div style="font-family:sans-serif; max-width:600px; margin:auto; padding:30px; border-radius:12px; background:#f7f9fc; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-    <h2 style="color:#140084;">Hi ${user.firstname || "User"},</h2>
-    <p>We received a request to reset your password. Click the link below to set a new password. This link expires in 10 minutes:</p>
-    <p style="word-break: break-all; font-size:16px; line-height:1.5;">
-      <a href="${resetUrl}" style="color:#140084; text-decoration:underline;">${resetUrl}</a>
-    </p>
-    <p style="font-size:14px;color:#777;">If you did not request a password reset, please ignore this email.</p>
-    <p style="font-size:14px;color:#999;margin-top:20px;">— MoneyNow Wealth Team</p>
-  </div>
-`;
-
-    sendEmail({ to: user.email, subject: "Reset Your Password", html }).catch(err =>
-      console.error("Email error:", err.message)
-    );
   } catch (error: any) {
     console.error("Forgot password error:", error.message);
     res.status(500).json({ message: error.message });
   }
 };
 
+
 // ================= RESET PASSWORD =================
+
+
+// export const resetPassword = async (req: Request, res: Response) => {
+//   try {
+//     const { password, confirmPassword } = req.body;
+//     const token = req.params.token;
+
+//     if (!token || !password || !confirmPassword)
+//       return res.status(400).json({ message: "Token, password and confirm password are required" });
+
+//     if (password !== confirmPassword)
+//       return res.status(400).json({ message: "Passwords do not match" });
+
+//     const user = await User.findOne({
+//       resetPasswordToken: token,
+//       resetPasswordExpires: { $gt: Date.now() },
+//     });
+
+//     if (!user)
+//       return res.status(400).json({ message: "Invalid or expired token" });
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+//     user.password = hashedPassword;
+//     user.resetPasswordToken = undefined;
+//     user.resetPasswordExpires = undefined;
+
+//     await user.save();
+
+//     res.json({ message: "Password reset successful" });
+//   } catch (error) {
+//     console.error("Reset password error:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+
+
 export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
-    const { password } = req.body;
+    const { password, confirmPassword } = req.body;
 
-    let decoded: { id: string };
-    try {
-      decoded = jwt.verify(token, process.env.JWT_KEY!) as { id: string };
-    } catch (error: any) {
-      if (error.name === "TokenExpiredError") {
-        return res.status(400).json({ success: false, message: "Reset link has expired. Please request a new one." });
-      }
-      return res.status(400).json({ success: false, message: "Invalid reset token." });
-    }
+    if (!token) return res.status(400).json({ message: "Token missing" });
+    if (!password || !confirmPassword)
+      return res.status(400).json({ message: "All fields are required" });
+    if (password !== confirmPassword)
+      return res.status(400).json({ message: "Passwords do not match" });
 
-    const user: IUser | null = await User.findById(decoded.id);
-    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+    // Use JWT_KEY from .env
+    const decoded = jwt.verify(token, process.env.JWT_KEY as string) as { id: string };
 
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,128}$/;
-    if (!passwordRegex.test(password))
-      return res.status(400).json({
-        success: false,
-        message: "Password must be 8-128 chars, include 1 uppercase, 1 number, and 1 special character.",
-      });
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Hash new password
     user.password = await bcrypt.hash(password, 10);
-
-    // Optional: invalidate token if stored in DB
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-
     await user.save();
 
-    return res.json({
-      success: true,
-      message: "Password reset successfully.",
-      redirectUrl: `${process.env.FRONTEND_URL}/signin?reset=success`,
-    });
+    return res.status(200).json({ message: "Password reset successfully" });
   } catch (error: any) {
-    console.error("Reset password error:", error.message);
-    return res.status(500).json({ success: false, message: "Server error." });
+    console.error("Reset password error:", error);
+
+    if (error.name === "TokenExpiredError")
+      return res.status(400).json({ message: "Reset link expired" });
+
+    return res.status(400).json({ message: "Invalid reset token" });
   }
 };
 
 
-// ================= CHANGE PASSWORD =================
-export const changePassword = async (req: any, res: Response) => {
+
+
+// export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
+//   try {
+//     const userId = req.userId;   
+//     if (!userId) {
+//       return res.status(401).json({ message: "Not authorized" });
+//     }
+
+//     const { oldPassword, newPassword } = req.body;
+
+//     if (!oldPassword || !newPassword) {
+//       return res.status(400).json({ message: "Old and new password are required" });
+//     }
+
+//     const user = await User.findById(userId).select("+password");
+//     if (!user || !user.password) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     const isMatch = await bcrypt.compare(oldPassword, user.password);
+//     if (!isMatch) {
+//       return res.status(401).json({ message: "Old password is incorrect" });
+//     }
+
+//     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
+//     if (!passwordRegex.test(newPassword)) {
+//       return res.status(400).json({
+//         message:
+//           "New password must be at least 8 characters, include 1 uppercase, 1 number, and 1 special character.",
+//       });
+//     }
+
+//     user.password = await bcrypt.hash(newPassword, 10);
+//     await user.save();
+
+//     return res.status(200).json({ message: "Password changed successfully" });
+//   } catch (error: any) {
+//     console.error("Change password error:", error.message);
+//     return res.status(500).json({ message: "Server error during password change" });
+//   }
+// };
+
+
+export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId: string = req.user.id;
+    const userId = req.user?.id;   
+
+    if (!userId) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
     const { oldPassword, newPassword } = req.body;
 
-    if (!oldPassword || !newPassword) return res.status(400).json({ message: "Old and new password are required" });
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "Old and new password are required" });
+    }
 
-    const user: IUser | null = await User.findById(userId);
-    if (!user || !user.password) return res.status(404).json({ message: "User not found or password missing" });
+    const user = await User.findById(userId).select("+password");
+    if (!user || !user.password) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Old password is incorrect" });
+    if (!isMatch) {
+      return res.status(401).json({ message: "Old password is incorrect" });
+    }
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
-    if (!passwordRegex.test(newPassword))
+    if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        message: "New password must be at least 8 characters, include 1 uppercase, 1 number, and 1 special character.",
+        message:
+          "New password must be at least 8 characters, include 1 uppercase, 1 number, and 1 special character.",
       });
+    }
 
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    res.json({ message: "Password changed successfully" });
+    return res.status(200).json({ message: "Password changed successfully" });
   } catch (error: any) {
     console.error("Change password error:", error.message);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error during password change" });
   }
 };
 
 
 
-// GET ALL USERS
+// ================= GET ALL USERS =================
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -387,59 +542,43 @@ export const getAllUsers = async (req: Request, res: Response) => {
     const search = String(req.query.search || "").trim();
     const sortField = String(req.query.sortField || "created_at");
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
-    const skip = (page - 1) * limit;
 
-    // Base query: only users with role "user" and not soft deleted
-    const searchQuery: any = { role: "user", is_deleted: false };
-
-    // Add search filter if search text is provided
+    const query: any = { role: "user", is_deleted: false };
     if (search) {
-      searchQuery.$or = [
+      query.$or = [
         { firstname: { $regex: search, $options: "i" } },
         { lastname: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
       ];
     }
 
-    const total = await User.countDocuments(searchQuery);
+    const total = await User.countDocuments(query);
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    const currentPage = Math.min(page, totalPages);
 
-    const users = await User.find(searchQuery, "-password -resetPasswordToken -resetPasswordExpires")
+    const users = await User.find(query, "-password")
       .sort({ [sortField]: sortOrder })
-      .skip(skip)
+      .skip((currentPage - 1) * limit)
       .limit(limit);
 
-    return res.status(200).json({
-      success: true,
-      total,
-      page,
-      limit,
-      users,
-    });
+    res.status(200).json({ success: true, total, page: currentPage, limit, totalPages, users });
   } catch (error: any) {
     console.error("Get users error:", error.message);
-    return res.status(500).json({ success: false, message: "Server error while fetching users" });
+    res.status(500).json({ success: false, message: "Server error while fetching users" });
   }
 };
 
-// SOFT DELETE USER
+// ================= SOFT DELETE USER =================
 export const softDeleteUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Soft delete: set is_deleted = true
-    const user = await User.findByIdAndUpdate(
-      id,
-      { is_deleted: true },
-      { new: true }
-    );
+    const user = await User.findByIdAndUpdate(id, { is_deleted: true }, { new: true });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    return res.status(200).json({ success: true, message: "User deleted successfully" });
+    res.status(200).json({ success: true, message: "User deleted successfully" });
   } catch (error: any) {
     console.error("Soft delete user error:", error);
-    return res.status(500).json({ success: false, message: error.message || "Server error" });
+    res.status(500).json({ success: false, message: error.message || "Server error" });
   }
 };

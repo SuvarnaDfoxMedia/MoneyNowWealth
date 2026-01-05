@@ -1,13 +1,16 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
+// ---------------------- Interface ----------------------
 export interface ISubscriptionPlan extends Document {
-  name: string; // any plan name allowed
+  _id: Types.ObjectId;   // <-- IMPORTANT: Fix for TypeScript ObjectId typing
+
+  name: string;
   description?: string;
   price: number;
   currency: string;
   duration: {
     value: number;
-    unit: "day" | "month" | "year"; // singular units only
+    unit: "day" | "month" | "year";
   };
   features: string[];
   is_active: boolean;
@@ -15,18 +18,24 @@ export interface ISubscriptionPlan extends Document {
   deleted_at?: Date | null;
   created_at: Date;
   updated_at: Date;
+
+  // Virtuals
+  isActive?: boolean;
 }
 
-const SubscriptionPlanSchema = new Schema<ISubscriptionPlan>(
+// ---------------------- Schema ----------------------
+const SubscriptionPlanSchema: Schema<ISubscriptionPlan> = new Schema(
   {
-    name: { type: String, required: true, trim: true }, // removed enum
+    name: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
     price: { type: Number, required: true },
     currency: { type: String, default: "INR" },
+
     duration: {
       value: { type: Number, required: true },
-      unit: { type: String, enum: ["day", "month", "year"], required: true }, // singular
+      unit: { type: String, enum: ["day", "month", "year"], required: true },
     },
+
     features: { type: [String], default: [] },
     is_active: { type: Boolean, default: true },
     is_deleted: { type: Boolean, default: false },
@@ -39,12 +48,18 @@ const SubscriptionPlanSchema = new Schema<ISubscriptionPlan>(
   }
 );
 
-// Index for frequent queries
+// ---------------------- Index ----------------------
 SubscriptionPlanSchema.index({ name: 1, is_active: 1 });
 
-// Virtual to check if plan is active
-SubscriptionPlanSchema.virtual("isActive").get(function () {
+// ---------------------- Virtuals ----------------------
+SubscriptionPlanSchema.virtual("isActive").get(function (this: ISubscriptionPlan) {
   return this.is_active && !this.is_deleted;
 });
 
-export default mongoose.model<ISubscriptionPlan>("SubscriptionPlan", SubscriptionPlanSchema);
+// ---------------------- Model ----------------------
+const SubscriptionPlan: Model<ISubscriptionPlan> = mongoose.model<ISubscriptionPlan>(
+  "SubscriptionPlan",
+  SubscriptionPlanSchema
+);
+
+export default SubscriptionPlan;

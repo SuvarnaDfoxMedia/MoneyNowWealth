@@ -1,19 +1,22 @@
+
+
 import express from "express";
 import multer from "multer";
 import path from "path";
-import { body, validationResult } from "express-validator";
-import { getProfile, updateProfile } from "../controllers/profileController.ts";
-import type { AuthenticatedRequest } from "../controllers/profileController.ts";
-import { protect } from "../middleware/authMiddleware.ts";
 import fs from "fs";
+import { body, validationResult } from "express-validator";
+
+import { getProfile, updateProfile } from "../controllers/profileController.js";
+import type { AuthenticatedRequest } from "../controllers/profileController.js";
+
+import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Ensure uploads/profiles exists
+/* -------------------- UPLOAD SETUP -------------------- */
 const uploadDir = path.join(process.cwd(), "uploads/profiles");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// Multer setup
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
@@ -21,31 +24,55 @@ const storage = multer.diskStorage({
     cb(null, `profile-${uniqueSuffix}${path.extname(file.originalname)}`);
   },
 });
+
 const upload = multer({ storage });
 
-// Validation
+// /* -------------------- VALIDATION -------------------- */
+// const updateValidation = [
+//   body("name").optional().isString().withMessage("Name must be a string"),
+//   body("phone").optional().isMobilePhone("any").withMessage("Invalid phone number"),
+//   body("address").optional().isString().withMessage("Address must be a string"),
+// ];
+
+
+/* -------------------- VALIDATION -------------------- */
 const updateValidation = [
   body("name").optional().isString().withMessage("Name must be a string"),
-  body("phone").optional().isMobilePhone("any").withMessage("Invalid phone number"),
+  
+  // CHANGED: Removed .isMobilePhone("any") 
+  // We now just check that it's a string and has a minimum length (e.g., 5 digits)
+  body("phone")
+    .optional()
+    .isString()
+    .isLength({ min: 5 })
+    .withMessage("Phone number is too short"),
+    
   body("address").optional().isString().withMessage("Address must be a string"),
 ];
 
-// Handle validation errors
-const handleValidationErrors = (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+const handleValidationErrors = (
+  req: AuthenticatedRequest,
+  res: express.Response,
+  next: express.NextFunction
+) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   next();
 };
 
-// Routes
-router.get("/", protect, (req: AuthenticatedRequest, res: express.Response) => getProfile(req, res));
+/* -------------------- PROFILE ROUTES -------------------- */
+
+// Public GET route? Usually profile is protected, so keep protect
+router.get("/get-profile", protect, getProfile);
+
+// Protected PUT route for updating profile
 router.put(
-  "/",
+  "/profile",
   protect,
   upload.single("profileImage"),
   updateValidation,
   handleValidationErrors,
-  (req: AuthenticatedRequest, res: express.Response) => updateProfile(req, res)
+  updateProfile
 );
 
 export default router;

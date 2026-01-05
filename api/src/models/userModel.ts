@@ -1,35 +1,34 @@
-
 // import mongoose, { Document, Schema, Model } from "mongoose";
 
 // export type IUser = Document & {
+//   title: "Mr" | "Mrs";          // Title
 //   firstname: string;
 //   lastname: string;
 //   email: string;
-//   password?: string;
+//   password?: string;            // optional, hidden by default
+//   mobile: string;               // full number including country code as string
 //   role: "user" | "editor" | "admin";
 //   isTermsAccepted: boolean;
-//   profileImage?: string;
-//   phone?: string;
-//   address?: string;
-//   is_deleted?: boolean;
-//   is_active?: boolean;
+//   is_deleted: boolean;          // Soft delete flag
+//   address?: string;             // optional address
+//   profileImage?: string;        // optional profile image
 //   created_at: Date;
 //   updated_at: Date;
 // };
 
-// const userSchema: Schema<IUser> = new mongoose.Schema(
+// const userSchema: Schema<IUser> = new Schema(
 //   {
+//     title: { type: String, enum: ["Mr", "Mrs"], required: true },
 //     firstname: { type: String, required: true, trim: true },
 //     lastname: { type: String, required: true, trim: true },
 //     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-//     password: { type: String, select: false },
+//     password: { type: String, select: false }, // hidden in queries by default
+//     mobile: { type: String, required: true, trim: true }, // full number including country code
 //     role: { type: String, enum: ["user", "editor", "admin"], default: "user" },
-//     isTermsAccepted: { type: Boolean, default: false },
-//     profileImage: { type: String, default: null },
-//     phone: { type: String, default: null, trim: true },
-//     address: { type: String, default: null, trim: true },
-//     is_deleted: { type: Boolean, default: false },
-//     is_active: { type: Boolean, default: true },
+//     isTermsAccepted: { type: Boolean, required: true },
+//     is_deleted: { type: Boolean, default: false }, // soft delete
+//     address: { type: String, default: "" },
+//     profileImage: { type: String, default: "" },
 //   },
 //   {
 //     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -37,12 +36,10 @@
 //   }
 // );
 
-// // Virtual for full name
-// userSchema.virtual("fullName").get(function () {
-//   return `${this.firstname} ${this.lastname}`;
-// });
+// // Index for faster mobile lookups
+// userSchema.index({ mobile: 1 });
 
-// const User: Model<IUser> = mongoose.model<IUser>("User", userSchema);
+// const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
 
 // export default User;
 
@@ -51,6 +48,7 @@
 // import mongoose, { Document, Schema, Model } from "mongoose";
 
 // export type IUser = Document & {
+//   title: "Mr" | "Mrs";
 //   firstname: string;
 //   lastname: string;
 //   email: string;
@@ -58,62 +56,108 @@
 //   mobile: string;
 //   role: "user" | "editor" | "admin";
 //   isTermsAccepted: boolean;
-//   is_deleted: boolean;       // Soft delete flag
+//   is_deleted: boolean;
+//   address?: string;
+//   profileImage?: string;
+
+//   // 🔥 Added fields for password reset
+//   resetPasswordToken?: string | null;
+//   resetPasswordExpires?: Date | null;
+
 //   created_at: Date;
 //   updated_at: Date;
 // };
 
 // const userSchema: Schema<IUser> = new Schema(
 //   {
-//     firstname: { type: String, required: true },
-//     lastname: { type: String, required: true },
+//     title: { type: String, enum: ["Mr", "Mrs"], required: true },
+//     firstname: { type: String, required: true, trim: true },
+//     lastname: { type: String, required: true, trim: true },
 //     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
 //     password: { type: String, select: false },
-//     mobile: { type: String, required: true, unique: true },
+//     mobile: { type: String, required: true, trim: true },
 //     role: { type: String, enum: ["user", "editor", "admin"], default: "user" },
-//     isTermsAccepted: { type: Boolean, required: true }, // Mandatory now
-//     is_deleted: { type: Boolean, default: false }, // Soft delete
+//     isTermsAccepted: { type: Boolean, required: true },
+//     is_deleted: { type: Boolean, default: false },
+//     address: { type: String, default: "" },
+//     profileImage: { type: String, default: "" },
+
+//     //  Added missing schema fields
+//     resetPasswordToken: { type: String, default: null },
+//     resetPasswordExpires: { type: Date, default: null },
 //   },
-//   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
+//   {
+//     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+//     versionKey: false,
+//   }
 // );
 
-// const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+// // Index for faster mobile lookups
+// userSchema.index({ mobile: 1 });
+
+// const User: Model<IUser> =
+//   mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+
 // export default User;
-
-
 
 
 import mongoose, { Document, Schema, Model } from "mongoose";
 
+
 export type IUser = Document & {
+  title: "Mr" | "Mrs";
   firstname: string;
   lastname: string;
   email: string;
   password?: string;
+  countryCode: string;      
   mobile: string;
   role: "user" | "editor" | "admin";
   isTermsAccepted: boolean;
-  is_deleted: boolean;       // Soft delete flag
+  is_deleted: boolean;
+  address?: string;
+  profileImage?: string;
+
+  resetPasswordToken?: string | null;
+  resetPasswordExpires?: Date | null;
+
   created_at: Date;
   updated_at: Date;
 };
 
+
 const userSchema: Schema<IUser> = new Schema(
   {
-    firstname: { type: String, required: true },
-    lastname: { type: String, required: true },
+    title: { type: String, enum: ["Mr", "Mrs"], required: true },
+    firstname: { type: String, required: true, trim: true },
+    lastname: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, select: false },
-    mobile: { type: String, required: true }, // removed unique: true
+
+    countryCode: { type: String, required: true, trim: true },
+
+    mobile: { type: String, required: true, trim: true },
+
     role: { type: String, enum: ["user", "editor", "admin"], default: "user" },
     isTermsAccepted: { type: Boolean, required: true },
-    is_deleted: { type: Boolean, default: false }, // Soft delete
+    is_deleted: { type: Boolean, default: false },
+    address: { type: String, default: "" },
+    profileImage: { type: String, default: "" },
+
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
   },
-  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
+  {
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+    versionKey: false,
+  }
 );
 
-// Optional index for mobile search
+
 userSchema.index({ mobile: 1 });
+userSchema.index({ countryCode: 1, mobile: 1 }, { unique: true }); 
+
 
 const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+
 export default User;

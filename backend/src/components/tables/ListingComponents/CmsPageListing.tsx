@@ -1,10 +1,14 @@
+
+
+
 // import React, { useState, useEffect } from "react";
 // import { useNavigate, useSearchParams } from "react-router-dom";
 // import { toast } from "react-hot-toast";
-// import { FiEdit, FiTrash2, FiMoreVertical, FiPlus,  FiEye, } from "react-icons/fi";
+// import { FiEdit, FiTrash2, FiMoreVertical, FiPlus, FiEye } from "react-icons/fi";
 // import { createPortal } from "react-dom";
 // import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 // import { useCommonCrud } from "../../../hooks/useCommonCrud";
+// import { useDataTableStore } from "../../../store/dataTableStore";
 
 // interface CmsPage {
 //   _id: string;
@@ -18,83 +22,85 @@
 //   const navigate = useNavigate();
 //   const [searchParams, setSearchParams] = useSearchParams();
 
-//   const pageFromUrl = Number(searchParams.get("page")) || 1;
-//   const limitFromUrl = Number(searchParams.get("limit")) || 10;
-
-//   const [searchValue, setSearchValue] = useState("");
-//   const [currentPage, setCurrentPage] = useState(pageFromUrl);
-//   const [recordsPerPage, setRecordsPerPage] = useState(limitFromUrl);
-//   const [sortField, setSortField] = useState("title");
-//   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-//   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-//   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-//   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-//   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-
-//   const { data, isLoading, refetch, toggleStatus, deleteRecord } = useCommonCrud({
-//     module: "cmspages",
-//     role: "admin",
-//     currentPage,
+//   const {
+//     page,
 //     recordsPerPage,
 //     searchValue,
 //     sortField,
 //     sortOrder,
-//     includeInactive: true,
+//     setPage,
+//     setRecordsPerPage,
+//     setSearchValue,
+//     setSort,
+//   } = useDataTableStore();
+
+//   /** Restore URL → Zustand */
+//   useEffect(() => {
+//     const urlPage = Number(searchParams.get("page")) || 1;
+//     const urlLimit = Number(searchParams.get("limit")) || 10;
+//     setPage(urlPage);
+//     setRecordsPerPage(urlLimit);
+//   }, []);
+
+//   /** Fetch CMS Pages */
+//   const { data, isLoading, refetch, deleteRecord } = useCommonCrud({
+//     module: "cmspages",
+//     role: "admin",
+//     page,
+//     limit: recordsPerPage,
+//     searchValue,
+//     sortField,
+//     sortOrder,
 //   });
 
 //   const [pages, setPages] = useState<CmsPage[]>([]);
 //   const totalRecords = data?.total || 0;
 //   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
+//   /** Sync API → State */
 //   useEffect(() => {
 //     if (data?.pages) {
-//       const filtered = data.pages
-//         .filter((page: CmsPage) => page.status !== "archived")
-//         .filter((page) =>
-//           statusFilter === "all"
-//             ? true
-//             : statusFilter === "active"
-//             ? page.is_active === 1
-//             : page.is_active === 0
-//         );
+//       const filtered = data.pages.filter((p: CmsPage) => p.status !== "archived");
 //       setPages(filtered);
 //     }
-//   }, [data, statusFilter]);
+//   }, [data]);
 
+//   /** Zustand → URL */
 //   useEffect(() => {
-//     setSearchParams({ page: String(currentPage), limit: String(recordsPerPage) });
-//   }, [currentPage, recordsPerPage]);
+//     setSearchParams({
+//       page: String(page),
+//       limit: String(recordsPerPage),
+//     });
+//   }, [page, recordsPerPage]);
 
+//   /** Debounced search + sort + pagination */
 //   useEffect(() => {
 //     const timer = setTimeout(() => refetch(), 400);
 //     return () => clearTimeout(timer);
-//   }, [searchValue]);
+//   }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
 
-//   const handleSort = (field: string) => {
-//     if (sortField === field) setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-//     else setSortField(field);
-//   };
+//   /** Dropdown + Delete */
+//   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+//   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+//   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
-//   const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, pageId: string) => {
+//   const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
 //     const rect = e.currentTarget.getBoundingClientRect();
-//     setDropdownPos({ top: rect.bottom + window.scrollY, left: rect.right - 144 });
-//     setOpenDropdownId(openDropdownId === pageId ? null : pageId);
+//     setDropdownPos({
+//       top: rect.bottom + window.scrollY,
+//       left: rect.right - 144,
+//     });
+//     setOpenDropdownId(openDropdownId === id ? null : id);
 //   };
 
-//   const handleToggleStatus = async (id: string) => {
-//     try {
-//       const res = await toggleStatus(id);
-//       if (res?.success) {
-//         setPages((prev) =>
-//           prev.map((p) => (p._id === id ? { ...p, is_active: p.is_active === 1 ? 0 : 1 } : p))
-//         );
-//         toast.success("Status updated successfully");
-//       } else {
-//         toast.error(res?.message || "Failed to update status");
-//       }
-//     } catch {
-//       toast.error("Error updating status");
-//     }
+//   /** Local toggle Active/Inactive */
+//   const handleToggleStatus = (id: string) => {
+//     setPages((prev) =>
+//       prev.map((p) =>
+//         p._id === id ? { ...p, is_active: p.is_active === 1 ? 0 : 1 } : p
+//       )
+//     );
+//     toast.success("Status updated locally");
 //   };
 
 //   const handleDelete = async () => {
@@ -102,54 +108,52 @@
 //     try {
 //       const res = await deleteRecord(deleteModalId);
 //       if (res?.success) {
+//         toast.success("Page deleted");
 //         setPages((prev) => prev.filter((p) => p._id !== deleteModalId));
-//         toast.success("Page deleted successfully");
+//         refetch();
 //       } else {
-//         toast.error(res?.message || "Failed to delete page");
+//         toast.error("Failed to delete");
 //       }
 //     } catch {
-//       toast.error("Error deleting page");
+//       toast.error("Failed to delete");
 //     } finally {
 //       setDeleteModalId(null);
-//       refetch();
 //     }
 //   };
 
+//   /** Dropdown component */
 //   const Dropdown = ({ pageId, top, left }: { pageId: string; top: number; left: number }) =>
 //     createPortal(
 //       <div
 //         className="absolute bg-white border rounded-xl shadow-lg z-50"
 //         style={{ top, left, width: "9rem" }}
 //       >
+//         <button
+//           onClick={() => {
+//             navigate(`/admin/cmspages/view/${pageId}`);
+//             setOpenDropdownId(null);
+//           }}
+//           className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50"
+//         >
+//           <FiEye /> View
+//         </button>
 
-//          <button
-//                   onClick={() => {
-//                     navigate(`/admin/cmspages/view/${pageId}`);
-//                     setOpenDropdownId(null);
-//                   }}
-//                   className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 w-full text-left transition"
-//                 >
-//                   <FiEye /> View
-//                 </button>
-
-//         {/* Edit */}
 //         <button
 //           onClick={() => {
 //             navigate(`/admin/cmspages/edit/${pageId}`);
 //             setOpenDropdownId(null);
 //           }}
-//           className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full text-left transition"
+//           className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50"
 //         >
 //           <FiEdit /> Edit
 //         </button>
 
-//         {/* Delete */}
 //         <button
 //           onClick={() => {
 //             setDeleteModalId(pageId);
 //             setOpenDropdownId(null);
 //           }}
-//           className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 w-full text-left text-red-600 transition"
+//           className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50"
 //         >
 //           <FiTrash2 /> Delete
 //         </button>
@@ -157,25 +161,31 @@
 //       document.body
 //     );
 
+//   /** Table columns */
 //   const columns: TableColumn<CmsPage>[] = [
 //     {
 //       key: "index",
 //       label: "#",
-//       render: (_row, idx) => (currentPage - 1) * recordsPerPage + idx + 1,
+//       render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
 //     },
-//     { key: "title", label: "Title", sortable: true, render: (row) => row.title },
+//     {
+//       key: "title",
+//       label: "Title",
+//       sortable: true,
+//       render: (row) => row.title,
+//     },
 //     {
 //       key: "is_active",
 //       label: "Status",
 //       render: (row) => (
-//         <span
+//         <button
 //           onClick={() => handleToggleStatus(row._id)}
-//           className={`cursor-pointer px-4 py-1 rounded-sm text-white text-sm ${
+//           className={`px-3 py-1 rounded text-sm text-white ${
 //             row.is_active === 1 ? "bg-green-600" : "bg-gray-500"
 //           }`}
 //         >
 //           {row.is_active === 1 ? "Active" : "Inactive"}
-//         </span>
+//         </button>
 //       ),
 //     },
 //     {
@@ -185,7 +195,7 @@
 //         <>
 //           <button
 //             onClick={(e) => handleDropdownClick(e, row._id)}
-//             className="p-2 rounded-full hover:bg-gray-100 transition"
+//             className="p-2 hover:bg-gray-100 rounded-full"
 //           >
 //             <FiMoreVertical size={18} />
 //           </button>
@@ -197,62 +207,53 @@
 //     },
 //   ];
 
+//   /** Render */
 //   return (
 //     <div className="bg-gray-50 min-h-screen p-4 relative">
-//       <div className="flex justify-between items-center mb-6">
-//         <h2 className="text-xl font-medium text-gray-800">CMS Pages</h2>
-//         <div className="flex items-center gap-4">
-//           <select
-//             value={statusFilter}
-//             onChange={(e) => setStatusFilter(e.target.value as any)}
-//             className="border px-2 py-1 rounded-md"
-//           >
-//             <option value="all">All</option>
-//             <option value="active">Active</option>
-//             <option value="inactive">Inactive</option>
-//           </select>
-//           <button
-//             onClick={() => navigate(`/admin/cmspages/create`)}
-//             className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow-md hover:scale-105 transition flex items-center gap-2"
-//           >
-//             <FiPlus /> Add
-//           </button>
-//         </div>
+//       <div className="flex justify-between mb-6">
+//         <h2 className="text-xl font-medium">CMS Pages</h2>
+//         <button
+//           onClick={() => navigate(`/admin/cmspages/create`)}
+//           className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow-md flex items-center gap-2"
+//         >
+//           <FiPlus /> Add
+//         </button>
 //       </div>
 
 //       <DataTable
 //         columns={columns}
 //         data={pages}
 //         loading={isLoading}
-//         page={currentPage}
+//         page={page}
 //         totalPages={totalPages}
 //         totalRecords={totalRecords}
 //         recordsPerPage={recordsPerPage}
-//         onPageChange={setCurrentPage}
+//         onPageChange={setPage}
 //         onRecordsPerPageChange={setRecordsPerPage}
 //         searchValue={searchValue}
 //         onSearchChange={setSearchValue}
 //         sortField={sortField}
 //         sortOrder={sortOrder}
-//         onSort={handleSort}
+//         onSortChange={setSort}
 //       />
 
+//       {/* Delete Modal */}
 //       {deleteModalId &&
 //         createPortal(
-//           <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[99999]">
-//             <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-//               <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
-//               <p className="mb-6 text-gray-600">Are you sure you want to delete this page?</p>
-//               <div className="flex justify-end gap-4">
+//           <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
+//             <div className="bg-white p-6 rounded-xl w-96">
+//               <h3 className="text-lg font-semibold">Confirm Delete</h3>
+//               <p className="my-4 text-gray-600">Are you sure you want to delete this page?</p>
+//               <div className="flex justify-end gap-3">
 //                 <button
 //                   onClick={() => setDeleteModalId(null)}
-//                   className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+//                   className="border px-4 py-2 rounded-lg"
 //                 >
 //                   Cancel
 //                 </button>
 //                 <button
 //                   onClick={handleDelete}
-//                   className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+//                   className="bg-red-600 text-white px-4 py-2 rounded-lg"
 //                 >
 //                   Delete
 //                 </button>
@@ -265,13 +266,16 @@
 //   );
 // }
 
-import React, { useState, useEffect } from "react";
+
+
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { FiEdit, FiTrash2, FiMoreVertical, FiPlus, FiEye } from "react-icons/fi";
 import { createPortal } from "react-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
+import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface CmsPage {
   _id: string;
@@ -284,107 +288,138 @@ interface CmsPage {
 export default function CmsPageListing() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const pageFromUrl = Number(searchParams.get("page")) || 1;
-  const limitFromUrl = Number(searchParams.get("limit")) || 10;
-
-  const [searchValue, setSearchValue] = useState("");
-  const [currentPage, setCurrentPage] = useState(pageFromUrl);
-  const [recordsPerPage, setRecordsPerPage] = useState(limitFromUrl);
-  const [sortField, setSortField] = useState("title");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-
-  const { data, isLoading, refetch, toggleStatus, deleteRecord } = useCommonCrud({
-    module: "cmspages",
-    role: "admin",
-    currentPage,
+  const {
+    page,
     recordsPerPage,
     searchValue,
     sortField,
     sortOrder,
-    includeInactive: true,
+    setPage,
+    setRecordsPerPage,
+    setSearchValue,
+    setSort,
+  } = useDataTableStore();
+
+  /** Restore URL → Zustand */
+  useEffect(() => {
+    setPage(Number(searchParams.get("page")) || 1);
+    setRecordsPerPage(Number(searchParams.get("limit")) || 10);
+  }, []);
+
+  /** Fetch CMS Pages */
+  const { data, isLoading, refetch, deleteRecord } = useCommonCrud({
+    module: "cmspages",
+    role: "admin",
+    page,
+    limit: recordsPerPage,
+    searchValue,
+    sortField,
+    sortOrder,
   });
 
   const [pages, setPages] = useState<CmsPage[]>([]);
   const totalRecords = data?.total || 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
+  /** Sync API → State */
   useEffect(() => {
     if (data?.pages) {
-      const filtered = data.pages.filter((page: CmsPage) => page.status !== "archived");
+      const filtered = data.pages.filter((p: CmsPage) => p.status !== "archived");
       setPages(filtered);
     }
   }, [data]);
 
+  /** Zustand → URL */
   useEffect(() => {
-    setSearchParams({ page: String(currentPage), limit: String(recordsPerPage) });
-  }, [currentPage, recordsPerPage]);
+    setSearchParams({
+      page: String(page),
+      limit: String(recordsPerPage),
+    });
+    
+    // Save to sessionStorage for AddCmsPage fallback
+    sessionStorage.setItem("lastCmsPagePage", String(page));
+    sessionStorage.setItem("lastCmsPageLimit", String(recordsPerPage));
+  }, [page, recordsPerPage]);
 
+  /** Debounced search + sort + pagination */
   useEffect(() => {
     const timer = setTimeout(() => refetch(), 400);
     return () => clearTimeout(timer);
-  }, [searchValue]);
+  }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
 
-  const handleSort = (field: string) => {
-    if (sortField === field) setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
-    else setSortField(field);
-  };
+  /** Dropdown + Delete */
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
-  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, pageId: string) => {
+  /** Toggle dropdown */
+  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setDropdownPos({ top: rect.bottom + window.scrollY, left: rect.right - 144 });
-    setOpenDropdownId(openDropdownId === pageId ? null : pageId);
+    setDropdownPos({
+      top: rect.bottom + window.scrollY,
+      left: rect.right - 144,
+    });
+    setOpenDropdownId(openDropdownId === id ? null : id);
   };
 
-  const handleToggleStatus = async (id: string) => {
-    try {
-      const res = await toggleStatus(id);
-      if (res?.success) {
-        setPages((prev) =>
-          prev.map((p) => (p._id === id ? { ...p, is_active: p.is_active === 1 ? 0 : 1 } : p))
-        );
-        toast.success("Status updated successfully");
-      } else {
-        toast.error(res?.message || "Failed to update status");
+  /** Close dropdown on outside click */
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdownId(null);
       }
-    } catch {
-      toast.error("Error updating status");
-    }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  /** Local toggle Active/Inactive */
+  const handleToggleStatus = (id: string) => {
+    setPages((prev) =>
+      prev.map((p) =>
+        p._id === id ? { ...p, is_active: p.is_active === 1 ? 0 : 1 } : p
+      )
+    );
+    toast.success("Status updated locally");
   };
 
+  /** Delete page */
   const handleDelete = async () => {
     if (!deleteModalId) return;
     try {
       const res = await deleteRecord(deleteModalId);
       if (res?.success) {
+        toast.success("Page deleted");
         setPages((prev) => prev.filter((p) => p._id !== deleteModalId));
-        toast.success("Page deleted successfully");
+        refetch();
       } else {
-        toast.error(res?.message || "Failed to delete page");
+        toast.error("Failed to delete");
       }
     } catch {
-      toast.error("Error deleting page");
+      toast.error("Failed to delete");
     } finally {
       setDeleteModalId(null);
-      refetch();
     }
   };
 
+  /** Dropdown component */
   const Dropdown = ({ pageId, top, left }: { pageId: string; top: number; left: number }) =>
     createPortal(
       <div
+        ref={dropdownRef}
         className="absolute bg-white border rounded-xl shadow-lg z-50"
         style={{ top, left, width: "9rem" }}
+        onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={() => {
             navigate(`/admin/cmspages/view/${pageId}`);
             setOpenDropdownId(null);
           }}
-          className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 w-full text-left transition"
+          className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 w-full"
         >
           <FiEye /> View
         </button>
@@ -394,7 +429,7 @@ export default function CmsPageListing() {
             navigate(`/admin/cmspages/edit/${pageId}`);
             setOpenDropdownId(null);
           }}
-          className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full text-left transition"
+          className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full"
         >
           <FiEdit /> Edit
         </button>
@@ -404,7 +439,7 @@ export default function CmsPageListing() {
             setDeleteModalId(pageId);
             setOpenDropdownId(null);
           }}
-          className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 w-full text-left text-red-600 transition"
+          className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 w-full"
         >
           <FiTrash2 /> Delete
         </button>
@@ -412,25 +447,22 @@ export default function CmsPageListing() {
       document.body
     );
 
+  /** Table columns */
   const columns: TableColumn<CmsPage>[] = [
-    {
-      key: "index",
-      label: "#",
-      render: (_row, idx) => (currentPage - 1) * recordsPerPage + idx + 1,
-    },
+    { key: "index", label: "#", render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1 },
     { key: "title", label: "Title", sortable: true, render: (row) => row.title },
     {
       key: "is_active",
       label: "Status",
       render: (row) => (
-        <span
+        <button
           onClick={() => handleToggleStatus(row._id)}
-          className={`cursor-pointer px-4 py-1 rounded-sm text-white text-sm ${
+          className={`px-3 py-1 rounded text-sm text-white ${
             row.is_active === 1 ? "bg-green-600" : "bg-gray-500"
           }`}
         >
           {row.is_active === 1 ? "Active" : "Inactive"}
-        </span>
+        </button>
       ),
     },
     {
@@ -440,7 +472,7 @@ export default function CmsPageListing() {
         <>
           <button
             onClick={(e) => handleDropdownClick(e, row._id)}
-            className="p-2 rounded-full hover:bg-gray-100 transition"
+            className="p-2 hover:bg-gray-100 rounded-full"
           >
             <FiMoreVertical size={18} />
           </button>
@@ -454,12 +486,11 @@ export default function CmsPageListing() {
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 relative">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-medium text-gray-800">CMS Pages</h2>
-
+      <div className="flex justify-between mb-6">
+        <h2 className="text-xl font-medium">CMS Pages</h2>
         <button
-          onClick={() => navigate(`/admin/cmspages/create`)}
-          className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow-md hover:scale-105 transition flex items-center gap-2"
+          onClick={() => navigate(`/admin/cmspages/create?page=${page}&limit=${recordsPerPage}`)}
+          className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow-md flex items-center gap-2"
         >
           <FiPlus /> Add
         </button>
@@ -469,35 +500,36 @@ export default function CmsPageListing() {
         columns={columns}
         data={pages}
         loading={isLoading}
-        page={currentPage}
+        page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
-        onPageChange={setCurrentPage}
+        onPageChange={setPage}
         onRecordsPerPageChange={setRecordsPerPage}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         sortField={sortField}
         sortOrder={sortOrder}
-        onSort={handleSort}
+        onSortChange={setSort}
       />
 
+      {/* Delete Modal */}
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[99999]">
-            <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-              <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
-              <p className="mb-6 text-gray-600">Are you sure you want to delete this page?</p>
-              <div className="flex justify-end gap-4">
+          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
+            <div className="bg-white p-6 rounded-xl w-96">
+              <h3 className="text-lg font-semibold">Confirm Delete</h3>
+              <p className="my-4 text-gray-600">Are you sure you want to delete this page?</p>
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteModalId(null)}
-                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+                  className="border px-4 py-2 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg"
                 >
                   Delete
                 </button>
@@ -509,4 +541,3 @@ export default function CmsPageListing() {
     </div>
   );
 }
-

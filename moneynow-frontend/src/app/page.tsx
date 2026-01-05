@@ -1,11 +1,15 @@
-import React from 'react'
+import React from "react";
+import Index from "@/components/home/index";
 
-const page = () => {
+
+
+
+
+export default function HomePage() {
   return (
-    <>
-      <h1>Hello ! This is my first Next App</h1>
-    </>
-  )
-}
+    <div>
+    <Index/>
 
-export default page
+    </div>
+  );
+}

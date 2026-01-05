@@ -1,15 +1,12 @@
+import type { Request, Response } from "express";
+import User from "@/models/userModel";
+import SubscriptionPlan from "@/models/subscriptionPlan.model";
+import { userSubscriptionService } from "@/services/userSubscriptionService";
+import { userSubscriptionPaymentService } from "@/services/userSubscriptionPaymentService";
 
 
 
-import express from "express";
-import { userSubscriptionService } from "../services/userSubscriptionService.ts";
-import User from "../models/userModel.ts";
-import SubscriptionPlan from "../models/subscriptionPlan.model.ts";
 
-type Request = express.Request;
-type Response = express.Response;
-
-// ================= GET ALL USER SUBSCRIPTIONS =================
 export const getUserSubscriptions = async (req: Request, res: Response) => {
   try {
     const search = String(req.query.search || "").trim();
@@ -17,7 +14,8 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
     const limit = Math.max(Number(req.query.limit) || 10, 1);
     const skip = (page - 1) * limit;
 
-    const userSearchQuery: any = {
+    // Build search query
+    const userSearchQuery: Record<string, unknown> = {
       role: { $ne: "admin" },
       ...(search
         ? {
@@ -30,16 +28,18 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
         : {}),
     };
 
+    // Count total users
     const totalUsers = await User.countDocuments(userSearchQuery);
+
+    // Fetch paginated users
     const users = await User.find(userSearchQuery)
       .skip(skip)
       .limit(limit)
-      .select("-password -resetPasswordToken -resetPasswordExpires");
+      .select("-password -resetPasswordToken -resetPasswordExpires")
+      .lean();
 
-    // Get subscription plans (singular unit names)
+    // Get Free plan
     const freePlan = await SubscriptionPlan.findOne({ name: "Free", is_active: true });
-    const premiumPlan = await SubscriptionPlan.findOne({ name: "Premium", is_active: true });
-
     if (!freePlan) {
       return res.status(500).json({
         success: false,
@@ -47,11 +47,13 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
       });
     }
 
+    // Map users to subscriptions + latest payment
     const subscriptions = await Promise.all(
       users.map(async (user) => {
+        // Get active subscription
         let subscription = await userSubscriptionService.getByUserId(user._id.toString());
 
-        // Auto assign Free plan if user has no subscription
+        // Auto-assign Free plan if no subscription
         if (!subscription) {
           try {
             subscription = await userSubscriptionService.createOrUpdateSubscription(
@@ -61,8 +63,8 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
               freePlan.duration.unit as "day" | "month" | "year",
               "free_sample"
             );
-          } catch (err) {
-            console.error(`Failed to assign Free plan to user ${user._id}`, err);
+          } catch (error) {
+            console.error(`Failed to assign Free plan to user ${user._id}`, error);
           }
         }
 
@@ -70,9 +72,15 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
           subscription = await subscription.populateFull();
         }
 
+        // Get latest payment from last_payment_id
+        const latestPayment = subscription?.last_payment_id
+          ? await userSubscriptionPaymentService.getById(subscription.last_payment_id.toString())
+          : null;
+
         return {
           user,
           subscription,
+          latestPayment: latestPayment || null,
           status: subscription?.status || "new",
           trial_type: subscription?.trial_type || null,
         };
@@ -84,41 +92,58 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
       subscriptions,
       total: totalUsers,
       page,
+      limit,
       totalPages: Math.ceil(totalUsers / limit),
     });
   } catch (error) {
     console.error("Get subscriptions error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-// ================= GET SUBSCRIPTION BY ID =================
+
+
+
+
 export const getUserSubscriptionById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const subscription = await userSubscriptionService.getById(id);
 
+    let subscription = await userSubscriptionService.getById(id);
     if (!subscription) {
       return res.status(404).json({ success: false, message: "Subscription not found" });
     }
 
-    return res.json({ success: true, subscription });
+    // Populate user & plan
+    subscription = await subscription.populateFull(); // assuming this populates user_id & plan_id
+
+    // Fetch latest payment
+    const payment = await userSubscriptionPaymentService.getLatestBySubscriptionId(
+      subscription._id.toString()
+    );
+
+    return res.json({
+      success: true,
+      subscription,
+      payment, //  now included
+    });
   } catch (error) {
     console.error("Get subscription by ID error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
-// ================= CREATE NEW SUBSCRIPTION =================
+
+// ====================== CREATE SUBSCRIPTION ======================
 export const addUserSubscription = async (req: Request, res: Response) => {
   try {
     const { user_id, plan_id, trial_type } = req.body;
 
     if (!user_id || !plan_id) {
-      return res.status(400).json({ success: false, message: "user_id and plan_id are required" });
+      return res.status(400).json({
+        success: false,
+        message: "user_id and plan_id are required",
+      });
     }
 
     const planDoc = await SubscriptionPlan.findById(plan_id);
@@ -141,7 +166,7 @@ export const addUserSubscription = async (req: Request, res: Response) => {
   }
 };
 
-// ================= UPDATE SUBSCRIPTION =================
+// ====================== UPDATE SUBSCRIPTION ======================
 export const updateUserSubscription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -158,13 +183,12 @@ export const updateUserSubscription = async (req: Request, res: Response) => {
   }
 };
 
-// ================= TOGGLE ACTIVE/INACTIVE =================
+// ====================== TOGGLE ACTIVE/INACTIVE ======================
 export const toggleUserSubscriptionStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
     const subscription = await userSubscriptionService.toggleActiveStatus(id);
-
     if (!subscription) {
       return res.status(404).json({ success: false, message: "Subscription not found" });
     }
@@ -182,14 +206,20 @@ export const toggleUserSubscriptionStatus = async (req: Request, res: Response) 
   }
 };
 
-// ================= SOFT DELETE =================
-export const deleteUserSubscription = async (req: Request, res: Response) => {
+/* ---------------------------------------------------
+   Soft Delete User Subscription
+--------------------------------------------------- */
+export const deleteUserSubscription = async (req, res) => {
   try {
     const { id } = req.params;
 
     const subscription = await userSubscriptionService.softDelete(id);
+
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
     }
 
     return res.json({
@@ -199,11 +229,15 @@ export const deleteUserSubscription = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Delete subscription error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
-// ================= RESTORE SOFT DELETE =================
+
+
+// ====================== RESTORE SOFT DELETE ======================
 export const restoreUserSubscription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

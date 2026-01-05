@@ -1,3 +1,50 @@
+// import express from "express";
+// import {
+//   getUserSubscriptions,
+//   getUserSubscriptionById,
+//   addUserSubscription,
+//   updateUserSubscription,
+//   deleteUserSubscription,
+//   toggleUserSubscriptionStatus,
+//   restoreUserSubscription,
+// } from "../controllers/userSubscriptionController";
+// import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
+
+// const router = express.Router();
+// const adminMiddleware = roleFromUrl(["admin"]);
+
+// /* -------------------------------
+//    Public Routes
+// ---------------------------------*/
+// // Get all subscriptions (for logged-in users)
+// router.get("/subscriptions", getUserSubscriptions);
+
+// // Get subscription by ID
+// router.get("/subscriptions/:id", getUserSubscriptionById);
+
+// /* -------------------------------
+//    Admin Routes
+// ---------------------------------*/
+// // Get all subscriptions (admin view)
+// router.get("/:role/subscriptions", adminMiddleware, getUserSubscriptions);
+
+// // Create a new subscription
+// router.post("/:role/subscriptions/create", adminMiddleware, addUserSubscription);
+
+// // Update subscription by ID
+// router.put("/:role/subscriptions/edit/:id", adminMiddleware, updateUserSubscription);
+
+// // Toggle subscription status (active/inactive)
+// router.patch("/:role/subscriptions/change/:id/status", adminMiddleware, toggleUserSubscriptionStatus);
+
+// // Soft delete subscription
+// router.delete("/:role/subscriptions/delete/:id", adminMiddleware, deleteUserSubscription);
+
+// // Restore deleted subscription
+// router.patch("/:role/subscriptions/:id/restore", adminMiddleware, restoreUserSubscription);
+
+// export default router;
+
 import express from "express";
 import {
   getUserSubscriptions,
@@ -7,23 +54,37 @@ import {
   deleteUserSubscription,
   toggleUserSubscriptionStatus,
   restoreUserSubscription,
-} from "../controllers/userSubscriptionController.ts";
-import { roleFromUrl } from "../middleware/roleUrlMiddleware.ts";
+} from "../controllers/userSubscriptionController";
+import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 
 const router = express.Router();
-const adminMiddleware = roleFromUrl(["admin"]);
 
+/* -------------------- PUBLIC ROUTES -------------------- */
+// Get all subscriptions (for logged-in users)
 router.get("/subscriptions", getUserSubscriptions);
+
+// Get subscription by ID
 router.get("/subscriptions/:id", getUserSubscriptionById);
 
-router.get("/:role/subscriptions", adminMiddleware, getUserSubscriptions);
+/* -------------------- ADMIN ROUTES -------------------- */
+const adminMiddleware = roleFromUrl(["admin"]);
 
-router.post("/:role/subscriptions/create", adminMiddleware, addUserSubscription);
-router.put("/:role/subscriptions/edit/:id", adminMiddleware, updateUserSubscription);
-router.patch("/:role/subscriptions/change/:id/status", adminMiddleware, toggleUserSubscriptionStatus);
-router.delete("/:role/subscriptions/delete/:id", adminMiddleware, deleteUserSubscription);
-router.patch("/:role/subscriptions/:id/restore", adminMiddleware, restoreUserSubscription);
+/* -------------------- ADMIN VIEW -------------------- */
+router.get("/:role/subscriptions", ...adminMiddleware, getUserSubscriptions);
+
+/* -------------------- CREATE -------------------- */
+router.post("/:role/subscriptions/create", ...adminMiddleware, addUserSubscription);
+
+/* -------------------- UPDATE -------------------- */
+router.put("/:role/subscriptions/edit/:id", ...adminMiddleware, updateUserSubscription);
+
+/* -------------------- TOGGLE STATUS -------------------- */
+router.patch("/:role/subscriptions/change/:id/status", ...adminMiddleware, toggleUserSubscriptionStatus);
+
+/* -------------------- DELETE -------------------- */
+router.delete("/:role/subscriptions/delete/:id", ...adminMiddleware, deleteUserSubscription);
+
+/* -------------------- RESTORE -------------------- */
+router.patch("/:role/subscriptions/:id/restore", ...adminMiddleware, restoreUserSubscription);
 
 export default router;
-
-

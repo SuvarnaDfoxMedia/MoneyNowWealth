@@ -1,12 +1,15 @@
 
 
+"use client";
+
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { FiTrash2, FiMoreVertical } from "react-icons/fi";
 import { createPortal } from "react-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
+import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface ContactEnquiry {
   _id: string;
@@ -21,62 +24,75 @@ interface ContactEnquiry {
 }
 
 export default function ContactEnquiryListing() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const pageFromUrl = Number(searchParams.get("page")) || 1;
-  const limitFromUrl = Number(searchParams.get("limit")) || 10;
-
-  const [searchValue, setSearchValue] = useState("");
-  const [currentPage, setCurrentPage] = useState(pageFromUrl);
-  const [recordsPerPage, setRecordsPerPage] = useState(limitFromUrl);
-  const [sortField, setSortField] = useState("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-
-  const { data, isLoading, refetch, deleteRecord } = useCommonCrud({
-    module: "contact-enquiries",
-    role: "admin",
-    currentPage,
+  /** Zustand store */
+  const {
+    page,
     recordsPerPage,
     searchValue,
     sortField,
     sortOrder,
-    includeInactive: true,
+    setPage,
+    setRecordsPerPage,
+    setSearchValue,
+    setSort,
+  } = useDataTableStore();
+
+  /** Restore URL */
+  useEffect(() => {
+    const urlPage = Number(searchParams.get("page")) || 1;
+    const urlLimit = Number(searchParams.get("limit")) || 10;
+    setPage(urlPage);
+    setRecordsPerPage(urlLimit);
+  }, []);
+
+  /** Fetch data */
+  const { data, isLoading, refetch, deleteRecord } = useCommonCrud({
+    module: "contact-enquiries",
+    role: "admin",
+    page,
+    limit: recordsPerPage,
+    searchValue, // ✅ correct
+    sortField,
+    sortOrder,
   });
 
   const [enquiries, setEnquiries] = useState<ContactEnquiry[]>([]);
+
   const totalRecords = data?.total || 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
+  /** Sync API → local state */
   useEffect(() => {
-    if (data?.enquiries) {
-      setEnquiries(data.enquiries);
-    }
+    setEnquiries(Array.isArray(data?.enquiries) ? data.enquiries : []);
   }, [data]);
 
+  /** Sync Zustand → URL */
   useEffect(() => {
-    setSearchParams({ page: String(currentPage), limit: String(recordsPerPage) });
-  }, [currentPage, recordsPerPage]);
+    setSearchParams({
+      page: String(page),
+      limit: String(recordsPerPage),
+    });
+  }, [page, recordsPerPage]);
 
+  /** Debounced search & reload */
   useEffect(() => {
     const timer = setTimeout(() => refetch(), 300);
     return () => clearTimeout(timer);
-  }, [searchValue, sortField, sortOrder, currentPage, recordsPerPage]);
+  }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
 
-  const handleSort = (field: string) => {
-    if (sortField === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else {
-      setSortField(field);
-      setSortOrder("asc");
-    }
-  };
+  /** Dropdown + Delete Modal */
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
 
-  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+  const handleDropdownClick = (e: React.MouseEvent, id: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setDropdownPos({ top: rect.bottom + window.scrollY, left: rect.right - 144 });
+    setDropdownPos({
+      top: rect.bottom + window.scrollY,
+      left: rect.right - 144,
+    });
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
 
@@ -85,8 +101,8 @@ export default function ContactEnquiryListing() {
     try {
       const res = await deleteRecord(deleteModalId);
       if (res?.success) {
-        setEnquiries((prev) => prev.filter((e) => e._id !== deleteModalId));
         toast.success("Enquiry deleted successfully");
+        setEnquiries((prev) => prev.filter((e) => e._id !== deleteModalId));
       } else {
         toast.error(res?.message || "Failed to delete enquiry");
       }
@@ -99,6 +115,7 @@ export default function ContactEnquiryListing() {
     }
   };
 
+  /** Dropdown component */
   const Dropdown = ({ id, top, left }: { id: string; top: number; left: number }) =>
     createPortal(
       <div
@@ -118,19 +135,17 @@ export default function ContactEnquiryListing() {
       document.body
     );
 
+  /** Table columns */
   const columns: TableColumn<ContactEnquiry>[] = [
     {
       key: "index",
       label: "#",
-      render: (_row, idx) => (currentPage - 1) * recordsPerPage + idx + 1,
+      render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
     },
-    { key: "name", label: "Name", sortable: true, render: (row) => row.name },
-    { key: "email", label: "Email", sortable: true, render: (row) => row.email },
-    { key: "mobile", label: "Mobile", render: (row) => row.mobile },
-    { key: "subject", label: "Subject", render: (row) => row.subject },
-
-    // ❌ STATUS COLUMN REMOVED HERE
-
+    { key: "name", label: "Name", sortable: true },
+    { key: "email", label: "Email", sortable: true },
+    { key: "mobile", label: "Mobile" },
+    { key: "subject", label: "Subject" },
     {
       key: "created_at",
       label: "Date",
@@ -148,6 +163,7 @@ export default function ContactEnquiryListing() {
           >
             <FiMoreVertical size={18} />
           </button>
+
           {openDropdownId === row._id && (
             <Dropdown id={row._id} top={dropdownPos.top} left={dropdownPos.left} />
           )}
@@ -158,43 +174,46 @@ export default function ContactEnquiryListing() {
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 relative">
-      <h2 className="text-xl font-medium text-gray-800 mb-6">Contact Enquiries</h2>
+      <h2 className="text-xl font-medium text-gray-800 mb-6">
+        Contact Enquiries
+      </h2>
 
       <DataTable
         columns={columns}
         data={enquiries}
         loading={isLoading}
-        page={currentPage}
+        page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
-        onPageChange={setCurrentPage}
-        onRecordsPerPageChange={setRecordsPerPage}
-        searchValue={searchValue}
-        onSearchChange={setSearchValue}
+        searchValue={searchValue} // ✅ correct
+        onSearchChange={setSearchValue} // ✅ correct
         sortField={sortField}
         sortOrder={sortOrder}
-        onSort={handleSort}
+        onPageChange={setPage}
+        onRecordsPerPageChange={setRecordsPerPage}
+        onSortChange={(field, order) => setSort(field, order)}
       />
 
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[99999]">
-            <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
+            <div className="bg-white p-6 rounded-xl w-96">
               <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
               <p className="mb-6 text-gray-600">
                 Are you sure you want to delete this enquiry?
               </p>
+
               <div className="flex justify-end gap-4">
                 <button
                   onClick={() => setDeleteModalId(null)}
-                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+                  className="px-4 py-2 rounded-lg border hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
                 >
                   Delete
                 </button>

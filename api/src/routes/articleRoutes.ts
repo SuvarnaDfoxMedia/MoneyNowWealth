@@ -1,56 +1,5 @@
-// // routes/articleRoutes.ts
-// import express from "express";
-// import {
-//   getArticles,
-//   getArticleById,
-//   addArticle,
-//   updateArticle,
-//   deleteArticle,
-//   toggleArticleStatus,
-// } from "../controllers/articleController.ts";
-// import { roleFromUrl } from "../middleware/roleUrlMiddleware.ts";
-// import { uploadHeroImage } from "../middleware/articleUpload.ts"; // Added for image upload + validation
 
-// const router = express.Router();
-
-// /* -------------------- PUBLIC ROUTES -------------------- */
-// router.get("/article", getArticles);
-
-// router.get("/article/:id", getArticleById);
-
-// /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
-// const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);
-
-// router.post(
-//   "/:role/article/create",
-//   adminEditorMiddleware,
-//   uploadHeroImage, // handles hero image upload (checks 1440×590)
-//   addArticle
-// );
-
-// router.put(
-//   "/:role/article/edit/:id",
-//   adminEditorMiddleware,
-//   uploadHeroImage, // allows new hero image replacement (same dimension rules)
-//   updateArticle
-// );
-
-// router.patch(
-//   "/:role/article/change/:id/status",
-//   adminEditorMiddleware,
-//   toggleArticleStatus
-// );
-
-// router.delete(
-//   "/:role/article/delete/:id",
-//   adminEditorMiddleware,
-//   deleteArticle
-// );
-
-// export default router;
-
-
-import express from "express";
+import express, { Request, Response } from "express";
 import {
   getArticles,
   getArticleById,
@@ -58,19 +7,24 @@ import {
   updateArticle,
   deleteArticle,
   toggleArticleStatus,
-} from "../controllers/articleController.ts";
-import { roleFromUrl } from "../middleware/roleUrlMiddleware.ts";
-import { uploadHeroImage, uploadArticleImage } from "../middleware/articleUpload.ts";
+  getClusterHierarchy,
+getClusterHierarchyBySlug,
+} from "../controllers/articleController";
+import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
+import { uploadHeroImage, uploadArticleImage } from "../middlewares/uploadMiddleware";
 
 const router = express.Router();
 
 /* -------------------- PUBLIC ROUTES -------------------- */
 router.get("/article", getArticles);
 router.get("/article/:id", getArticleById);
+router.get("/cluster/:clusterId/hierarchy", getClusterHierarchy);
 
+router.get("/cluster/slug/:slug/", getClusterHierarchyBySlug);
 /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
 const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);
 
+/* Create Article */
 router.post(
   "/:role/article/create",
   adminEditorMiddleware,
@@ -78,7 +32,7 @@ router.post(
   addArticle
 );
 
-// ✅ Edit article
+/* Update Article */
 router.put(
   "/:role/article/edit/:id",
   adminEditorMiddleware,
@@ -86,36 +40,40 @@ router.put(
   updateArticle
 );
 
-// ✅ Toggle article active/inactive
+/* Toggle Article Status */
 router.patch(
-  "/:role/article/change/:id/status",
+  "/:role/article/toggle-status/:id",
   adminEditorMiddleware,
   toggleArticleStatus
 );
 
-// ✅ Delete article
+/* Delete Article */
 router.delete(
   "/:role/article/delete/:id",
   adminEditorMiddleware,
   deleteArticle
 );
 
-/* -------------------- SECTION IMAGE UPLOAD (used by RichTextField) -------------------- */
+/* Section Image Upload (for Rich Text Field) */
 router.post(
   "/:role/article/upload-section-image",
   adminEditorMiddleware,
   uploadArticleImage,
-  (req, res) => {
+  (req: Request, res: Response) => {
     if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No image uploaded." });
+      return res.status(400).json({ success: false, message: "No image uploaded." });
     }
+
+    // Type-safe access to uploaded file properties
+    const file = req.file as unknown as {
+      pathUrl?: string;
+      relativePath?: string;
+    };
 
     return res.status(200).json({
       success: true,
-      url: (req.file as any).pathUrl,
-      relativePath: (req.file as any).relativePath,
+      url: file.pathUrl || "",
+      relativePath: file.relativePath || "",
     });
   }
 );

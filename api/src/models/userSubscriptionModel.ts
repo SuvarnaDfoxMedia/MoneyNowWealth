@@ -1,9 +1,11 @@
 
 
-
-
 import mongoose, { Document, Schema, Model, Types } from "mongoose";
+import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel"; // adjust path
+import User from "./userModel"; // adjust path
+import SubscriptionPlan from "./subscriptionPlan.model"; // adjust path
 
+// ---------------------- INTERFACE ----------------------
 export interface IUserSubscription extends Document {
   user_id: Types.ObjectId;
   plan_id: Types.ObjectId;
@@ -19,9 +21,12 @@ export interface IUserSubscription extends Document {
   deleted_at?: Date | null;
   created_at: Date;
   updated_at: Date;
+
+  // Virtuals
   isExpired: boolean;
   isActive: boolean;
 
+  // Instance method
   populateFull(): Promise<IUserSubscription>;
 }
 
@@ -45,31 +50,22 @@ export interface IUserSubscriptionModel extends Model<IUserSubscription> {
   getActiveSubscription(userId: Types.ObjectId): Promise<IUserSubscription | null>;
 }
 
-/* --------------------------
-   SCHEMA
----------------------------- */
+// ---------------------- SCHEMA ----------------------
 const userSubscriptionSchema = new Schema<IUserSubscription>(
   {
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     plan_id: { type: Schema.Types.ObjectId, ref: "SubscriptionPlan", required: true, index: true },
 
-    plan_type: { type: String, enum: ["Free", "Premium"], required: true },
+    // Ensure plan_type and trial_type always populated
+    plan_type: { type: String, enum: ["Free", "Premium"], required: true, default: "Free" },
+    trial_type: { type: String, enum: ["free_sample", "premium_sample"], required: true, default: "free_sample" },
 
     start_date: { type: Date, required: true, default: Date.now },
     end_date: { type: Date, required: true },
 
-    trial_type: { type: String, enum: ["free_sample", "premium_sample"], required: true },
-
     status: { type: String, enum: ["new", "upgrade", "downgrade"], default: "new", index: true },
-
     auto_renew: { type: Boolean, default: false },
-
-    last_payment_id: {
-      type: Schema.Types.ObjectId,
-      ref: "UserSubscriptionPayment",
-      default: null,
-    },
-
+    last_payment_id: { type: Schema.Types.ObjectId, ref: "UserSubscriptionPayment", default: null },
     is_active: { type: Boolean, default: true },
     is_deleted: { type: Boolean, default: false },
     deleted_at: { type: Date, default: null },
@@ -81,21 +77,17 @@ const userSubscriptionSchema = new Schema<IUserSubscription>(
   }
 );
 
-/* --------------------------
-   VIRTUALS
----------------------------- */
-userSubscriptionSchema.virtual("isExpired").get(function () {
+// ---------------------- VIRTUALS ----------------------
+userSubscriptionSchema.virtual("isExpired").get(function (this: IUserSubscription) {
   return this.end_date < new Date();
 });
 
-userSubscriptionSchema.virtual("isActive").get(function () {
+userSubscriptionSchema.virtual("isActive").get(function (this: IUserSubscription) {
   return this.is_active && !this.is_deleted && this.end_date > new Date();
 });
 
-/* --------------------------
-   INSTANCE METHODS
----------------------------- */
-userSubscriptionSchema.methods.populateFull = async function () {
+// ---------------------- INSTANCE METHODS ----------------------
+userSubscriptionSchema.methods.populateFull = async function (this: IUserSubscription) {
   await this.populate([
     { path: "user_id", select: "firstname lastname email mobile" },
     { path: "plan_id" },
@@ -104,9 +96,7 @@ userSubscriptionSchema.methods.populateFull = async function () {
   return this;
 };
 
-/* --------------------------
-   HELPER
----------------------------- */
+// ---------------------- HELPER ----------------------
 const addDuration = (date: Date, value: number, unit: "day" | "month" | "year") => {
   const d = new Date(date);
   if (unit === "day") d.setDate(d.getDate() + value);
@@ -115,16 +105,13 @@ const addDuration = (date: Date, value: number, unit: "day" | "month" | "year") 
   return d;
 };
 
-/* --------------------------
-   STATIC METHODS
----------------------------- */
-
-// Extend subscription period
+// ---------------------- STATIC METHODS ----------------------
 userSubscriptionSchema.statics.extendSubscription = async function (
-  userId,
-  planId,
-  durationValue,
-  durationUnit
+  this: IUserSubscriptionModel,
+  userId: Types.ObjectId,
+  planId: Types.ObjectId,
+  durationValue: number,
+  durationUnit: "day" | "month" | "year"
 ) {
   const subscription = await this.findOne({
     user_id: userId,
@@ -141,13 +128,13 @@ userSubscriptionSchema.statics.extendSubscription = async function (
   return subscription;
 };
 
-// Create trial / new subscription
 userSubscriptionSchema.statics.createTrial = async function (
-  userId,
-  planId,
-  durationValue,
-  durationUnit,
-  trialType,
+  this: IUserSubscriptionModel,
+  userId: Types.ObjectId,
+  planId: Types.ObjectId,
+  durationValue: number,
+  durationUnit: "day" | "month" | "year",
+  trialType: "free_sample" | "premium_sample",
   status: "new" | "upgrade" | "downgrade" = "new"
 ) {
   const start = new Date();
@@ -159,10 +146,10 @@ userSubscriptionSchema.statics.createTrial = async function (
   const subscription = await this.create({
     user_id: userId,
     plan_id: planId,
-    plan_type: trialType === "free_sample" ? "Free" : "Premium",
+    plan_type: trialType === "free_sample" ? "Free" : "Premium", // ensures plan_type
+    trial_type: trialType, // ensures trial_type
     start_date: start,
     end_date: endDate,
-    trial_type: trialType,
     status,
     auto_renew: false,
     is_active: true,
@@ -171,8 +158,10 @@ userSubscriptionSchema.statics.createTrial = async function (
   return subscription.populateFull();
 };
 
-// Get active subscription for a user
-userSubscriptionSchema.statics.getActiveSubscription = async function (userId) {
+userSubscriptionSchema.statics.getActiveSubscription = async function (
+  this: IUserSubscriptionModel,
+  userId: Types.ObjectId
+) {
   const subscription = await this.findOne({
     user_id: userId,
     is_deleted: false,
@@ -183,16 +172,12 @@ userSubscriptionSchema.statics.getActiveSubscription = async function (userId) {
   return subscription.populateFull();
 };
 
-/* --------------------------
-   INDEXES
----------------------------- */
+// ---------------------- INDEXES ----------------------
 userSubscriptionSchema.index({ user_id: 1, status: 1, end_date: -1 });
 
-/* --------------------------
-   EXPORT MODEL
----------------------------- */
+// ---------------------- MODEL EXPORT ----------------------
 const UserSubscription: IUserSubscriptionModel =
-  mongoose.models.UserSubscription ||
+  (mongoose.models.UserSubscription as IUserSubscriptionModel) ||
   mongoose.model<IUserSubscription, IUserSubscriptionModel>(
     "UserSubscription",
     userSubscriptionSchema
