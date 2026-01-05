@@ -43,7 +43,6 @@ export default function TopicListing() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
 
-  // Use latest useCommonCrud
   const { data, extractList, refetch, deleteRecord, toggleStatus, isLoading } = useCommonCrud<Topic>({
     role,
     module: "topic",
@@ -52,12 +51,11 @@ export default function TopicListing() {
     searchValue,
     sortField,
     sortOrder,
-    listKey: "topics", // optional but explicit
+    listKey: "topics", 
   });
 
   const [topics, setTopics] = useState<Topic[]>([]);
 
-  // Sync API data → local state
   useEffect(() => {
     setTopics(extractList);
   }, [extractList]);
@@ -65,13 +63,19 @@ export default function TopicListing() {
   const totalRecords = data?.total || 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
-  // Restore page/limit from URL
   useEffect(() => {
     const urlPage = Number(searchParams.get("page")) || 1;
     const urlLimit = Number(searchParams.get("limit")) || 10;
-    setPage(urlPage);
+    const navSource = searchParams.get("nav");
+    
+    if (navSource === "sidebar") {
+      setPage(1);
+    } else {
+      setPage(urlPage);
+    }
+    
     setRecordsPerPage(urlLimit);
-  }, []);
+  }, [searchParams]);
 
   // Auto refetch on table changes
   useEffect(() => {

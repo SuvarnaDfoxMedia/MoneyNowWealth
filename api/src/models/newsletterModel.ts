@@ -4,18 +4,32 @@ export interface INewsletter extends Document {
   name: string;
   email: string;
   created_at?: Date;
+  updated_at?: Date;
   deleted_at?: Date | null;
   is_deleted?: boolean;
 }
 
 const NewsletterSchema = new Schema<INewsletter>(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+
+    // Email: required, unique, lowercase
+    email: { 
+      type: String, 
+      required: true, 
+      unique: true, 
+      lowercase: true, 
+      trim: true 
+    },
+
     is_deleted: { type: Boolean, default: false },
     deleted_at: { type: Date, default: null }
   },
-  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
+  { 
+    timestamps: { createdAt: "created_at", updatedAt: "updated_at" } 
+  }
 );
+
+NewsletterSchema.index({ email: 1 }, { unique: true });
 
 export const Newsletter = model<INewsletter>("Newsletter", NewsletterSchema);

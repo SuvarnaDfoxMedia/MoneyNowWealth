@@ -1,6 +1,4 @@
 
-
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -42,11 +40,26 @@ export default function SubscriptionListing() {
     setSort,
   } = useDataTableStore();
 
-  // ------------------ URL → Zustand ------------------
   useEffect(() => {
-    setPage(Number(searchParams.get("page")) || 1);
-    setRecordsPerPage(Number(searchParams.get("limit")) || 10);
-  }, []);
+    const urlPage = Number(searchParams.get("page")) || 1;
+    const urlLimit = Number(searchParams.get("limit")) || 10;
+    const navSource = searchParams.get("nav");
+    
+    if (navSource === "sidebar") {
+      setPage(1);
+    } else {
+      setPage(urlPage);
+    }
+    
+    setRecordsPerPage(urlLimit);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!sortField || !sortOrder) {
+      console.log("Setting default sort to created_at desc");
+      setSort("created_at", "desc");
+    }
+  }, [sortField, sortOrder, setSort]);
 
   // ------------------ Fetch Data ------------------
   const { data, refetch, deleteRecord, toggleStatus, isLoading } =
@@ -61,6 +74,8 @@ export default function SubscriptionListing() {
       listKey: "plans",
     });
 
+  console.log("Sort params being sent:", { sortField, sortOrder });
+
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const totalRecords = data?.total || 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
@@ -71,11 +86,33 @@ export default function SubscriptionListing() {
       const validPlans: SubscriptionPlan[] = (data.plans as SubscriptionPlan[]).filter(
         (p) => !p.is_deleted
       );
-      setPlans(validPlans);
+      
+      let sortedPlans = validPlans;
+      if (sortField === "created_at" && sortOrder === "desc") {
+        // Sort by created_at descending (newest first)
+        sortedPlans = validPlans.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        console.log("Client-side sorting: newest first");
+      } else if (sortField === "created_at" && sortOrder === "asc") {
+        // Sort by created_at ascending (oldest first)
+        sortedPlans = validPlans.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        console.log("Client-side sorting: oldest first");
+      }
+      
+      console.log("Sorted plans count:", sortedPlans.length);
+      
+      console.log("First 3 plans:", sortedPlans.slice(0, 3).map(p => ({
+        name: p.name,
+        created_at: p.created_at
+      })));
+      
+      setPlans(sortedPlans);
     }
-  }, [data]);
+  }, [data, sortField, sortOrder]);
 
-  // ------------------ Zustand → URL ------------------
   useEffect(() => {
     setSearchParams({
       page: String(page),
@@ -196,7 +233,7 @@ export default function SubscriptionListing() {
               >
                 <button
                   onClick={() => {
-                    navigate(`/${role}/subscriptionplan/edit/${row._id}`);
+                    navigate(`/${role}/subscriptionplan/edit/${row._id}?page=${page}&limit=${recordsPerPage}`);
                     setOpenDropdownId(null);
                   }}
                   className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full"
@@ -221,13 +258,12 @@ export default function SubscriptionListing() {
     },
   ];
 
-  // ------------------ Render ------------------
   return (
     <div className="bg-gray-50 min-h-screen p-4 relative">
       <div className="flex justify-between mb-6">
         <h2 className="text-xl font-medium text-gray-800">Subscription Plans</h2>
         <button
-          onClick={() => navigate(`/${role}/subscriptionplan/create`)}
+          onClick={() => navigate(`/${role}/subscriptionplan/create?page=${page}&limit=${recordsPerPage}`)}
           className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow-md flex items-center gap-2"
         >
           <FiPlus /> Add

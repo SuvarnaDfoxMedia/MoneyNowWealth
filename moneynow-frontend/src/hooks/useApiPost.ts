@@ -1,32 +1,52 @@
 import { useState } from "react";
-import {API} from "@/app/api/axios";
+import { API } from "@/app/api/axios";
+
+type FieldErrors = {
+  [key: string]: string; 
+};
 
 export const useApiPost = <T,>() => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [success, setSuccess] = useState<string | null>(null);
 
   const postData = async (endpoint: string, payload: T) => {
     setLoading(true);
-    setError(null);
+    setErrors({});
     setSuccess(null);
 
     try {
-      const { data } = await API.post(endpoint, payload);
+      const response = await API.post(endpoint, payload);
+      const data = response.data;
 
-      if (data.success) {
+      if (data?.success) {
         setSuccess(data.message || "Submitted successfully");
+        return data;
       } else {
-        setError(data.message || "Something went wrong");
+        if (data?.errors && typeof data.errors === "object") {
+          setErrors(data.errors);
+        } else {
+          setErrors({ general: data?.message || "Something went wrong" });
+        }
+        return data; 
       }
-
-      return data;
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message);
+      if (err.response && err.response.data) {
+        if (err.response.data.errors && typeof err.response.data.errors === "object") {
+          setErrors(err.response.data.errors);
+          return err.response.data;
+        } else {
+          setErrors({ general: err.response.data.message || "Something went wrong" });
+          return err.response.data;
+        }
+      } else {
+        setErrors({ general: "Something went wrong. Please try again." });
+        return null;
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  return { postData, loading, error, success };
+  return { postData, loading, errors, success };
 };

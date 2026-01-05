@@ -1,39 +1,3 @@
-// import express from "express";
-// import {
-//   getSubscriptionPlans,
-//   getSubscriptionPlanById,
-//   addSubscriptionPlan,
-//   updateSubscriptionPlan,
-//   deleteSubscriptionPlan,
-//   toggleSubscriptionPlanStatus,
-// } from "../controllers/subscriptionPlanController.js";
-// import { roleFromUrl } from "../middlewares/roleUrlMiddleware.js";
-
-// const router = express.Router();
-
-// // -------------------- PUBLIC ROUTES --------------------
-// // List all subscription plans
-// router.get("/subscription-plan", getSubscriptionPlans);
-// // Get single subscription plan by ID
-// router.get("/subscription-plan/:id", getSubscriptionPlanById);
-
-// // -------------------- ADMIN / EDITOR ROUTES --------------------
-// const adminEditorMiddleware = roleFromUrl(["admin"]);
-
-// // Create a new subscription plan
-// router.post("/:role/subscription-plan/create", adminEditorMiddleware, addSubscriptionPlan);
-
-// // Update an existing subscription plan
-// router.put("/:role/subscription-plan/edit/:id", adminEditorMiddleware, updateSubscriptionPlan);
-
-// // Toggle subscription plan status (active/inactive)
-// router.patch("/:role/subscription-plan/change/:id/status", adminEditorMiddleware, toggleSubscriptionPlanStatus);
-
-// // Delete subscription plan (soft delete)
-// router.delete("/:role/subscription-plan/delete/:id", adminEditorMiddleware, deleteSubscriptionPlan);
-
-// export default router;
-
 
 import express from "express";
 import {

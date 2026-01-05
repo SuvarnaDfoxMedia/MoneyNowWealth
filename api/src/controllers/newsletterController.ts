@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import * as newsletterService from "../services/newsletterService";
 import { sendEmail } from "../utils/emails";
-
+import { Newsletter } from "../models/newsletterModel";
 /* ---------------------------------------------------
    Get paginated newsletter subscribers
 --------------------------------------------------- */
@@ -48,9 +48,9 @@ export const getNewsletterById = async (req: Request, res: Response) => {
   }
 };
 
-/* ---------------------------------------------------
-   Create new newsletter subscription + SEND EMAIL
---------------------------------------------------- */
+
+
+
 export const addNewsletter = async (req: Request, res: Response) => {
   try {
     const { name, email } = req.body;
@@ -66,7 +66,7 @@ export const addNewsletter = async (req: Request, res: Response) => {
     const cleanName = name.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    // ------------------ Email validation ------------------
+    // ------------------ Email format validation ------------------
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       return res.status(400).json({
         success: false,
@@ -74,11 +74,32 @@ export const addNewsletter = async (req: Request, res: Response) => {
       });
     }
 
+    // ------------------ Check for duplicate (ignore soft-deleted) ------------------
+    const existing = await Newsletter.findOne({ email: cleanEmail, is_deleted: false });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already exist",
+      });
+    }
+
     // ------------------ Save subscriber ------------------
-    const subscriber = await newsletterService.createNewsletter({
-      name: cleanName,
-      email: cleanEmail,
-    });
+    let subscriber;
+    try {
+      subscriber = await newsletterService.createNewsletter({
+        name: cleanName,
+        email: cleanEmail,
+      });
+    } catch (err: any) {
+      // Handle duplicate key error from MongoDB unique index
+      if (err.code === 11000) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already subscribed",
+        });
+      }
+      throw err; // re-throw other errors
+    }
 
     // ------------------ Send thank-you email ------------------
     const html = `
@@ -124,9 +145,8 @@ export const addNewsletter = async (req: Request, res: Response) => {
   }
 };
 
-/* ---------------------------------------------------
-   Soft delete subscriber
---------------------------------------------------- */
+
+
 export const deleteNewsletter = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

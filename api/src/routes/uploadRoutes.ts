@@ -1,6 +1,4 @@
 
-
-
 // src/routes/uploadRoutes.ts
 import express from "express";
 import multer from "multer";
@@ -164,37 +162,7 @@ router.post("/upload-section", sectionUpload.single("section_image"), async (req
   }
 });
 
-/* ----------------- Upload Cluster Thumbnail ------------------ */
-// router.post("/upload-cluster-thumbnail", clusterUpload.single("thumbnail"), async (req, res) => {
-//   try {
-//     const { clusterId } = req.body;
 
-//     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
-//     if (!clusterId) return res.status(400).json({ success: false, message: "clusterId is required" });
-
-//     const filename = req.file.filename;
-//     const url = buildPublicUrl(req, "thumbnail", filename);
-
-//     const cluster = await Cluster.findByIdAndUpdate(
-//       clusterId,
-//       { thumbnail: filename },
-//       { new: true }
-//     );
-
-//     if (!cluster) return res.status(404).json({ success: false, message: "Cluster not found" });
-
-//     res.json({
-//       success: true,
-//       message: "Cluster thumbnail uploaded successfully",
-//       filename,
-//       url,
-//       cluster,
-//     });
-//   } catch (err: any) {
-//     console.error("Upload failed:", err.message);
-//     res.status(500).json({ success: false, message: "Upload failed" });
-//   }
-// });
 
 
 /* ----------------- Upload Cluster Thumbnail ------------------ */

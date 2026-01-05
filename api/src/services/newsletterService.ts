@@ -1,3 +1,4 @@
+// src/services/newsletterService.ts
 import { Newsletter, type INewsletter } from "../models/newsletterModel";
 
 /* ---------------------------------------------------
@@ -8,8 +9,10 @@ export const getNewsletters = async (query: any) => {
 
   const filter: any = {};
 
+  // Only non-deleted by default
   if (!includeDeleted) filter.is_deleted = false;
 
+  // Search by name or email (case-insensitive)
   if (search) {
     const s = String(search).trim();
     filter.$or = [
@@ -40,31 +43,50 @@ export const getNewsletters = async (query: any) => {
 };
 
 /* ---------------------------------------------------
-   Get one subscriber
+   Get one subscriber by ID
 --------------------------------------------------- */
 export const getNewsletterById = async (id: string) => {
   const newsletter = await Newsletter.findOne({ _id: id, is_deleted: false });
-  if (!newsletter) throw new Error("Newsletter not found");
+  if (!newsletter) throw new Error("Subscriber not found");
   return newsletter;
 };
 
 /* ---------------------------------------------------
-   Add a newsletter subscriber
+   Create a new subscriber
 --------------------------------------------------- */
 export const createNewsletter = async (data: Partial<INewsletter>) => {
-  const { name, email } = data;
+  if (!data.name || !data.email) {
+    throw new Error("Name and email are required");
+  }
+
+  const cleanName = data.name.trim();
+  const cleanEmail = data.email.trim().toLowerCase();
+
+  // Check duplicate manually before creating
+  const existing = await Newsletter.findOne({ email: cleanEmail, is_deleted: false });
+  if (existing) {
+    throw new Error("Email is already subscribed");
+  }
 
   const newsletter = new Newsletter({
-    name,
-    email,
+    name: cleanName,
+    email: cleanEmail,
   });
 
-  await newsletter.save();
-  return newsletter;
+  try {
+    await newsletter.save();
+    return newsletter;
+  } catch (err: any) {
+    // Handle Mongo duplicate key error (extra safety)
+    if (err.code === 11000) {
+      throw new Error("Email is already exist");
+    }
+    throw err;
+  }
 };
 
 /* ---------------------------------------------------
-   Soft delete subscriber
+   Soft delete subscriber by ID
 --------------------------------------------------- */
 export const deleteNewsletter = async (id: string) => {
   const subscriber = await Newsletter.findById(id);

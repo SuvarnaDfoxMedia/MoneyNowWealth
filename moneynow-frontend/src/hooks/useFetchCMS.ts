@@ -2,42 +2,69 @@
 
 import { useEffect, useState } from "react";
 
-export const useFetchCMS = (slug: string) => {
+interface UseFetchCMSResult {
+  page: any;
+  loading: boolean;
+  error: string | null;
+}
+
+export const useFetchCMS = (slug: string): UseFetchCMSResult => {
   const [page, setPage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || !API_BASE) return;
+
+    let active = true;
 
     const fetchPage = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/cmspages?slug=${slug}`);
+        setLoading(true);
+        setError(null);
 
-        if (!res.ok) throw new Error("Failed to fetch CMS page");
+        const res = await fetch(
+          `${API_BASE}/api/cmspages/slug/${slug}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch CMS page (${res.status})`);
+        }
 
         const data = await res.json();
 
-        if (!data.success || !data.pages?.length) {
-          throw new Error("Page not found");
+        if (!data.success || !data.page) {
+          throw new Error("CMS page not found");
         }
 
-        const matchedPage = data.pages.find((p: any) => p.slug === slug);
-
-        if (!matchedPage) {
-          throw new Error("Requested page not found");
+        if (active) {
+          setPage(data.page);
         }
-
-        setPage(matchedPage);
       } catch (err: any) {
-        setError(err.message);
+        if (active) {
+          setError(err.message || "Something went wrong");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
     fetchPage();
-  }, [slug]);
+
+    return () => {
+      active = false;
+    };
+  }, [slug, API_BASE]);
 
   return { page, loading, error };
 };

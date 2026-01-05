@@ -53,11 +53,18 @@ export default function ClusterListing() {
   useEffect(() => {
     const urlPage = Number(searchParams.get("page")) || 1;
     const urlLimit = Number(searchParams.get("limit")) || 10;
+    const navSource = searchParams.get("nav");
     
-    if (page === 1) {
+    // 🌟 FIX: Check navigation source
+    if (navSource === "sidebar") {
+      // Sidebar navigation - start at page 1
+      setPage(1);
+    } else {
+      // Edit operation or direct URL - use the page parameter
       setPage(urlPage);
-      setRecordsPerPage(urlLimit);
     }
+    
+    setRecordsPerPage(urlLimit);
   }, [searchParams]);
 
   /* ---------------- CRUD Hook ---------------- */

@@ -31,7 +31,7 @@ export const sendEmail = async ({
       port,
       secure: port === 465, // SSL if port 465
       auth: { user, pass },
-      tls: { rejectUnauthorized: false }, // dev only
+      tls: { rejectUnauthorized: false }, 
     });
 
     await transporter.sendMail({

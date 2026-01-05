@@ -2,7 +2,9 @@ import { useState } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useNavigate, Link } from "react-router-dom";
-import { ChevronLeftIcon } from "../../icons"; // or ChevronLeftIcon
+import { ChevronLeftIcon } from "../../icons";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -25,7 +27,8 @@ export default function ForgotPassword() {
     if (!validate()) return;
 
     try {
-      await axios.post("http://localhost:5000/api/forgot-password", { email });
+      await axios.post(`${API_BASE}/forgot-password`, { email });
+
       toast.success("Password reset link sent to your email.");
       setEmail("");
 
@@ -34,7 +37,8 @@ export default function ForgotPassword() {
         navigate("/signin");
       }, 2000);
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Error sending reset link.";
+      const msg =
+        err.response?.data?.message || "Error sending reset link.";
       setErrors({ email: msg });
       toast.error(msg);
     }
@@ -48,12 +52,12 @@ export default function ForgotPassword() {
         <Link
           to="/signin"
           className="absolute top-4 left-4 flex items-center gap-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 mb-8"
-          > 
-          <ChevronLeftIcon className="w-5 h-5" /> {/* or ChevronLeftIcon */}
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
           Back
         </Link>
 
-        {/* Logo (rectangular full width) */}
+        {/* Logo */}
         <div className="flex justify-center mb-6">
           <img
             src="/images/logo/logo.png"
@@ -74,7 +78,7 @@ export default function ForgotPassword() {
               Email
             </label>
             <input
-              type="text" // removed built-in email validation
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition ${

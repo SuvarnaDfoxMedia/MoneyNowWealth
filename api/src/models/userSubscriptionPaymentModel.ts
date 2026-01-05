@@ -1,10 +1,11 @@
+
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 /* --------------------------
    INTERFACES
 ---------------------------- */
 export interface IUserSubscriptionPayment extends Document {
-  _id: Types.ObjectId;   // <-- REQUIRED FIX for TS ObjectId typing
+  _id: Types.ObjectId;
 
   user_id: Types.ObjectId;
   plan_id: Types.ObjectId;
@@ -12,9 +13,16 @@ export interface IUserSubscriptionPayment extends Document {
 
   amount: number;
   currency: string;
-  payment_method: string;
-  transaction_id: string;
-  order_id: string;
+
+  payment_method:
+    | "razorpay"
+    | "stripe"
+    | "manual"
+    | "free_plan"
+    | "system";
+
+  transaction_id?: string;
+  order_id?: string;
 
   payment_status: "pending" | "success" | "failed" | "refunded";
   payment_date: Date;
@@ -53,22 +61,60 @@ const userSubscriptionPaymentSchema = new Schema<
   IUserSubscriptionPaymentModel
 >(
   {
-    user_id: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    plan_id: { type: Schema.Types.ObjectId, ref: "SubscriptionPlan", required: true },
-    user_subscription_id: { type: Schema.Types.ObjectId, ref: "UserSubscription", required: true, index: true },
+    user_id: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    plan_id: {
+      type: Schema.Types.ObjectId,
+      ref: "SubscriptionPlan",
+      required: true,
+    },
+
+    user_subscription_id: {
+      type: Schema.Types.ObjectId,
+      ref: "UserSubscription",
+      required: true,
+      index: true,
+    },
 
     amount: { type: Number, required: true },
     currency: { type: String, required: true },
-    payment_method: { type: String, required: true },
-    transaction_id: { type: String, required: true },
-    order_id: { type: String, required: true },
+
+    payment_method: {
+      type: String,
+      enum: ["razorpay", "stripe", "manual", "free_plan", "system"],
+      required: true,
+    },
+
+    transaction_id: {
+      type: String,
+      required: function (this: IUserSubscriptionPayment) {
+        return !["free_plan", "system"].includes(this.payment_method);
+      },
+    },
+
+    order_id: {
+      type: String,
+      required: function (this: IUserSubscriptionPayment) {
+        return !["free_plan", "system"].includes(this.payment_method);
+      },
+    },
 
     payment_status: {
       type: String,
       enum: ["pending", "success", "failed", "refunded"],
       required: true,
     },
-    payment_date: { type: Date, required: true, default: Date.now },
+
+    payment_date: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
 
     type: {
       type: String,
@@ -76,7 +122,10 @@ const userSubscriptionPaymentSchema = new Schema<
       required: true,
     },
 
-    metadata: { type: Object, default: {} },
+    metadata: {
+      type: Object,
+      default: {},
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -86,18 +135,22 @@ const userSubscriptionPaymentSchema = new Schema<
 /* --------------------------
    STATIC METHODS
 ---------------------------- */
-userSubscriptionPaymentSchema.statics.createPaymentForSubscription = async function (
-  this: IUserSubscriptionPaymentModel,
-  data: Partial<IUserSubscriptionPayment>
-) {
-  return this.create(data);
-};
+userSubscriptionPaymentSchema.statics.createPaymentForSubscription =
+  async function (
+    this: IUserSubscriptionPaymentModel,
+    data: Partial<IUserSubscriptionPayment>
+  ) {
+    return this.create(data);
+  };
 
 userSubscriptionPaymentSchema.statics.getPaymentsByUser = async function (
   this: IUserSubscriptionPaymentModel,
   userId: Types.ObjectId | string
 ) {
-  if (!mongoose.Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID");
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID");
+  }
+
   return this.find({ user_id: new mongoose.Types.ObjectId(userId) })
     .populate("user_subscription_id plan_id")
     .sort({ created_at: -1 });
@@ -106,7 +159,11 @@ userSubscriptionPaymentSchema.statics.getPaymentsByUser = async function (
 /* --------------------------
    INDEXES
 ---------------------------- */
-userSubscriptionPaymentSchema.index({ user_id: 1, user_subscription_id: 1, created_at: -1 });
+userSubscriptionPaymentSchema.index({
+  user_id: 1,
+  user_subscription_id: 1,
+  created_at: -1,
+});
 
 /* --------------------------
    MODEL EXPORT

@@ -81,7 +81,6 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 
         <div className="space-y-5">
           {articles.slice(0, 3).map((article) => {
-            // Build image URL with IMAGE_BASE + folder + hero_image
             const imageSrc =
               article.hero_image
                 ? `${IMAGE_BASE}${folder}${article.hero_image.startsWith("/") ? "" : "/"}${article.hero_image}`
@@ -116,7 +115,6 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 </div>
 
 
-                {/* Image */}
                 <div className="relative w-[124px] h-[104px] shrink-0">
                   <Image
                     src={imageSrc}
@@ -132,7 +130,6 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
         </div>
       </div>
 
-      {/* Right Banner */}
           <div className="relative w-full rounded">
                    <Image
                     src="/images/blog-listing-right-banner2.png"

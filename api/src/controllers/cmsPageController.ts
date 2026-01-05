@@ -208,3 +208,17 @@ export const deletePage = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+
+export const getPageBySlug = async (req, res) => {
+  const { slug } = req.params;
+  const page = await cmsPageService.findPageBySlug(slug);
+
+  if (!page) {
+    return res.status(404).json({ success: false, message: "CMS page not found" });
+  }
+
+  res.json({ success: true, page });
+};

@@ -13,14 +13,26 @@ import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface ContactEnquiry {
   _id: string;
-  name: string;
+  first_name?: string;    
+  last_name?: string;     
+  firstname?: string;     
+  lastname?: string;      
+  name?: string;          
+  fullName?: string;      
+  user?: {
+    firstname?: string;
+    lastname?: string;
+  };
   email: string;
   mobile: string;
+  country_code?: string;
   subject: string;
   message: string;
+  terms_accepted?: boolean;
   status: string;
   is_active: number;
   created_at: string;
+  updated_at?: string;
 }
 
 export default function ContactEnquiryListing() {
@@ -43,17 +55,25 @@ export default function ContactEnquiryListing() {
   useEffect(() => {
     const urlPage = Number(searchParams.get("page")) || 1;
     const urlLimit = Number(searchParams.get("limit")) || 10;
-    setPage(urlPage);
+    const navSource = searchParams.get("nav");
+    
+    if (navSource === "sidebar") {
+      // Sidebar navigation - start at page 1
+      setPage(1);
+    } else {
+      // Edit operation or direct URL - use the page parameter
+      setPage(urlPage);
+    }
+    
     setRecordsPerPage(urlLimit);
-  }, []);
+  }, [searchParams]);
 
-  /** Fetch data */
   const { data, isLoading, refetch, deleteRecord } = useCommonCrud({
     module: "contact-enquiries",
     role: "admin",
     page,
     limit: recordsPerPage,
-    searchValue, // ✅ correct
+    searchValue, 
     sortField,
     sortOrder,
   });
@@ -65,10 +85,17 @@ export default function ContactEnquiryListing() {
 
   /** Sync API → local state */
   useEffect(() => {
+    console.log("Contact Enquiry API Response:", data);
+    console.log("Enquiries array:", data?.enquiries);
+    
+    if (data?.enquiries && data.enquiries.length > 0) {
+      console.log("First enquiry structure:", data.enquiries[0]);
+      console.log("First enquiry fields:", Object.keys(data.enquiries[0]));
+    }
+    
     setEnquiries(Array.isArray(data?.enquiries) ? data.enquiries : []);
   }, [data]);
 
-  /** Sync Zustand → URL */
   useEffect(() => {
     setSearchParams({
       page: String(page),
@@ -76,13 +103,11 @@ export default function ContactEnquiryListing() {
     });
   }, [page, recordsPerPage]);
 
-  /** Debounced search & reload */
   useEffect(() => {
     const timer = setTimeout(() => refetch(), 300);
     return () => clearTimeout(timer);
   }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
 
-  /** Dropdown + Delete Modal */
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
@@ -115,7 +140,6 @@ export default function ContactEnquiryListing() {
     }
   };
 
-  /** Dropdown component */
   const Dropdown = ({ id, top, left }: { id: string; top: number; left: number }) =>
     createPortal(
       <div
@@ -142,7 +166,22 @@ export default function ContactEnquiryListing() {
       label: "#",
       render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
     },
-    { key: "name", label: "Name", sortable: true },
+    { 
+  key: "name", 
+  label: "Name", 
+  sortable: true,
+  render: (row) => {
+    const name1 = `${row.first_name || ''} ${row.last_name || ''}`.trim();  // Backend fields
+    const name2 = `${row.firstname || ''} ${row.lastname || ''}`.trim();     // Fallback fields
+    const name3 = row.name || '';
+    const name4 = row.fullName || '';
+    const name5 = `${row.user?.firstname || ''} ${row.user?.lastname || ''}`.trim();
+    
+    const finalName = name1 || name2 || name3 || name4 || name5 || 'N/A';
+    
+    return finalName;
+  }
+},
     { key: "email", label: "Email", sortable: true },
     { key: "mobile", label: "Mobile" },
     { key: "subject", label: "Subject" },
@@ -151,24 +190,6 @@ export default function ContactEnquiryListing() {
       label: "Date",
       sortable: true,
       render: (row) => new Date(row.created_at).toLocaleString(),
-    },
-    {
-      key: "actions",
-      label: "Actions",
-      render: (row) => (
-        <>
-          <button
-            onClick={(e) => handleDropdownClick(e, row._id)}
-            className="p-2 rounded-full hover:bg-gray-100 transition"
-          >
-            <FiMoreVertical size={18} />
-          </button>
-
-          {openDropdownId === row._id && (
-            <Dropdown id={row._id} top={dropdownPos.top} left={dropdownPos.left} />
-          )}
-        </>
-      ),
     },
   ];
 
@@ -186,8 +207,8 @@ export default function ContactEnquiryListing() {
         totalPages={totalPages}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
-        searchValue={searchValue} // ✅ correct
-        onSearchChange={setSearchValue} // ✅ correct
+        searchValue={searchValue} // correct
+        onSearchChange={setSearchValue} // correct
         sortField={sortField}
         sortOrder={sortOrder}
         onPageChange={setPage}

@@ -69,8 +69,7 @@ export const userSubscriptionPaymentService = {
     return UserSubscriptionPayment.findById(id);
   },
 
-  // -------------------------------------------------------
-  // 🔥 MAIN FUNCTION — CREATE PAYMENT & UPDATE SUBSCRIPTION
+  //  MAIN FUNCTION — CREATE PAYMENT & UPDATE SUBSCRIPTION
   // -------------------------------------------------------
   async createPaymentForSubscription(
     sub: Subscription,
@@ -80,7 +79,7 @@ export const userSubscriptionPaymentService = {
     const isFreePlan = plan.name.toLowerCase() === "free";
 
     // -------------------------------
-    // 1️⃣ Create Payment Entry
+    // 1 Create Payment Entry
     // -------------------------------
     const payment = new UserSubscriptionPayment({
       user_id: sub.user_id,
@@ -94,7 +93,6 @@ export const userSubscriptionPaymentService = {
       payment_status: "success",
       payment_date: new Date(),
 
-      // 👇 this is IMPORTANT
       type, // new → upgrade → downgrade
 
       metadata: {
@@ -106,7 +104,7 @@ export const userSubscriptionPaymentService = {
     await payment.save();
 
     // -------------------------------
-    // 2️⃣ Update Subscription
+    // 2 Update Subscription
     // -------------------------------
     sub.last_payment_id = payment._id;
 
