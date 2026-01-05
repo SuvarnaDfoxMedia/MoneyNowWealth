@@ -300,7 +300,6 @@ export default function ChangePasswordForm() {
     else if (newPassword !== confirmPassword) newErrors.confirmPassword = "Passwords do not match.";
 
     setErrors(newErrors);
-    Object.values(newErrors).forEach((msg) => msg && toast.error(msg));
     return Object.keys(newErrors).length === 0;
   };
 
@@ -314,13 +313,71 @@ export default function ChangePasswordForm() {
 
     setLoading(true);
 
+    console.log("Attempting password change...");
+
     try {
+      console.log("🔍 Starting API call...");
       const res = await axiosApi.post<{ message: string }>("/auth/change-password", {
         oldPassword,
         newPassword,
       });
+      console.log("🔍 API call completed");
 
-      toast.success(res.message ?? "Password changed successfully!");
+      console.log("🔍 Full API Response:", res);
+      console.log("🔍 Response Type:", typeof res);
+      console.log("🔍 Is response object?:", typeof res === 'object' && res !== null);
+
+      // 🌟 FIX: Handle direct response vs Axios wrapped response
+      let message: string;
+      if (typeof res === 'object' && res !== null && 'data' in res) {
+        // Axios wrapped response
+        console.log("🔍 Axios response detected");
+        message = res.data?.message || res.message || "Password changed successfully!";
+      } else {
+        // Direct response
+        console.log("🔍 Direct response detected");
+        message = (res as any)?.message || "Password changed successfully!";
+      }
+      
+      console.log("🔍 Final message to show:", message);
+
+      console.log("🔍 About to show success toast...");
+      
+      // Create custom toast that renders to document body
+      const customToast = document.createElement('div');
+      customToast.innerHTML = ' Password Changed Successfully!';
+      customToast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ffffff;
+        color: #10b981; /* text color */
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 999999;
+        font-size: 16px;
+        font-weight: 500;
+        box-shadow: 0 4px 6px hsla(155, 53%, 14%, 0.07);
+        animation: slideIn 0.3s ease-out;
+      `;
+      
+      document.body.appendChild(customToast);
+      console.log("🔍 Custom toast added to document body");
+      
+      // Remove after 4 seconds
+      setTimeout(() => {
+        if (customToast.parentNode) {
+          customToast.parentNode.removeChild(customToast);
+          console.log("🔍 Custom toast removed");
+        }
+      }, 4000);
+      
+      // Also try standard toast
+      toast.success("Password Changed Successfully!", { 
+        duration: 4000,
+        position: 'top-right'
+      });
+      console.log("🔍 Standard toast also called");
 
       // Clear form
       setOldPassword("");
@@ -331,16 +388,44 @@ export default function ChangePasswordForm() {
       // Refresh user data
       await refreshUser();
 
-      setTimeout(() => navigate(-1), 1200);
+      setTimeout(() => navigate(-1), 3000); // Increased to 3 seconds
     } catch (err: any) {
-      const backendMsg = err.response?.data?.message || err.message || "Something went wrong";
+      console.log("🔍 Password change error:", err);
+      console.log("🔍 Error response:", err.response?.data);
+      console.log("🔍 Error status:", err.response?.status);
+      console.log("🔍 Error message:", err.message);
+      console.log("🔍 Full error object:", err);
 
-      // Map backend errors to fields
-      if (backendMsg.toLowerCase().includes("old password")) setErrors({ oldPassword: backendMsg });
-      else if (backendMsg.toLowerCase().includes("new password")) setErrors({ newPassword: backendMsg });
-      else setErrors({ confirmPassword: backendMsg });
+      // 🌟 FIX: Handle different error formats
+      const backendMsg = err.response?.data?.message || err.message || err.response?.data || "Something went wrong";
+      console.log("🔍 Final error message:", backendMsg);
 
-      toast.error(backendMsg);
+      // Map backend errors to fields (NO TOAST for validation errors)
+      const errorMsg = backendMsg.toLowerCase();
+      
+      if (errorMsg.includes("old password") || errorMsg.includes("incorrect")) {
+        setErrors({ oldPassword: backendMsg });
+      } else if (errorMsg.includes("new password") || errorMsg.includes("weak")) {
+        setErrors({ newPassword: backendMsg });
+      } else if (errorMsg.includes("confirm") || errorMsg.includes("match")) {
+        setErrors({ confirmPassword: backendMsg });
+      } else {
+        // For any other validation-related errors, don't show toast
+        setErrors({ confirmPassword: backendMsg });
+      }
+
+      // Only show toast for genuine server/network errors (not validation)
+      const isValidationError = errorMsg.includes("password") || 
+                              errorMsg.includes("invalid") || 
+                              errorMsg.includes("required") ||
+                              errorMsg.includes("incorrect") ||
+                              errorMsg.includes("weak") ||
+                              errorMsg.includes("match") ||
+                              errorMsg.includes("confirm");
+
+      if (!isValidationError) {
+        toast.error("Server error. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -351,7 +436,7 @@ export default function ChangePasswordForm() {
 
   // ---------------- Render ----------------
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen pt-20 pb-20 space-y-8">
+    <div className="flex flex-col items-center justify-center min-h-screen pt-20 pb-20 space-y-8" style={{ overflow: 'visible' }}>
       <div className="w-full max-w-md">
         <Link
           to="/"

@@ -51,7 +51,7 @@ export const addSubscriptionPayment = async (
 
     const isFreePlan = String(plan.name).toLowerCase() === "free";
 
-    // ---------- 1️⃣ Create Payment ----------
+    // ---------- 1 Create Payment ----------
     const payment = await userSubscriptionPaymentService.create({
       user_id: new Types.ObjectId(user_id),
       plan_id: new Types.ObjectId(plan_id),
@@ -65,7 +65,7 @@ export const addSubscriptionPayment = async (
       payment_status: "success",
     });
 
-    // ---------- 2️⃣ Create or Update Subscription ----------
+    // ---------- 2 Create or Update Subscription ----------
     let subscription: IUserSubscription | null = null;
     try {
       const durationValue = plan.duration?.value ?? 1;
@@ -79,14 +79,14 @@ export const addSubscriptionPayment = async (
         isFreePlan ? "free_sample" : undefined
       );
 
-      // ✅ Type-safe assignment of ObjectId
+      //  Type-safe assignment of ObjectId
       payment.user_subscription_id = subscription._id as Types.ObjectId;
       await payment.save();
     } catch (err) {
       console.error("Failed to update subscription:", err);
     }
 
-    // ---------- 3️⃣ RESPONSE ----------
+    // ---------- 3 RESPONSE ----------
     return res.status(201).json({
       success: true,
       message: "Subscription payment created successfully",

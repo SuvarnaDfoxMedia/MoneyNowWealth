@@ -1,4 +1,3 @@
-// src/utils/uploadFile.ts
 export const uploadFile = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
@@ -14,7 +13,6 @@ export const uploadFile = async (file: File): Promise<string> => {
     }
 
     const data = await response.json();
-    // assuming backend responds with: { success: true, filePath: "/uploads/hero-image.jpg" }
     return data.filePath;
   } catch (error) {
     console.error("Upload error:", error);

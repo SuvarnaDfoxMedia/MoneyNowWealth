@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-/* ---------------- Types ---------------- */
 interface Cluster {
   _id: string;
   title: string;
@@ -63,7 +62,6 @@ const GetAllCluster = () => {
     return () => window.removeEventListener("resize", updateVisibleCards);
   }, []);
 
-  /* ---------------- Reset index on resize ---------------- */
   useEffect(() => {
     setCurrentIndex(0);
   }, [visibleCards]);
@@ -163,9 +161,6 @@ const GetAllCluster = () => {
             ))}
           </div>
         </div>
-
-       
-
 
       </div>
     </section>

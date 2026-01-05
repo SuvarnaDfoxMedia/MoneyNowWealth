@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 // ---------------------- Interface ----------------------
 export interface ISubscriptionPlan extends Document {
-  _id: Types.ObjectId;   // <-- IMPORTANT: Fix for TypeScript ObjectId typing
+  _id: Types.ObjectId;   
 
   name: string;
   description?: string;

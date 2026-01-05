@@ -559,18 +559,37 @@ itiRef.current.promise?.then(() => {
         if (!itiRef.current || !user) return;
 
         const allCountries = itiRef.current.getCountryData?.() || [];
+        
+        console.log("🔍 Current user countryCode:", user.countryCode);
 
         // Set user's country
-        if (user.countryCode) {
+        if (user.countryCode && user.countryCode.trim() !== "") {
           const dialCode = user.countryCode.replace("+", "");
           const matchedCountry = allCountries.find((c: any) => c.dialCode === dialCode);
-          if (matchedCountry) itiRef.current.setCountry(matchedCountry.iso2);
+          if (matchedCountry) {
+            itiRef.current.setCountry(matchedCountry.iso2);
+            console.log("✅ Set country to:", matchedCountry.iso2);
+          } else {
+            console.log("⚠️ Country code not found:", user.countryCode);
+            // Fallback to India if no match found
+            itiRef.current.setCountry("in");
+            console.log("🔄 Fallback to India");
+          }
+        } else {
+          console.log("⚠️ No countryCode, fallback to India");
+          itiRef.current.setCountry("in");
         }
 
         // Set full number with country code prefix
         if (user.phone) {
-          const fullNumber = user.countryCode + user.phone;
+          let fullNumber;
+          if (user.phone.startsWith('+')) {
+            fullNumber = user.phone;
+          } else {
+            fullNumber = (user.countryCode || "+91") + user.phone;
+          }
           itiRef.current.setNumber(fullNumber);
+          console.log("📞 Set phone number:", fullNumber);
         }
 
         // Sync to formData
@@ -665,13 +684,48 @@ itiRef.current.promise?.then(() => {
       });
 
       await refreshUser();
-      toast.success(res.data.message);
 
       if (profileImage && res.data.user.profileImage) {
         setImagePreview(`${imageUrl}${res.data.user.profileImage}?v=${Date.now()}`);
       }
 
       closeModal();
+      
+      // Show success toast after modal closes
+      setTimeout(() => {
+        // Create custom toast that renders to document body
+        const customToast = document.createElement('div');
+        customToast.innerHTML = ' Profile Updated Successfully!';
+        customToast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ffffff;
+        color: #10b981; /* text color */
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 999999;
+        font-size: 16px;
+        font-weight: 500;
+        box-shadow: 0 4px 6px hsla(155, 53%, 14%, 0.07);
+        animation: slideIn 0.3s ease-out;
+      `;
+        
+        document.body.appendChild(customToast);
+        
+        // Remove after 4 seconds
+        setTimeout(() => {
+          if (customToast.parentNode) {
+            customToast.parentNode.removeChild(customToast);
+          }
+        }, 4000);
+        
+        // Also try standard toast
+        toast.success("Profile Updated Successfully!", { 
+          duration: 4000,
+          position: 'top-right'
+        });
+      }, 100);
     } catch (err: any) {
       if (err.response?.data?.errors) {
         const fieldErrors: Record<string, string> = {};
@@ -685,7 +739,29 @@ itiRef.current.promise?.then(() => {
         });
         setErrors(fieldErrors);
       } else if (err.response?.data?.message) {
-        toast.error(err.response.data.message);
+        // Map backend errors to fields (NO TOAST for validation errors)
+        const errorMsg = err.response.data.message.toLowerCase();
+        
+        if (errorMsg.includes("name") || errorMsg.includes("firstname") || errorMsg.includes("lastname")) {
+          setErrors({ firstname: err.response.data.message });
+        } else if (errorMsg.includes("phone")) {
+          setErrors({ phone: err.response.data.message });
+        } else if (errorMsg.includes("address")) {
+          setErrors({ address: err.response.data.message });
+        } else {
+          // For any other validation-related errors, don't show toast
+          setErrors({ address: err.response.data.message });
+        }
+
+        // Only show toast for genuine server/network errors (not validation)
+        const isValidationError = errorMsg.includes("invalid") || 
+                                errorMsg.includes("required") ||
+                                errorMsg.includes("already") ||
+                                errorMsg.includes("exists");
+
+        if (!isValidationError) {
+          toast.error("Server error. Please try again.");
+        }
       } else {
         toast.error("Failed to update profile.");
       }

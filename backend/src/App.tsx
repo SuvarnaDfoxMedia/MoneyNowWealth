@@ -62,7 +62,14 @@ export default function App() {
     <AuthProvider>
       <Router>
         <ScrollToTop />
-        <Toaster position="top-right" reverseOrder={false} />
+        <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            zIndex: 999999,
+          },
+        }}
+      />
         <AppRoutes />
       </Router>
     </AuthProvider>

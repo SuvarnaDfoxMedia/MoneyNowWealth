@@ -29,9 +29,7 @@ export interface AuthenticatedRequest extends Request {
   userId?: string;
 }
 
-/* ------------------------------------------------------------------
-   ADD DURATION TO DATE
------------------------------------------------------------------- */
+  //  ADD DURATION TO DATE
 const addDurationToDate = (
   date: Date,
   value: number,
@@ -53,9 +51,6 @@ const addDurationToDate = (
 };
 
 
-
-
-
 export const createOrUpdateSubscription = async (
   userId: string,
   planId: string,
@@ -75,17 +70,13 @@ if (!plan) throw new Error("Subscription plan not found");
 
     const endDate = addDurationToDate(new Date(), durationValue, durationUnit);
 
-    // -----------------------------------------------
-    // 1️⃣ Deactivate all old active subscriptions
-    // -----------------------------------------------
+    // 1 Deactivate all old active subscriptions
     await UserSubscription.updateMany(
       { user_id: new Types.ObjectId(userId), is_active: true },
       { is_active: false }
     );
 
-    // -----------------------------------------------
-    // 2️⃣ Create new subscription entry
-    // -----------------------------------------------
+    // 2 Create new subscription entry
     const subscription = await UserSubscription.create({
       user_id: new Types.ObjectId(userId),
       plan_id: new Types.ObjectId(planId),
@@ -99,9 +90,7 @@ if (!plan) throw new Error("Subscription plan not found");
       is_deleted: false,
     });
 
-    // -----------------------------------------------
-    // 3️⃣ Create payment entry for this subscription
-    // -----------------------------------------------
+    // 3 Create payment entry for this subscription
     await UserSubscriptionPayment.create({
       user_id: new Types.ObjectId(userId),
       plan_id: new Types.ObjectId(planId),
@@ -116,16 +105,14 @@ if (!plan) throw new Error("Subscription plan not found");
 
       payment_status: "success",
       payment_date: new Date(),
-      type: status,                                   // store correct type
+      type: status,                                   
 
       metadata: {
         note: `Auto-generated for ${status} subscription`,
       },
     });
 
-    // -----------------------------------------------
-    // 4️⃣ Populate and return subscription
-    // -----------------------------------------------
+    // 4 Populate and return subscription
     await subscription.populate([
       { path: "user_id", select: "firstname lastname email mobile" },
       { path: "plan_id" },
@@ -141,9 +128,7 @@ if (!plan) throw new Error("Subscription plan not found");
 
 
 
-/* ------------------------------------------------------------------
-   ASSIGN FREE PLAN (during registration)
------------------------------------------------------------------- */
+  //  ASSIGN FREE PLAN (during registration)
 export const assignFreePlan = async (userId: string) => {
   try {
     const freePlan = await SubscriptionPlanModel.findOne({
@@ -374,41 +359,6 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 
-// ================= RESET PASSWORD =================
-
-
-// export const resetPassword = async (req: Request, res: Response) => {
-//   try {
-//     const { password, confirmPassword } = req.body;
-//     const token = req.params.token;
-
-//     if (!token || !password || !confirmPassword)
-//       return res.status(400).json({ message: "Token, password and confirm password are required" });
-
-//     if (password !== confirmPassword)
-//       return res.status(400).json({ message: "Passwords do not match" });
-
-//     const user = await User.findOne({
-//       resetPasswordToken: token,
-//       resetPasswordExpires: { $gt: Date.now() },
-//     });
-
-//     if (!user)
-//       return res.status(400).json({ message: "Invalid or expired token" });
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-//     user.password = hashedPassword;
-//     user.resetPasswordToken = undefined;
-//     user.resetPasswordExpires = undefined;
-
-//     await user.save();
-
-//     res.json({ message: "Password reset successful" });
-//   } catch (error) {
-//     console.error("Reset password error:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 
 
@@ -447,47 +397,6 @@ export const resetPassword = async (req: Request, res: Response) => {
 
 
 
-
-// export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
-//   try {
-//     const userId = req.userId;   
-//     if (!userId) {
-//       return res.status(401).json({ message: "Not authorized" });
-//     }
-
-//     const { oldPassword, newPassword } = req.body;
-
-//     if (!oldPassword || !newPassword) {
-//       return res.status(400).json({ message: "Old and new password are required" });
-//     }
-
-//     const user = await User.findById(userId).select("+password");
-//     if (!user || !user.password) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     const isMatch = await bcrypt.compare(oldPassword, user.password);
-//     if (!isMatch) {
-//       return res.status(401).json({ message: "Old password is incorrect" });
-//     }
-
-//     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
-//     if (!passwordRegex.test(newPassword)) {
-//       return res.status(400).json({
-//         message:
-//           "New password must be at least 8 characters, include 1 uppercase, 1 number, and 1 special character.",
-//       });
-//     }
-
-//     user.password = await bcrypt.hash(newPassword, 10);
-//     await user.save();
-
-//     return res.status(200).json({ message: "Password changed successfully" });
-//   } catch (error: any) {
-//     console.error("Change password error:", error.message);
-//     return res.status(500).json({ message: "Server error during password change" });
-//   }
-// };
 
 
 export const changePassword = async (req: AuthenticatedRequest, res: Response) => {

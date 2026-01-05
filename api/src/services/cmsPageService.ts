@@ -1,7 +1,5 @@
 import CmsPage, { type ICmsPage } from "../models/cmsPageModel";
 
-// ===============================
-// ===============================
 export const getPages = async (query: any) => {
   const {
     page = 1,
@@ -45,18 +43,23 @@ export const getPages = async (query: any) => {
   };
 };
 
-// ===============================
-// 🔥 Get Page by ID
-// ===============================
+
+
+export const findPageBySlug = async (slug: string) => {
+  return CmsPage.findOne({
+    slug,
+    is_active: 1,
+  });
+};
+
+
 export const getPageById = async (id: string) => {
   const page = await CmsPage.findById(id);
   if (!page || page.is_active === 0) throw new Error("Page not found");
   return page;
 };
 
-// ===============================
-// 🔥 Create Page
-// ===============================
+// Create Page
 export const createPage = async (data: Partial<ICmsPage>) => {
   if (!data.title || !data.slug) throw new Error("title and slug are required");
 
@@ -75,9 +78,7 @@ export const createPage = async (data: Partial<ICmsPage>) => {
   return page;
 };
 
-// ===============================
-// 🔥 Update Page
-// ===============================
+//  Update Page
 export const updatePage = async (id: string, data: Partial<ICmsPage>) => {
   const page = await CmsPage.findById(id);
   if (!page || page.is_active === 0) throw new Error("Page not found");
@@ -87,8 +88,7 @@ export const updatePage = async (id: string, data: Partial<ICmsPage>) => {
   return page;
 };
 
-// ===============================
-// 🔥 Toggle Active / Inactive
+//  Toggle Active / Inactive
 // ===============================
 export const togglePageStatus = async (id: string) => {
   const page = await CmsPage.findById(id);
@@ -99,8 +99,7 @@ export const togglePageStatus = async (id: string) => {
   return page;
 };
 
-// ===============================
-// 🔥 Soft Delete Page
+//  Soft Delete Page
 // ===============================
 export const deletePage = async (id: string) => {
   const page = await CmsPage.findById(id);

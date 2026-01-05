@@ -62,9 +62,7 @@ const topicSchema = new Schema<ITopic>(
   }
 );
 
-// ----------------------------
 // Auto-increment plugin
-// ----------------------------
 // @ts-ignore
 const AutoIncrement: any = AutoIncrementFactory(mongoose);
 topicSchema.plugin(AutoIncrement, {

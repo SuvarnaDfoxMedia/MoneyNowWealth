@@ -28,7 +28,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
 const FALLBACK_IMAGE = "/images/most-popular-blog-img-1.png";
 
-// ===== SANITIZE FUNCTION =====
 const sanitize = (html?: string) => ({
   __html: DOMPurify.sanitize(html || ""),
 });

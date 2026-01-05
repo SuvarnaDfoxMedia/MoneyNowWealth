@@ -5,8 +5,6 @@ import { userSubscriptionService } from "@/services/userSubscriptionService";
 import { userSubscriptionPaymentService } from "@/services/userSubscriptionPaymentService";
 
 
-
-
 export const getUserSubscriptions = async (req: Request, res: Response) => {
   try {
     const search = String(req.query.search || "").trim();
@@ -102,9 +100,6 @@ export const getUserSubscriptions = async (req: Request, res: Response) => {
 };
 
 
-
-
-
 export const getUserSubscriptionById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -115,7 +110,7 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
     }
 
     // Populate user & plan
-    subscription = await subscription.populateFull(); // assuming this populates user_id & plan_id
+    subscription = await subscription.populateFull(); 
 
     // Fetch latest payment
     const payment = await userSubscriptionPaymentService.getLatestBySubscriptionId(
@@ -125,7 +120,7 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       subscription,
-      payment, //  now included
+      payment, 
     });
   } catch (error) {
     console.error("Get subscription by ID error:", error);

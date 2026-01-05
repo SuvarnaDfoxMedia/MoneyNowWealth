@@ -44,7 +44,6 @@ interface SubscriptionPayment {
   type: string;
 }
 
-/* This is the REAL response shape */
 interface InvoiceApiResponse {
   subscription: UserSubscription;
   payment?: SubscriptionPayment;

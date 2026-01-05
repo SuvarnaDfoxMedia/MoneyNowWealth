@@ -1,84 +1,3 @@
-// "use client";
-
-// import Image from "next/image";
-// import React from "react";
-// import { stayConnectedData } from "@/data/homePageData";
-
-// const StayConnected = () => {
-//   const { title, subtitle, description, features } = stayConnectedData;
-
-//   return (
-//     <section className="w-full bg-[#053C71] py-[40px] font-inter">
-//       <div className="container mx-auto px-4 text-center">
-
-//         {/* MAIN TITLE */}
-//        <h2 className="text-white font-bold text-[24px] leading-[30px] sm:text-[32px] sm:leading-[34px] mb-3">
-//   {title}
-// </h2>
-
-//         {/* SUBTITLE */}
-//        <p className="text-[18px] leading-[20px] font-semibold text-white mb-3 sm:text-[20px] sm:leading-[22px]">
-//   {subtitle}
-// </p>
-
-
-//         {/* DESCRIPTION */}
-//         <p className="text-white leading-[26px] text-[15px] mb-10  mx-auto">
-//           {description}
-//         </p>
-
-//         {/* ICON ROW */}
-//        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-10">
-//   {features.map((item, index) => (
-//     <div 
-//       key={index} 
-//       className="flex flex-col items-center text-white mb-[20px] sm:mb-0"
-//     >
-//       <div className="bg-[#D9D9D9] p-4 rounded-[10px] flex items-center justify-center mb-4">
-//         <Image
-//           src={item.imageSrc}
-//           alt={item.text}
-//           width={75}
-//           height={75}
-//         />
-//       </div>
-//       <p className="text-[14px]">{item.text}</p>
-//     </div>
-//   ))}
-// </div>
-
-
-//         {/* SUBSCRIBE FORM */}
-//         <div className="bg-white rounded-[12px] flex flex-col md:flex-row items-center p-7 gap-4 md:gap-5 max-w-full mx-auto">
-
-//           {/* NAME */}
-//           <input
-//             type="text"
-//             placeholder="Enter your name"
-//             className="w-full md:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
-//               placeholder-[#043F79] focus:outline-blue-600"
-//           />
-
-//           {/* EMAIL */}
-//           <input
-//             type="email"
-//             placeholder="Enter your email"
-//             className="w-full md:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
-//               placeholder-[#043F79] focus:outline-blue-600"
-//           />
-
-//           {/* BUTTON */}
-//           <button className="bg-[#043F79] text-white text-[18px] px-[30px] py-3 rounded-[5px] uppercase whitespace-nowrap hover:bg-[#032F59] transition">
-//             SUBSCRIBE NOW
-//           </button>
-//         </div>
-
-//       </div>
-//     </section>
-//   );
-// };
-
-// export default StayConnected;
 
 
 "use client";
@@ -93,42 +12,80 @@ const StayConnected = () => {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
-  const { postData, loading, error, success } = useApiPost();
+  const { postData, loading } = useApiPost<{ name: string; email: string }>();
 
-  const handleSubmit = async () => {
-    if (!name || !email) return alert("Please enter name and email");
+  const validateEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    await postData("/api/newsletter", { name, email });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    setName("");
-    setEmail("");
+    setNameError("");
+    setEmailError("");
+    setSuccessMsg("");
+
+    let isValid = true;
+
+    if (!name.trim()) {
+      setNameError("Name is required");
+      isValid = false;
+    }
+
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      isValid = false;
+    } else if (!validateEmail(email)) {
+      setEmailError("Please enter a valid email");
+      isValid = false;
+    }
+
+    if (!isValid) return;
+
+    const res = await postData("/api/newsletter", { name, email });
+
+    if (res?.success) {
+      setSuccessMsg("Subscribed successfully!");
+      setName("");
+      setEmail("");
+    } else {
+      if (res?.errors) {
+        setNameError(res.errors.name || "");
+        setEmailError(res.errors.email || "");
+      } else if (res?.message) {
+        if (res.message.toLowerCase().includes("name")) {
+          setNameError(res.message);
+        } else {
+          setEmailError(res.message);
+        }
+      }
+    }
   };
 
   return (
     <section className="w-full bg-[#053C71] py-[40px] font-inter">
       <div className="container mx-auto px-4 text-center">
-        
-        {/* MAIN TITLE */}
-        <h2 className="text-white font-bold text-[24px] leading-[30px] sm:text-[32px] sm:leading-[34px] mb-3">
+        {/* TITLE */}
+        <h2 className="text-white font-bold text-[24px] sm:text-[32px] mb-3">
           {title}
         </h2>
 
-        {/* SUBTITLE */}
-        <p className="text-[18px] leading-[20px] font-semibold text-white mb-3 sm:text-[20px]">
+        <p className="text-[18px] sm:text-[20px] font-semibold text-white mb-3">
           {subtitle}
         </p>
 
-        {/* DESCRIPTION */}
-        <p className="text-white leading-[26px] text-[15px] mb-10 mx-auto">
+        <p className="text-white text-[15px] mb-10 mx-auto">
           {description}
         </p>
 
         {/* ICONS */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-10 gap-4">
           {features.map((item, index) => (
-            <div key={index} className="flex flex-col items-center text-white mb-[20px] sm:mb-0  md:mb-4">
-              <div className="bg-[#D9D9D9] p-4 rounded-[10px] flex items-center justify-center mb-4">
+            <div key={index} className="flex flex-col items-center text-white">
+              <div className="bg-[#D9D9D9] p-4 rounded-[10px] mb-4">
                 <Image src={item.imageSrc} alt={item.text} width={75} height={75} />
               </div>
               <p className="text-[14px]">{item.text}</p>
@@ -136,46 +93,62 @@ const StayConnected = () => {
           ))}
         </div>
 
-        {/* SUBSCRIBE FORM */}
-      <div className="bg-white rounded-[12px] flex flex-col lg:flex-row items-center p-7 gap-4 lg:gap-5 max-w-full mx-auto">
-
+        {/* FORM */}
+<form
+  onSubmit={handleSubmit}
+  noValidate
+  className="bg-white rounded-[12px] flex flex-col lg:flex-row items-end p-7 gap-4 lg:gap-5"
+>
   {/* NAME */}
-  <input
-    type="text"
-    placeholder="Enter your name"
-    value={name}
-    onChange={(e) => setName(e.target.value)}
-    className="w-full lg:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
-    placeholder-[#043F79] focus:outline-blue-600"
-  />
+  <div className="flex flex-col w-full lg:w-[470px] ">
+    <input
+      type="text"
+      placeholder="Enter your name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      className={`w-full border px-4 py-3 text-[15px] rounded ${
+        nameError ? "border-red-500" : "border-[#043F79]"
+      }`}
+    />
+    <span className="text-red-500 text-[13px] h-[18px] leading-[18px]">
+      {nameError}
+    </span>
+  </div>
 
   {/* EMAIL */}
-  <input
-    type="email"
-    placeholder="Enter your email"
-    value={email}
-    onChange={(e) => setEmail(e.target.value)}
-    className="w-full lg:w-[470px] border border-[#043F79] px-4 py-3 text-[15px]
-    placeholder-[#043F79] focus:outline-blue-600"
-  />
+  <div className="flex flex-col w-full lg:w-[470px] ">
+    <input
+      type="text"
+      placeholder="Enter your email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      className={`w-full border px-4 py-3 text-[15px] rounded ${
+        emailError ? "border-red-500" : "border-[#043F79]"
+      }`}
+    />
+    <span className="text-red-500 text-[13px] h-[18px] leading-[18px]">
+      {emailError}
+    </span>
+  </div>
 
   {/* BUTTON */}
-  <button
-    onClick={handleSubmit}
-    disabled={loading}
-    className="w-full lg:w-auto bg-[#043F79] text-white text-[18px] px-[30px] py-3 rounded-[5px] uppercase whitespace-nowrap hover:bg-[#032F59] transition"
-  >
-    {loading ? "Submitting..." : "SUBSCRIBE NOW"}
-  </button>
+  <div className="flex flex-col ">
+    <button
+      type="submit"
+      disabled={loading}
+      className="bg-[#043F79] text-white text-[18px] px-[30px] py-3 rounded-[5px] uppercase hover:bg-[#032F59]"
+    >
+      {loading ? "Submitting..." : "SUBSCRIBE NOW"}
+    </button>
 
-</div>
+    {/* EMPTY SPACE TO MATCH INPUT ERROR HEIGHT */}
+    <span className="h-[18px]"></span>
+  </div>
+</form>
 
 
-        {/* ERROR / SUCCESS MESSAGE */}
-        {/* {error && <p className="text-red-300 mt-3">{error}</p>} */}
-        {error && <p className="text-red-300 mt-3">Something went wrong. Please try again.</p>}
-
-        {success && <p className="text-green-300 mt-3">{success}</p>}
+        {/* SUCCESS */}
+        {successMsg && <p className="text-green-300 mt-3">{successMsg}</p>}
       </div>
     </section>
   );

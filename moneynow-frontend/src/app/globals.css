@@ -97,3 +97,15 @@ body {
   border-right: none !important;
   height: 44px !important;
 }
+html {
+  scroll-padding-top: 100px;
+}
+
+a,
+button {
+  cursor: pointer;
+}
+
+a[href] {
+  cursor: pointer;
+}

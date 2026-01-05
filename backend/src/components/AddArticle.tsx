@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { FiSave, FiRefreshCw, FiArrowLeft, FiPlus, FiTrash2 } from "react-icons/fi";
@@ -73,7 +72,6 @@ export default function AddArticle() {
   const [topicSearch, setTopicSearch] = useState<string>("");
   const [editorKey, setEditorKey] = useState(0);
 
-  // Fetch topics
   useEffect(() => {
     const fetchTopics = async () => {
       try {
@@ -92,7 +90,6 @@ export default function AddArticle() {
     fetchTopics();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (topicWrapperRef.current && !topicWrapperRef.current.contains(event.target as Node)) {
@@ -103,50 +100,8 @@ export default function AddArticle() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load article for edit
-  // useEffect(() => {
-  //   if (!id) return;
-  //   const loadData = async () => {
-  //     try {
-  //       const raw = await getOne(id);
-  //       const data = raw?.data ?? raw;
-  //       if (!data) return;
 
-  //       setValues({
-  //         topic_id: typeof data.topic_id === "string" ? data.topic_id : data.topic_id?._id ?? "",
-  //         title: data.title ?? "",
-  //         slug: data.slug ?? "",
-  //         seo_title: data.seo_title ?? "",
-  //         introduction: data.introduction ?? "",
-  //         seo_description: data.seo_description ?? "",
-  //         focus_keyword: data.focus_keyword ?? "",
-  //         read_time: data.read_time ?? 0,
-  //         author: data.author ?? "",
-  //         status: data.status ?? "draft",
-  //         sections: data.sections ?? [],
-  //         faqs: data.faqs ?? [],
-  //         tools: (data.tools ?? []).map((t: any) => ({ title: t.title || t.name || "", content: t.content || t.url || "" })),
-  //         related_reads: (data.related_reads ?? []).map((r: any) => ({ title: r.title || "", content: r.content || "" })),
-  //         hero_image: data.hero_image ?? "",
-  //       });
 
-  //       if (data.slug) setSlugEdited(true);
-
-  //       if (data.hero_image) {
-  //         setPreviewUrl(
-  //           data.hero_image.startsWith("http")
-  //             ? data.hero_image
-  //             : `${UPLOAD_BASE}/${data.hero_image.replace(/.*[\\/]/, "")}`
-  //         );
-  //       }
-  //     } catch (err) {
-  //       toast.error("Failed to load article");
-  //     }
-  //   };
-  //   loadData();
-  // }, [id]);
-
-  // Load article for edit
 useEffect(() => {
   if (!id) return;
 
@@ -157,7 +112,9 @@ useEffect(() => {
       if (!data) return;
 
       setValues({
-        topic_id: typeof data.topic_id === "string" ? data.topic_id : (data.topic_id as Topic)?._id ?? "",
+        topic_id: typeof data.topic_id === "string"
+          ? data.topic_id
+          : (data.topic_id as Topic)?._id ?? "",
         title: data.title ?? "",
         slug: data.slug ?? "",
         seo_title: data.seo_title ?? "",
@@ -180,20 +137,16 @@ useEffect(() => {
         hero_image: data.hero_image ?? "",
       });
 
-      if (data.slug) setSlugEdited(true);
+      setSlugEdited(false);
 
-      if (data.hero_image) {
-        if (typeof data.hero_image === "string") {
-          setPreviewUrl(
-            data.hero_image.startsWith("http")
-              ? data.hero_image
-              : `${UPLOAD_BASE}/${data.hero_image.replace(/.*[\\/]/, "")}`
-          );
-        } else if (data.hero_image instanceof File) {
-          setPreviewUrl(URL.createObjectURL(data.hero_image));
-        }
+      if (data.hero_image && typeof data.hero_image === "string") {
+        setPreviewUrl(
+          data.hero_image.startsWith("http")
+            ? data.hero_image
+            : `${UPLOAD_BASE}/${data.hero_image.replace(/.*[\\/]/, "")}`
+        );
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to load article");
     }
   };

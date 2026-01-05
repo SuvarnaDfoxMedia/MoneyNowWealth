@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         phone: data.phone || "",
         address: data.address || "",
         profileImage: data.profileImage || null,
+        countryCode: data.countryCode || "",
       });
     } catch {
       try {
@@ -81,7 +82,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         phone: data.phone || "",
         address: data.address || "",
         profileImage: data.profileImage || null,
+        countryCode: data.countryCode || "",
       });
+
+      // Refresh user data to get complete profile including countryCode
+      // because login endpoint doesn't return countryCode but get-profile does
+      setTimeout(() => {
+        refreshUser();
+      }, 500);
     } catch (err: any) {
       clearAuth();
       const msg = err.response?.data?.message || "Invalid email or password";

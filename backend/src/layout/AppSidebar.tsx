@@ -1,6 +1,6 @@
 
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   FiChevronDown,
@@ -45,46 +45,46 @@ const AppSidebar: React.FC = () => {
       icon: <FiEdit3 />,
       roles: ["admin"],
       subItems: [
-        { name: "Cluster", path: `/${role}/cluster`, roles: ["admin", "editor"] },
-        { name: "Topics", path: `/${role}/topic`, roles: ["admin", "editor"] },
-        { name: "Articles", path: `/${role}/article`, roles: ["admin", "editor"] },
+        { name: "Cluster", path: `/${role}/cluster?nav=sidebar&page=1&limit=10`, roles: ["admin", "editor"] },
+        { name: "Topics", path: `/${role}/topic?nav=sidebar&page=1&limit=10`, roles: ["admin", "editor"] },
+        { name: "Articles", path: `/${role}/article?nav=sidebar&page=1&limit=10`, roles: ["admin", "editor"] },
       ],
     },
     {
       name: "CMS Pages",
       icon: <FiFileText />,
-      path: `/${role}/cmspages`,
+      path: `/${role}/cmspages?nav=sidebar&page=1&limit=10`,
       roles: ["admin"],
     },
     {
       name: "Subscription Plan",
       icon: <FiFile />,
-      path: `/${role}/subscriptionplan`,
+      path: `/${role}/subscriptionplan?nav=sidebar&page=1&limit=10`,
       roles: ["admin"],
     },
     {
       name: "User Subscription",
       icon: <FiUsers />,
-      path: `/${role}/user-subscription`,
+      path: `/${role}/user-subscription?nav=sidebar&page=1&limit=10`,
       roles: ["admin"],
     },
         {
       name: "Customer",
       icon: <FiUsers />,
-      path: `/customers`,
+      path: `/customers?nav=sidebar&page=1&limit=10`,
       roles: ["admin"],
     },
     {
       name: "Newsletter",
       icon: <FiMail />,
-      path: `/${role}/newsletter`,
+      path: `/${role}/newsletter?nav=sidebar&page=1&limit=10`,
       roles: ["admin"],
     },
      
     {
       name: "Contact Enquiry",
       icon: <FiMessageSquare />,
-      path: `/${role}/contactenquiry`,
+      path: `/${role}/contactenquiry?nav=sidebar&page=1&limit=10`,
       roles: ["admin"],
     },
     {
@@ -106,15 +106,48 @@ const AppSidebar: React.FC = () => {
     }));
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
+  const [manuallyOpened, setManuallyOpened] = useState<number | null>(null);
   const subMenuRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const isActive = useCallback(
-    (path: string) => location.pathname === path || location.pathname.startsWith(path + "/"),
+    (path: string) => {
+      // Extract base path from navigation path (remove query parameters)
+      const basePath = path.split('?')[0];
+      return location.pathname === basePath || location.pathname.startsWith(basePath + "/");
+    },
     [location.pathname]
   );
 
+  const isSubmenuActive = useCallback(
+    (subItems: NavItem['subItems']) => {
+      if (!subItems) return false;
+      return subItems.some(subItem => isActive(subItem.path));
+    },
+    [isActive]
+  );
+
+  // Auto-open submenu if any of its sub-items are active, close otherwise
+  useEffect(() => {
+    const activeSubmenuIndex = navItems.findIndex((nav, index) => 
+      nav.subItems && isSubmenuActive(nav.subItems)
+    );
+    
+    if (activeSubmenuIndex !== -1) {
+      // Auto-open when sub-item is active
+      setOpenSubmenu(activeSubmenuIndex);
+      setManuallyOpened(null); // Clear manual state when auto-opening
+    } else {
+      // Close only if it was auto-opened, not manually opened
+      if (openSubmenu !== null && manuallyOpened === null) {
+        setOpenSubmenu(null);
+      }
+    }
+  }, [location.pathname, navItems, isSubmenuActive, openSubmenu, manuallyOpened]);
+
   const toggleSubmenu = (index: number) => {
-    setOpenSubmenu((prev) => (prev === index ? null : index));
+    const newState = openSubmenu === index ? null : index;
+    setOpenSubmenu(newState);
+    setManuallyOpened(newState); // Track that this was manually opened
   };
 
   const renderMenuItems = (items: NavItem[]) => (
@@ -126,14 +159,14 @@ const AppSidebar: React.FC = () => {
               <button
                 onClick={() => toggleSubmenu(index)}
                 className={`menu-item group ${
-                  openSubmenu === index ? "menu-item-active" : "menu-item-inactive"
+                  openSubmenu === index || isSubmenuActive(nav.subItems) ? "menu-item-active" : "menu-item-inactive"
                 } cursor-pointer ${
                   !isExpanded && !isHovered ? "lg:justify-center" : "lg:justify-start"
                 }`}
               >
                 <span
                   className={`menu-item-icon-size ${
-                    openSubmenu === index
+                    openSubmenu === index || isSubmenuActive(nav.subItems)
                       ? "menu-item-icon-active"
                       : "menu-item-icon-inactive"
                   }`}

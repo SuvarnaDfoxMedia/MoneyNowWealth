@@ -1,9 +1,9 @@
 
 
 import mongoose, { Document, Schema, Model, Types } from "mongoose";
-import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel"; // adjust path
-import User from "./userModel"; // adjust path
-import SubscriptionPlan from "./subscriptionPlan.model"; // adjust path
+import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel"; 
+import User from "./userModel"; 
+import SubscriptionPlan from "./subscriptionPlan.model"; 
 
 // ---------------------- INTERFACE ----------------------
 export interface IUserSubscription extends Document {
