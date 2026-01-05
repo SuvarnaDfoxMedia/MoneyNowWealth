@@ -50,7 +50,6 @@ export default function NewsletterListing() {
     setSubscribers(extractList);
   }, [extractList]);
 
-  // ✅ Fix: optional chaining
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
@@ -152,7 +151,7 @@ export default function NewsletterListing() {
       {/* Delete Modal */}
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[9999]">
+          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
             <div className="bg-white p-6 rounded-xl shadow-xl w-80">
               <h2 className="text-lg font-medium mb-4">Delete Subscriber?</h2>
               <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this subscriber?</p>
