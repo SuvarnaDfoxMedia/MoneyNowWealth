@@ -11,78 +11,96 @@ type Response = express.Response;
 // ==================== PUBLIC API ====================
 
 // Get published clusters with topics & articles (public view)
+// export const getPublishedClustersTopicsArticles = async (req: Request, res: Response) => {
+//   try {
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+
+//     const clusters = await Cluster.aggregate([
+//       { $match: { status: "published" } },
+//       { $sort: { sort_order: 1 } },
+//       {
+//         $lookup: {
+//           from: "topics",
+//           let: { clusterId: "$_id" },
+//           pipeline: [
+//             {
+//               $match: {
+//                 $expr: {
+//                   $and: [
+//                     { $eq: ["$cluster_id", "$$clusterId"] },
+//                     { $eq: ["$is_deleted", false] },
+//                     { $eq: ["$status", "published"] },
+//                     { $lte: ["$publish_date", today] },
+//                     { $in: ["$access_type", ["free", "premium"]] }, // include Premium + Free
+//                   ],
+//                 },
+//               },
+//             },
+//             { $sort: { publish_date: -1, created_at: -1 } },
+//             {
+//               $lookup: {
+//                 from: "articles",
+//                 let: { topicId: "$_id" },
+//                 pipeline: [
+//                   {
+//                     $match: {
+//                       $expr: {
+//                         $and: [
+//                           { $eq: ["$topic_id", "$$topicId"] },
+//                           { $eq: ["$is_deleted", false] },
+//                           { $eq: ["$status", "published"] },
+//                           { $lte: ["$publish_date", today] },
+//                         ],
+//                       },
+//                     },
+//                   },
+//                   { $sort: { publish_date: -1, created_at: -1 } },
+//                 ],
+//                 as: "articles",
+//               },
+//             },
+//           ],
+//           as: "topics",
+//         },
+//       },
+//       {
+//         $project: {
+//           _id: 1,
+//           cluster_code: 1,
+//           title: 1,
+//           description: 1,
+//           thumbnail: 1,
+//           sort_order: 1,
+//           topics: 1,
+//         },
+//       },
+//     ]);
+
+//     res.status(200).json({ success: true, count: clusters.length, clusters });
+//   } catch (error: any) {
+//     console.error("Error fetching published clusters/topics/articles:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
+
+// ------------------- API -------------------
 export const getPublishedClustersTopicsArticles = async (req: Request, res: Response) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const clusters = await topicService.getPublishedClustersTopicsArticles();
 
-    const clusters = await Cluster.aggregate([
-      { $match: { status: "published" } },
-      { $sort: { sort_order: 1 } },
-      {
-        $lookup: {
-          from: "topics",
-          let: { clusterId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$cluster_id", "$$clusterId"] },
-                    { $eq: ["$is_deleted", false] },
-                    { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", today] },
-                    { $in: ["$access_type", ["free", "premium"]] }, // include Premium + Free
-                  ],
-                },
-              },
-            },
-            { $sort: { publish_date: -1, created_at: -1 } },
-            {
-              $lookup: {
-                from: "articles",
-                let: { topicId: "$_id" },
-                pipeline: [
-                  {
-                    $match: {
-                      $expr: {
-                        $and: [
-                          { $eq: ["$topic_id", "$$topicId"] },
-                          { $eq: ["$is_deleted", false] },
-                          { $eq: ["$status", "published"] },
-                          { $lte: ["$publish_date", today] },
-                        ],
-                      },
-                    },
-                  },
-                  { $sort: { publish_date: -1, created_at: -1 } },
-                ],
-                as: "articles",
-              },
-            },
-          ],
-          as: "topics",
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          cluster_code: 1,
-          title: 1,
-          description: 1,
-          thumbnail: 1,
-          sort_order: 1,
-          topics: 1,
-        },
-      },
-    ]);
-
-    res.status(200).json({ success: true, count: clusters.length, clusters });
+    res.status(200).json({
+      success: true,
+      count: clusters.length,
+      clusters,
+    });
   } catch (error: any) {
     console.error("Error fetching published clusters/topics/articles:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // Get topic by ID with articles (public view)
 export const getPublishedTopicWithArticlesByIdAgg = async (req: Request, res: Response) => {

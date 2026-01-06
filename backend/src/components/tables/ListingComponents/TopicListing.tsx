@@ -255,7 +255,7 @@ export default function TopicListing() {
 
       {/* Delete Modal */}
       {deleteModalId && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[99999]">
+        <div className="fixed inset-0 bg-black/70 bg-opacity-70 flex justify-center items-center z-[99999]">
           <div className="bg-white p-6 rounded-xl w-96">
             <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
             <p className="mb-6 text-gray-600">Are you sure you want to delete this topic?</p>

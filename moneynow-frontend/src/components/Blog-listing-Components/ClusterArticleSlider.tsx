@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 // "use client";
 
 // import React, { useState, useEffect } from "react";
@@ -127,12 +128,19 @@
 
 
 
+=======
+>>>>>>> Stashed changes
 "use client";
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+// Simple sanitize function to allow basic HTML (you can replace with DOMPurify if needed)
+const sanitize = (html?: string) => {
+  return { __html: html || "" };
+};
 
 interface Article {
   _id: string;
@@ -152,107 +160,66 @@ interface Props {
   articles: Article[];
   cluster: Cluster;
   apiBase: string;
+  perPage?: number; // Articles per page
 }
 
-const ClusterArticleSlider: React.FC<Props> = ({ articles, cluster, apiBase }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [visibleCards, setVisibleCards] = useState(2);
+const ClusterArticlePagination: React.FC<Props> = ({
+  articles,
+  cluster,
+  apiBase,
+  perPage = 10,
+}) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleArticles, setVisibleArticles] = useState<Article[]>([]);
 
-  const maxIndex = Math.max(articles.length - visibleCards, 0);
-
-  // Responsive
-  useEffect(() => {
-    const update = () => {
-      if (window.innerWidth < 640) setVisibleCards(1);
-      else setVisibleCards(2);
-    };
-
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
+  const totalPages = Math.ceil(articles.length / perPage);
 
   useEffect(() => {
-    setCurrentIndex(0);
-  }, [visibleCards]);
-
-  const stripHtml = (html?: string) => {
-    if (!html) return "";
-    return html.replace(/<[^>]*>/g, "").trim();
-  };
+    const start = (currentPage - 1) * perPage;
+    const end = start + perPage;
+    setVisibleArticles(articles.slice(start, end));
+  }, [currentPage, articles, perPage]);
 
   if (articles.length === 0) return <p className="text-gray-500">No articles available</p>;
 
   return (
-    <div>
-      <h3 className="text-[22px] font-semibold ">Topics</h3>
+    <div className="w-full">
+      <h3 className="text-[24px] sm:text-[28px] font-poppins font-semibold">Explore Topics</h3>
 
-      <div className="relative overflow-hidden">
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{
-            transform: `translateX(-${currentIndex * (100 / visibleCards)}%)`,
-          }}
-        >
-          {articles.map((article) => (
-            <div
-              key={article._id}
-              className="flex-shrink-0 p-2"
-              style={{ width: `${100 / visibleCards}%` }}
-            >
-              <Link
-                href={`/blog/${article.slug}`}
-                className="block bg-white rounded-xl"
-              >
-                {/* Category / Cluster Title */}
-                <div className="px-4 pt-4">
-                  <span className="text-[#043F79] text-[18px] font-bold font-inter ">
-                    {cluster.title}
-                  </span>
-                </div>
+   <div className="flex flex-col gap-6">
+  {visibleArticles.map((article) => (
+    <Link
+      key={article._id}
+      href={`/blog/${article.slug}`}
+      className="flex flex-col md:flex-row bg-white rounded-xl overflow-hidden transition"
+    >
+      {/* Left: Content */}
+      <div className="flex-1 p-5 flex flex-col justify-between">
+        <span className="text-[#043F79] font-bold text-[18px] font-inter">
+          {cluster.title}
+        </span>
 
-                {/* Article Title */}
-                <h3 className="px-4 mt-2 text-[20px] font-semibold line-clamp-2">
-                  {article.title}
-                </h3>
+        <h3 className="mt-2 text-[20px] font-semibold line-clamp-2 font-poppins">
+          {article.title}
+        </h3>
 
-                {/* Author & Date */}
-                <div className="px-4 mt-2 text-[15px] font-inter mb-2 flex gap-1 text-gray-600">
-                  <span>{article.author || "Team Money Now"}</span>
-                  {article.created_at && (
-                    <>
-                      <span>|</span>
-                      <span>
-                        {new Date(article.created_at).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </>
-                  )}
-                </div>
-
-                {/* Image */}
-                {article.hero_image && (
-                  <div className="relative w-full h-[286px] mt-3">
-                    <Image
-                      src={`${apiBase}/uploads/hero/${article.hero_image
-                        .replace(/\\/g, "/")
-                        .split("/")
-                        .pop()}`}
-                      alt={article.title}
-                      fill
-                      className="object-cover rounded-[10px] group-hover:scale-105 transition-transform duration-300"
-                      unoptimized
-                    />
-                  </div>
-                )}
-              </Link>
-            </div>
-          ))}
+        <div className="mt-2 text-[15px] flex gap-1 flex-wrap items-center">
+          <span>{article.author || "Team Money Now"}</span>
+          {article.created_at && (
+            <>
+              <span>|</span>
+              <span>
+                {new Date(article.created_at).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </span>
+            </>
+          )}
         </div>
 
+<<<<<<< Updated upstream
         {/* Arrow */}
         {/* <button
           onClick={() => setCurrentIndex((i) => Math.max(i - 1, 0))}
@@ -289,9 +256,87 @@ const ClusterArticleSlider: React.FC<Props> = ({ articles, cluster, apiBase }) =
 </button>
 
         
+=======
+        {/* Introduction — FIXED */}
+        {article.introduction && (
+          <div
+            className=" mt-2 font-inter line-clamp-3
+                       [&_p]:inline
+                       [&_p]:!text-[20px]
+                       [&_p]:!leading-[30px]
+                       [&_p]:mb-0"
+            dangerouslySetInnerHTML={sanitize(article.introduction)}
+          />
+        )}
+>>>>>>> Stashed changes
       </div>
+
+      {/* Right: Image */}
+      {article.hero_image && (
+        <div className="relative w-full md:w-[300px] h-[150px] md:h-auto flex-shrink-0 rounded-xl overflow-hidden">
+          <Image
+            src={`${apiBase}/uploads/hero/${article.hero_image
+              .replace(/\\/g, "/")
+              .split("/")
+              .pop()}`}
+            alt={article.title}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+      )}
+    </Link>
+  ))}
+</div>
+
+
+
+      {/* Pagination */}
+  <div className="flex justify-center items-center mt-6 gap-1">
+  {/* Previous */}
+  <button
+    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+    disabled={currentPage === 1}
+    className="w-9 h-9 flex items-center justify-center 
+               bg-gray-200 text-gray-600
+               disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    <ChevronLeft size={16} />
+  </button>
+
+  {/* Page Numbers */}
+  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+    <button
+      key={page}
+      onClick={() => setCurrentPage(page)}
+      className={`w-9 h-9 text-sm flex items-center justify-center border
+        ${
+          currentPage === page
+            ? "bg-[#043F79] text-white border-[#043F79] font-medium"
+            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+        }`}
+    >
+      {page}
+    </button>
+  ))}
+
+  {/* Next */}
+  <button
+    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+    disabled={currentPage === totalPages}
+    className="w-9 h-9 flex items-center justify-center 
+               bg-gray-200 text-gray-600
+               disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    <ChevronRight size={16} />
+  </button>
+</div>
+
+
+
     </div>
   );
 };
 
-export default ClusterArticleSlider;
+export default ClusterArticlePagination;

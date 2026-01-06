@@ -103,7 +103,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
     {article.title}
   </p>
 
-  <p className="text-[13px] sm:text-[16px] font-inter font-medium">
+  <p className="text-[13px] sm:text-[15px] font-inter font-medium">
     {article.author || "Team Money Now"} &nbsp;|&nbsp;
     {article.created_at
       ? new Date(article.created_at).toLocaleDateString("en-IN", {
@@ -132,6 +132,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {/* Right Banner */}
           <div className="relative w-full rounded">
                    <Image
@@ -143,6 +144,9 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
                 className="w-full h-auto rounded"
                    />
                </div>
+=======
+         
+>>>>>>> Stashed changes
     </>
   );
 };

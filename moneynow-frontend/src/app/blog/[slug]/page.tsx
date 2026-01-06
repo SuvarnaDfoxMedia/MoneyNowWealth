@@ -204,8 +204,6 @@
 // export default BlogDetails;
 
 
-
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -254,6 +252,54 @@ const BlogDetails = () => {
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
   const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL;
+
+  const [activeSection, setActiveSection] = useState<string>("introduction"); // default active
+  
+  useEffect(() => {
+  const sections = document.querySelectorAll<HTMLElement>("section[id]");
+  
+  const observer = new IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        }
+      });
+    },
+    { root: null, rootMargin: "0px", threshold: 0.4 } // adjust threshold if needed
+  );
+
+  sections.forEach(sec => observer.observe(sec));
+
+  return () => {
+    sections.forEach(sec => observer.unobserve(sec));
+  };
+}, []);
+
+
+useEffect(() => {
+  const sections = document.querySelectorAll<HTMLElement>(
+    "#introduction, [id^='section-'], #faqs, #tools, #related-reads"
+  );
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveSection(entry.target.id);
+        }
+      });
+    },
+    { rootMargin: "-50% 0px -50% 0px", threshold: 0 } // triggers when section is near middle of viewport
+  );
+
+  sections.forEach((section) => observer.observe(section));
+
+  return () => {
+    sections.forEach((section) => observer.unobserve(section));
+  };
+}, [article]);
+
 
   /* ================= FETCH BLOG ================= */
   useEffect(() => {
@@ -309,15 +355,24 @@ const BlogDetails = () => {
     {topicTitle && (
       <span className="text-[20px] font-inter font-semibold text-[#043F79]">{topicTitle}</span>
     )}
-    <h1 className="text-[22px] md:text-[32px] font-poppins font-semibold leading-[44px] mt-[10px] mb-[20px]">{article.title}</h1>
-    {article.introduction && (
-      <div
-        className="text-gray-600 mb-6 font-inter [&_p]:!text-[20px] [&_p]:!leading-[32px] [&_p]:mb-4"
-        dangerouslySetInnerHTML={sanitize(article.introduction)}
-      />
-    )}
+    <p className="text-[22px] md:text-[32px] font-poppins font-semibold leading-[44px] mt-[10px] mb-[10px]">{article.title}</p>
+   
+   {article.introduction && (
+  <div
+    className="
+      font-inter
+      line-clamp-5
+      [&_p]:!text-[19px]
+      [&_p]:!leading-[30px]
+      [&_p]:mb-3
+    "
+    dangerouslySetInnerHTML={sanitize(article.introduction)}
+  />
+)}
+
+
     {/* SHARE */}
-    <div className="flex items-center gap-3 mb-3"> {/* reduced from mb-6 to mb-3 */}
+    <div className="flex items-center gap-3 mb-3 mt-6"> {/* reduced from mb-6 to mb-3 */}
       <span className="text-[15px] font-inter">Share:</span>
       <a href={`https://www.facebook.com/sharer/sharer.php?u=${pageUrl}`} target="_blank" className="w-10 h-10 flex items-center justify-center rounded-full border border-dashed"><FaFacebookF /></a>
       <a href={`https://twitter.com/intent/tweet?url=${pageUrl}`} target="_blank" className="w-10 h-10 flex items-center justify-center rounded-full border border-dashed"><FaTwitter /></a>
@@ -327,40 +382,98 @@ const BlogDetails = () => {
     <p className="text-[16px] font-inter font-medium">{article.author || "Team Money Now"} | {article.created_at && new Date(article.created_at).toLocaleDateString()}</p>
   </div>
 
-  {/* RIGHT HERO IMAGE ONLY IF hero_image EXISTS */}
-  {heroImageSrc && (
-    <div className="relative w-full rounded-lg overflow-hidden">
-      <Image
-        src={heroImageSrc}
-        alt={article.title}
-        width={1200}
-        height={450}
-        className="w-full h-auto rounded"
-        unoptimized
-        priority
-      />
-    </div>
-  )}
-</div>
+{/* RIGHT HERO IMAGE ONLY IF hero_image EXISTS */}
+{heroImageSrc && (
+  <div className="relative w-full rounded-lg overflow-hidden flex items-center justify-center">
+    <Image
+      src={heroImageSrc}
+      alt={article.title}
+      width={1200}
+      height={450}
+      className="w-full h-auto rounded"
+      unoptimized
+      priority
+    />
+  </div>
+)}
 
-          
+
+</div>     
         </div>
       </section>
 
       {/* ================= CONTENT ================= */}
       <section className="w-full font-poppins mb-10">
+<<<<<<< Updated upstream
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+=======
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-[35px]">
+>>>>>>> Stashed changes
             {/* LEFT – TOC */}
             <aside className="lg:col-span-4 mb-6 lg:mb-0">
               <div className="sticky top-6 lg:top-24 border-r lg:border-r pr-0 lg:pr-6 border-[#E8E8E8]">
                 <h3 className="text-[20px] font-inter text-[#043F79] font-bold mb-4">Table Of Content</h3>
-                <ul className="text-[16px] sm:text-[18px] font-medium font-poppins border-t border-b border-[#E8E8E8] divide-y divide-[#E8E8E8]">
-                  {article.sections?.map((sec, i) => sec.title?.trim() ? <li key={i} className="py-3 last:border-b-0"><a href={`#section-${i}`} className="block hover:text-[#043F79]">{sec.title}</a></li> : null)}
-                  {article.faqs?.some(f => f.question?.trim() && f.answer?.trim()) && <li className="py-3"><a href="#faqs" className="block hover:text-[#043F79]">FAQs</a></li>}
-                  {article.tools?.some(t => t.title?.trim() && t.content?.trim()) && <li className="py-3"><a href="#tools" className="block hover:text-[#043F79]">Tools</a></li>}
-                  {article.related_reads?.some(r => r.title?.trim() && r.content?.trim()) && <li className="py-3"><a href="#related-reads" className="block hover:text-[#043F79]">Related Reads</a></li>}
-                </ul>
+               <ul className="text-[16px] sm:text-[18px] font-medium font-poppins border-t border-b border-[#E8E8E8] divide-y divide-[#E8E8E8]">
+  {article.introduction?.trim() && (
+    <li className="py-3">
+      <a
+        href="#introduction"
+        className={`block ${activeSection === "introduction" ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+      >
+        Introduction
+      </a>
+    </li>
+  )}
+
+  {article.sections?.map((sec, i) =>
+    sec.title?.trim() ? (
+      <li key={i} className="py-3 last:border-b-0">
+        <a
+          href={`#section-${i}`}
+          className={`block ${activeSection === `section-${i}` ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+        >
+          {sec.title}
+        </a>
+      </li>
+    ) : null
+  )}
+
+  {article.faqs?.some(f => f.question?.trim() && f.answer?.trim()) && (
+    <li className="py-3">
+      <a
+        href="#faqs"
+        className={`block ${activeSection === "faqs" ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+      >
+        FAQs
+      </a>
+    </li>
+  )}
+
+  {article.tools?.some(t => t.title?.trim() && t.content?.trim()) && (
+    <li className="py-3">
+      <a
+        href="#tools"
+        className={`block ${activeSection === "tools" ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+      >
+        Tools
+      </a>
+    </li>
+  )}
+
+  {article.related_reads?.some(r => r.title?.trim() && r.content?.trim()) && (
+    <li className="py-3">
+      <a
+        href="#related-reads"
+        className={`block ${activeSection === "related-reads" ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+      >
+        Related Reads
+      </a>
+    </li>
+  )}
+</ul>
+
                 <div className="relative w-full rounded mt-6 mb-5">
                   <Image src="/images/blog-listing-right-banner2.png" alt="Banner" width={1200} height={620} sizes="(max-width: 768px) 100vw, 1200px" className="w-full h-auto rounded" />
                 </div>
@@ -369,59 +482,132 @@ const BlogDetails = () => {
             </aside>
 
             {/* RIGHT – ARTICLE */}
-            <main className="lg:col-span-8 space-y-6">
-              {article.sections?.map((sec, i) => sec.content?.trim() && (
-                <section id={`section-${i}`} key={i} className="space-y-4">
-                  {sec.title && <h2 className="text-[22px] leading-[32px] font-poppins font-semibold">{sec.title}</h2>}
-                  <div className="overflow-x-auto sm:overflow-x-hidden">
-                    <div className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[28px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle" dangerouslySetInnerHTML={sanitize(sec.content)} />
-                  </div>
-                </section>
-              ))}
+          <main className="lg:col-span-8 space-y-6">
+  {/* Introduction */}
+  {article.introduction && (
+    <section id="introduction" className="space-y-4">
+      <h2
+        className={`text-[22px] leading-[32px] font-poppins font-semibold ${
+          activeSection === "introduction" ? "text-[#043F79]" : "text-black"
+        }`}
+      >
+        Introduction
+      </h2>
+      <div
+        className="font-inter [&_p]:!text-[19px] [&_p]:!leading-[28px]"
+        dangerouslySetInnerHTML={sanitize(article.introduction)}
+      />
+    </section>
+  )}
 
-              {/* FAQ, Tools, Related Reads */}
-              {article.faqs?.some(f => f.question?.trim() && f.answer?.trim()) && (
-                <section id="faqs" className="space-y-4">
-                  <h2 className="text-[22px] font-semibold">FAQs</h2>
-                  {article.faqs.map((faq, i) => faq.question?.trim() && faq.answer?.trim() && (
-                    <div key={i} className="space-y-2">
-                      <p className="font-semibold text-[18px]">{faq.question}</p>
-                      <div className="overflow-x-auto sm:overflow-x-hidden">
-                        <div className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[28px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle" dangerouslySetInnerHTML={sanitize(faq.answer)} />
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              )}
+  {/* Sections */}
+  {article.sections?.map(
+    (sec, i) =>
+      sec.content?.trim() && (
+        <section id={`section-${i}`} key={i} className="space-y-4">
+          {sec.title && (
+            <h2
+              className={`text-[22px] leading-[32px] font-poppins font-semibold ${
+                activeSection === `section-${i}` ? "text-[#043F79]" : "text-black"
+              }`}
+            >
+              {sec.title}
+            </h2>
+          )}
+          <div className="overflow-x-auto sm:overflow-x-hidden">
+            <div
+              className=" font-inter [&_p]:!text-[19px] [&_p]:!leading-[28px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle"
+              dangerouslySetInnerHTML={sanitize(sec.content)}
+            />
+          </div>
+        </section>
+      )
+  )}
 
-              {article.tools?.some(t => t.title?.trim() && t.content?.trim()) && (
-                <section id="tools" className="space-y-4">
-                  <h2 className="text-[22px] font-semibold">Tools</h2>
-                  {article.tools.map((tool, i) => tool.title?.trim() && tool.content?.trim() && (
-                    <div key={i} className="space-y-2">
-                      <p className="font-semibold text-[18px]">{tool.title}</p>
-                      <div className="overflow-x-auto sm:overflow-x-hidden">
-                        <div className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[30px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:text-[18px] [&_li]:leading-[30px] [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle" dangerouslySetInnerHTML={sanitize(tool.content)} />
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              )}
+  {/* FAQs */}
+  {article.faqs?.some((f) => f.question?.trim() && f.answer?.trim()) && (
+    <section id="faqs" className="space-y-4">
+      <h2
+        className={`text-[22px] font-semibold ${
+          activeSection === "faqs" ? "text-[#043F79]" : "text-black"
+        }`}
+      >
+        FAQs
+      </h2>
+      {article.faqs.map(
+        (faq, i) =>
+          faq.question?.trim() &&
+          faq.answer?.trim() && (
+            <div key={i} className="space-y-2">
+              <p className="font-semibold text-[18px]">{faq.question}</p>
+              <div className="overflow-x-auto sm:overflow-x-hidden">
+                <div
+                  className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[28px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle"
+                  dangerouslySetInnerHTML={sanitize(faq.answer)}
+                />
+              </div>
+            </div>
+          )
+      )}
+    </section>
+  )}
 
-              {article.related_reads?.some(r => r.title?.trim() && r.content?.trim()) && (
-                <section id="related-reads" className="space-y-4">
-                  <h2 className="text-[22px] font-semibold">Related Reads</h2>
-                  {article.related_reads.map((read, i) => read.title?.trim() && read.content?.trim() && (
-                    <div key={i} className="space-y-2">
-                      <p className="font-semibold text-[18px]">{read.title}</p>
-                      <div className="overflow-x-auto sm:overflow-x-hidden">
-                        <div className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[28px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle" dangerouslySetInnerHTML={sanitize(read.content)} />
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              )}
-            </main>
+  {/* Tools */}
+  {article.tools?.some((t) => t.title?.trim() && t.content?.trim()) && (
+    <section id="tools" className="space-y-4">
+      <h2
+        className={`text-[22px] font-semibold ${
+          activeSection === "tools" ? "text-[#043F79]" : "text-black"
+        }`}
+      >
+        Tools
+      </h2>
+      {article.tools.map(
+        (tool, i) =>
+          tool.title?.trim() &&
+          tool.content?.trim() && (
+            <div key={i} className="space-y-2">
+              <p className="font-semibold text-[18px]">{tool.title}</p>
+              <div className="overflow-x-auto sm:overflow-x-hidden">
+                <div
+                  className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[30px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:text-[18px] [&_li]:leading-[30px] [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle"
+                  dangerouslySetInnerHTML={sanitize(tool.content)}
+                />
+              </div>
+            </div>
+          )
+      )}
+    </section>
+  )}
+
+  {/* Related Reads */}
+  {article.related_reads?.some((r) => r.title?.trim() && r.content?.trim()) && (
+    <section id="related-reads" className="space-y-4">
+      <h2
+        className={`text-[22px] font-semibold ${
+          activeSection === "related-reads" ? "text-[#043F79]" : "text-black"
+        }`}
+      >
+        Related Reads
+      </h2>
+      {article.related_reads.map(
+        (read, i) =>
+          read.title?.trim() &&
+          read.content?.trim() && (
+            <div key={i} className="space-y-2">
+              <p className="font-semibold text-[18px]">{read.title}</p>
+              <div className="overflow-x-auto sm:overflow-x-hidden">
+                <div
+                  className="text-gray-700 font-inter [&_p]:!text-[18px] [&_p]:!leading-[28px] [&_p]:mb-4 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_table]:w-full [&_table]:table-auto [&_table]:border [&_table]:border-gray-300 [&_table]:border-collapse [&_table]:mb-4 [&_th]:border [&_th]:border-gray-300 [&_th]:px-4 [&_th]:py-2 [&_th]:bg-gray-100 [&_th]:text-left [&_th]:align-middle [&_td]:border [&_td]:border-gray-300 [&_td]:px-4 [&_td]:py-2 [&_td]:text-left [&_td]:align-middle"
+                  dangerouslySetInnerHTML={sanitize(read.content)}
+                />
+              </div>
+            </div>
+          )
+      )}
+    </section>
+  )}
+</main>
           </div>
           <SeniorCitizen />
         </div>

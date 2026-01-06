@@ -322,62 +322,77 @@ export const topicService = {
   /* ----------------------------------------------
       PUBLIC — Get published clusters → topics → articles
   ---------------------------------------------- */
-  getPublishedClustersTopicsArticles: async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+getPublishedClustersTopicsArticles: async () => {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
 
-    return Cluster.aggregate([
-      { $match: { status: "published" } },
-      { $sort: { sort_order: 1 } },
+  return Cluster.aggregate([
+    { $match: { status: "published" } },
+    { $sort: { sort_order: 1 } },
 
-      {
-        $lookup: {
-          from: "topics",
-          let: { clusterId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$cluster_id", "$$clusterId"] },
-                    { $eq: ["$is_deleted", false] },
-                    { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", today] },
-                    { $eq: ["$access_type", "free"] },
-                  ],
-                },
+    {
+      $lookup: {
+        from: "topics",
+        let: { clusterId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$cluster_id", "$$clusterId"] },
+                  { $eq: ["$is_deleted", false] },
+                  { $eq: ["$status", "published"] },
+                  { $lte: ["$publish_date", today] },
+                  { $in: ["$access_type", ["free", "premium"]] },
+                ],
               },
             },
-            { $sort: { publish_date: -1, created_at: -1 } },
+          },
 
-            {
-              $lookup: {
-                from: "articles",
-                let: { topicId: "$_id" },
-                pipeline: [
-                  {
-                    $match: {
-                      $expr: {
-                        $and: [
-                          { $eq: ["$topic_id", "$$topicId"] },
-                          { $eq: ["$is_deleted", false] },
-                          { $eq: ["$status", "published"] },
-                          { $lte: ["$publish_date", today] },
-                        ],
-                      },
+          // ✅ latest topics first
+          { $sort: { publish_date: -1 } },
+
+          // ✅ LIMIT TO LATEST 3 TOPICS
+          { $limit: 3 },
+
+          {
+            $lookup: {
+              from: "articles",
+              let: { topicId: "$_id" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ["$topic_id", "$$topicId"] },
+                        { $eq: ["$is_deleted", false] },
+                        { $eq: ["$status", "published"] },
+                        { $lte: ["$publish_date", today] },
+                      ],
                     },
                   },
-                  { $sort: { publish_date: -1, created_at: -1 } },
-                ],
-                as: "articles",
-              },
+                },
+
+                // ✅ latest article per topic
+                { $sort: { publish_date: -1 } },
+                { $limit: 1 },
+              ],
+              as: "articles",
             },
-          ],
-          as: "topics",
-        },
+          },
+
+          { $match: { "articles.0": { $exists: true } } },
+        ],
+        as: "topics",
       },
-    ]);
-  },
+    },
+
+    { $match: { "topics.0": { $exists: true } } },
+  ]);
+},
+
+
+
 
   /* ----------------------------------------------
       PUBLIC — Get single topic + articles

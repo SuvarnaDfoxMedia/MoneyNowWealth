@@ -198,7 +198,12 @@ export interface CardData {
   category: string;
   title: string;
   description: string;
+<<<<<<< Updated upstream
   created_at?: string;    // blog date
+=======
+  published_at: string;
+  author: string;
+>>>>>>> Stashed changes
 }
 
 export const useFetchCards = (endpoint: string, limit: number = 3) => {
@@ -214,14 +219,29 @@ export const useFetchCards = (endpoint: string, limit: number = 3) => {
       try {
         const { data } = await API.get(endpoint);
 
-        if (!data.success || !Array.isArray(data.clusters)) {
+        /**
+         * ✅ API returns ARRAY of clusters
+         * NOT { success, clusters }
+         */
+        const clusters = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.clusters)
+          ? data.clusters
+          : [];
+
+        if (!clusters.length) {
           setCards([]);
           setError("Invalid API response");
           return;
         }
 
+<<<<<<< Updated upstream
         // Flatten clusters → topics with clusterTitle
         const allTopics = data.clusters.flatMap((cluster: any) =>
+=======
+        // 1️⃣ Flatten all topics from all clusters
+        const allTopics = clusters.flatMap((cluster: any) =>
+>>>>>>> Stashed changes
           Array.isArray(cluster.topics)
             ? cluster.topics.map((topic: any) => ({
                 ...topic,
@@ -230,6 +250,7 @@ export const useFetchCards = (endpoint: string, limit: number = 3) => {
             : []
         );
 
+<<<<<<< Updated upstream
         // Filter published + active
         const publishedTopics = allTopics.filter(
           (t: any) => t.status === "published" && t.is_active === 1
@@ -271,7 +292,78 @@ export const useFetchCards = (endpoint: string, limit: number = 3) => {
             description,
             created_at: topic.created_at || article?.created_at || "",
           };
+=======
+        // 2️⃣ Keep only valid published topics with articles
+        const validTopics = allTopics.filter(
+          (t: any) =>
+            t.status === "published" &&
+            t.is_active === 1 &&
+            Array.isArray(t.articles) &&
+            t.articles.length > 0
+        );
+
+        if (!validTopics.length) {
+          setCards([]);
+          return;
+        }
+
+        // 3️⃣ Pick the latest article per topic (publish_date ONLY)
+        const topicsWithLatestArticle = validTopics.map((topic: any) => {
+          const latestArticle = topic.articles.reduce(
+            (latest: any, current: any) =>
+              new Date(current.publish_date) >
+              new Date(latest.publish_date)
+                ? current
+                : latest
+          );
+
+          return { topic, latestArticle };
+>>>>>>> Stashed changes
         });
+
+        // 4️⃣ Sort globally by publish_date
+        topicsWithLatestArticle.sort(
+          (a, b) =>
+            new Date(b.latestArticle.publish_date).getTime() -
+            new Date(a.latestArticle.publish_date).getTime()
+        );
+
+        // 5️⃣ Take latest N
+        const latestTopics = topicsWithLatestArticle.slice(0, limit);
+
+        // 6️⃣ Format for UI
+        const formattedCards: CardData[] = latestTopics.map(
+          ({ topic, latestArticle }) => {
+            let imageSrc = "/no-image.png";
+
+            if (latestArticle?.hero_image) {
+              const fileName = latestArticle.hero_image
+                .replace(/\\/g, "/")
+                .split("/")
+                .pop();
+
+              imageSrc = `${IMAGE_BASE}/hero/${fileName}`;
+            }
+
+            const description = latestArticle?.introduction
+              ? latestArticle.introduction
+                  .replace(/<[^>]+>/g, "")
+                  .split(" ")
+                  .slice(0, 30)
+                  .join(" ") + "..."
+              : "";
+
+            return {
+              slug: topic.slug,
+              imageSrc,
+              category: topic.clusterTitle || "General",
+              title: topic.title,
+              description,
+published_at: topic.publish_date,
+              author: latestArticle.author || "Team Money Now",
+            };
+          }
+        );
 
         setCards(formattedCards);
       } catch (err: any) {

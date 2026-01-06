@@ -42,7 +42,7 @@ body {
 
 /* --- Custom Scrollbar --- */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 2px;
 }
 
 ::-webkit-scrollbar-track {
