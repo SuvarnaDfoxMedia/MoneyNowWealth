@@ -49,6 +49,7 @@ const Index = () => {
 
       <HomeCalculators />
 
+      {/* Insights Desk Section */}
       <HomeBlog
         title={homeBlogData.title}
         subtitle={homeBlogData.subtitle}

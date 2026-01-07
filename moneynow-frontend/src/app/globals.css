@@ -42,7 +42,7 @@ body {
 
 /* --- Custom Scrollbar --- */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 2px;
 }
 
 ::-webkit-scrollbar-track {
@@ -97,15 +97,8 @@ body {
   border-right: none !important;
   height: 44px !important;
 }
+
+
 html {
   scroll-padding-top: 100px;
-}
-
-a,
-button {
-  cursor: pointer;
-}
-
-a[href] {
-  cursor: pointer;
 }

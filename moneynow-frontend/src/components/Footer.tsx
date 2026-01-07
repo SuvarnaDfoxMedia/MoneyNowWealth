@@ -1,6 +1,4 @@
 
-
-
 "use client";
 
 import Link from "next/link";
@@ -41,6 +39,7 @@ const Footer = () => {
     </div>
   );
 
+  // ------------------ LINKS ------------------
   const quickLinks = [
     { label: "Home", href: "/" },
     { label: "Contact Us", href: "/contact-us" },
@@ -48,27 +47,27 @@ const Footer = () => {
     { label: "Sign Up", href: "/auth/register" },
   ];
 
-const mutualFundLinks = [
-  { label: "Download The Money Now App", href: "/comingsoon" },
-  { label: "Choose Your Journey", href: "/comingsoon" },
-  { label: "Explore Portfolios & Fund Picks", href: "/comingsoon" },
-];
+  const mutualFundLinks = [
+    { label: "Download The Money Now App", href: "/app" },
+    { label: "Choose Your Journey", href: "/journey" },
+    { label: "Explore Portfolios & Fund Picks", href: "/portfolios" },
+    { label: "Sign Up", href: "/signup" },
+  ];
 
-const insuranceLinks = [
-  { label: "Life Insurance", href: "/comingsoon" },
-  { label: "Health Insurance", href: "/comingsoon" },
-  { label: "Guaranteed Income Plans", href: "/comingsoon" },
-  { label: "Personal Accident (PA) Cover", href: "/comingsoon" },
-  { label: "Critical Illness Cover", href: "/comingsoon" },
-  { label: "Vehicle Insurance", href: "/comingsoon" },
-];
+  const insuranceLinks = [
+    { label: "Life Insurance", href: "/insurance/life" },
+    { label: "Health Insurance", href: "/insurance/health" },
+    { label: "Guaranteed Income Plans", href: "/insurance/income-plans" },
+    { label: "Personal Accident (PA) Cover", href: "/insurance/pa-cover" },
+    { label: "Critical Illness Cover", href: "/insurance/critical-illness" },
+    { label: "Vehicle Insurance", href: "/insurance/vehicle" },
+  ];
 
-const toolsAndResources = [
-  { label: "Calculators Hub", href: "/comingsoon" },
-  { label: "Blogs", href: "/comingsoon" },
-  { label: "FAQs", href: "/comingsoon" },
-];
-
+  const toolsAndResources = [
+    { label: "Calculators Hub", href: "/calculators" },
+    { label: "Blogs", href: "/blogs" },
+    { label: "FAQs", href: "/faq" },
+  ];
 
   const policies = [
     { label: "General Disclaimer", href: "/general-disclaimer" },

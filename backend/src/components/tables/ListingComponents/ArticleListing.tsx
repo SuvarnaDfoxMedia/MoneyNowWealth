@@ -51,12 +51,14 @@ export default function ArticleListing() {
 
   /* ------------------- Restore URL → Zustand ------------------- */
   useEffect(() => {
+    const urlPage = Number(searchParams.get("page")) || 1;
     const urlLimit = Number(searchParams.get("limit")) || 10;
     
-    // 🌟 FIX: Always start at page 1, ignore URL page
-    setPage(1);
-    setRecordsPerPage(urlLimit);
-  }, []);
+    if (page === 1) {
+      setPage(urlPage);
+      setRecordsPerPage(urlLimit);
+    }
+  }, [searchParams]);
 
   /* ------------------- Fetch Data ------------------- */
   const { data, isLoading, deleteRecord, toggleStatus, refetch, extractList } =

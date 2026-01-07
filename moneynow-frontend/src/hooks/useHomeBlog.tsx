@@ -7,13 +7,16 @@ export interface CardData {
   category: string;
   title: string;
   description: string;
-  created_at?: string;
-  author?: string;
+  published_at: string; // topic publish date
+  author: string;
 }
 
-const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL as string;
+const IMAGE_BASE = API.defaults.baseURL + "/uploads";
 
-export const useFetchCards = (endpoint: string, limit: number = 3) => {
+export const useFetchCards = (
+  endpoint: string,
+  limit: number = 3
+) => {
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,42 +29,71 @@ export const useFetchCards = (endpoint: string, limit: number = 3) => {
       try {
         const { data } = await API.get(endpoint);
 
-        if (!data.success || !Array.isArray(data.clusters)) {
+        const clusters = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.clusters)
+          ? data.clusters
+          : [];
+
+        if (!clusters.length) {
           setCards([]);
-          setError("Invalid API response");
           return;
         }
 
-        const allTopics = data.clusters.flatMap((cluster: any) =>
+        /**
+         * Collect all published topics
+         */
+        const publishedTopics = clusters.flatMap((cluster: any) =>
           Array.isArray(cluster.topics)
-            ? cluster.topics.map((topic: any) => ({
-                ...topic,
-                clusterTitle: cluster.title,
-              }))
+            ? cluster.topics
+                .filter(
+                  (topic: any) =>
+                    topic.status === "published" &&
+                    topic.is_active === 1 &&
+                    topic.publish_date &&
+                    Array.isArray(topic.articles) &&
+                    topic.articles.length > 0
+                )
+                .map((topic: any) => ({
+                  ...topic,
+                  clusterTitle: cluster.title,
+                }))
             : []
         );
 
-        const publishedTopics = allTopics.filter(
-          (t: any) => t.status === "published" && t.is_active === 1
-        );
+        if (!publishedTopics.length) {
+          setCards([]);
+          return;
+        }
 
+        /**
+         * Sort topics by topic.publish_date (DESC)
+         */
         publishedTopics.sort(
           (a: any, b: any) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
+            new Date(b.publish_date).getTime() -
+            new Date(a.publish_date).getTime()
         );
 
+        /**
+         * Limit results
+         */
         const latestTopics = publishedTopics.slice(0, limit);
 
+        /**
+         * Format for UI
+         */
         const formattedCards: CardData[] = latestTopics.map((topic: any) => {
-          const article = topic.articles?.[0];
+          const article = topic.articles[0]; // first article only
 
           let imageSrc = "/no-image.png";
+
           if (article?.hero_image) {
             const fileName = article.hero_image
               .replace(/\\/g, "/")
               .split("/")
               .pop();
+
             imageSrc = `${IMAGE_BASE}/hero/${fileName}`;
           }
 
@@ -74,19 +106,19 @@ export const useFetchCards = (endpoint: string, limit: number = 3) => {
             : "";
 
           return {
-            slug: topic.slug || "",
+            slug: topic.slug,
             imageSrc,
             category: topic.clusterTitle || "General",
-            title: topic.title || "Untitled",
+            title: topic.title,
             description,
-            created_at: topic.created_at || article?.created_at || "",
+            published_at: topic.publish_date, //  topic publish date
             author: article?.author || "Team Money Now",
           };
         });
 
         setCards(formattedCards);
       } catch (err: any) {
-        setError(err.message || "Something went wrong");
+        setError(err?.message || "Something went wrong");
         setCards([]);
       } finally {
         setLoading(false);

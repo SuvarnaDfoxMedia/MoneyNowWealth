@@ -5,6 +5,7 @@ export default function Page() {
   return (
     <div className="relative w-full mb-[25px]">
 
+      {/* Background Image */}
       <div
         className="
           absolute inset-0 bg-center bg-cover bg-no-repeat
@@ -15,6 +16,7 @@ export default function Page() {
         "
       ></div>
 
+      {/* Content */}
       <div className="relative z-10 w-full">
         <div
           className="
@@ -26,7 +28,8 @@ export default function Page() {
           "
         >
 
-          <div className="max-w-2xl mt-4">  
+          {/* ---- LEFT TEXT ---- */}
+          <div className="max-w-2xl mt-4">  {/* optional extra spacing */}
             <h1 className="text-[29px] sm:text-[36px] font-bold font-poppins leading-[32px] sm:leading-[44px] text-[#000000]">
               Wealth guided by <span className="text-[#04407B]">trust</span> and
               <span className="text-[#04407B]"> experience </span> – beyond algorithms
