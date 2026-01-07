@@ -38,6 +38,7 @@ export default function HomeCalculators() {
 
   const { calculate, result, loading } = useCalculator();
 
+  /* ---------- DEBOUNCE CALCULATION ---------- */
   const debounceRef = useRef<number | null>(null);
 
   const runCalculation = useCallback(() => {
@@ -69,7 +70,8 @@ export default function HomeCalculators() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [runCalculation]);
-  
+  /* ------------------------------------------- */
+
   /* ---------- SAFE FALLBACK VALUES ---------- */
   const invested =
     result?.invested_amount ??

@@ -81,6 +81,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 
         <div className="space-y-5">
           {articles.slice(0, 3).map((article) => {
+            // Build image URL with IMAGE_BASE + folder + hero_image
             const imageSrc =
               article.hero_image
                 ? `${IMAGE_BASE}${folder}${article.hero_image.startsWith("/") ? "" : "/"}${article.hero_image}`
@@ -102,7 +103,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
     {article.title}
   </p>
 
-  <p className="text-[13px] sm:text-[16px] font-inter font-medium">
+  <p className="text-[13px] sm:text-[15px] font-inter font-medium">
     {article.author || "Team Money Now"} &nbsp;|&nbsp;
     {article.created_at
       ? new Date(article.created_at).toLocaleDateString("en-IN", {
@@ -115,6 +116,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 </div>
 
 
+                {/* Image */}
                 <div className="relative w-[124px] h-[104px] shrink-0">
                   <Image
                     src={imageSrc}
@@ -130,16 +132,6 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
         </div>
       </div>
 
-          <div className="relative w-full rounded">
-                   <Image
-                    src="/images/blog-listing-right-banner2.png"
-                     alt="Banner"
-                    width={1200}
-                  height={620}
-                  sizes="(max-width: 768px) 100vw, 1200px"
-                className="w-full h-auto rounded"
-                   />
-               </div>
     </>
   );
 };

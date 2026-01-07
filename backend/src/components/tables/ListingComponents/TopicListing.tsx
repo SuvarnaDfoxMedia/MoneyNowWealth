@@ -1,7 +1,4 @@
 
-
-
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -43,6 +40,7 @@ export default function TopicListing() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
 
+  // Use latest useCommonCrud
   const { data, extractList, refetch, deleteRecord, toggleStatus, isLoading } = useCommonCrud<Topic>({
     role,
     module: "topic",
@@ -51,11 +49,12 @@ export default function TopicListing() {
     searchValue,
     sortField,
     sortOrder,
-    listKey: "topics", 
+    listKey: "topics", // optional but explicit
   });
 
   const [topics, setTopics] = useState<Topic[]>([]);
 
+  // Sync API data → local state
   useEffect(() => {
     setTopics(extractList);
   }, [extractList]);
@@ -63,14 +62,18 @@ export default function TopicListing() {
   const totalRecords = data?.total || 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
+  // Restore page/limit from URL
   useEffect(() => {
     const urlPage = Number(searchParams.get("page")) || 1;
     const urlLimit = Number(searchParams.get("limit")) || 10;
     const navSource = searchParams.get("nav");
     
+    // FIX: Check navigation source
     if (navSource === "sidebar") {
+      // Sidebar navigation - start at page 1
       setPage(1);
     } else {
+      // Edit operation or direct URL - use the page parameter
       setPage(urlPage);
     }
     
@@ -259,7 +262,7 @@ export default function TopicListing() {
 
       {/* Delete Modal */}
       {deleteModalId && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-[99999]">
+        <div className="fixed inset-0 bg-black/70 bg-opacity-70 flex justify-center items-center z-[99999]">
           <div className="bg-white p-6 rounded-xl w-96">
             <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
             <p className="mb-6 text-gray-600">Are you sure you want to delete this topic?</p>

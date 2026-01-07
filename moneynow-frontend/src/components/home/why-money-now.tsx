@@ -22,6 +22,7 @@ const WhyMoneyNow: React.FC<WhyMoneyNowProps> = ({
   return (
     <section className="font-poppins w-full pt-[20px] pb-[30px] mb-[27px] text-center bg-[#EBEBEB]">
       
+      {/* Container (Bootstrap style) */}
       <div className="max-w-7xl mx-auto px-4">
 
 <h2 className="font-bold text-[24px] leading-[30px] sm:text-[32px] sm:leading-[40px] mb-2">

@@ -92,6 +92,9 @@ export const whyMoneyNowCards = [
   },
 ];
 
+// =============================
+// Home Invest Track Section (Dynamic)
+// =============================
 export const homeInvestTrackData = {
   phoneImage: "/images/mobile-app.png", 
   titleLine1: "Invest. Track. Manage.",
@@ -102,6 +105,7 @@ export const homeInvestTrackData = {
 };
 
 
+// /src/data/homeCalculatorsData.ts
 
 export const homeCalculatorsData = {
   title: "See What's Possible with Your Money",

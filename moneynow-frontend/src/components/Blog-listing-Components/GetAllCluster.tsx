@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+/* ---------------- Types ---------------- */
 interface Cluster {
   _id: string;
   title: string;
@@ -62,6 +63,7 @@ const GetAllCluster = () => {
     return () => window.removeEventListener("resize", updateVisibleCards);
   }, []);
 
+  /* ---------------- Reset index on resize ---------------- */
   useEffect(() => {
     setCurrentIndex(0);
   }, [visibleCards]);
@@ -129,12 +131,12 @@ const GetAllCluster = () => {
       {cluster.title}
     </h3>
 
-    <p className="text-[15px] leading-[26px] text-gray-700 line-clamp-1">
+    <p className="text-[16px] leading-[26px] text-gray-700 line-clamp-1">
       {cluster.description}
     </p>
 
     {cluster.created_at && (
-      <p className="text-[13px]  mt-1">
+      <p className="text-[14px]  mt-1 font-semibold">
         {new Date(cluster.created_at).toLocaleDateString("en-IN", {
           day: "2-digit",
           month: "short",
@@ -161,6 +163,9 @@ const GetAllCluster = () => {
             ))}
           </div>
         </div>
+
+       
+
 
       </div>
     </section>

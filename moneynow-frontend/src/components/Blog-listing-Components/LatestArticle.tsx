@@ -28,6 +28,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
 const FALLBACK_IMAGE = "/images/most-popular-blog-img-1.png";
 
+// ===== SANITIZE FUNCTION =====
 const sanitize = (html?: string) => ({
   __html: DOMPurify.sanitize(html || ""),
 });
@@ -130,7 +131,17 @@ const FeaturedArticle = () => {
 
     {article.introduction && (
   <div
-    className="text-gray-600 font-inter [&_p]:!text-[18px] sm:[&_p]:!text-[20px] [&_p]:!leading-[28px] sm:[&_p]:!leading-[32px] [&_p]:mb-4 [&_p:last-child]:mb-0 mb-6"
+className="
+  text-gray-600 font-inter
+  line-clamp-[5]
+  [&_p]:!text-[18px]
+  sm:[&_p]:!text-[20px]
+  [&_p]:!leading-[28px]
+  sm:[&_p]:!leading-[32px]
+  [&_p]:mb-4
+  [&_p:last-child]:mb-0
+  mb-6
+"
     dangerouslySetInnerHTML={sanitize(article.introduction)}
   />
 )}
@@ -154,6 +165,17 @@ const LatestArticle = () => {
             {/* RIGHT SECTION */}
             <div className="lg:col-span-4">
               <MostPopularBlogs />
+
+               <div className="relative w-full rounded">
+                   <Image
+                    src="/images/blog-listing-right-banner2.png"
+                     alt="Banner"
+                    width={1200}
+                  height={620}
+                  sizes="(max-width: 768px) 100vw, 1200px"
+                className="w-full h-auto rounded"
+                   />
+               </div>
             </div>
           </div>
 

@@ -13,6 +13,7 @@ import {
   FaWhatsapp,
 } from "react-icons/fa";
 
+// --- Define custom TypeScript type ---
 type IntlTelInputInstance = ReturnType<typeof intlTelInput>;
 
 const socialIcons = [
@@ -110,6 +111,7 @@ const ContactForm = () => {
 
     try {
       setLoading(true);
+      // Save contact enquiry
       const res = await fetch(`${API_BASE}/api/contact-enquiries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,6 +120,7 @@ const ContactForm = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Submission failed");
 
+      // Send thank-you email to user
       await fetch(`${API_BASE}/api/contact-thank-you`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,6 +139,7 @@ const ContactForm = () => {
       itiRef.current?.setNumber("");
       if (phoneRef.current) phoneRef.current.value = "";
 
+      // Redirect to Thank You page
       router.push("/thank-You");
     } catch (err) {
       console.error(err);
@@ -221,6 +225,7 @@ const ContactForm = () => {
             </div>
           </div>
 
+          {/* RIGHT FORM */}
           <div className="lg:col-span-6">
             <form onSubmit={handleSubmit} className="space-y-4 text-[16px]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
