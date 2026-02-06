@@ -1,4 +1,3 @@
-
 import type { Request, Response } from "express";
 import * as articleService from "../services/articleService";
 import Cluster from "../models/clusterModel";
@@ -84,8 +83,6 @@ export const getArticleById = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const addArticle = async (req: Request, res: Response) => {
   try {
     const body = req.body;
@@ -101,6 +98,19 @@ export const addArticle = async (req: Request, res: Response) => {
     // Ensure status is valid
     if (!["draft", "published", "archived"].includes(body.status)) {
       body.status = "draft";
+    }
+
+    // Handle publish date
+    if (body.publish_date) {
+      body.publish_date = new Date(body.publish_date);
+    } else if (body.status === "published") {
+      // If publishing now, set publish_date to current date
+      body.publish_date = new Date();
+    }
+
+    // Reset email flag when publishing
+    if (body.status === "published") {
+      body.is_email_sent = false;
     }
 
     // Remove read_time if not needed
@@ -142,6 +152,19 @@ export const updateArticle = async (req: Request, res: Response) => {
       body.status = "draft";
     }
 
+    // Handle publish date
+    if (body.publish_date) {
+      body.publish_date = new Date(body.publish_date);
+    } else if (body.status === "published") {
+      // If publishing now, set publish_date to current date
+      body.publish_date = new Date();
+    }
+
+    // Reset email flag when publishing
+    if (body.status === "published") {
+      body.is_email_sent = false;
+    }
+
     delete body.read_time;
 
     const updated = await articleService.updateArticle(id, body);
@@ -165,7 +188,6 @@ export const updateArticle = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 // Toggle article status (active/inactive)
 export const toggleArticleStatus = async (req: Request, res: Response) => {
@@ -223,10 +245,6 @@ export const deleteArticle = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
-
 export const getClusterHierarchy = async (req: Request, res: Response) => {
   try {
     const { clusterId } = req.params;
@@ -253,116 +271,25 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
           from: "topics",
           let: { clusterId: "$_id" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$cluster_id", "$$clusterId"] }, is_deleted: false, status: "published" } },
+            {
+              $match: {
+                $expr: { $eq: ["$cluster_id", "$$clusterId"] },
+                is_deleted: false,
+                status: "published",
+              },
+            },
             {
               $lookup: {
                 from: "articles",
                 let: { topicId: "$_id" },
                 pipeline: [
-                  { $match: { $expr: { $eq: ["$topic_id", "$$topicId"] }, is_deleted: false, status: "published" } },
-                  { $sort: { publish_date: -1, created_at: -1 } },
-                ],
-                as: "articles",
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                topic_code: 1,
-                title: 1,
-                slug: 1,
-                articles: 1,
-                articleCount: { $size: "$articles" },
-              },
-            },
-          ],
-          as: "topics",
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          cluster_code: 1,
-          title: 1,
-          description: 1,
-          thumbnail: 1,
-          created_at: 1, 
-          sort_order: 1,
-          topics: 1,
-        },
-      },
-    ]);
-
-    if (!result || result.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Cluster not found or not published",
-      });
-    }
-
-    const clusterData = result[0];
-
-    res.status(200).json({
-      success: true,
-      data: {
-        clusters: [
-          {
-            _id: clusterData._id,
-            title: clusterData.title,
-            description: clusterData.description || null, 
-            thumbnail: clusterData.thumbnail || null,
-            created_at: clusterData.created_at || null, 
-          },
-        ],
-        topics: clusterData.topics || [],
-        totalArticles:
-          clusterData.topics?.reduce((acc: number, t: any) => acc + t.articleCount, 0) || 0,
-        totalTopics: clusterData.topics?.length || 0,
-      },
-    });
-  } catch (error: any) {
-    console.error("Error fetching cluster hierarchy:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch cluster hierarchy",
-    });
-  }
-};
-
-
-export const getClusterHierarchyBySlug = async (req: Request, res: Response) => {
-  try {
-    const { slug } = req.params; 
-    const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
-
-    if (!slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Cluster slug is required",
-      });
-    }
-
-    // Aggregation to get cluster + topics + articles
-    const result = await Cluster.aggregate([
-      {
-        $match: {
-          slug: slug,       
-          is_deleted: false,
-          status: status || "published",
-        },
-      },
-      {
-        $lookup: {
-          from: "topics",
-          let: { clusterId: "$_id" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$cluster_id", "$$clusterId"] }, is_deleted: false, status: "published" } },
-            {
-              $lookup: {
-                from: "articles",
-                let: { topicId: "$_id" },
-                pipeline: [
-                  { $match: { $expr: { $eq: ["$topic_id", "$$topicId"] }, is_deleted: false, status: "published" } },
+                  {
+                    $match: {
+                      $expr: { $eq: ["$topic_id", "$$topicId"] },
+                      is_deleted: false,
+                      status: "published",
+                    },
+                  },
                   { $sort: { publish_date: -1, created_at: -1 } },
                 ],
                 as: "articles",
@@ -419,7 +346,130 @@ export const getClusterHierarchyBySlug = async (req: Request, res: Response) => 
         ],
         topics: clusterData.topics || [],
         totalArticles:
-          clusterData.topics?.reduce((acc: number, t: any) => acc + t.articleCount, 0) || 0,
+          clusterData.topics?.reduce(
+            (acc: number, t: any) => acc + t.articleCount,
+            0,
+          ) || 0,
+        totalTopics: clusterData.topics?.length || 0,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching cluster hierarchy:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch cluster hierarchy",
+    });
+  }
+};
+
+export const getClusterHierarchyBySlug = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { slug } = req.params;
+    const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
+
+    if (!slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Cluster slug is required",
+      });
+    }
+
+    // Aggregation to get cluster + topics + articles
+    const result = await Cluster.aggregate([
+      {
+        $match: {
+          slug: slug,
+          is_deleted: false,
+          status: status || "published",
+        },
+      },
+      {
+        $lookup: {
+          from: "topics",
+          let: { clusterId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$cluster_id", "$$clusterId"] },
+                is_deleted: false,
+                status: "published",
+              },
+            },
+            {
+              $lookup: {
+                from: "articles",
+                let: { topicId: "$_id" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: { $eq: ["$topic_id", "$$topicId"] },
+                      is_deleted: false,
+                      status: "published",
+                    },
+                  },
+                  { $sort: { publish_date: -1, created_at: -1 } },
+                ],
+                as: "articles",
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                topic_code: 1,
+                title: 1,
+                slug: 1,
+                articles: 1,
+                articleCount: { $size: "$articles" },
+              },
+            },
+          ],
+          as: "topics",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          cluster_code: 1,
+          title: 1,
+          description: 1,
+          thumbnail: 1,
+          created_at: 1,
+          sort_order: 1,
+          topics: 1,
+        },
+      },
+    ]);
+
+    if (!result || result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Cluster not found or not published",
+      });
+    }
+
+    const clusterData = result[0];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        clusters: [
+          {
+            _id: clusterData._id,
+            title: clusterData.title,
+            description: clusterData.description || null,
+            thumbnail: clusterData.thumbnail || null,
+            created_at: clusterData.created_at || null,
+          },
+        ],
+        topics: clusterData.topics || [],
+        totalArticles:
+          clusterData.topics?.reduce(
+            (acc: number, t: any) => acc + t.articleCount,
+            0,
+          ) || 0,
         totalTopics: clusterData.topics?.length || 0,
       },
     });
@@ -428,6 +478,41 @@ export const getClusterHierarchyBySlug = async (req: Request, res: Response) => 
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to fetch cluster hierarchy",
+    });
+  }
+};
+
+// NEW: Publish Article Immediately (Admin/Editor only)
+export const publishArticle = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const article = await articleService.getArticleById(id);
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        message: "Article not found",
+      });
+    }
+
+    // Update article status
+    article.status = "published";
+    article.publish_date = new Date();
+    article.is_email_sent = false; // Reset for email notifications
+    article.updated_at = new Date();
+
+    await article.save();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Article published successfully. Email notifications will be sent via scheduler.",
+      data: article,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to publish article",
     });
   }
 };

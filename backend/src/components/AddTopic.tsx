@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
@@ -40,16 +39,11 @@ interface ClusterOption {
 export default function AddTopic() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const page = searchParams.get("page") || "1";
-  const limit = searchParams.get("limit") || "10";
 
   const { getOne, createRecord, updateRecord } = useCommonCrud({
     role: "admin",
     module: "topic",
   });
-
-  const { setPage } = useDataTableStore();
 
   /* ================= STATE ================= */
 
@@ -85,35 +79,34 @@ export default function AddTopic() {
 
   // Load topic for edit
   useEffect(() => {
-  if (!id) return;
+    if (!id) return;
 
-  getOne(id).then((res: any) => {
-    if (!res?.topic) return;
+    getOne(id).then((res: any) => {
+      if (!res?.topic) return;
 
-    setValues({
-      cluster_id:
-        typeof res.topic.cluster_id === "object"
-          ? res.topic.cluster_id._id
-          : res.topic.cluster_id,
-      title: res.topic.title || "",
-      slug: res.topic.slug || "",
-      keywords: res.topic.keywords?.join(", ") || "",
-      summary: res.topic.summary || "",
-      status: res.topic.status || "draft",
-      author: res.topic.author || "",
-      read_time_minutes: res.topic.read_time_minutes || 0,
-      tags: res.topic.tags?.join(", ") || "",
-      is_active: res.topic.is_active ?? 0,
-      publish_date: res.topic.publish_date
-        ? new Date(res.topic.publish_date)
-        : null,
-      access_type: res.topic.access_type || "free",
+      setValues({
+        cluster_id:
+          typeof res.topic.cluster_id === "object"
+            ? res.topic.cluster_id._id
+            : res.topic.cluster_id,
+        title: res.topic.title || "",
+        slug: res.topic.slug || "",
+        keywords: res.topic.keywords?.join(", ") || "",
+        summary: res.topic.summary || "",
+        status: res.topic.status || "draft",
+        author: res.topic.author || "",
+        read_time_minutes: res.topic.read_time_minutes || 0,
+        tags: res.topic.tags?.join(", ") || "",
+        is_active: res.topic.is_active ?? 0,
+        publish_date: res.topic.publish_date
+          ? new Date(res.topic.publish_date)
+          : null,
+        access_type: res.topic.access_type || "free",
+      });
+
+      setSlugEdited(false); // IMPORTANT
     });
-
-    setSlugEdited(false); // IMPORTANT
-  });
-}, [id]);
-
+  }, [id]);
 
   /* ================= HELPERS ================= */
 
@@ -125,7 +118,7 @@ export default function AddTopic() {
       .replace(/\s+/g, "-");
 
   const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -171,22 +164,28 @@ export default function AddTopic() {
       const payload = {
         ...values,
         keywords: values.keywords
-          ? values.keywords.split(",").map((k) => k.trim()).filter(Boolean)
+          ? values.keywords
+              .split(",")
+              .map((k) => k.trim())
+              .filter(Boolean)
           : [],
         tags: values.tags
-          ? values.tags.split(",").map((t) => t.trim()).filter(Boolean)
+          ? values.tags
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
           : [],
         publish_date: values.publish_date
           ? values.publish_date.toISOString()
           : null,
       };
 
-      id
-        ? await updateRecord(id, payload)
-        : await createRecord(payload);
+      id ? await updateRecord(id, payload) : await createRecord(payload);
 
-      toast.success(id ? "Topic updated successfully" : "Topic created successfully");
-      navigate(`/admin/topic?page=${page}&limit=${limit}`);
+      toast.success(
+        id ? "Topic updated successfully" : "Topic created successfully",
+      );
+      navigate(`/admin/topic`);
       // setPage(1);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Something went wrong");
@@ -233,7 +232,7 @@ export default function AddTopic() {
           {id ? "Edit Topic" : "Add Topic"}
         </h2>
         <button
-          onClick={() => navigate(`/admin/topic?page=${page}&limit=${limit}`)}
+          onClick={() => navigate(`/admin/topic`)}
           className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md"
         >
           <FiArrowLeft /> Back
@@ -344,7 +343,9 @@ export default function AddTopic() {
             />
           </div>
           <div>
-            <label className="block mb-2 font-medium">Read Time (minutes)</label>
+            <label className="block mb-2 font-medium">
+              Read Time (minutes)
+            </label>
             <input
               type="number"
               name="read_time_minutes"
@@ -376,9 +377,7 @@ export default function AddTopic() {
             <div className="relative">
               <DatePicker
                 selected={values.publish_date}
-                onChange={(d) =>
-                  setValues((p) => ({ ...p, publish_date: d }))
-                }
+                onChange={(d) => setValues((p) => ({ ...p, publish_date: d }))}
                 dateFormat="yyyy-MM-dd"
                 className={`${inputClass} pr-10`}
               />

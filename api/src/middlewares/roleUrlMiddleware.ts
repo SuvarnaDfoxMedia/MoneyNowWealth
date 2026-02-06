@@ -1,5 +1,3 @@
-
-
 import express from "express";
 import { protect } from "./authMiddleware";
 import type { AuthenticatedRequest } from "./authMiddleware";
@@ -19,7 +17,9 @@ export const roleFromUrl = (allowedRoles: string[]) => {
       }
 
       if (!req.user || req.user.role !== roleInUrl) {
-        return res.status(403).json({ message: "Access denied: role mismatch" });
+        return res
+          .status(403)
+          .json({ message: "Access denied: role mismatch" });
       }
 
       next();

@@ -1,6 +1,3 @@
-
-
-
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
 import fs from "fs";
@@ -28,7 +25,11 @@ const imageFileFilter = (
 /* --------------------------------------------------------
    Helper: Always return correct public URL
 --------------------------------------------------------- */
-export const getPublicUrl = (req: Request, filename: string, folder: string) => {
+export const getPublicUrl = (
+  req: Request,
+  filename: string,
+  folder: string
+) => {
   return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
 };
 

@@ -4,101 +4,17 @@ import SubscriptionPlan from "@/models/subscriptionPlan.model";
 import { userSubscriptionService } from "@/services/userSubscriptionService";
 import { userSubscriptionPaymentService } from "@/services/userSubscriptionPaymentService";
 
-
 export const getUserSubscriptions = async (req: Request, res: Response) => {
   try {
-    const search = String(req.query.search || "").trim();
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.max(Number(req.query.limit) || 10, 1);
-    const skip = (page - 1) * limit;
-
-    // Build search query
-    const userSearchQuery: Record<string, unknown> = {
-      role: { $ne: "admin" },
-      ...(search
-        ? {
-            $or: [
-              { firstname: { $regex: search, $options: "i" } },
-              { lastname: { $regex: search, $options: "i" } },
-              { email: { $regex: search, $options: "i" } },
-            ],
-          }
-        : {}),
-    };
-
-    // Count total users
-    const totalUsers = await User.countDocuments(userSearchQuery);
-
-    // Fetch paginated users
-    const users = await User.find(userSearchQuery)
-      .skip(skip)
-      .limit(limit)
-      .select("-password -resetPasswordToken -resetPasswordExpires")
-      .lean();
-
-    // Get Free plan
-    const freePlan = await SubscriptionPlan.findOne({ name: "Free", is_active: true });
-    if (!freePlan) {
-      return res.status(500).json({
-        success: false,
-        message: "Free plan not found. Please create a plan with name 'Free' in DB.",
-      });
-    }
-
-    // Map users to subscriptions + latest payment
-    const subscriptions = await Promise.all(
-      users.map(async (user) => {
-        // Get active subscription
-        let subscription = await userSubscriptionService.getByUserId(user._id.toString());
-
-        // Auto-assign Free plan if no subscription
-        if (!subscription) {
-          try {
-            subscription = await userSubscriptionService.createOrUpdateSubscription(
-              user._id.toString(),
-              freePlan._id.toString(),
-              freePlan.duration.value,
-              freePlan.duration.unit as "day" | "month" | "year",
-              "free_sample"
-            );
-          } catch (error) {
-            console.error(`Failed to assign Free plan to user ${user._id}`, error);
-          }
-        }
-
-        if (subscription) {
-          subscription = await subscription.populateFull();
-        }
-
-        // Get latest payment from last_payment_id
-        const latestPayment = subscription?.last_payment_id
-          ? await userSubscriptionPaymentService.getById(subscription.last_payment_id.toString())
-          : null;
-
-        return {
-          user,
-          subscription,
-          latestPayment: latestPayment || null,
-          status: subscription?.status || "new",
-          trial_type: subscription?.trial_type || null,
-        };
-      })
-    );
-
-    return res.status(200).json({
-      success: true,
-      subscriptions,
-      total: totalUsers,
-      page,
-      limit,
-      totalPages: Math.ceil(totalUsers / limit),
-    });
+    const result = await userSubscriptionService.getAll(req.query);
+    return res.status(200).json(result);
   } catch (error) {
     console.error("Get subscriptions error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
-
 
 export const getUserSubscriptionById = async (req: Request, res: Response) => {
   try {
@@ -106,30 +22,29 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
 
     let subscription = await userSubscriptionService.getById(id);
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription not found" });
     }
 
-    // Populate user & plan
-    subscription = await subscription.populateFull(); 
-
-    // Fetch latest payment
-    const payment = await userSubscriptionPaymentService.getLatestBySubscriptionId(
-      subscription._id.toString()
-    );
+    const payment =
+      await userSubscriptionPaymentService.getLatestBySubscriptionId(
+        subscription._id.toString(),
+      );
 
     return res.json({
       success: true,
       subscription,
-      payment, 
+      payment,
     });
   } catch (error) {
     console.error("Get subscription by ID error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
-
-// ====================== CREATE SUBSCRIPTION ======================
 export const addUserSubscription = async (req: Request, res: Response) => {
   try {
     const { user_id, plan_id, trial_type } = req.body;
@@ -143,49 +58,64 @@ export const addUserSubscription = async (req: Request, res: Response) => {
 
     const planDoc = await SubscriptionPlan.findById(plan_id);
     if (!planDoc) {
-      return res.status(400).json({ success: false, message: "Invalid plan_id" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid plan_id" });
     }
 
-    const subscription = await userSubscriptionService.createOrUpdateSubscription(
-      user_id,
-      planDoc._id.toString(),
-      planDoc.duration.value,
-      planDoc.duration.unit as "day" | "month" | "year",
-      trial_type
-    );
+    const subscription =
+      await userSubscriptionService.createOrUpdateSubscription(
+        user_id,
+        planDoc._id.toString(),
+        planDoc.duration.value,
+        planDoc.duration.unit as "day" | "month" | "year",
+        trial_type,
+        false,
+        "manual_assign",
+      );
 
     return res.status(201).json({ success: true, subscription });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Create subscription error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
   }
 };
 
-// ====================== UPDATE SUBSCRIPTION ======================
 export const updateUserSubscription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
     const subscription = await userSubscriptionService.update(id, req.body);
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription not found" });
     }
 
     return res.json({ success: true, subscription });
   } catch (error) {
     console.error("Update subscription error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
-// ====================== TOGGLE ACTIVE/INACTIVE ======================
-export const toggleUserSubscriptionStatus = async (req: Request, res: Response) => {
+export const toggleUserSubscriptionStatus = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { id } = req.params;
 
     const subscription = await userSubscriptionService.toggleActiveStatus(id);
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription not found" });
     }
 
     return res.json({
@@ -197,14 +127,13 @@ export const toggleUserSubscriptionStatus = async (req: Request, res: Response) 
     });
   } catch (error) {
     console.error("Toggle subscription status error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
-/* ---------------------------------------------------
-   Soft Delete User Subscription
---------------------------------------------------- */
-export const deleteUserSubscription = async (req, res) => {
+export const deleteUserSubscription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -230,16 +159,15 @@ export const deleteUserSubscription = async (req, res) => {
   }
 };
 
-
-
-// ====================== RESTORE SOFT DELETE ======================
 export const restoreUserSubscription = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
     const subscription = await userSubscriptionService.restore(id);
     if (!subscription) {
-      return res.status(404).json({ success: false, message: "Subscription not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription not found" });
     }
 
     return res.json({
@@ -249,6 +177,233 @@ export const restoreUserSubscription = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Restore subscription error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const assignUserSubscription = async (req: Request, res: Response) => {
+  try {
+    const { user_id, plan_name, duration_days, reason } = req.body;
+
+    if (!user_id || !plan_name) {
+      return res.status(400).json({
+        success: false,
+        message: "user_id and plan_name are required",
+      });
+    }
+
+    const user = await User.findById(user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const plan = await SubscriptionPlan.findOne({
+      name: plan_name,
+      is_active: true,
+      is_deleted: false,
+    });
+
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        message: "Plan not found",
+      });
+    }
+
+    if (plan_name === "Premium" && plan.price === 0) {
+      const existingSub = await userSubscriptionService.getByUserId(user_id);
+      if (existingSub?.promotional_trial_used) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "User has already used promotional trial. Assign a paid Premium plan instead.",
+          code: "TRIAL_ALREADY_USED",
+        });
+      }
+    }
+
+    const durationValue = duration_days || plan.duration.value;
+    const durationUnit = duration_days ? "day" : plan.duration.unit;
+
+    const subscription =
+      await userSubscriptionService.createOrUpdateSubscription(
+        user_id,
+        plan._id.toString(),
+        durationValue,
+        durationUnit as "day" | "month" | "year",
+        plan.name.toLowerCase() === "free" ? "free_sample" : "premium_sample",
+        false,
+        "manual_assign",
+      );
+
+    return res.status(201).json({
+      success: true,
+      message: "Subscription assigned successfully",
+      subscription,
+      reason: reason || "Manual assignment",
+    });
+  } catch (error) {
+    console.error("Assign subscription error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const getMySubscription = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const subscription = await userSubscriptionService.getByUserId(userId);
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "No active subscription found",
+      });
+    }
+
+    const paymentHistory =
+      await userSubscriptionService.getPaymentHistory(userId);
+
+    return res.json({
+      success: true,
+      subscription,
+      paymentHistory,
+    });
+  } catch (error) {
+    console.error("Get my subscription error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const purchaseSubscription = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { plan_id } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    if (!plan_id) {
+      return res.status(400).json({
+        success: false,
+        message: "plan_id is required",
+      });
+    }
+
+    const planDoc = await SubscriptionPlan.findById(plan_id);
+    if (!planDoc) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid plan_id" });
+    }
+
+    const eligibility = await userSubscriptionService.checkPurchaseEligibility(
+      userId,
+      plan_id,
+    );
+    if (!eligibility.canPurchase) {
+      return res.status(403).json({
+        success: false,
+        message: eligibility.message,
+        code: eligibility.code || "PURCHASE_BLOCKED",
+      });
+    }
+
+    const subscription =
+      await userSubscriptionService.createOrUpdateSubscription(
+        userId,
+        planDoc._id.toString(),
+        planDoc.duration.value,
+        planDoc.duration.unit as "day" | "month" | "year",
+        planDoc.name.toLowerCase() === "free" ? "free_sample" : undefined,
+        true,
+        "user_purchase",
+      );
+
+    return res.status(201).json({
+      success: true,
+      message: "Subscription purchased successfully",
+      subscription,
+    });
+  } catch (error: any) {
+    console.error("Purchase subscription error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+export const getMySubscriptionHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const subscription = await userSubscriptionService.getByUserId(userId);
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "No subscription found",
+      });
+    }
+
+    const paymentHistory =
+      await userSubscriptionService.getPaymentHistory(userId);
+
+    const history = paymentHistory.map((payment: any) => ({
+      payment_id: payment._id,
+      date: payment.payment_date,
+      plan: payment.plan_id?.name || "Unknown",
+      amount: payment.amount,
+      type: payment.type,
+      method: payment.payment_method,
+      status: payment.payment_status,
+      is_promotional: payment.metadata?.is_promotional || false,
+    }));
+
+    return res.json({
+      success: true,
+      current_subscription: {
+        plan: subscription.plan_type,
+        status: subscription.status,
+        start_date: subscription.start_date,
+        end_date: subscription.end_date,
+        is_promotional: subscription.is_promotional,
+      },
+      history,
+    });
+  } catch (error) {
+    console.error("Get subscription history error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };

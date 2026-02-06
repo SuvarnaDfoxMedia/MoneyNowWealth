@@ -1,6 +1,3 @@
-
-
-
 import React from "react";
 import { FiArrowUp, FiArrowDown } from "react-icons/fi";
 
@@ -15,6 +12,11 @@ interface DataTableProps<T> {
   columns: TableColumn<T>[];
   data: T[];
   loading?: boolean;
+  customFilters?: {
+    key: keyof T | string;
+    label: string;
+    options: { value: string; label: string }[];
+  }[];
 
   // Pagination
   page: number;
@@ -53,7 +55,8 @@ function DataTableComponent<T = any>({
 
   const handleSort = (col: TableColumn<T>) => {
     if (!col.sortable || !onSortChange) return;
-    const newOrder = sortField === col.key && sortOrder === "asc" ? "desc" : "asc";
+    const newOrder =
+      sortField === col.key && sortOrder === "asc" ? "desc" : "asc";
     onSortChange(col.key as string, newOrder);
   };
 
@@ -113,12 +116,16 @@ function DataTableComponent<T = any>({
                         <span className="flex flex-col ml-2">
                           <FiArrowUp
                             className={`text-xs ${
-                              isSorted && sortOrder === "asc" ? "text-blue-500" : "text-gray-400"
+                              isSorted && sortOrder === "asc"
+                                ? "text-blue-500"
+                                : "text-gray-400"
                             }`}
                           />
                           <FiArrowDown
                             className={`text-xs  ${
-                              isSorted && sortOrder === "desc" ? "text-blue-500" : "text-gray-400"
+                              isSorted && sortOrder === "desc"
+                                ? "text-blue-500"
+                                : "text-gray-400"
                             }`}
                           />
                         </span>
@@ -133,14 +140,20 @@ function DataTableComponent<T = any>({
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={columns.length} className="text-center py-6 text-gray-500">
+                <td
+                  colSpan={columns.length}
+                  className="text-center py-6 text-gray-500"
+                >
                   Loading...
                 </td>
               </tr>
             )}
             {!loading && data.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="text-center py-6 text-gray-500">
+                <td
+                  colSpan={columns.length}
+                  className="text-center py-6 text-gray-500"
+                >
                   No records found
                 </td>
               </tr>
@@ -156,7 +169,9 @@ function DataTableComponent<T = any>({
                       key={col.key as string}
                       className="px-4 py-2 border-r last:border-r-0 whitespace-nowrap"
                     >
-                      {col.render ? col.render(row, idx) : (row as any)[col.key]}
+                      {col.render
+                        ? col.render(row, idx)
+                        : (row as any)[col.key]}
                     </td>
                   ))}
                 </tr>
@@ -207,4 +222,6 @@ function DataTableComponent<T = any>({
 }
 
 // Export with memo for performance
-export const DataTable = React.memo(DataTableComponent) as typeof DataTableComponent;
+export const DataTable = React.memo(
+  DataTableComponent,
+) as typeof DataTableComponent;

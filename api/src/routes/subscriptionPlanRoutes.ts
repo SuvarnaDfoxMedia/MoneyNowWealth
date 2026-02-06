@@ -1,3 +1,59 @@
+// import express from "express";
+// import {
+//   getSubscriptionPlans,
+//   getSubscriptionPlanById,
+//   addSubscriptionPlan,
+//   updateSubscriptionPlan,
+//   deleteSubscriptionPlan,
+//   toggleSubscriptionPlanStatus,
+// } from "../controllers/subscriptionPlanController.js";
+// import { roleFromUrl } from "../middlewares/roleUrlMiddleware.js";
+
+// const router = express.Router();
+
+// /* -------------------- PUBLIC ROUTES -------------------- */
+// router.get("/subscription-plan", getSubscriptionPlans); // List all subscription plans
+// router.get("/subscription-plan/:id", getSubscriptionPlanById); // Get single plan
+
+// /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
+// const adminEditorMiddleware = roleFromUrl(["admin"]);
+
+// /* -------------------- CREATE -------------------- */
+// router.post(
+//   "/:role/subscription-plan/create",
+//   ...adminEditorMiddleware,
+//   addSubscriptionPlan
+// );
+
+// /* -------------------- UPDATE -------------------- */
+// router.put(
+//   "/:role/subscription-plan/edit/:id",
+//   ...adminEditorMiddleware,
+//   updateSubscriptionPlan
+// );
+
+// /* -------------------- TOGGLE STATUS -------------------- */
+// // For admin/editor routes
+// router.patch(
+//   "/:role/subscription-plan/toggle-status/:id",
+//   ...adminEditorMiddleware,
+//   toggleSubscriptionPlanStatus
+// );
+
+// // Optional: for public/non-role routes
+// router.patch(
+//   "/subscription-plan/toggle-status/:id",
+//   toggleSubscriptionPlanStatus
+// );
+
+// /* -------------------- DELETE -------------------- */
+// router.delete(
+//   "/:role/subscription-plan/delete/:id",
+//   ...adminEditorMiddleware,
+//   deleteSubscriptionPlan
+// );
+
+// export default router;
 
 import express from "express";
 import {
@@ -7,52 +63,53 @@ import {
   updateSubscriptionPlan,
   deleteSubscriptionPlan,
   toggleSubscriptionPlanStatus,
-} from "../controllers/subscriptionPlanController.js";
-import { roleFromUrl } from "../middlewares/roleUrlMiddleware.js";
+} from "../controllers/subscriptionPlanController";
+import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
+import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
 /* -------------------- PUBLIC ROUTES -------------------- */
-router.get("/subscription-plan", getSubscriptionPlans); // List all subscription plans
-router.get("/subscription-plan/:id", getSubscriptionPlanById); // Get single plan
+router.get("/subscription-plan", getSubscriptionPlans);
+router.get("/subscription-plan/:id", getSubscriptionPlanById);
 
-/* -------------------- ADMIN / EDITOR ROUTES -------------------- */
+/* -------------------- PROTECTED ROUTES -------------------- */
 const adminEditorMiddleware = roleFromUrl(["admin"]);
 
 /* -------------------- CREATE -------------------- */
+
+router.get("/:role/subscription-plan", getSubscriptionPlans);
+router.get("/:role/subscription-plan/:id", getSubscriptionPlanById);
+
 router.post(
   "/:role/subscription-plan/create",
-  ...adminEditorMiddleware,
-  addSubscriptionPlan
+  protect,
+  adminEditorMiddleware,
+  addSubscriptionPlan,
 );
 
 /* -------------------- UPDATE -------------------- */
 router.put(
   "/:role/subscription-plan/edit/:id",
-  ...adminEditorMiddleware,
-  updateSubscriptionPlan
+  protect,
+  adminEditorMiddleware,
+  updateSubscriptionPlan,
 );
 
 /* -------------------- TOGGLE STATUS -------------------- */
-// For admin/editor routes
 router.patch(
   "/:role/subscription-plan/toggle-status/:id",
-  ...adminEditorMiddleware,
-  toggleSubscriptionPlanStatus
+  protect,
+  adminEditorMiddleware,
+  toggleSubscriptionPlanStatus,
 );
-
-// Optional: for public/non-role routes
-router.patch(
-  "/subscription-plan/toggle-status/:id",
-  toggleSubscriptionPlanStatus
-);
-
 
 /* -------------------- DELETE -------------------- */
 router.delete(
   "/:role/subscription-plan/delete/:id",
-  ...adminEditorMiddleware,
-  deleteSubscriptionPlan
+  protect,
+  adminEditorMiddleware,
+  deleteSubscriptionPlan,
 );
 
 export default router;

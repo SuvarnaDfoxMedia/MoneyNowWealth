@@ -27,8 +27,7 @@ export const useFetchCards = (
       setError(null);
 
       try {
-        const { data } = await API.get(endpoint);
-
+const { data } = await API.get("/api/topic/published");
         const clusters = Array.isArray(data)
           ? data
           : Array.isArray(data?.clusters)

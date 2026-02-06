@@ -1,7 +1,12 @@
-
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { FiSave, FiRefreshCw, FiArrowLeft, FiPlus, FiTrash2 } from "react-icons/fi";
+import {
+  FiSave,
+  FiRefreshCw,
+  FiArrowLeft,
+  FiPlus,
+  FiTrash2,
+} from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
 import { RichTextField } from "../components/PagesComponent/RichTextField";
@@ -27,16 +32,20 @@ interface CmsPageForm {
 }
 
 const generateSlug = (text: string) =>
-  text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
 
 export default function AddCmsPage() {
   const { role, id } = useParams<{ role?: string; id?: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const page = searchParams.get("page") || searchParams.get("limit") ? searchParams.get("page") : sessionStorage.getItem("lastCmsPagePage") || "1";
-  const limit = searchParams.get("limit") || sessionStorage.getItem("lastCmsPageLimit") || "10";
 
-  const { getOne, createRecord, updateRecord } = useCommonCrud({ role, module: "cmspages" });
+  const { getOne, createRecord, updateRecord } = useCommonCrud({
+    role,
+    module: "cmspages",
+  });
 
   const [values, setValues] = useState<CmsPageForm>({
     title: "",
@@ -88,7 +97,7 @@ export default function AddCmsPage() {
   }, [id, navigate]);
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -111,7 +120,11 @@ export default function AddCmsPage() {
       [key]: (prev[key] as any[]).filter((_, i) => i !== index),
     }));
 
-  const handleSectionChange = (index: number, field: keyof Section, value: string) =>
+  const handleSectionChange = (
+    index: number,
+    field: keyof Section,
+    value: string,
+  ) =>
     setValues((prev) => {
       const arr = [...prev.sections];
       arr[index] = { ...arr[index], [field]: value };
@@ -136,21 +149,25 @@ export default function AddCmsPage() {
 
     // Only send sections/faqs if they have content
     if (data.sections && data.sections.length > 0) {
-      const validSections = data.sections.filter(s => s.title.trim() || s.content.trim());
+      const validSections = data.sections.filter(
+        (s) => s.title.trim() || s.content.trim(),
+      );
       if (validSections.length > 0) {
         form.append("sections", JSON.stringify(validSections));
       }
     }
 
     if (data.faqs && data.faqs.length > 0) {
-      const validFaqs = data.faqs.filter(f => f.question.trim() || f.answer.trim());
+      const validFaqs = data.faqs.filter(
+        (f) => f.question.trim() || f.answer.trim(),
+      );
       if (validFaqs.length > 0) {
         form.append("faqs", JSON.stringify(validFaqs));
       }
     }
 
     // Debug: Log FormData contents
-    console.log("🔍 FormData being sent:");
+    console.log(" FormData being sent:");
     for (let [key, value] of form.entries()) {
       console.log(`${key}:`, value);
     }
@@ -171,20 +188,24 @@ export default function AddCmsPage() {
 
     // Only send sections/faqs if they have content
     if (data.sections && data.sections.length > 0) {
-      const validSections = data.sections.filter(s => s.title.trim() || s.content.trim());
+      const validSections = data.sections.filter(
+        (s) => s.title.trim() || s.content.trim(),
+      );
       if (validSections.length > 0) {
         payload.sections = validSections;
       }
     }
 
     if (data.faqs && data.faqs.length > 0) {
-      const validFaqs = data.faqs.filter(f => f.question.trim() || f.answer.trim());
+      const validFaqs = data.faqs.filter(
+        (f) => f.question.trim() || f.answer.trim(),
+      );
       if (validFaqs.length > 0) {
         payload.faqs = validFaqs;
       }
     }
 
-    console.log("🔍 JSON Payload being sent:", payload);
+    console.log(" JSON Payload being sent:", payload);
     return payload;
   };
 
@@ -197,7 +218,7 @@ export default function AddCmsPage() {
 
     try {
       setIsSubmitting(true);
-      
+
       // Backend expects sections and faqs as JSON strings
       const jsonPayload = {
         title: values.title,
@@ -205,20 +226,22 @@ export default function AddCmsPage() {
         status: values.status,
         is_active: values.is_active,
         ...(values.page_code && { page_code: values.page_code }),
-        ...(values.sections && values.sections.length > 0 && { 
-          sections: JSON.stringify(values.sections) 
-        }),
-        ...(values.faqs && values.faqs.length > 0 && { 
-          faqs: JSON.stringify(values.faqs) 
-        }),
+        ...(values.sections &&
+          values.sections.length > 0 && {
+            sections: JSON.stringify(values.sections),
+          }),
+        ...(values.faqs &&
+          values.faqs.length > 0 && {
+            faqs: JSON.stringify(values.faqs),
+          }),
       };
-      
-      console.log("🔍 JSON Payload being sent:", jsonPayload);
-      
+
+      console.log(" JSON Payload being sent:", jsonPayload);
+
       if (id) await updateRecord(id, jsonPayload);
       else await createRecord(jsonPayload);
       toast.success(`CMS Page ${id ? "updated" : "created"}`);
-      navigate(`/${role}/cmspages?page=${page}&limit=${limit}`);
+      navigate(`/${role}/cmspages`);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to save CMS page");
@@ -251,7 +274,7 @@ export default function AddCmsPage() {
 
         <button
           type="button"
-          onClick={() => navigate(`/admin/cmspages?page=${page}&limit=${limit}`)}
+          onClick={() => navigate(`/admin/cmspages`)}
           className="bg-[#043f79] text-white px-3 py-1 rounded-md shadow flex items-center gap-2"
         >
           <FiArrowLeft /> Back
@@ -259,7 +282,6 @@ export default function AddCmsPage() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
-        
         {/* TITLE & SLUG */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
@@ -306,7 +328,9 @@ export default function AddCmsPage() {
               <input
                 placeholder="Section Title"
                 value={section.title}
-                onChange={(e) => handleSectionChange(i, "title", e.target.value)}
+                onChange={(e) =>
+                  handleSectionChange(i, "title", e.target.value)
+                }
                 className="w-full border p-2 rounded-md mb-4 focus:ring focus:ring-blue-200"
               />
 

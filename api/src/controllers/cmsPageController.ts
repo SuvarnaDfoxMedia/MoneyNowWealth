@@ -10,14 +10,8 @@ interface MulterRequest extends Request {
 --------------------------------------------------- */
 export const getPages = async (req: Request, res: Response) => {
   try {
-    const {
-      page,
-      limit,
-      search,
-      sortField,
-      sortOrder,
-      includeInactive
-    } = req.query;
+    const { page, limit, search, sortField, sortOrder, includeInactive } =
+      req.query;
 
     const pageNum = Math.max(parseInt(page as string) || 1, 1);
     const perPage = Math.max(parseInt(limit as string) || 10, 1);
@@ -35,7 +29,6 @@ export const getPages = async (req: Request, res: Response) => {
       success: true,
       ...result,
     });
-
   } catch (error: any) {
     console.error("Error in getPages:", error);
     return res.status(500).json({
@@ -60,7 +53,6 @@ export const getPageById = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 interface MulterRequest extends Request {
   body: any;
@@ -118,8 +110,6 @@ export const addPage = async (req: MulterRequest, res: Response) => {
   }
 };
 
-
-
 export const updatePage = async (req: MulterRequest, res: Response) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
@@ -133,7 +123,8 @@ export const updatePage = async (req: MulterRequest, res: Response) => {
 
     // Trim title & slug
     if (updatedData.title) updatedData.title = updatedData.title.trim();
-    if (updatedData.slug) updatedData.slug = updatedData.slug.trim().toLowerCase();
+    if (updatedData.slug)
+      updatedData.slug = updatedData.slug.trim().toLowerCase();
 
     // Parse JSON fields safely
     try {
@@ -163,7 +154,6 @@ export const updatePage = async (req: MulterRequest, res: Response) => {
     });
   }
 };
-
 
 /* ---------------------------------------------------
    Toggle CMS Page Status
@@ -209,15 +199,14 @@ export const deletePage = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
 export const getPageBySlug = async (req, res) => {
   const { slug } = req.params;
   const page = await cmsPageService.findPageBySlug(slug);
 
   if (!page) {
-    return res.status(404).json({ success: false, message: "CMS page not found" });
+    return res
+      .status(404)
+      .json({ success: false, message: "CMS page not found" });
   }
 
   res.json({ success: true, page });

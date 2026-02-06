@@ -1,4 +1,3 @@
-
 import { ContactEnquiry } from "../models/contactEnquiryModel";
 import type { IContactEnquiry } from "../models/contactEnquiryModel";
 import type { SortOrder } from "mongoose";

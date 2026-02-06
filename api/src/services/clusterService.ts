@@ -1,5 +1,3 @@
-
-
 import Cluster, { type ICluster } from "../models/clusterModel";
 
 /* -------------------------------
@@ -10,7 +8,7 @@ const generateSlug = (text: string) =>
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, "") // remove non-alphanumeric chars
-    .replace(/\s+/g, "-");    // replace spaces with dash
+    .replace(/\s+/g, "-"); // replace spaces with dash
 
 /* -------------------------------
    Helper: ensure unique slug
@@ -36,7 +34,8 @@ const generateUniqueSlug = async (baseSlug: string, id?: string) => {
    Get paginated clusters with optional filters
 --------------------------------------------------- */
 export const getClusters = async (query: any) => {
-  const { search, status, includeDeleted, page, limit, sort, searchQuery } = query;
+  const { search, status, includeDeleted, page, limit, sort, searchQuery } =
+    query;
 
   const filter: any = {};
 
@@ -76,7 +75,6 @@ export const getClusters = async (query: any) => {
   };
 };
 
-
 export const getActiveClusters = async (query: any) => {
   const { page = 1, limit = 10, sort } = query;
 
@@ -96,11 +94,7 @@ export const getActiveClusters = async (query: any) => {
 
   /* ------------------ QUERY ------------------ */
   const [clusters, total] = await Promise.all([
-    Cluster.find(filter)
-      .sort(finalSort)
-      .skip(skip)
-      .limit(perPage)
-      .lean(),
+    Cluster.find(filter).sort(finalSort).skip(skip).limit(perPage).lean(),
     Cluster.countDocuments(filter),
   ]);
 
@@ -114,10 +108,6 @@ export const getActiveClusters = async (query: any) => {
     totalPages: Math.ceil(total / perPage),
   };
 };
-
-
-
-
 
 /* ---------------------------------------------------
    Get single cluster by ID
@@ -143,16 +133,24 @@ export const getClusterBySlug = async (slug: string) => {
 export const createCluster = async (data: Partial<ICluster>) => {
   let cluster_code = data.cluster_code;
   if (!cluster_code) {
-    const lastCluster = await Cluster.findOne().sort({ created_at: -1 }).select("cluster_code");
-    const lastCodeNum = lastCluster ? parseInt(lastCluster.cluster_code?.replace("CL", "") || "0", 10) : 0;
+    const lastCluster = await Cluster.findOne()
+      .sort({ created_at: -1 })
+      .select("cluster_code");
+    const lastCodeNum = lastCluster
+      ? parseInt(lastCluster.cluster_code?.replace("CL", "") || "0", 10)
+      : 0;
     cluster_code = `CL${String(lastCodeNum + 1).padStart(4, "0")}`;
   }
 
   // Generate slug and ensure uniqueness
-  const baseSlug = data.slug?.trim() || (data.title ? generateSlug(data.title) : "");
+  const baseSlug =
+    data.slug?.trim() || (data.title ? generateSlug(data.title) : "");
   const slug = await generateUniqueSlug(baseSlug);
 
-  const thumbnailName = typeof data.thumbnail === "string" ? data.thumbnail : (data as any)?.file?.filename || "";
+  const thumbnailName =
+    typeof data.thumbnail === "string"
+      ? data.thumbnail
+      : (data as any)?.file?.filename || "";
 
   const cluster = new Cluster({
     ...data,
@@ -170,8 +168,59 @@ export const createCluster = async (data: Partial<ICluster>) => {
 /* ---------------------------------------------------
    Update existing cluster
 --------------------------------------------------- */
+// export const updateCluster = async (id: string, data: Partial<ICluster>) => {
+//   const updateData: any = { ...data };
+
+//   if ((data as any)?.file) {
+//     updateData.thumbnail = (data as any).file.filename;
+//   }
+
+//   // Update slug if title changes or slug is provided
+//   if (data.title && !data.slug) {
+//     const baseSlug = generateSlug(data.title);
+//     updateData.slug = await generateUniqueSlug(baseSlug, id);
+//   } else if (data.slug) {
+//     const baseSlug = generateSlug(data.slug);
+//     updateData.slug = await generateUniqueSlug(baseSlug, id);
+//   }
+
+//   const cluster = await Cluster.findByIdAndUpdate(id, updateData, {
+//     new: true,
+//   });
+//   if (!cluster) throw new Error("Cluster not found");
+//   return cluster;
+// };
+
 export const updateCluster = async (id: string, data: Partial<ICluster>) => {
   const updateData: any = { ...data };
+
+  // Additional safety: remove any auto-managed fields that might have slipped through
+  const disallowedFields = [
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "_id",
+    "__v",
+    "cluster_number",
+    "cluster_code",
+    "is_deleted",
+    "is_active",
+  ];
+
+  disallowedFields.forEach((field) => {
+    delete updateData[field];
+  });
+
+  // Clean up any empty objects that might cause issues
+  Object.keys(updateData).forEach((key) => {
+    if (
+      updateData[key] &&
+      typeof updateData[key] === "object" &&
+      Object.keys(updateData[key]).length === 0
+    ) {
+      delete updateData[key];
+    }
+  });
 
   if ((data as any)?.file) {
     updateData.thumbnail = (data as any).file.filename;
@@ -186,7 +235,10 @@ export const updateCluster = async (id: string, data: Partial<ICluster>) => {
     updateData.slug = await generateUniqueSlug(baseSlug, id);
   }
 
-  const cluster = await Cluster.findByIdAndUpdate(id, updateData, { new: true });
+  const cluster = await Cluster.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  });
   if (!cluster) throw new Error("Cluster not found");
   return cluster;
 };

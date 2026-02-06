@@ -27,7 +27,7 @@ export const getSubscriptionPlans = async (req: Request, res: Response) => {
       limit: perPage,
       search: search as string,
       sortField: sortField as string,
-sortOrder: sortOrder === "asc" ? "asc" : "desc",
+      sortOrder: sortOrder === "asc" ? "asc" : "desc",
       includeInactive: includeInactive === "true",
     });
 
@@ -52,12 +52,16 @@ export const getSubscriptionPlanById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const plan = await subscriptionPlanService.getById(id);
     if (!plan)
-      return res.status(404).json({ success: false, message: "Subscription plan not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription plan not found" });
 
     res.json({ success: true, plan });
   } catch (error: any) {
     console.error("Get subscription plan by ID error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -66,18 +70,41 @@ export const getSubscriptionPlanById = async (req: Request, res: Response) => {
 --------------------------------------------------- */
 export const addSubscriptionPlan = async (req: Request, res: Response) => {
   try {
-    const { name, description, price, currency, duration, features, is_active } = req.body;
+    const {
+      name,
+      description,
+      price,
+      currency,
+      duration,
+      features,
+      is_active,
+    } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, message: "Name is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Name is required" });
     }
     if (!description || price == null || !duration?.value || !duration?.unit) {
-      return res.status(400).json({ success: false, message: "Description, price, and duration are required" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Description, price, and duration are required",
+        });
     }
 
     const allowedUnits = ["day", "month", "year"];
     if (!allowedUnits.includes(duration.unit)) {
-      return res.status(400).json({ success: false, message: `Invalid duration unit. Allowed units: ${allowedUnits.join(", ")}`, field: "duration.unit" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: `Invalid duration unit. Allowed units: ${allowedUnits.join(
+            ", "
+          )}`,
+          field: "duration.unit",
+        });
     }
 
     const existingPlan = await SubscriptionPlan.findOne({
@@ -85,7 +112,13 @@ export const addSubscriptionPlan = async (req: Request, res: Response) => {
       is_deleted: { $ne: true },
     });
     if (existingPlan) {
-      return res.status(400).json({ success: false, message: "A subscription plan with this name already exists", field: "name" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "A subscription plan with this name already exists",
+          field: "name",
+        });
     }
 
     const planData = {
@@ -104,9 +137,17 @@ export const addSubscriptionPlan = async (req: Request, res: Response) => {
     console.error("Add subscription plan error:", error);
     if (error?.code === 11000) {
       const dupKey = error.keyValue ? Object.keys(error.keyValue)[0] : "field";
-      return res.status(400).json({ success: false, message: `${dupKey} already exists`, field: dupKey });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: `${dupKey} already exists`,
+          field: dupKey,
+        });
     }
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -119,13 +160,23 @@ export const updateSubscriptionPlan = async (req: Request, res: Response) => {
     const updateData = req.body;
 
     if (updateData.name && !updateData.name.trim()) {
-      return res.status(400).json({ success: false, message: "Name cannot be empty" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Name cannot be empty" });
     }
 
     if (updateData.duration?.unit) {
       const allowedUnits = ["day", "month", "year"];
       if (!allowedUnits.includes(updateData.duration.unit)) {
-        return res.status(400).json({ success: false, message: `Invalid duration unit. Allowed units: ${allowedUnits.join(", ")}`, field: "duration.unit" });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: `Invalid duration unit. Allowed units: ${allowedUnits.join(
+              ", "
+            )}`,
+            field: "duration.unit",
+          });
       }
     }
 
@@ -136,33 +187,56 @@ export const updateSubscriptionPlan = async (req: Request, res: Response) => {
         is_deleted: { $ne: true },
       });
       if (existingPlan) {
-        return res.status(400).json({ success: false, message: "A subscription plan with this name already exists", field: "name" });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "A subscription plan with this name already exists",
+            field: "name",
+          });
       }
     }
 
     const plan = await subscriptionPlanService.update(id, updateData);
-    if (!plan) return res.status(404).json({ success: false, message: "Subscription plan not found" });
+    if (!plan)
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription plan not found" });
 
     res.json({ success: true, plan });
   } catch (error: any) {
     console.error("Update subscription plan error:", error);
     if (error?.code === 11000) {
       const dupKey = error.keyValue ? Object.keys(error.keyValue)[0] : "field";
-      return res.status(400).json({ success: false, message: `${dupKey} already exists`, field: dupKey });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: `${dupKey} already exists`,
+          field: dupKey,
+        });
     }
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
 /* ---------------------------------------------------
    PATCH: Activate / Deactivate
 --------------------------------------------------- */
-export const toggleSubscriptionPlanStatus = async (req: Request, res: Response) => {
+export const toggleSubscriptionPlanStatus = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { id } = req.params;
     const plan = await subscriptionPlanService.toggleActive(id);
 
-    if (!plan) return res.status(404).json({ success: false, message: "Subscription plan not found" });
+    if (!plan)
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription plan not found" });
 
     res.json({
       success: true,
@@ -173,7 +247,9 @@ export const toggleSubscriptionPlanStatus = async (req: Request, res: Response) 
     });
   } catch (error: any) {
     console.error("Toggle subscription plan status error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -185,7 +261,10 @@ export const deleteSubscriptionPlan = async (req: Request, res: Response) => {
     const { id } = req.params;
     const plan = await subscriptionPlanService.softDelete(id);
 
-    if (!plan) return res.status(404).json({ success: false, message: "Subscription plan not found" });
+    if (!plan)
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription plan not found" });
 
     res.json({
       success: true,
@@ -194,7 +273,9 @@ export const deleteSubscriptionPlan = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Delete subscription plan error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -206,7 +287,10 @@ export const restoreSubscriptionPlan = async (req: Request, res: Response) => {
     const { id } = req.params;
     const plan = await subscriptionPlanService.restore(id);
 
-    if (!plan) return res.status(404).json({ success: false, message: "Subscription plan not found" });
+    if (!plan)
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription plan not found" });
 
     res.json({
       success: true,
@@ -215,6 +299,8 @@ export const restoreSubscriptionPlan = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Restore subscription plan error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };

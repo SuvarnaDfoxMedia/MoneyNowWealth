@@ -1,5 +1,3 @@
-
-
 import type { Request, Response } from "express";
 import { ContactEnquiry } from "../models/contactEnquiryModel";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -46,7 +44,9 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
     // ------------------ Validate Email ------------------
     const emailTrim = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      return res.status(400).json({ success: false, message: "Invalid email format" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid email format" });
     }
 
     // ------------------ Normalize Phone (Optional) ------------------
@@ -74,19 +74,23 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
   }
 };
 
-
 /* -------------------------
    Get Enquiries (Admin)
 ------------------------- */
 export const getContactEnquiries = async (req: Request, res: Response) => {
   try {
-    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const search =
+      typeof req.query.search === "string" ? req.query.search.trim() : "";
     const page = Math.max(parseInt(req.query.page as string) || 1, 1);
     const limit = Math.max(parseInt(req.query.limit as string) || 10, 1);
     const skip = (page - 1) * limit;
 
-    const sortField = typeof req.query.sortField === "string" ? req.query.sortField : "created_at";
-    const sortOrder = typeof req.query.sortOrder === "string" ? req.query.sortOrder : "desc";
+    const sortField =
+      typeof req.query.sortField === "string"
+        ? req.query.sortField
+        : "created_at";
+    const sortOrder =
+      typeof req.query.sortOrder === "string" ? req.query.sortOrder : "desc";
 
     const filter: any = { is_active: 1 };
 
@@ -138,7 +142,9 @@ export const softDeleteContactEnquiry = async (req: Request, res: Response) => {
     );
 
     if (!enquiry) {
-      return res.status(404).json({ success: false, message: "Contact enquiry not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Contact enquiry not found" });
     }
 
     return res.json({ success: true, enquiry });
@@ -151,13 +157,18 @@ export const softDeleteContactEnquiry = async (req: Request, res: Response) => {
 /* -------------------------
    Update Enquiry Status (Admin)
 ------------------------- */
-export const updateContactEnquiryStatus = async (req: Request, res: Response) => {
+export const updateContactEnquiryStatus = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
     if (!["new", "in-progress", "resolved"].includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status" });
     }
 
     const enquiry = await ContactEnquiry.findByIdAndUpdate(
@@ -167,7 +178,9 @@ export const updateContactEnquiryStatus = async (req: Request, res: Response) =>
     );
 
     if (!enquiry) {
-      return res.status(404).json({ success: false, message: "Contact enquiry not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Contact enquiry not found" });
     }
 
     return res.json({ success: true, enquiry });

@@ -1,6 +1,3 @@
-
-
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
@@ -90,10 +87,9 @@ export default function InvoicePage() {
         const subscription = res.subscription;
         const payment = res.payment;
 
-        const user_name =
-          subscription?.user_id?.firstname
-            ? `${subscription.user_id.firstname} ${subscription.user_id.lastname}`
-            : "Unknown User";
+        const user_name = subscription?.user_id?.firstname
+          ? `${subscription.user_id.firstname} ${subscription.user_id.lastname}`
+          : "Unknown User";
 
         const plan: SubscriptionPlan | null =
           payment?.plan_id || subscription?.plan_id || null;

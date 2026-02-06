@@ -55,7 +55,7 @@ const ForgotPassword = () => {
   return (
     <section
       className={`
-        w-full min-h-[106dvh] flex flex-col justify-center items-center
+        w-full min-h-[110dvh] flex flex-col justify-center items-center
         font-poppins
         bg-white
         md:bg-[url('/images/forgot-pass-bg2.png')]

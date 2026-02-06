@@ -1,15 +1,14 @@
-
-"use client";
-
+// components/CustomerHistory.tsx
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiFileText } from "react-icons/fi";
-import useCommonCrud from "../hooks/useCommonCrud"; 
+import usePaymentHistory from "../hooks/usePaymentHistory";
 
 /* -------------------------------
-   Interfaces
+   Interfaces (if not already in the hook)
 -------------------------------- */
 interface PaymentHistoryItem {
+  paymentId: string;
   subscriptionId: string;
   planName: string;
   amount: number;
@@ -22,22 +21,38 @@ interface PaymentHistoryItem {
   paymentDate: string;
   transactionId?: string;
   orderId?: string;
-  paymentId?: string; // for invoice
 }
 
 /* -------------------------------
    Customer History Page
 -------------------------------- */
 export default function CustomerHistoryPage() {
-  const { subscriptionId } = useParams<{ subscriptionId: string }>();
+  const { id, role } = useParams<{ id: string; role: string }>();
   const navigate = useNavigate();
 
-  const { extractList: payments = [], isLoading } = useCommonCrud<PaymentHistoryItem>({
-    module: subscriptionId
-      ? `subscription-payment/history/${subscriptionId}`
-      : "", // empty string if undefined
-    listKey: "payments",
-    enabled: !!subscriptionId, // only fetch if subscriptionId exists
+  console.log(" CustomerHistoryPage - User ID from params:", id);
+  console.log(" CustomerHistoryPage - Role from params:", role);
+
+  const { data, isLoading, error } = usePaymentHistory(id);
+
+  const payments = data?.payments || [];
+  const totalPayments = data?.total || 0;
+
+  console.log(" CustomerHistoryPage - Payments data:", payments);
+  console.log(" CustomerHistoryPage - Number of payments:", totalPayments);
+  console.log(" CustomerHistoryPage - Loading state:", isLoading);
+  console.log(" CustomerHistoryPage - Error:", error);
+
+  // Debug: Log each payment
+  payments.forEach((payment, index) => {
+    console.log(` Payment ${index + 1}:`, {
+      paymentId: payment.paymentId,
+      subscriptionId: payment.subscriptionId,
+      planName: payment.planName,
+      type: payment.type,
+      amount: payment.amount,
+      paymentDate: payment.paymentDate,
+    });
   });
 
   return (
@@ -52,11 +67,20 @@ export default function CustomerHistoryPage() {
         </button>
       </div>
 
+      {/* HEADER WITH USER INFO */}
+      <div className="mb-6 bg-gray-50 rounded-lg ">
+        <h1 className="text-[22px] font-semibold text-gray-800">
+          Payment History
+        </h1>
+        {/* make ui to show user name future reference */}
+      </div>
+
       {/* PAYMENTS TABLE */}
-      <div className="w-full overflow-x-auto bg-white shadow-2xl rounded-lg border border-gray-200">
+      <div className="w-full overflow-x-auto bg-white  rounded-lg border border-gray-200">
         <table className="w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b">
             <tr className="text-gray-600 text-sm">
+              <th className="p-4">#</th>
               <th className="p-4">Plan</th>
               <th className="p-4">Type</th>
               <th className="p-4">Amount</th>
@@ -68,54 +92,101 @@ export default function CustomerHistoryPage() {
               <th className="p-4">Payment Date</th>
               <th className="p-4">Transaction ID</th>
               <th className="p-4">Order ID</th>
-              <th className="p-4">Invoice</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={12} className="p-4 text-center text-gray-500">
-                  Loading subscription history...
+                <td colSpan={13} className="p-4 text-center text-gray-500">
+                  Loading payment history...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={13} className="p-4 text-center text-red-500">
+                  Error loading payment history. Please try again.
                 </td>
               </tr>
             ) : payments.length > 0 ? (
-              payments.map((p) => (
-                <tr key={p.subscriptionId} className="border-b text-gray-700 text-sm">
+              payments.map((p, index) => (
+                <tr
+                  key={p.paymentId || p.subscriptionId || index}
+                  className="border-b text-gray-700 text-sm"
+                >
+                  <td className="p-4">{index + 1}</td>
                   <td className="p-4">{p.planName}</td>
                   <td className="p-4 capitalize">{p.type}</td>
                   <td className="p-4">{p.amount}</td>
                   <td className="p-4">{p.currency}</td>
-                  <td className="p-4">{p.status || "—"}</td>
-                  <td className="p-4">{p.trialType || "—"}</td>
-                  <td className="p-4">{new Date(p.startDate).toLocaleDateString()}</td>
-                  <td className="p-4">{new Date(p.endDate).toLocaleDateString()}</td>
-                  <td className="p-4">{new Date(p.paymentDate).toLocaleDateString()}</td>
-                  <td className="p-4">{p.transactionId || "—"}</td>
-                  <td className="p-4">{p.orderId || "—"}</td>
                   <td className="p-4">
-                    {p.paymentId ? (
-                      <button
-                        onClick={() => navigate(`/invoice/${p.paymentId}`)}
-                        className="flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                      >
-                        <FiFileText size={16} /> View
-                      </button>
-                    ) : (
-                      "—"
-                    )}
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        p.status === "new"
+                          ? "bg-blue-100 text-blue-800"
+                          : p.status === "upgrade"
+                            ? "bg-green-100 text-green-800"
+                            : p.status === "downgrade"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {p.status || "—"}
+                    </span>
                   </td>
+                  <td className="p-4">{p.trialType || "—"}</td>
+                  <td className="p-4">
+                    {p.startDate
+                      ? new Date(p.startDate).toLocaleDateString()
+                      : "—"}
+                  </td>
+                  <td className="p-4">
+                    {p.endDate ? new Date(p.endDate).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="p-4">
+                    {p.paymentDate
+                      ? new Date(p.paymentDate).toLocaleDateString()
+                      : "—"}
+                  </td>
+                  <td className="p-4 font-mono text-xs">
+                    {p.transactionId || "—"}
+                  </td>
+                  <td className="p-4 font-mono text-xs">{p.orderId || "—"}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="p-4 text-center text-gray-500">
-                  No subscription history found.
+                <td colSpan={13} className="p-4 text-center text-gray-500">
+                  No payment history found for this user.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* SUMMARY FOOTER */}
+      {payments.length > 0 && (
+        <div className="mt-4 p-4 bg-gray-50">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-semibold">{payments.length}</span>{" "}
+                of <span className="font-semibold">{totalPayments}</span>{" "}
+                payments
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">
+                Total Amount:{" "}
+                <span className="font-semibold">
+                  {payments[0]?.currency}{" "}
+                  {payments.reduce((sum, p) => sum + p.amount, 0)}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

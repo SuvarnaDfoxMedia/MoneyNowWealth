@@ -63,7 +63,10 @@ export const createNewsletter = async (data: Partial<INewsletter>) => {
   const cleanEmail = data.email.trim().toLowerCase();
 
   // Check duplicate manually before creating
-  const existing = await Newsletter.findOne({ email: cleanEmail, is_deleted: false });
+  const existing = await Newsletter.findOne({
+    email: cleanEmail,
+    is_deleted: false,
+  });
   if (existing) {
     throw new Error("Email is already subscribed");
   }

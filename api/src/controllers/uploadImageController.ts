@@ -1,5 +1,3 @@
-// src/routes/uploadImage.routes.ts
-
 import express, { Request, Response } from "express";
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
@@ -26,8 +24,9 @@ const storage = multer.diskStorage({
     cb(null, sectionDir);
   },
   filename: (_req, file, cb) => {
-    const uniqueName =
-      `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+    const uniqueName = `${Date.now()}-${Math.round(
+      Math.random() * 1e9,
+    )}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
@@ -38,7 +37,7 @@ const storage = multer.diskStorage({
 const fileFilter = (
   _req: Request,
   file: Express.Multer.File,
-  cb: FileFilterCallback
+  cb: FileFilterCallback,
 ) => {
   if (file.mimetype.startsWith("image/")) cb(null, true);
   else cb(new Error("Only image files allowed!"));
@@ -67,7 +66,9 @@ router.post(
           .json({ success: false, message: "No file uploaded" });
       }
 
-      const fileUrl = `${process.env.BASE_URL || "http://localhost:5000"}/uploads/section/${req.file.filename}`;
+      const fileUrl = `${
+        process.env.BASE_URL || "http://localhost:5000"
+      }/uploads/section/${req.file.filename}`;
 
       const { articleId, sectionIndex } = req.body;
 
@@ -98,11 +99,9 @@ router.post(
       });
     } catch (err: any) {
       console.error("Upload failed:", err.message);
-      return res
-        .status(500)
-        .json({ success: false, message: "Upload failed" });
+      return res.status(500).json({ success: false, message: "Upload failed" });
     }
-  }
+  },
 );
 
 export default router;

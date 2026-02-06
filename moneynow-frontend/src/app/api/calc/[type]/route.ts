@@ -1,47 +1,83 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import axios from "axios";
 
-export const runtime = "nodejs";
+const BASE_URL = process.env.ADVISORKHOJ_BASE_URL;
+const API_KEY = process.env.ADVISORKHOJ_API_KEY;
 
-const BASE_URL = "https://mfapi.advisorkhoj.com";
-const API_KEY = process.env.ADVISORKHOJ_API_KEY!;
-
-const ENDPOINTS: Record<string, string> = {
-  sip: "/calc/getSIPCalcResult",
-  stepup: "/calc/getSIPCalcStepUpResult",
+const ENDPOINT_MAP: Record<string, string> = {
   lumpsum: "/calc/getLumpsumCalcResult",
+  sip: "/calc/getSIPCalcResult",
   goal: "/calc/getGoalSettingCalcResult",
+  stepup: "/calc/getSIPCalcStepUpResult",
+  targetSip: "/calc/getTargetAmountSIPCalcResult",
+  targetLumpsum: "/calc/getLumpsumTargetCalcResult",
+  crorepati: "/calc/getCrorepatiResult",
   retirement: "/calc/getCrorepatiResult",
+  carLoan: "/calc/getEMICalcResult",
+  homeLoan: "/calc/getEMICalcResult",
+  swp: "/baroda/getSwpCalResult",
+  personalLoan: "/calc/getEMICalcResult",
+  educationLoan: "/calc/getEMICalcResult",
+  futureValue: "/calc/getFutureValueCalcResult",
+  compounding: "/calc/getCompoundingResult",
+  childrenEducation: "/calc/getEducationPlannerResult",
+  spendingLess: "/calc/getSpendingLessCalcResult",
 };
 
+function toQueryString(obj: Record<string, any>) {
+  return Object.entries(obj)
+    .map(
+      ([key, val]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(val ?? "")}`,
+    )
+    .join("&");
+}
+
 export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ type: string }> }
+  req: Request,
+  context: { params: { type: string } },
 ) {
   try {
-    const { type } = await params;
-    const endpoint = ENDPOINTS[type];
+    // Await the params destructuring
+    const type = context.params.type;
 
-    if (!endpoint) {
-      return NextResponse.json({ status: 400, msg: "Invalid calculator type" });
+    if (!BASE_URL || !API_KEY) {
+      return NextResponse.json(
+        { message: "Missing API config" },
+        { status: 500 },
+      );
     }
 
-    const body = await req.json();
+    const endpoint = ENDPOINT_MAP[type];
+    if (!endpoint) {
+      return NextResponse.json(
+        { message: "Invalid calculator type" },
+        { status: 400 },
+      );
+    }
 
-    const formData = new URLSearchParams({ key: API_KEY });
-    Object.entries(body).forEach(([k, v]) =>
-      formData.append(k, String(v))
-    );
+    const payload = await req.json();
+    const finalPayload = { key: API_KEY, ...payload };
 
-    const { data } = await axios.post(
-      `${BASE_URL}${endpoint}`,
-      formData.toString(),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-    );
+    const query = toQueryString(finalPayload);
+    const url = `${BASE_URL}${endpoint}?${query}`;
+
+    const { data } = await axios.post(url, null, {
+      headers: { "Content-Type": "application/json" },
+    });
 
     return NextResponse.json(data);
   } catch (err: any) {
-    console.error("AdvisorKhoj API Error:", err?.message);
-    return NextResponse.json({ status: 500, msg: "Calculation failed" });
+    console.error(
+      "AdvisorKhoj API error:",
+      err?.response?.data || err?.message,
+    );
+    return NextResponse.json(
+      {
+        message: "Calculation failed",
+        error: err?.response?.data || err?.message,
+      },
+      { status: 500 },
+    );
   }
 }

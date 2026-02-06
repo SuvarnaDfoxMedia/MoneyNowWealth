@@ -28,10 +28,7 @@ export const getPages = async (query: any) => {
   sortQuery[sortField] = sortOrder === "desc" ? -1 : 1;
 
   const [pages, total] = await Promise.all([
-    CmsPage.find(filter)
-      .sort(sortQuery)
-      .skip(skip)
-      .limit(perPage),
+    CmsPage.find(filter).sort(sortQuery).skip(skip).limit(perPage),
     CmsPage.countDocuments(filter),
   ]);
 
@@ -43,15 +40,12 @@ export const getPages = async (query: any) => {
   };
 };
 
-
-
 export const findPageBySlug = async (slug: string) => {
   return CmsPage.findOne({
     slug,
     is_active: 1,
   });
 };
-
 
 export const getPageById = async (id: string) => {
   const page = await CmsPage.findById(id);
@@ -63,7 +57,10 @@ export const getPageById = async (id: string) => {
 export const createPage = async (data: Partial<ICmsPage>) => {
   if (!data.title || !data.slug) throw new Error("title and slug are required");
 
-  const slugExists = await CmsPage.findOne({ slug: data.slug, is_deleted: { $ne: true } });
+  const slugExists = await CmsPage.findOne({
+    slug: data.slug,
+    is_deleted: { $ne: true },
+  });
   if (slugExists) throw new Error("Slug already exists");
 
   const page = new CmsPage({

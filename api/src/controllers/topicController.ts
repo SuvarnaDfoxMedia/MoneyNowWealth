@@ -4,6 +4,12 @@ import { topicService } from "../services/topicService";
 import Topic from "../models/topicModel";
 import Cluster from "../models/clusterModel";
 import { nanoid } from "nanoid";
+import User from "../models/userModel";
+import dotenv from "dotenv";
+
+dotenv.config(); // Make sure .env variables are loaded
+
+const BASE_URL = process.env.WEBSITE_URL!;
 
 type Request = express.Request;
 type Response = express.Response;
@@ -11,7 +17,10 @@ type Response = express.Response;
 // ==================== PUBLIC API ====================
 
 // Get published clusters with topics & articles (public view)
-export const getPublishedClustersTopicsArticles = async (req: Request, res: Response) => {
+export const getPublishedClustersTopicsArticles = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -85,7 +94,10 @@ export const getPublishedClustersTopicsArticles = async (req: Request, res: Resp
 };
 
 // Get topic by ID with articles (public view)
-export const getPublishedTopicWithArticlesByIdAgg = async (req: Request, res: Response) => {
+export const getPublishedTopicWithArticlesByIdAgg = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { id } = req.params;
     const today = new Date();
@@ -160,9 +172,10 @@ export const getPublishedTopicWithArticlesByIdAgg = async (req: Request, res: Re
     ]);
 
     if (!result || result.length === 0)
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found or not published yet" });
+      return res.status(404).json({
+        success: false,
+        message: "Topic not found or not published yet",
+      });
 
     const topicData = result[0];
     res.json({
@@ -173,7 +186,9 @@ export const getPublishedTopicWithArticlesByIdAgg = async (req: Request, res: Re
     });
   } catch (error: any) {
     console.error("Aggregation get topic by ID error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -208,14 +223,11 @@ export const getTopics = async (req: Request, res: Response) => {
     const pageNum = parseInt(String(page)) || 1;
     const perPage = parseInt(String(limit)) || 10;
 
-    const sort = { createdAt: -1 };
-
- const { topics, total } = await topicService.getAll(
-  filter,
-  pageNum,
-  perPage
-);
-
+    const { topics, total } = await topicService.getAll(
+      filter,
+      pageNum,
+      perPage,
+    );
 
     res.json({
       success: true,
@@ -246,10 +258,11 @@ export const getTopicById = async (req: Request, res: Response) => {
     res.json({ success: true, topic });
   } catch (error: any) {
     console.error("Get topic by ID error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
-
 
 export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
   try {
@@ -301,9 +314,11 @@ export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
   }
 };
 
-
 // Controller
-export const getPublishedTopicByClusterAndSlug = async (req: Request, res: Response) => {
+export const getPublishedTopicByClusterAndSlug = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { clusterSlug, slug } = req.params;
     const today = new Date();
@@ -341,7 +356,9 @@ export const getPublishedTopicByClusterAndSlug = async (req: Request, res: Respo
     ]);
 
     if (!result.length) {
-      return res.status(404).json({ success: false, message: "Topic not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Topic not found" });
     }
 
     res.json({
@@ -355,8 +372,7 @@ export const getPublishedTopicByClusterAndSlug = async (req: Request, res: Respo
   }
 };
 
-
-
+/* ------------------ Add Topic ------------------ */
 export const addTopic = async (req: Request, res: Response) => {
   try {
     const {
@@ -384,12 +400,12 @@ export const addTopic = async (req: Request, res: Response) => {
     const topic_code = `TOPIC-${Date.now()}-${nanoid(6)}`;
 
     const topicData: any = {
-      topic_code, 
+      topic_code,
       cluster_id,
       title,
       slug,
       keywords: Array.isArray(keywords) ? keywords : [],
-      summary,
+      summary: summary || "", // ensure summary exists for cron emails
       author,
       read_time_minutes,
       tags: Array.isArray(tags) ? tags : [],
@@ -398,10 +414,15 @@ export const addTopic = async (req: Request, res: Response) => {
         ? status
         : "draft",
       is_active: typeof is_active === "number" ? is_active : 0,
+      is_email_sent: false, // important for cron
     };
 
+    // Handle publish date
     if (publish_date) {
       topicData.publish_date = new Date(publish_date);
+    } else if (status === "published") {
+      // If publishing now, set publish_date to current date
+      topicData.publish_date = new Date();
     }
 
     const topic = await topicService.create(topicData);
@@ -414,10 +435,7 @@ export const addTopic = async (req: Request, res: Response) => {
     console.error("Add topic error:", error);
 
     if (error?.code === 11000) {
-      const dupKey = error.keyValue
-        ? Object.keys(error.keyValue)[0]
-        : "field";
-
+      const dupKey = error.keyValue ? Object.keys(error.keyValue)[0] : "field";
       return res.status(400).json({
         success: false,
         message: `${dupKey} already exists`,
@@ -432,7 +450,7 @@ export const addTopic = async (req: Request, res: Response) => {
   }
 };
 
-
+/* ------------------ Update Topic ------------------ */
 export const updateTopic = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -445,7 +463,13 @@ export const updateTopic = async (req: Request, res: Response) => {
       updateData.status = status;
     if (typeof is_active === "number") updateData.is_active = is_active;
 
+    // Reset email flag if topic is (re)published
+    if (status === "published") {
+      updateData.is_email_sent = false; // email will be sent via cron
+    }
+
     const topic = await topicService.update(id, updateData);
+
     if (!topic)
       return res
         .status(404)
@@ -454,16 +478,16 @@ export const updateTopic = async (req: Request, res: Response) => {
     res.json({ success: true, topic });
   } catch (error: any) {
     console.error("Update topic error:", error);
+
     if (error?.code === 11000) {
-      const dupKey = error.keyValue
-        ? Object.keys(error.keyValue)[0]
-        : "field";
+      const dupKey = error.keyValue ? Object.keys(error.keyValue)[0] : "field";
       return res.status(400).json({
         success: false,
         message: `${dupKey} already exists`,
         field: dupKey,
       });
     }
+
     res
       .status(500)
       .json({ success: false, message: error.message || "Server error" });
@@ -492,7 +516,9 @@ export const toggleTopicStatus = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Toggle is_active error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -513,7 +539,9 @@ export const deleteTopic = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Delete topic error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
@@ -534,11 +562,11 @@ export const restoreTopic = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Restore topic error:", error);
-    res.status(500).json({ success: false, message: error.message || "Server error" });
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
-
-
 
 export const getTopicList = async (_req: Request, res: Response) => {
   try {
@@ -557,6 +585,29 @@ export const getTopicList = async (_req: Request, res: Response) => {
   }
 };
 
+/* ------------------ Publish Topic ------------------ */
+export const publishTopic = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
 
+    const topic = await topicService.publishTopic(id);
 
+    if (!topic) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Topic not found" });
+    }
 
+    res.json({
+      success: true,
+      message:
+        "Topic published successfully. Email notifications will be sent via scheduler.",
+      topic,
+    });
+  } catch (error: any) {
+    console.error("Publish topic error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: error.message || "Server error" });
+  }
+};

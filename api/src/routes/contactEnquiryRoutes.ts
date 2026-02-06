@@ -1,4 +1,3 @@
-
 import express from "express";
 import {
   addContactEnquiry,
@@ -19,15 +18,9 @@ const adminMiddleware = roleFromUrl(["admin"]);
 
 /* -------------------- ADMIN ROUTES -------------------- */
 // Get all contact enquiries (Admin only)
-router.get(
-  "/contact-enquiries",
-  getContactEnquiries
-);
+router.get("/:role/contact-enquiries", getContactEnquiries);
 
 // Soft delete contact enquiry (Admin only)
-router.delete(
-  "/contact-enquiries/:id",
-  softDeleteContactEnquiry
-);
+router.delete("/contact-enquiries/:id", softDeleteContactEnquiry);
 
 export default router;

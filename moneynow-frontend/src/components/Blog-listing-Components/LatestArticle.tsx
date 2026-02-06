@@ -43,7 +43,9 @@ const FeaturedArticle = () => {
       try {
         if (!API_BASE) throw new Error("API base URL missing");
 
-        const res = await fetch(`${API_BASE}/api/cluster/first-topic-article/all`);
+        const res = await fetch(
+          `${API_BASE}/api/cluster/first-topic-article/all`,
+        );
         if (!res.ok) throw new Error("API request failed");
 
         const data = await res.json();
@@ -82,38 +84,35 @@ const FeaturedArticle = () => {
 
   return (
     <div className="border-b border-[#F0F0F0] mb-[15px]">
-     <p className="text-[26px] md:text-[30px] font-poppins font-semibold mb-4 border-b border-[#F0F0F0] pb-[15px]">
-  Latest Articles
-</p>
-
+      <p className="text-[26px] md:text-[30px] font-poppins font-semibold mb-4 border-b border-[#F0F0F0] pb-[15px]">
+        Latest Articles
+      </p>
 
       <div className="relative mb-[15px]">
         {article.cluster?.title && (
-    <Link href={`/blog/${article.slug}`}>
-      <span className="text-[18px] sm:text-[20px] font-inter text-[#043F79] font-bold cursor-pointer hover:underline">
-        {article.cluster.title}
-      </span>
-    </Link>
+          <Link href={`/blog/${article.slug}`}>
+            <span className="text-[18px] sm:text-[20px] font-inter text-[#043F79] font-bold cursor-pointer hover:underline">
+              {article.cluster.title}
+            </span>
+          </Link>
         )}
 
-       <Link href={`/blog/${article.slug}`}>
-  <h3 className="text-[22px] md:text-[30px] font-semibold mt-1 mb-1 cursor-pointer hover:text-[#043F79]">
-    {article.title}
-  </h3>
-</Link>
+        <Link href={`/blog/${article.slug}`}>
+          <h3 className="text-[22px] md:text-[30px] font-semibold mt-1 mb-1 cursor-pointer hover:text-[#043F79]">
+            {article.title}
+          </h3>
+        </Link>
 
-
-      <p className="text-[13px] md:text-[16px] font-medium font-inter mb-[25px]">
-  {article.author || "Team Money Now"} &nbsp;|&nbsp;
-  {article.created_at
-    ? new Date(article.created_at).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : ""}
-</p>
-
+        <p className="text-[13px] md:text-[16px] font-medium font-inter mb-[25px]">
+          {article.author || "Team Money Now"} &nbsp;|&nbsp;
+          {article.created_at
+            ? new Date(article.created_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : ""}
+        </p>
       </div>
 
       <Link href={`/blog/${article.slug}`}>
@@ -129,9 +128,9 @@ const FeaturedArticle = () => {
         </div>
       </Link>
 
-    {article.introduction && (
-  <div
-className="
+      {article.introduction && (
+        <div
+          className="
   text-gray-600 font-inter
   line-clamp-[5]
   [&_p]:!text-[18px]
@@ -142,10 +141,9 @@ className="
   [&_p:last-child]:mb-0
   mb-6
 "
-    dangerouslySetInnerHTML={sanitize(article.introduction)}
-  />
-)}
-
+          dangerouslySetInnerHTML={sanitize(article.introduction)}
+        />
+      )}
     </div>
   );
 };
@@ -166,16 +164,16 @@ const LatestArticle = () => {
             <div className="lg:col-span-4">
               <MostPopularBlogs />
 
-               <div className="relative w-full rounded">
-                   <Image
-                    src="/images/blog-listing-right-banner2.png"
-                     alt="Banner"
-                    width={1200}
+              <div className="relative w-full rounded">
+                <Image
+                  src="/images/blog-listing-right-banner2.png"
+                  alt="Banner"
+                  width={1200}
                   height={620}
                   sizes="(max-width: 768px) 100vw, 1200px"
-                className="w-full h-auto rounded"
-                   />
-               </div>
+                  className="w-full h-auto rounded"
+                />
+              </div>
             </div>
           </div>
 
@@ -230,8 +228,8 @@ const LatestArticle = () => {
         </div>
       </section>
 
-<div className="w-full mt-24 sm:mt-0">
-          <HomeInvestTrack data={homeInvestTrackData} />
+      <div className="w-full mt-24 sm:mt-0">
+        <HomeInvestTrack data={homeInvestTrackData} />
         <div className="border-t border-[#E5E7EB]">
           <StayConnected />
         </div>

@@ -1,5 +1,3 @@
-
-
 // "use client";
 
 // import {
@@ -92,7 +90,6 @@
 //   );
 // }
 
-
 "use client";
 
 import {
@@ -101,14 +98,19 @@ import {
   LinearScale,
   BarElement,
   Tooltip,
-  Legend
+  Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-export default function SipBarChart({ invested, returns }) {
-  const years = Array.from({ length: 15 }, (_, i) => `${i + 1}Y`);
+interface SipBarChartProps {
+  invested: number[];
+  returns: number[];
+}
+
+export default function SipBarChart({ invested, returns }: SipBarChartProps) {
+  const years = invested.map((_, i) => `${i + 1}Y`);
 
   const data = {
     labels: years,
@@ -144,10 +146,23 @@ export default function SipBarChart({ invested, returns }) {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: true,
+        position: "top" as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+        },
+      },
       tooltip: {
         callbacks: {
-          label: (ctx) => `${ctx.raw} L`,
+          label: (context: any) => {
+            const rawValue = context.raw;
+            const value = Number(rawValue) || 0;
+            return `${context.dataset.label}: ₹${(
+              value * 100000
+            ).toLocaleString("en-IN")}`;
+          },
         },
       },
     },
@@ -156,10 +171,8 @@ export default function SipBarChart({ invested, returns }) {
         stacked: true,
         grid: { display: false },
         ticks: {
-          maxRotation: 0,
-          minRotation: 0,
-          autoSkip: true,
-          maxTicksLimit: 7,
+          maxRotation: 25,
+          minRotation: 25,
           font: { size: 11 },
         },
       },
@@ -170,7 +183,11 @@ export default function SipBarChart({ invested, returns }) {
           drawBorder: false,
         },
         ticks: {
-          callback: (value) => value + " L",
+          callback: (value: number) => {
+            const v = Number(value) || 0;
+            if (v === 0) return "0";
+            return `₹${(v * 100000).toLocaleString("en-IN")}`;
+          },
           font: { size: 11 },
         },
         border: { display: false },
@@ -179,7 +196,7 @@ export default function SipBarChart({ invested, returns }) {
   };
 
   return (
-    <div className="w-full h-[240px] sm:h-[300px] md:h-[340px]">
+    <div className="h-[340px] w-full">
       <Bar data={data} options={options} />
     </div>
   );

@@ -1,15 +1,20 @@
-
 "use client";
 
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { FiSave, FiRefreshCw, FiArrowLeft, FiUpload, FiX } from "react-icons/fi";
+import {
+  FiSave,
+  FiRefreshCw,
+  FiArrowLeft,
+  FiUpload,
+  FiX,
+} from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
 
 interface ClusterForm {
   title: string;
-  slug: string; 
+  slug: string;
   description: string;
   sort_order: number;
   status: string;
@@ -25,9 +30,7 @@ interface ClusterResponse {
 export default function AddCluster() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const page = searchParams.get("page") || "1";
-  const limit = searchParams.get("limit") || "10";
+
   const { getOne, createRecord, updateRecord } = useCommonCrud({
     role: "admin",
     module: "cluster",
@@ -116,7 +119,7 @@ export default function AddCluster() {
     e:
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>
-      | React.ChangeEvent<HTMLSelectElement>
+      | React.ChangeEvent<HTMLSelectElement>,
   ) => {
     const target = e.target as HTMLInputElement;
     const { name, value, type } = target;
@@ -146,15 +149,19 @@ export default function AddCluster() {
     const newErrors: Record<string, string> = {};
     if (!values.title.trim()) newErrors.title = "Title is required";
     if (!values.slug.trim()) newErrors.slug = "Slug is required";
-    if (!values.description.trim()) newErrors.description = "Description is required";
-    if (!file && !values.thumbnail && !thumbnailRemoved) newErrors.thumbnail = "Thumbnail is required";
+    if (!values.description.trim())
+      newErrors.description = "Description is required";
+    if (!file && !values.thumbnail && !thumbnailRemoved)
+      newErrors.thumbnail = "Thumbnail is required";
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       if (newErrors.title && titleRef.current) titleRef.current.focus();
       else if (newErrors.slug && slugRef.current) slugRef.current.focus();
-      else if (newErrors.description && descriptionRef.current) descriptionRef.current.focus();
-      else if (newErrors.thumbnail && thumbnailRef.current) thumbnailRef.current.click();
+      else if (newErrors.description && descriptionRef.current)
+        descriptionRef.current.focus();
+      else if (newErrors.thumbnail && thumbnailRef.current)
+        thumbnailRef.current.click();
       return;
     }
 
@@ -186,7 +193,7 @@ export default function AddCluster() {
         toast.success("Cluster created successfully");
       }
 
-      navigate(`/admin/cluster?page=${page}&limit=${limit}`);
+      navigate(`/admin/cluster`);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || "Failed to save cluster");
@@ -202,7 +209,7 @@ export default function AddCluster() {
       setPreview(
         originalValues.thumbnail
           ? `${import.meta.env.VITE_API_BASE.replace("/api", "")}/uploads/thumbnail/${originalValues.thumbnail}`
-          : null
+          : null,
       );
     } else {
       setValues({
@@ -225,9 +232,11 @@ export default function AddCluster() {
   return (
     <div className="p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-semibold text-gray-800">{id ? "Edit Cluster" : "Add Cluster"}</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">
+          {id ? "Edit Cluster" : "Add Cluster"}
+        </h2>
         <button
-          onClick={() => navigate(`/admin/cluster?page=${page}&limit=${limit}`)}
+          onClick={() => navigate(`/admin/cluster`)}
           className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition"
         >
           <FiArrowLeft /> Back
@@ -238,7 +247,9 @@ export default function AddCluster() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Title + Slug */}
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Title</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Title
+            </label>
             <input
               ref={titleRef}
               type="text"
@@ -247,12 +258,18 @@ export default function AddCluster() {
               onChange={handleChange}
               placeholder="Enter cluster title"
               className={`w-full border rounded-md px-4 py-2 focus:outline-none ${
-                errors.title ? "border-red-500" : "border-gray-300 focus:ring-2 focus:ring-blue-200"
+                errors.title
+                  ? "border-red-500"
+                  : "border-gray-300 focus:ring-2 focus:ring-blue-200"
               }`}
             />
-            {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+            )}
 
-            <label className="block mb-2 mt-4 text-gray-700 font-medium">Slug</label>
+            <label className="block mb-2 mt-4 text-gray-700 font-medium">
+              Slug
+            </label>
             <input
               ref={slugRef}
               type="text"
@@ -261,15 +278,21 @@ export default function AddCluster() {
               onChange={handleChange}
               placeholder="Auto-generated from title"
               className={`w-full border rounded-md px-4 py-2 focus:outline-none ${
-                errors.slug ? "border-red-500" : "border-gray-300 focus:ring-2 focus:ring-blue-200"
+                errors.slug
+                  ? "border-red-500"
+                  : "border-gray-300 focus:ring-2 focus:ring-blue-200"
               }`}
             />
-            {errors.slug && <p className="text-red-500 text-sm mt-1">{errors.slug}</p>}
+            {errors.slug && (
+              <p className="text-red-500 text-sm mt-1">{errors.slug}</p>
+            )}
           </div>
 
           {/* Thumbnail */}
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Thumbnail</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Thumbnail
+            </label>
             <label className="flex border border-gray-300 rounded-md px-4 py-2 text-gray-600 cursor-pointer items-center justify-center gap-2 hover:bg-gray-50 transition">
               <FiUpload className="text-gray-500" />
               <span>Upload Image</span>
@@ -282,12 +305,18 @@ export default function AddCluster() {
                 className="hidden"
               />
             </label>
-            {errors.thumbnail && <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>}
+            {errors.thumbnail && (
+              <p className="text-red-500 text-sm mt-1">{errors.thumbnail}</p>
+            )}
 
             <div className="relative w-[100px] h-[100px] border border-gray-300 rounded-lg overflow-hidden flex items-center justify-center mt-3 bg-gray-50 shadow-sm">
               {preview ? (
                 <>
-                  <img src={preview} alt="Preview" className="object-cover w-full h-full" />
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="object-cover w-full h-full"
+                  />
                   <button
                     type="button"
                     onClick={() => {
@@ -303,7 +332,9 @@ export default function AddCluster() {
                   </button>
                 </>
               ) : (
-                <span className="text-gray-400 text-sm text-center">No image selected</span>
+                <span className="text-gray-400 text-sm text-center">
+                  No image selected
+                </span>
               )}
             </div>
           </div>
@@ -311,7 +342,9 @@ export default function AddCluster() {
 
         {/* Description */}
         <div>
-          <label className="block mb-2 text-gray-700 font-medium">Description</label>
+          <label className="block mb-2 text-gray-700 font-medium">
+            Description
+          </label>
           <textarea
             ref={descriptionRef}
             name="description"
@@ -319,17 +352,23 @@ export default function AddCluster() {
             onChange={handleChange}
             placeholder="Enter cluster description"
             className={`w-full border rounded-md px-4 py-2 focus:outline-none ${
-              errors.description ? "border-red-500" : "border-gray-300 focus:ring-2 focus:ring-blue-200"
+              errors.description
+                ? "border-red-500"
+                : "border-gray-300 focus:ring-2 focus:ring-blue-200"
             }`}
             rows={4}
           />
-          {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+          {errors.description && (
+            <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+          )}
         </div>
 
         {/* Status + Sort Order */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Status</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Status
+            </label>
             <select
               name="status"
               value={values.status}
@@ -343,7 +382,9 @@ export default function AddCluster() {
           </div>
 
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Sort Order</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Sort Order
+            </label>
             <input
               type="number"
               name="sort_order"
@@ -388,5 +429,3 @@ export default function AddCluster() {
     </div>
   );
 }
-
-

@@ -1,11 +1,12 @@
-
-
 import axios from "axios";
 
 const API_URL = `${import.meta.env.VITE_API_BASE}`;
 
 // -------------------- LOGIN --------------------
-export const login = async (credentials: { email: string; password: string }) => {
+export const login = async (credentials: {
+  email: string;
+  password: string;
+}) => {
   return axios.post(`${API_URL}/login`, credentials, { withCredentials: true });
 };
 

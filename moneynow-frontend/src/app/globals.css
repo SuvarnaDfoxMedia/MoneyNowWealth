@@ -12,7 +12,7 @@
   --font-poppins: 'Poppins', sans-serif;
   --font-inter: 'Inter', sans-serif;
 
-  color-scheme: light; /* ✅ FORCE LIGHT THEME */
+  color-scheme: light; /*  FORCE LIGHT THEME */
 }
 
 /* Tailwind theme overrides */
@@ -101,4 +101,57 @@ body {
 
 html {
   scroll-padding-top: 100px;
+}
+
+/* Add to your global CSS or component style */
+@media print {
+  .pdf-safe {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 10mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  .pdf-safe * {
+    font-family: Arial, sans-serif !important;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+  }
+  
+  .pdf-safe table {
+    page-break-inside: avoid !important;
+  }
+  
+  .pdf-safe tr {
+    page-break-inside: avoid !important;
+  }
+  
+  .pdf-safe td, .pdf-safe th {
+    padding: 8px !important;
+  }
+}
+
+/* PDF SAFETY */
+.pdf-safe {
+  padding: 24px !important;
+  box-sizing: border-box !important;
+}
+
+.pdf-safe * {
+  line-height: 1.5 !important;
+}
+
+/* ===== PDF COLOR FIX FOR html2canvas ===== */
+.pdf-safe,
+.pdf-safe * {
+  color: rgb(55, 65, 81) !important;          /* gray-700 */
+  background-color: rgb(255, 255, 255) !important;
+  border-color: rgb(229, 231, 235) !important; /* gray-200 */
+
+  /* IMPORTANT: kill unsupported color functions */
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
 }

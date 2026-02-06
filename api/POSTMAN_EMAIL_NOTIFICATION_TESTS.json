@@ -1,0 +1,357 @@
+{
+  "info": {
+    "name": "Email Notification System - Testing Collection",
+    "description": "Production-ready email notification system for articles and subscriptions",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "1. USER REGISTRATION (Free Plan Auto-Assigned)",
+      "item": [
+        {
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/auth/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mr\",\n  \"firstname\": \"John\",\n  \"lastname\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"mobile\": \"9876543210\",\n  \"countryCode\": \"+91\",\n  \"termsAccepted\": true\n}"
+            },
+            "description": "Register user → Free plan auto-assigned → Email queued"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. ARTICLE PUBLISHING (Draft → Published)",
+      "item": [
+        {
+          "name": "Create Draft Article",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/article/create",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "article", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic_id\": \"{{topic_id}}\",\n  \"title\": \"Complete Guide to Financial Planning\",\n  \"slug\": \"guide-financial-planning-2026\",\n  \"introduction\": \"Learn the fundamentals of financial planning and secure your future. This comprehensive guide covers budgeting, investment strategies, and wealth management techniques.\",\n  \"status\": \"draft\",\n  \"is_active\": 1\n}"
+            },
+            "description": "Create article in DRAFT status → No email sent"
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Article (Draft → Published)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/article/edit/{{article_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "article", "edit", "{{article_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"published\",\n  \"title\": \"Complete Guide to Financial Planning - UPDATED\"\n}"
+            },
+            "description": "Publish article → Status changes to 'published' → EMAIL SENT to all active users → is_email_sent = true"
+          },
+          "response": []
+        },
+        {
+          "name": "Unpublish Article (Published → Draft)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/article/edit/{{article_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "article", "edit", "{{article_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"draft\"\n}"
+            },
+            "description": "Unpublish article → Status changes to 'draft' → NO EMAIL → is_email_sent reset to false"
+          },
+          "response": []
+        },
+        {
+          "name": "Re-publish Article (Draft → Published Again)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/article/edit/{{article_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "article", "edit", "{{article_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"published\"\n}"
+            },
+            "description": "Re-publish article → is_email_sent was reset → EMAIL SENT AGAIN (idempotency works!)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Article Content (NO Email)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/article/edit/{{article_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "article", "edit", "{{article_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title Only\",\n  \"introduction\": \"New introduction text...\"\n}"
+            },
+            "description": "Update article content WITHOUT status change → NO EMAIL SENT (idempotency!)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. SUBSCRIPTION LIFECYCLE",
+      "item": [
+        {
+          "name": "Create Free Subscription (for user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/subscriptions/create",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "subscriptions", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"plan_id\": \"{{free_plan_id}}\",\n  \"durationValue\": 30,\n  \"durationUnit\": \"day\",\n  \"trialType\": \"free_sample\"\n}"
+            },
+            "description": "Create free subscription → Status: 'free' → Activation email queued"
+          },
+          "response": []
+        },
+        {
+          "name": "Upgrade to Premium (Free → Premium)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/subscriptions/create",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "subscriptions", "create"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"plan_id\": \"{{premium_plan_id}}\",\n  \"durationValue\": 1,\n  \"durationUnit\": \"month\",\n  \"trialType\": \"premium_sample\",\n  \"paymentMethod\": \"razorpay\",\n  \"transactionId\": \"txn_123456789\"\n}"
+            },
+            "description": "Upgrade to premium → Previous 'free' subscription deactivated → New status: 'upgraded' → Upgrade email queued → Payment record appended"
+          },
+          "response": []
+        },
+        {
+          "name": "View Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/subscription-payment/history/{{user_id}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "subscription-payment", "history", "{{user_id}}"]
+            },
+            "description": "View all payment records (APPEND-ONLY history) → Shows: new subscription, upgrade payment, etc."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Subscription",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/subscriptions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "subscriptions"]
+            },
+            "description": "Get current active subscription → Shows: plan, status, end_date, etc."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. QUEUE MONITORING",
+      "item": [
+        {
+          "name": "Check Email Queue Size (Health Check)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "token={{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/queue-status",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "queue-status"]
+            },
+            "description": "Monitor email queue size and processing status → For debugging"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "auth_token",
+      "value": "{{ copy from login response }}",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "{{ copy from admin login response }}",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "{{ from registration response or user list }}",
+      "type": "string"
+    },
+    {
+      "key": "article_id",
+      "value": "{{ from article creation response }}",
+      "type": "string"
+    },
+    {
+      "key": "topic_id",
+      "value": "{{ from topic list }}",
+      "type": "string"
+    },
+    {
+      "key": "free_plan_id",
+      "value": "{{ from subscription plans list }}",
+      "type": "string"
+    },
+    {
+      "key": "premium_plan_id",
+      "value": "{{ from subscription plans list }}",
+      "type": "string"
+    }
+  ]
+}

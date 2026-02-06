@@ -1,6 +1,3 @@
-
-
-
 // "use client";
 
 // import { useState, useEffect, useRef } from "react";
@@ -436,11 +433,6 @@
 //   );
 // }
 
-
-
-
-
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -460,7 +452,7 @@ interface FormData {
   lastname: string;
   phone: string;
   address: string;
-   countryCode?: string; 
+  countryCode?: string;
 }
 
 export default function UserMetaCard() {
@@ -494,7 +486,9 @@ export default function UserMetaCard() {
         address: user.address || "",
       });
       setImagePreview(
-        user.profileImage ? `${imageUrl}${user.profileImage}?v=${Date.now()}` : null
+        user.profileImage
+          ? `${imageUrl}${user.profileImage}?v=${Date.now()}`
+          : null,
       );
     }
   }, [user]);
@@ -510,14 +504,18 @@ export default function UserMetaCard() {
       });
       setProfileImage(null);
       setImagePreview(
-        user.profileImage ? `${imageUrl}${user.profileImage}?v=${Date.now()}` : null
+        user.profileImage
+          ? `${imageUrl}${user.profileImage}?v=${Date.now()}`
+          : null,
       );
 
       // Reset phone input with full international number
       if (itiRef.current && user.phone && user.countryCode) {
         const allCountries = itiRef.current.getCountryData?.() || [];
         const dialCode = user.countryCode.replace("+", "");
-        const matchedCountry = allCountries.find((c: any) => c.dialCode === dialCode);
+        const matchedCountry = allCountries.find(
+          (c: any) => c.dialCode === dialCode,
+        );
         if (matchedCountry) itiRef.current.setCountry(matchedCountry.iso2);
 
         // Set full number with country code prefix
@@ -542,54 +540,53 @@ export default function UserMetaCard() {
       //   initialCountry: "auto",
       // });
 
-      itiRef.current = intlTelInput(
-  phoneRef.current,
-  {
-    separateDialCode: true,
-    initialCountry: "auto",
-  } as any
-);
+      itiRef.current = intlTelInput(phoneRef.current, {
+        separateDialCode: true,
+        initialCountry: "auto",
+      } as any);
 
-// load utils manually
-itiRef.current.promise?.then(() => {
-  // utils loaded
-});
+      // load utils manually
+      itiRef.current.promise?.then(() => {
+        // utils loaded
+      });
 
       setTimeout(() => {
         if (!itiRef.current || !user) return;
 
         const allCountries = itiRef.current.getCountryData?.() || [];
-        
-        console.log("🔍 Current user countryCode:", user.countryCode);
+
+        console.log(" Current user countryCode:", user.countryCode);
 
         // Set user's country
         if (user.countryCode && user.countryCode.trim() !== "") {
           const dialCode = user.countryCode.replace("+", "");
-          const matchedCountry = allCountries.find((c: any) => c.dialCode === dialCode);
+          const matchedCountry = allCountries.find(
+            (c: any) => c.dialCode === dialCode,
+          );
           if (matchedCountry) {
             itiRef.current.setCountry(matchedCountry.iso2);
-            console.log("✅ Set country to:", matchedCountry.iso2);
+            console.log(" Set country to:", matchedCountry.iso2);
           } else {
-            console.log("⚠️ Country code not found:", user.countryCode);
+            console.log(" Country code not found:", user.countryCode);
             // Fallback to India if no match found
             itiRef.current.setCountry("in");
-            console.log("🔄 Fallback to India");
+            console.log(" Fallback to India");
           }
         } else {
-          console.log("⚠️ No countryCode, fallback to India");
+          console.log(" No countryCode, fallback to India");
           itiRef.current.setCountry("in");
         }
 
         // Set full number with country code prefix
         if (user.phone) {
           let fullNumber;
-          if (user.phone.startsWith('+')) {
+          if (user.phone.startsWith("+")) {
             fullNumber = user.phone;
           } else {
             fullNumber = (user.countryCode || "+91") + user.phone;
           }
           itiRef.current.setNumber(fullNumber);
-          console.log("📞 Set phone number:", fullNumber);
+          console.log(" Set phone number:", fullNumber);
         }
 
         // Sync to formData
@@ -624,11 +621,17 @@ itiRef.current.promise?.then(() => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
       if (!file.type.startsWith("image/")) {
-        setErrors((prev) => ({ ...prev, profileImage: "Only image files are allowed!" }));
+        setErrors((prev) => ({
+          ...prev,
+          profileImage: "Only image files are allowed!",
+        }));
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setErrors((prev) => ({ ...prev, profileImage: "File size cannot exceed 5MB!" }));
+        setErrors((prev) => ({
+          ...prev,
+          profileImage: "File size cannot exceed 5MB!",
+        }));
         return;
       }
       setProfileImage(file);
@@ -645,7 +648,8 @@ itiRef.current.promise?.then(() => {
     setErrors({});
 
     const newErrors: Record<string, string> = {};
-    if (!formData.firstname.trim()) newErrors.firstname = "First Name is required";
+    if (!formData.firstname.trim())
+      newErrors.firstname = "First Name is required";
     if (!formData.lastname.trim()) newErrors.lastname = "Last Name is required";
 
     let phone = "";
@@ -686,16 +690,18 @@ itiRef.current.promise?.then(() => {
       await refreshUser();
 
       if (profileImage && res.data.user.profileImage) {
-        setImagePreview(`${imageUrl}${res.data.user.profileImage}?v=${Date.now()}`);
+        setImagePreview(
+          `${imageUrl}${res.data.user.profileImage}?v=${Date.now()}`,
+        );
       }
 
       closeModal();
-      
+
       // Show success toast after modal closes
       setTimeout(() => {
         // Create custom toast that renders to document body
-        const customToast = document.createElement('div');
-        customToast.innerHTML = ' Profile Updated Successfully!';
+        const customToast = document.createElement("div");
+        customToast.innerHTML = " Profile Updated Successfully!";
         customToast.style.cssText = `
         position: fixed;
         top: 20px;
@@ -710,20 +716,20 @@ itiRef.current.promise?.then(() => {
         box-shadow: 0 4px 6px hsla(155, 53%, 14%, 0.07);
         animation: slideIn 0.3s ease-out;
       `;
-        
+
         document.body.appendChild(customToast);
-        
+
         // Remove after 4 seconds
         setTimeout(() => {
           if (customToast.parentNode) {
             customToast.parentNode.removeChild(customToast);
           }
         }, 4000);
-        
+
         // Also try standard toast
-        toast.success("Profile Updated Successfully!", { 
+        toast.success("Profile Updated Successfully!", {
           duration: 4000,
-          position: 'top-right'
+          position: "top-right",
         });
       }, 100);
     } catch (err: any) {
@@ -741,8 +747,12 @@ itiRef.current.promise?.then(() => {
       } else if (err.response?.data?.message) {
         // Map backend errors to fields (NO TOAST for validation errors)
         const errorMsg = err.response.data.message.toLowerCase();
-        
-        if (errorMsg.includes("name") || errorMsg.includes("firstname") || errorMsg.includes("lastname")) {
+
+        if (
+          errorMsg.includes("name") ||
+          errorMsg.includes("firstname") ||
+          errorMsg.includes("lastname")
+        ) {
           setErrors({ firstname: err.response.data.message });
         } else if (errorMsg.includes("phone")) {
           setErrors({ phone: err.response.data.message });
@@ -754,10 +764,11 @@ itiRef.current.promise?.then(() => {
         }
 
         // Only show toast for genuine server/network errors (not validation)
-        const isValidationError = errorMsg.includes("invalid") || 
-                                errorMsg.includes("required") ||
-                                errorMsg.includes("already") ||
-                                errorMsg.includes("exists");
+        const isValidationError =
+          errorMsg.includes("invalid") ||
+          errorMsg.includes("required") ||
+          errorMsg.includes("already") ||
+          errorMsg.includes("exists");
 
         if (!isValidationError) {
           toast.error("Server error. Please try again.");
@@ -799,13 +810,17 @@ itiRef.current.promise?.then(() => {
                 {formData.phone && (
                   <>
                     <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{formData.phone}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {formData.phone}
+                    </p>
                   </>
                 )}
                 {formData.address && (
                   <>
                     <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{formData.address}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {formData.address}
+                    </p>
                   </>
                 )}
               </div>
@@ -849,7 +864,9 @@ itiRef.current.promise?.then(() => {
                         className="object-cover w-full h-full"
                       />
                     ) : (
-                      <span className="text-gray-400 text-center text-sm">No image selected</span>
+                      <span className="text-gray-400 text-center text-sm">
+                        No image selected
+                      </span>
                     )}
                   </div>
                   <div className="flex-1">
@@ -862,9 +879,13 @@ itiRef.current.promise?.then(() => {
                       className={inputClass("profileImage")}
                     />
                     {errors.profileImage && (
-                      <p className="mt-1 text-sm text-red-600">{errors.profileImage}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.profileImage}
+                      </p>
                     )}
-                    <p className="mt-1 text-xs text-gray-500">JPG, PNG or GIF (Max 5MB)</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      JPG, PNG or GIF (Max 5MB)
+                    </p>
                   </div>
                 </div>
               </div>
@@ -890,7 +911,9 @@ itiRef.current.promise?.then(() => {
                       className={inputClass("firstname")}
                     />
                     {errors.firstname && (
-                      <p className="mt-1 text-sm text-red-600">{errors.firstname}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.firstname}
+                      </p>
                     )}
                   </div>
 
@@ -908,7 +931,9 @@ itiRef.current.promise?.then(() => {
                       className={inputClass("lastname")}
                     />
                     {errors.lastname && (
-                      <p className="mt-1 text-sm text-red-600">{errors.lastname}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.lastname}
+                      </p>
                     )}
                   </div>
 
@@ -921,11 +946,15 @@ itiRef.current.promise?.then(() => {
                       id="phone"
                       placeholder="Enter your phone number"
                       className={`w-full pl-14 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.phone ? "border-red-500 ring-red-500" : "border-gray-300 ring-blue-500"
+                        errors.phone
+                          ? "border-red-500 ring-red-500"
+                          : "border-gray-300 ring-blue-500"
                       }`}
                     />
                     {errors.phone && (
-                      <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.phone}
+                      </p>
                     )}
                   </div>
 
@@ -943,7 +972,9 @@ itiRef.current.promise?.then(() => {
                       className={inputClass("address")}
                     />
                     {errors.address && (
-                      <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.address}
+                      </p>
                     )}
                   </div>
                 </div>

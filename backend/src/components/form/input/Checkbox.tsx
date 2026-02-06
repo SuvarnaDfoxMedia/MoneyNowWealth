@@ -19,7 +19,7 @@ const Checkbox: React.FC<CheckboxProps> = ({
 }) => {
   return (
     <label
-      htmlFor={id} // ✅ associates label with input
+      htmlFor={id} //  associates label with input
       className={`flex items-center space-x-3 group cursor-pointer ${
         disabled ? "cursor-not-allowed opacity-60" : ""
       }`}

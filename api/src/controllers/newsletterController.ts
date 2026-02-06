@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import * as newsletterService from "../services/newsletterService";
-import { sendEmail } from "../utils/emails";
 import { Newsletter } from "../models/newsletterModel";
+import { sendEmail } from "@/emails";
 /* ---------------------------------------------------
    Get paginated newsletter subscribers
 --------------------------------------------------- */
@@ -48,9 +48,6 @@ export const getNewsletterById = async (req: Request, res: Response) => {
   }
 };
 
-
-
-
 export const addNewsletter = async (req: Request, res: Response) => {
   try {
     const { name, email } = req.body;
@@ -75,7 +72,10 @@ export const addNewsletter = async (req: Request, res: Response) => {
     }
 
     // ------------------ Check for duplicate (ignore soft-deleted) ------------------
-    const existing = await Newsletter.findOne({ email: cleanEmail, is_deleted: false });
+    const existing = await Newsletter.findOne({
+      email: cleanEmail,
+      is_deleted: false,
+    });
     if (existing) {
       return res.status(400).json({
         success: false,
@@ -126,7 +126,7 @@ export const addNewsletter = async (req: Request, res: Response) => {
 
     await sendEmail({
       to: cleanEmail,
-      subject: "You're Subscribed! 🎉",
+      subject: "You're Subscribed! ",
       html,
     });
 
@@ -136,7 +136,6 @@ export const addNewsletter = async (req: Request, res: Response) => {
       message: "Subscribed successfully",
       subscriber,
     });
-
   } catch (error: any) {
     return res.status(500).json({
       success: false,
@@ -144,8 +143,6 @@ export const addNewsletter = async (req: Request, res: Response) => {
     });
   }
 };
-
-
 
 export const deleteNewsletter = async (req: Request, res: Response) => {
   try {

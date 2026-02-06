@@ -23,7 +23,7 @@ router.get("/cmspages/slug/:slug", getPageBySlug);
 const adminMiddleware = roleFromUrl(["admin"]);
 
 /* -------------------- ADMIN ROUTES -------------------- */
-router.get("/:role/cmspages", adminMiddleware, getPages); 
+router.get("/:role/cmspages", adminMiddleware, getPages);
 router.get("/:role/cmspages/:id", adminMiddleware, getPageById);
 
 router.post("/:role/cmspages/create", adminMiddleware, addPage);
@@ -39,4 +39,3 @@ router.patch(
 router.delete("/:role/cmspages/delete/:id", adminMiddleware, deletePage);
 
 export default router;
-

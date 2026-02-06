@@ -1,6 +1,6 @@
-
 import Article, { type IArticle } from "../models/articleModel";
-import Topic from "../models/topicModel"; 
+import Topic from "../models/topicModel";
+
 // Get all articles with pagination, filtering, and sorting
 export const getArticles = async (query: any) => {
   const {
@@ -87,6 +87,11 @@ export const createArticle = async (data: Partial<IArticle>) => {
     data.status = "draft";
   }
 
+  // Handle publish date
+  if (data.status === "published" && !data.publish_date) {
+    data.publish_date = new Date();
+  }
+
   // Generate next article code
   const lastArticle = await Article.findOne({}, { article_code: 1 })
     .sort({ created_at: -1 })
@@ -107,6 +112,8 @@ export const createArticle = async (data: Partial<IArticle>) => {
     related_reads: data.related_reads || [],
     is_active: 1,
     is_deleted: false,
+    // Initialize email flag
+    is_email_sent: false,
   };
 
   const article = new Article(preparedData);
@@ -116,7 +123,13 @@ export const createArticle = async (data: Partial<IArticle>) => {
 
 // Update an existing article
 export const updateArticle = async (id: string, data: Partial<IArticle>) => {
-  if (data.slug) {
+  // 1. First get the current article to check status
+  const existingArticle = await Article.findById(id);
+  if (!existingArticle) {
+    throw new Error("Article not found");
+  }
+
+  if (data.slug && data.slug !== existingArticle.slug) {
     const existingSlug = await Article.findOne({
       slug: data.slug,
       _id: { $ne: id },
@@ -130,6 +143,15 @@ export const updateArticle = async (id: string, data: Partial<IArticle>) => {
 
   if (!["draft", "published", "archived"].includes(data.status || "")) {
     data.status = "draft";
+  }
+
+  // Handle publish date
+  if (data.status === "published") {
+    if (!data.publish_date) {
+      data.publish_date = new Date();
+    }
+    // Reset email flag for notifications
+    data.is_email_sent = false;
   }
 
   return await Article.findByIdAndUpdate(id, data, { new: true }).exec();
@@ -152,98 +174,30 @@ export const deleteArticle = async (id: string) => {
   return await Article.findByIdAndUpdate(
     id,
     { is_deleted: true, is_active: 0, status: "archived" },
-    { new: true }
+    { new: true },
   ).exec();
 };
 
-// NEW: Get cluster hierarchy (cluster -> topics -> articles)
-export const getClusterHierarchy = async (clusterId: string, options: any = {}) => {
-  const {
-    status = "published",
-    sortField = "created_at",
-    sortOrder = "desc"
-  } = options;
+// NEW: Get articles scheduled for publishing today
+export const getArticlesToPublishToday = async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  try {
-    // First, find all topics in this cluster
-    const topics = await Topic.find({
-      cluster_id: clusterId,
-      is_active: 1,
-      is_deleted: false
-    }).select('_id topic_code title slug').lean();
+  return await Article.find({
+    status: "published",
+    publish_date: { $gte: today, $lt: tomorrow },
+    is_email_sent: false,
+    is_deleted: false,
+  }).populate("topic_id", "title slug");
+};
 
-    if (!topics || topics.length === 0) {
-      return {
-        success: true,
-        cluster: {
-          _id: clusterId
-        },
-        topics: [],
-        totalArticles: 0,
-        totalTopics: 0
-      };
-    }
-
-    const topicIds = topics.map(topic => topic._id);
-
-    // Find all articles in these topics
-    const articleFilter: Record<string, any> = {
-      topic_id: { $in: topicIds },
-      is_deleted: false,
-      is_active: 1
-    };
-
-    if (status) {
-      articleFilter.status = status;
-    }
-
-    // Sorting
-    const sortConfig: Record<string, 1 | -1> = {};
-    sortConfig[sortField] = sortOrder === "desc" ? -1 : 1;
-
-    const articles = await Article.find(articleFilter)
-      .populate("topic_id", "topic_code title")
-      .sort(sortConfig)
-      .lean();
-
-    // Group articles by topic
-    const topicsWithArticles = topics.map(topic => {
-      const topicArticles = articles.filter(article => 
-        article.topic_id._id.toString() === topic._id.toString()
-      );
-
-      return {
-        ...topic,
-        articles: topicArticles.map(article => ({
-          _id: article._id,
-          title: article.title,
-          slug: article.slug,
-          hero_image: article.hero_image,
-          introduction: article.introduction,
-          status: article.status,
-          read_time: article.read_time,
-          author: article.author,
-          created_at: article.created_at,
-          updated_at: article.updated_at,
-          article_code: article.article_code
-        })),
-        articleCount: topicArticles.length
-      };
-    });
-
-    // Calculate totals
-    const totalArticles = topicsWithArticles.reduce((sum, topic) => sum + topic.articleCount, 0);
-
-    return {
-      success: true,
-      cluster: {
-        _id: clusterId
-      },
-      topics: topicsWithArticles,
-      totalArticles,
-      totalTopics: topicsWithArticles.length
-    };
-  } catch (error) {
-    throw new Error(`Failed to fetch cluster hierarchy: ${error.message}`);
-  }
+// NEW: Mark article email as sent
+export const markArticleEmailSent = async (id: string) => {
+  return await Article.findByIdAndUpdate(
+    id,
+    { is_email_sent: true, updated_at: new Date() },
+    { new: true },
+  );
 };

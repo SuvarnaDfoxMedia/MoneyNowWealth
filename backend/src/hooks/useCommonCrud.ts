@@ -41,11 +41,15 @@ export const useCommonCrud = <T>({
 }: CommonCrudProps) => {
   const queryClient = useQueryClient();
   const defaultListKey = listKey ?? `${module}s`;
-  const queryKey = [module, "list", { page, limit, searchValue, sortField, sortOrder }];
+  const queryKey = [
+    module,
+    "list",
+    { page, limit, searchValue, sortField, sortOrder },
+  ];
 
   const extractListFromData = (data?: CrudResponse<T>): T[] => {
     if (!data) return [];
-    const list = data[defaultListKey] ?? data.items ?? [];
+    const list = data[defaultListKey] ?? data.items ?? data.data ?? [];
     return Array.isArray(list) ? list : [];
   };
 
@@ -53,16 +57,31 @@ export const useCommonCrud = <T>({
   const { data, isLoading, refetch } = useQuery<CrudResponse<T>>({
     queryKey,
     queryFn: async () => {
-      const res = await axiosApi.getList<CrudResponse<T>>(`/${module}`, {
+      const endpoint = role ? `/${role}/${module}` : `/${module}`;
+      const res = await axiosApi.getList<CrudResponse<T>>(endpoint, {
         page,
         limit,
-        search: searchValue,
-        sortBy: sortField,
+        searchValue,
+        sortField,
         sortOrder,
       });
-      return res ?? { total: 0, limit, currentPage: page, totalPages: 1, [defaultListKey]: [] };
+      return (
+        res ?? {
+          total: 0,
+          limit,
+          currentPage: page,
+          totalPages: 1,
+          [defaultListKey]: [],
+        }
+      );
     },
-    placeholderData: { total: 0, limit, currentPage: page, totalPages: 1, [defaultListKey]: [] },
+    placeholderData: {
+      total: 0,
+      limit,
+      currentPage: page,
+      totalPages: 1,
+      [defaultListKey]: [],
+    },
     retry: false,
     enabled,
   });
@@ -70,9 +89,14 @@ export const useCommonCrud = <T>({
   /* ------------------ FETCH ONE ------------------ */
   const getOne = async (id: string) => {
     try {
-      return await axiosApi.getOne<T>(`/${module}/${id}`);
+      const endpoint = role ? `/${role}/${module}/${id}` : `/${module}/${id}`;
+      return await axiosApi.getOne<T>(endpoint);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to fetch record");
+      const errorMessage =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to fetch record";
+      toast.error(errorMessage);
       throw err;
     }
   };
@@ -81,21 +105,19 @@ export const useCommonCrud = <T>({
   const createMutation = useMutation({
     mutationFn: async (payload: any) => {
       const url = role ? `/${role}/${module}/create` : `/${module}/create`;
-      console.log("🔍 Creating at URL:", url);
-      console.log("🔍 Payload:", payload);
       return axiosApi.create<ApiMessage>(url, payload);
     },
-    onSuccess: () => {
-      toast.success("Created successfully");
+    onSuccess: (response) => {
+      const message =
+        (response as ApiMessage)?.message || "Created successfully";
+      toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
     onError: (err: any) => {
-      console.log("Create Error:", err);
-      console.log("Error Response:", err.response?.data);
-      console.log("Error Status:", err.response?.status);
-      console.log("Error Message:", err.message);
-      console.log("Full Error Object:", JSON.stringify(err, null, 2));
-      toast.error(err.response?.data?.message || err.message || "Create failed");
+      console.error("Create Error:", err);
+      const errorMessage =
+        err?.response?.data?.message || err?.message || "Create failed";
+      toast.error(errorMessage);
     },
   });
 
@@ -104,14 +126,21 @@ export const useCommonCrud = <T>({
   /* ------------------ UPDATE ------------------ */
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
-      const url = role ? `/${role}/${module}/edit/${id}` : `/${module}/edit/${id}`;
+      const url = role
+        ? `/${role}/${module}/edit/${id}`
+        : `/${module}/edit/${id}`;
       return axiosApi.update<ApiMessage>(url, payload);
     },
-    onSuccess: () => {
-      toast.success("Updated successfully");
+    onSuccess: (response) => {
+      const message =
+        (response as ApiMessage)?.message || "Updated successfully";
+      toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(err?.message || "Update failed"),
+    onError: (err: any) => {
+      const errorMessage = err?.response?.data?.message || "Update failed";
+      toast.error(errorMessage);
+    },
   });
 
   const updateRecord = (id: string, payload: any) =>
@@ -120,14 +149,21 @@ export const useCommonCrud = <T>({
   /* ------------------ DELETE ------------------ */
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const url = role ? `/${role}/${module}/delete/${id}` : `/${module}/delete/${id}`;
+      const url = role
+        ? `/${role}/${module}/delete/${id}`
+        : `/${module}/delete/${id}`;
       return axiosApi.remove<ApiMessage>(url);
     },
-    onSuccess: () => {
-      toast.success("Deleted successfully");
+    onSuccess: (response) => {
+      const message =
+        (response as ApiMessage)?.message || "Deleted successfully";
+      toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(err?.message || "Delete failed"),
+    onError: (err: any) => {
+      const errorMessage = err?.response?.data?.message || "Delete failed";
+      toast.error(errorMessage);
+    },
   });
 
   const deleteRecord = (id: string) => deleteMutation.mutateAsync(id);
@@ -140,11 +176,16 @@ export const useCommonCrud = <T>({
         : `/${module}/toggle-status/${id}`;
       return axiosApi.patch<ApiMessage>(url, { is_active: status ? 1 : 0 });
     },
-    onSuccess: () => {
-      toast.success("Status updated");
+    onSuccess: (response) => {
+      const message = (response as ApiMessage)?.message || "Status updated";
+      toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => toast.error(err?.message || "Failed to update status"),
+    onError: (err: any) => {
+      const errorMessage =
+        err?.response?.data?.message || "Failed to update status";
+      toast.error(errorMessage);
+    },
   });
 
   const toggleStatus = (id: string, status: boolean) =>
@@ -160,6 +201,9 @@ export const useCommonCrud = <T>({
     updateRecord,
     deleteRecord,
     toggleStatus,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
   };
 };
 

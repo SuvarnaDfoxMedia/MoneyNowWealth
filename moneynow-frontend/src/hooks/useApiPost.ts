@@ -1,7 +1,7 @@
 import { useState } from "react";
-import {API} from "@/app/api/axios";
+import { API } from "@/app/api/axios";
 
-export const useApiPost = <T,>() => {
+export const useApiPost = <T>() => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -12,7 +12,11 @@ export const useApiPost = <T,>() => {
     setSuccess(null);
 
     try {
-      const { data } = await API.post(endpoint, payload);
+      const apiEndpoint = endpoint.startsWith("/api/")
+        ? endpoint
+        : `/api${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+
+      const { data } = await API.post(apiEndpoint, payload);
 
       if (data.success) {
         setSuccess(data.message || "Submitted successfully");

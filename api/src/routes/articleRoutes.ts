@@ -1,4 +1,3 @@
-
 import express, { Request, Response } from "express";
 import {
   getArticles,
@@ -8,10 +7,14 @@ import {
   deleteArticle,
   toggleArticleStatus,
   getClusterHierarchy,
-getClusterHierarchyBySlug,
+  getClusterHierarchyBySlug,
+  publishArticle, // NEW
 } from "../controllers/articleController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
-import { uploadHeroImage, uploadArticleImage } from "../middlewares/uploadMiddleware";
+import {
+  uploadHeroImage,
+  uploadArticleImage,
+} from "../middlewares/uploadMiddleware";
 
 const router = express.Router();
 
@@ -19,17 +22,22 @@ const router = express.Router();
 router.get("/article", getArticles);
 router.get("/article/:id", getArticleById);
 router.get("/cluster/:clusterId/hierarchy", getClusterHierarchy);
-
 router.get("/cluster/slug/:slug/", getClusterHierarchyBySlug);
+
 /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
 const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);
+
+// Add this:
+router.get("/:role/article", adminEditorMiddleware, getArticles);
+
+router.get("/:role/article/:id", getArticleById);
 
 /* Create Article */
 router.post(
   "/:role/article/create",
   adminEditorMiddleware,
   uploadHeroImage,
-  addArticle
+  addArticle,
 );
 
 /* Update Article */
@@ -37,21 +45,28 @@ router.put(
   "/:role/article/edit/:id",
   adminEditorMiddleware,
   uploadHeroImage,
-  updateArticle
+  updateArticle,
+);
+
+/* Publish Article Immediately */
+router.patch(
+  "/:role/article/publish/:id",
+  adminEditorMiddleware,
+  publishArticle,
 );
 
 /* Toggle Article Status */
 router.patch(
   "/:role/article/toggle-status/:id",
   adminEditorMiddleware,
-  toggleArticleStatus
+  toggleArticleStatus,
 );
 
 /* Delete Article */
 router.delete(
   "/:role/article/delete/:id",
   adminEditorMiddleware,
-  deleteArticle
+  deleteArticle,
 );
 
 /* Section Image Upload (for Rich Text Field) */
@@ -61,7 +76,9 @@ router.post(
   uploadArticleImage,
   (req: Request, res: Response) => {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "No image uploaded." });
+      return res
+        .status(400)
+        .json({ success: false, message: "No image uploaded." });
     }
 
     // Type-safe access to uploaded file properties
@@ -75,7 +92,7 @@ router.post(
       url: file.pathUrl || "",
       relativePath: file.relativePath || "",
     });
-  }
+  },
 );
 
 export default router;

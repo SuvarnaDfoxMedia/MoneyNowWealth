@@ -1,12 +1,10 @@
-
-
 "use client";
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import ClusterArticleSlider from "@/components/Blog-listing-Components/ClusterArticlePagination";
-import SeniorCitizen from "@/components/Blog-details-Page/SeniorCitizen";
+import SeniorCitizen from "@/components/blog-details-Page/SeniorCitizen";
 import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
 import HomeInvestTrack from "@/components/home/home-invest-track";
 import StayConnected from "@/components/home/stay-connected";
@@ -43,7 +41,6 @@ interface ClusterHierarchyResponse {
     topics: Topic[];
   };
 }
-
 
 /* ---------------- Component ---------------- */
 const ClusterPage: React.FC = () => {
@@ -98,14 +95,11 @@ const ClusterPage: React.FC = () => {
     <>
       <section className="font-poppins w-full py-6 mb-[100px] overflow-x-hidden">
         <div className="max-w-full mx-auto px-4 md:px-6 mb-[30px]">
-
           {/* GRID */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
             {/* LEFT — SCROLLABLE */}
             <div className="lg:col-span-8 lg:border-r lg:border-[#F0F0F0] lg:pr-[24px]">
-          <div className="lg:max-h-[180dvh] overflow-y-auto pr-2 scrollbar-thin">
-
+              <div className="lg:max-h-[180dvh] overflow-y-auto pr-2 scrollbar-thin">
                 <div className="border-b border-[#F0F0F0] mb-[30px]">
                   <h2 className="text-[30px] font-semibold mb-4">
                     Latest Articles
@@ -147,12 +141,10 @@ const ClusterPage: React.FC = () => {
                 />
               </div>
             </div>
-            
 
             {/* RIGHT — STICKY */}
             <div className="lg:col-span-4">
               <div className="lg:sticky">
-
                 {/* Banner */}
                 <div className="relative w-full rounded mb-4">
                   <Image
@@ -168,14 +160,10 @@ const ClusterPage: React.FC = () => {
                 <MostPopularBlogs />
               </div>
             </div>
-
           </div>
-
         </div>
-                  <SeniorCitizen />
-
+        <SeniorCitizen />
       </section>
-
 
       <HomeInvestTrack data={homeInvestTrackData} />
       <StayConnected />

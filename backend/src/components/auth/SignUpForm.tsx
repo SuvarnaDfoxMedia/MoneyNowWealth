@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
@@ -128,7 +126,9 @@ export default function SignUpForm() {
                     value={firstname}
                     onChange={(e) => setFname(e.target.value)}
                     className={
-                      errors.firstname ? "border-red-500 ring-1 ring-red-500" : ""
+                      errors.firstname
+                        ? "border-red-500 ring-1 ring-red-500"
+                        : ""
                     }
                   />
                   {errors.firstname && (
@@ -148,7 +148,9 @@ export default function SignUpForm() {
                     value={lastname}
                     onChange={(e) => setLname(e.target.value)}
                     className={
-                      errors.lastname ? "border-red-500 ring-1 ring-red-500" : ""
+                      errors.lastname
+                        ? "border-red-500 ring-1 ring-red-500"
+                        : ""
                     }
                   />
                   {errors.lastname && (
@@ -188,7 +190,9 @@ export default function SignUpForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={
-                      errors.password ? "border-red-500 ring-1 ring-red-500" : ""
+                      errors.password
+                        ? "border-red-500 ring-1 ring-red-500"
+                        : ""
                     }
                   />
                   <span
@@ -224,9 +228,7 @@ export default function SignUpForm() {
                     }
                   />
                   <span
-                    onClick={() =>
-                      setShowConfirmPassword(!showConfirmPassword)
-                    }
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
                   >
                     {showConfirmPassword ? (

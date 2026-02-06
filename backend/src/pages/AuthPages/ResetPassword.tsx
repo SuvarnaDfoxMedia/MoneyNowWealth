@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-// ✅ API base from .env (Vite)
+// API base from .env (Vite)
 const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function ResetPassword() {
@@ -136,9 +136,7 @@ export default function ResetPassword() {
               </button>
             </div>
             {errors.password && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.password}
-              </p>
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
             )}
           </div>
 

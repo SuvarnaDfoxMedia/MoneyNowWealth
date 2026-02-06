@@ -1,17 +1,37 @@
-
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { FiSave, FiRefreshCw, FiArrowLeft, FiPlus, FiTrash2 } from "react-icons/fi";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  FiSave,
+  FiRefreshCw,
+  FiArrowLeft,
+  FiPlus,
+  FiTrash2,
+} from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { RichTextField } from "../components/PagesComponent/RichTextField";
 import { useCommonCrud } from "../hooks/useCommonCrud";
 import { axiosApi } from "../api/axios";
 
-interface Topic { _id: string; title: string; }
-interface Section { title: string; content: string; }
-interface Faq { question: string; answer: string; }
-interface Tool { title: string; content: string; }
-interface RelatedRead { title: string; content: string; }
+interface Topic {
+  _id: string;
+  title: string;
+}
+interface Section {
+  title: string;
+  content: string;
+}
+interface Faq {
+  question: string;
+  answer: string;
+}
+interface Tool {
+  title: string;
+  content: string;
+}
+interface RelatedRead {
+  title: string;
+  content: string;
+}
 
 interface ArticleForm {
   topic_id: string;
@@ -34,15 +54,21 @@ interface ArticleForm {
 const UPLOAD_BASE = `${import.meta.env.VITE_API_BASE.replace("/api", "")}/uploads/hero`;
 
 const generateSlug = (text: string) =>
-  text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 
 export default function AddArticle() {
   const { id, role } = useParams<{ id?: string; role?: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const page = searchParams.get("page") || "1";
-  const limit = searchParams.get("limit") || "10";
-  const { getOne, createRecord, updateRecord } = useCommonCrud({ role, module: "article" });
+
+  const { getOne, createRecord, updateRecord } = useCommonCrud({
+    role,
+    module: "article",
+  });
 
   const [values, setValues] = useState<ArticleForm>({
     topic_id: "",
@@ -75,11 +101,16 @@ export default function AddArticle() {
   useEffect(() => {
     const fetchTopics = async () => {
       try {
-        const res = await axiosApi.getList<{ data?: Topic[]; topics?: Topic[] }>("/topic-list");
+        const res = await axiosApi.getList<{
+          data?: Topic[];
+          topics?: Topic[];
+        }>("/topic-list");
         let topicsFromRes: Topic[] = [];
         if (Array.isArray(res)) topicsFromRes = res;
-        else if ("data" in res && Array.isArray(res.data)) topicsFromRes = res.data;
-        else if ("topics" in res && Array.isArray(res.topics)) topicsFromRes = res.topics;
+        else if ("data" in res && Array.isArray(res.data))
+          topicsFromRes = res.data;
+        else if ("topics" in res && Array.isArray(res.topics))
+          topicsFromRes = res.topics;
         setTopics(topicsFromRes);
       } catch (err) {
         console.error(err);
@@ -92,7 +123,10 @@ export default function AddArticle() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (topicWrapperRef.current && !topicWrapperRef.current.contains(event.target as Node)) {
+      if (
+        topicWrapperRef.current &&
+        !topicWrapperRef.current.contains(event.target as Node)
+      ) {
         setTopicDropdownOpen(false);
       }
     };
@@ -100,64 +134,63 @@ export default function AddArticle() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!id) return;
 
+    const loadData = async () => {
+      try {
+        const raw = await getOne(id);
+        const data = (raw?.data ?? raw) as ArticleForm;
+        if (!data) return;
 
-useEffect(() => {
-  if (!id) return;
+        setValues({
+          topic_id:
+            typeof data.topic_id === "string"
+              ? data.topic_id
+              : ((data.topic_id as Topic)?._id ?? ""),
+          title: data.title ?? "",
+          slug: data.slug ?? "",
+          seo_title: data.seo_title ?? "",
+          introduction: data.introduction ?? "",
+          seo_description: data.seo_description ?? "",
+          focus_keyword: data.focus_keyword ?? "",
+          read_time: data.read_time ?? 0,
+          author: data.author ?? "",
+          status: data.status ?? "draft",
+          sections: data.sections ?? [],
+          faqs: data.faqs ?? [],
+          tools: (data.tools ?? []).map((t: any) => ({
+            title: t.title || t.name || "",
+            content: t.content || t.url || "",
+          })),
+          related_reads: (data.related_reads ?? []).map((r: any) => ({
+            title: r.title || "",
+            content: r.content || "",
+          })),
+          hero_image: data.hero_image ?? "",
+        });
 
-  const loadData = async () => {
-    try {
-      const raw = await getOne(id);
-      const data = (raw?.data ?? raw) as ArticleForm;
-      if (!data) return;
+        setSlugEdited(false);
 
-      setValues({
-        topic_id: typeof data.topic_id === "string"
-          ? data.topic_id
-          : (data.topic_id as Topic)?._id ?? "",
-        title: data.title ?? "",
-        slug: data.slug ?? "",
-        seo_title: data.seo_title ?? "",
-        introduction: data.introduction ?? "",
-        seo_description: data.seo_description ?? "",
-        focus_keyword: data.focus_keyword ?? "",
-        read_time: data.read_time ?? 0,
-        author: data.author ?? "",
-        status: data.status ?? "draft",
-        sections: data.sections ?? [],
-        faqs: data.faqs ?? [],
-        tools: (data.tools ?? []).map((t: any) => ({
-          title: t.title || t.name || "",
-          content: t.content || t.url || "",
-        })),
-        related_reads: (data.related_reads ?? []).map((r: any) => ({
-          title: r.title || "",
-          content: r.content || "",
-        })),
-        hero_image: data.hero_image ?? "",
-      });
-
-      setSlugEdited(false);
-
-      if (data.hero_image && typeof data.hero_image === "string") {
-        setPreviewUrl(
-          data.hero_image.startsWith("http")
-            ? data.hero_image
-            : `${UPLOAD_BASE}/${data.hero_image.replace(/.*[\\/]/, "")}`
-        );
+        if (data.hero_image && typeof data.hero_image === "string") {
+          setPreviewUrl(
+            data.hero_image.startsWith("http")
+              ? data.hero_image
+              : `${UPLOAD_BASE}/${data.hero_image.replace(/.*[\\/]/, "")}`,
+          );
+        }
+      } catch {
+        toast.error("Failed to load article");
       }
-    } catch {
-      toast.error("Failed to load article");
-    }
-  };
+    };
 
-  loadData();
-}, [id]);
-
-
+    loadData();
+  }, [id]);
 
   // Input change
-  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const onChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     setValues((prev) => {
       const updated = { ...prev, [name]: value } as ArticleForm;
@@ -199,7 +232,10 @@ useEffect(() => {
   const addItem = (key: keyof ArticleForm, item: any) =>
     setValues((prev) => ({ ...prev, [key]: [...(prev[key] as any[]), item] }));
   const removeItem = (key: keyof ArticleForm, index: number) =>
-    setValues((prev) => ({ ...prev, [key]: (prev[key] as any[]).filter((_, i) => i !== index) }));
+    setValues((prev) => ({
+      ...prev,
+      [key]: (prev[key] as any[]).filter((_, i) => i !== index),
+    }));
 
   // Reset form
   const resetForm = () => {
@@ -241,13 +277,14 @@ useEffect(() => {
       const formData = new FormData();
       Object.entries(values).forEach(([key, value]) => {
         if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
-        else if (value !== undefined && value !== null) formData.append(key, String(value));
+        else if (value !== undefined && value !== null)
+          formData.append(key, String(value));
       });
       if (file) formData.append("hero_image", file);
       if (id) await updateRecord(id, formData);
       else await createRecord(formData);
       toast.success(`Article ${id ? "updated" : "created"}`);
-      navigate(`/${role}/article?page=${page}&limit=${limit}`);
+      navigate(`/${role}/article`);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message || "Failed to save article");
@@ -259,9 +296,11 @@ useEffect(() => {
   return (
     <div className="p-6 bg-white rounded-xl shadow-md border border-gray-200">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold text-[#043f79]">{id ? "Edit Article" : "Add New Article"}</h2>
+        <h2 className="text-2xl font-semibold text-[#043f79]">
+          {id ? "Edit Article" : "Add New Article"}
+        </h2>
         <button
-          onClick={() => navigate(`/${role}/article?page=${page}&limit=${limit}`)}
+          onClick={() => navigate(`/${role}/article`)}
           className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow hover:opacity-90 flex items-center gap-2"
         >
           <FiArrowLeft /> Back
@@ -283,7 +322,8 @@ useEffect(() => {
               <span>
                 {topics.length === 0
                   ? "Loading topics..."
-                  : topics.find((t) => t._id === values.topic_id)?.title ?? "-- Select Topic --"}
+                  : (topics.find((t) => t._id === values.topic_id)?.title ??
+                    "-- Select Topic --")}
               </span>
               <svg
                 className={`w-4 h-4 transform transition-transform ${topicDropdownOpen ? "rotate-180" : "rotate-0"}`}
@@ -291,10 +331,17 @@ useEffect(() => {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </div>
-            {errors.topic_id && <p className="text-red-500 text-sm mt-1">{errors.topic_id}</p>}
+            {errors.topic_id && (
+              <p className="text-red-500 text-sm mt-1">{errors.topic_id}</p>
+            )}
             {topicDropdownOpen && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md max-h-60 overflow-y-auto shadow-lg">
                 <input
@@ -304,21 +351,27 @@ useEffect(() => {
                   onChange={(e) => setTopicSearch(e.target.value)}
                   className="w-full px-3 py-2 border-b border-gray-200 focus:outline-none"
                 />
-                {topics.filter((t) => t.title.toLowerCase().includes(topicSearch.toLowerCase())).map((t) => (
-                  <div
-                    key={t._id}
-                    onClick={() => {
-                      setValues((prev) => ({ ...prev, topic_id: t._id }));
-                      setTopicDropdownOpen(false);
-                      setTopicSearch("");
-                      setErrors((prev) => ({ ...prev, topic_id: "" }));
-                    }}
-                    className={`p-2 cursor-pointer hover:bg-blue-100 ${values.topic_id === t._id ? "bg-blue-50 font-medium" : ""}`}
-                  >
-                    {t.title}
-                  </div>
-                ))}
-                {topics.filter((t) => t.title.toLowerCase().includes(topicSearch.toLowerCase())).length === 0 && (
+                {topics
+                  .filter((t) =>
+                    t.title.toLowerCase().includes(topicSearch.toLowerCase()),
+                  )
+                  .map((t) => (
+                    <div
+                      key={t._id}
+                      onClick={() => {
+                        setValues((prev) => ({ ...prev, topic_id: t._id }));
+                        setTopicDropdownOpen(false);
+                        setTopicSearch("");
+                        setErrors((prev) => ({ ...prev, topic_id: "" }));
+                      }}
+                      className={`p-2 cursor-pointer hover:bg-blue-100 ${values.topic_id === t._id ? "bg-blue-50 font-medium" : ""}`}
+                    >
+                      {t.title}
+                    </div>
+                  ))}
+                {topics.filter((t) =>
+                  t.title.toLowerCase().includes(topicSearch.toLowerCase()),
+                ).length === 0 && (
                   <p className="text-gray-400 text-sm p-2">No topics found.</p>
                 )}
               </div>
@@ -335,7 +388,9 @@ useEffect(() => {
               placeholder="Enter article title"
               className="w-full border mt-2 p-2 rounded-md"
             />
-            {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
+            {errors.title && (
+              <p className="text-red-500 text-sm">{errors.title}</p>
+            )}
           </div>
         </div>
 
@@ -343,39 +398,84 @@ useEffect(() => {
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <label className="font-medium text-gray-700">Slug</label>
-            <input name="slug" value={values.slug} onChange={onChange} placeholder="Enter slug" className="w-full border mt-2 p-2 rounded-md" />
+            <input
+              name="slug"
+              value={values.slug}
+              onChange={onChange}
+              placeholder="Enter slug"
+              className="w-full border mt-2 p-2 rounded-md"
+            />
           </div>
           <div>
             <label className="font-medium text-gray-700">SEO Title</label>
-            <input name="seo_title" value={values.seo_title} onChange={onChange} placeholder="Enter SEO title" className="w-full border mt-2 p-2 rounded-md" />
+            <input
+              name="seo_title"
+              value={values.seo_title}
+              onChange={onChange}
+              placeholder="Enter SEO title"
+              className="w-full border mt-2 p-2 rounded-md"
+            />
           </div>
         </div>
 
         {/* Introduction */}
         <div>
-          <label className="font-medium text-gray-700 block">Introduction</label>
+          <label className="font-medium text-gray-700 block">
+            Introduction
+          </label>
           <div className="mt-2">
-            <RichTextField key={`intro-${editorKey}`} value={values.introduction} onChange={(v) => setValues((p) => ({ ...p, introduction: v }))} />
+            <RichTextField
+              key={`intro-${editorKey}`}
+              value={values.introduction}
+              onChange={(v) => setValues((p) => ({ ...p, introduction: v }))}
+            />
           </div>
         </div>
 
         {/* SEO Description */}
         <div>
           <label className="font-medium text-gray-700">SEO Description</label>
-          <textarea name="seo_description" value={values.seo_description} onChange={onChange} rows={3} className="w-full border mt-2 p-2 rounded-md" />
+          <textarea
+            name="seo_description"
+            value={values.seo_description}
+            onChange={onChange}
+            rows={3}
+            className="w-full border mt-2 p-2 rounded-md"
+          />
         </div>
 
         {/* Hero Image & Keyword */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="font-medium text-gray-700">Hero Image <span className="text-sm text-gray-500">(1140×590)</span></label>
-            <input type="file" accept="image/*" onChange={handleHeroImageChange} className="mt-2" />
-            {previewUrl && <img src={previewUrl} alt="Hero Preview" className="mt-3 w-64 h-36 object-cover rounded-md border" />}
-            {errors.hero_image && <p className="text-red-500 text-sm">{errors.hero_image}</p>}
+            <label className="font-medium text-gray-700">
+              Hero Image{" "}
+              <span className="text-sm text-gray-500">(1140×590)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleHeroImageChange}
+              className="mt-2"
+            />
+            {previewUrl && (
+              <img
+                src={previewUrl}
+                alt="Hero Preview"
+                className="mt-3 w-64 h-36 object-cover rounded-md border"
+              />
+            )}
+            {errors.hero_image && (
+              <p className="text-red-500 text-sm">{errors.hero_image}</p>
+            )}
           </div>
           <div>
             <label className="font-medium text-gray-700">Focus Keyword</label>
-            <input name="focus_keyword" value={values.focus_keyword} onChange={onChange} className="w-full border mt-2 p-2 rounded-md" />
+            <input
+              name="focus_keyword"
+              value={values.focus_keyword}
+              onChange={onChange}
+              className="w-full border mt-2 p-2 rounded-md"
+            />
           </div>
         </div>
 
@@ -383,7 +483,12 @@ useEffect(() => {
         <div className="grid md:grid-cols-2 gap-6">
           <div>
             <label className="font-medium text-gray-700">Status</label>
-            <select name="status" value={values.status} onChange={onChange} className="w-full border mt-2 p-2 rounded-md">
+            <select
+              name="status"
+              value={values.status}
+              onChange={onChange}
+              className="w-full border mt-2 p-2 rounded-md"
+            >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
               <option value="archived">Archived</option>
@@ -391,25 +496,43 @@ useEffect(() => {
           </div>
           <div>
             <label className="font-medium text-gray-700">Author</label>
-            <input name="author" value={values.author} onChange={onChange} placeholder="Enter author name" className="w-full border mt-2 p-2 rounded-md" />
+            <input
+              name="author"
+              value={values.author}
+              onChange={onChange}
+              placeholder="Enter author name"
+              className="w-full border mt-2 p-2 rounded-md"
+            />
           </div>
         </div>
 
         {/* Dynamic Arrays */}
-        {(["sections", "faqs", "tools", "related_reads"] as Array<keyof ArticleForm>).map((key) => {
-          const items = values[key] as Section[] | Faq[] | Tool[] | RelatedRead[];
+        {(
+          ["sections", "faqs", "tools", "related_reads"] as Array<
+            keyof ArticleForm
+          >
+        ).map((key) => {
+          const items = values[key] as
+            | Section[]
+            | Faq[]
+            | Tool[]
+            | RelatedRead[];
           return (
             <div key={key} className="border-gray-200 rounded-md p-4">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold text-[#043f79] capitalize">{key.replace("_", " ")}</h3>
+                <h3 className="text-lg font-semibold text-[#043f79] capitalize">
+                  {key.replace("_", " ")}
+                </h3>
                 <button
                   type="button"
                   onClick={() =>
                     addItem(
                       key,
-                      key === "sections" ? { title: "", content: "" } :
-                      key === "faqs" ? { question: "", answer: "" } :
-                      { title: "", content: "" }
+                      key === "sections"
+                        ? { title: "", content: "" }
+                        : key === "faqs"
+                          ? { question: "", answer: "" }
+                          : { title: "", content: "" },
                     )
                   }
                   className="bg-[#043f79] text-white px-3 py-1 rounded-md flex items-center gap-2"
@@ -419,13 +542,18 @@ useEffect(() => {
               </div>
 
               {items.map((item, i) => (
-                <div key={i} className="p-3 mb-3 bg-gray-50 border border-gray-200 rounded-md">
+                <div
+                  key={i}
+                  className="p-3 mb-3 bg-gray-50 border border-gray-200 rounded-md"
+                >
                   {"title" in item && (
                     <input
                       placeholder="Title"
                       value={item.title || ""}
                       onChange={(e) => {
-                        const arr = [...(values[key] as (Section | Tool | RelatedRead)[])];
+                        const arr = [
+                          ...(values[key] as (Section | Tool | RelatedRead)[]),
+                        ];
                         arr[i].title = e.target.value;
                         setValues((p) => ({ ...p, [key]: arr }));
                       }}
@@ -450,7 +578,9 @@ useEffect(() => {
                     <RichTextField
                       value={item.content}
                       onChange={(v) => {
-                        const arr = [...(values[key] as (Section | Tool | RelatedRead)[])];
+                        const arr = [
+                          ...(values[key] as (Section | Tool | RelatedRead)[]),
+                        ];
                         arr[i].content = v;
                         setValues((p) => ({ ...p, [key]: arr }));
                       }}
@@ -483,10 +613,18 @@ useEffect(() => {
 
         {/* Submit & Reset */}
         <div className="flex justify-end gap-4 pt-6">
-          <button type="button" onClick={resetForm} className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:opacity-90">
+          <button
+            type="button"
+            onClick={resetForm}
+            className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:opacity-90"
+          >
             <FiRefreshCw /> Reset
           </button>
-          <button type="submit" disabled={isSubmitting} className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:opacity-90">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:opacity-90"
+          >
             <FiSave /> {id ? "Update" : "Save"}
           </button>
         </div>

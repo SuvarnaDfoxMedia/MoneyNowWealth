@@ -130,10 +130,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useFetchCards, CardData } from "@/hooks/useHomeBlog";
-
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 const ResearchDesk = () => {
   const { cards, loading, error } = useFetchCards(
-    "http://localhost:5000/api/topic/published",
+    "http://145.223.20.173:4001/api/topic/published",
     10
   );
 

@@ -1,6 +1,4 @@
-
 import mongoose, { Document, Schema, Model } from "mongoose";
-
 
 export type IUser = Document & {
   title: "Mr" | "Mrs";
@@ -8,7 +6,7 @@ export type IUser = Document & {
   lastname: string;
   email: string;
   password?: string;
-  countryCode: string;      
+  countryCode: string;
   mobile: string;
   role: "user" | "editor" | "admin";
   isTermsAccepted: boolean;
@@ -23,13 +21,18 @@ export type IUser = Document & {
   updated_at: Date;
 };
 
-
 const userSchema: Schema<IUser> = new Schema(
   {
     title: { type: String, enum: ["Mr", "Mrs"], required: true },
     firstname: { type: String, required: true, trim: true },
     lastname: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     password: { type: String, select: false },
 
     countryCode: { type: String, required: true, trim: true },
@@ -48,14 +51,13 @@ const userSchema: Schema<IUser> = new Schema(
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
     versionKey: false,
-  }
+  },
 );
 
-
 userSchema.index({ mobile: 1 });
-userSchema.index({ countryCode: 1, mobile: 1 }, { unique: true }); 
+userSchema.index({ countryCode: 1, mobile: 1 }, { unique: true });
 
-
-const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+const User: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>("User", userSchema);
 
 export default User;

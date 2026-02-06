@@ -1,19 +1,16 @@
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import { SendEmailParams, EmailAttachment } from "./types";
 
-export interface SendEmailParams {
-  to: string;
-  subject: string;
-  text?: string;
-  html?: string;
-}
+dotenv.config();
 
 export const sendEmail = async ({
   to,
   subject,
   text = "",
   html = "",
+  attachments = [],
 }: SendEmailParams): Promise<void> => {
-  // Validate required environment variables
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
   const user = process.env.SMTP_USER;
@@ -21,7 +18,7 @@ export const sendEmail = async ({
 
   if (!host || !user || !pass) {
     throw new Error(
-      "SMTP configuration missing. Ensure SMTP_HOST, SMTP_USER, and SMTP_PASS are set in .env"
+      "SMTP configuration missing. Ensure SMTP_HOST, SMTP_USER, and SMTP_PASS are set in .env",
     );
   }
 
@@ -29,26 +26,32 @@ export const sendEmail = async ({
     const transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465, // SSL if port 465
+      secure: port === 465,
       auth: { user, pass },
-      tls: { rejectUnauthorized: false }, 
+      tls: { rejectUnauthorized: false },
     });
+
+    const recipients = Array.isArray(to) ? to : [to];
+    const recipientString = recipients.join(", ");
 
     await transporter.sendMail({
       from: `"MoneyNow Wealth" <${user}>`,
-      to,
+      to: recipientString,
       subject,
       text,
       html,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
-    console.log(`Email sent successfully to ${to}`);
+    console.log(
+      ` Email sent to ${recipients.length} recipient(s): ${recipientString}`,
+    );
   } catch (err: unknown) {
     if (err instanceof Error) {
-      console.error("Email sending error:", err.message);
+      console.error(` Email sending error: ${err.message}`);
     } else {
-      console.error("Email sending error:", err);
+      console.error(" Email sending error:", err);
     }
-    throw err; // rethrow to allow upstream handling
+    throw err;
   }
 };

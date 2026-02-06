@@ -1,10 +1,365 @@
+// "use client";
 
+// import React, { useEffect, useRef, useState } from "react";
+// import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+// import { toast } from "react-hot-toast";
+// import {
+//   FiEdit,
+//   FiTrash2,
+//   FiMoreVertical,
+//   FiPlus,
+//   FiEye,
+//   FiX,
+// } from "react-icons/fi";
+// import { createPortal } from "react-dom";
+// import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
+// import { useCommonCrud } from "../../../hooks/useCommonCrud";
+// import { useDataTableStore } from "../../../store/dataTableStore";
 
+// interface Article {
+//   _id: string;
+//   title: string;
+//   topic_id?: { _id: string; title: string };
+//   hero_image?: string;
+//   is_active: number;
+// }
+
+// export default function ArticleListing() {
+//   const { role } = useParams<{ role: string }>();
+//   const navigate = useNavigate();
+//   const [searchParams, setSearchParams] = useSearchParams();
+
+//   if (!role) {
+//     toast.error("Role is missing in URL");
+//     return null;
+//   }
+
+//   const {
+//     page,
+//     recordsPerPage,
+//     searchValue,
+//     sortField,
+//     sortOrder,
+//     setPage,
+//     setRecordsPerPage,
+//     setSearchValue,
+//     setSort,
+//   } = useDataTableStore();
+
+//   /* ------------------- Restore URL → Zustand ------------------- */
+//   // useEffect(() => {
+//   //   const urlPage = Number(searchParams.get("page")) || 1;
+//   //   const urlLimit = Number(searchParams.get("limit")) || 10;
+
+//   //   if (page === 1) {
+//   //     setPage(urlPage);
+//   //     setRecordsPerPage(urlLimit);
+//   //   }
+//   // }, [searchParams]);
+
+//   /* ------------------- Fetch Data ------------------- */
+//   const { data, isLoading, deleteRecord, toggleStatus, refetch, extractList } =
+//     useCommonCrud<Article>({
+//       role,
+//       module: "article",
+//       page,
+//       limit: recordsPerPage,
+//       searchValue,
+//       sortField,
+//       sortOrder,
+//     });
+
+//   const [articles, setArticles] = useState<Article[]>([]);
+//   useEffect(() => setArticles(extractList), [extractList]);
+
+//   const totalRecords = data?.total || 0;
+//   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
+
+//   /* ------------------- Debounced Refetch ------------------- */
+//   useEffect(() => {
+//     const timer = setTimeout(() => refetch(), 400);
+//     return () => clearTimeout(timer);
+//   }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
+
+//   /* ------------------- Sync Zustand → URL ------------------- */
+//   // useEffect(() => {
+//   //   setSearchParams({
+//   //     page: String(page),
+//   //     limit: String(recordsPerPage),
+//   //   });
+//   // }, [page, recordsPerPage]);
+
+//   /* ------------------- Dropdown, Delete & Preview ------------------- */
+//   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+//   const [previewImage, setPreviewImage] = useState<string | null>(null);
+//   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+//   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+//   const handleDropdownClick = (
+//     e: React.MouseEvent<HTMLButtonElement>,
+//     id: string,
+//   ) => {
+//     e.stopPropagation();
+//     setOpenDropdownId(openDropdownId === id ? null : id);
+//   };
+
+//   /* ------------------- Close dropdown on outside click ------------------- */
+//   useEffect(() => {
+//     const handleClickOutside = (e: MouseEvent) => {
+//       if (
+//         dropdownRef.current &&
+//         !dropdownRef.current.contains(e.target as Node)
+//       ) {
+//         setOpenDropdownId(null);
+//       }
+//     };
+//     document.addEventListener("click", handleClickOutside);
+//     return () => document.removeEventListener("click", handleClickOutside);
+//   }, []);
+
+//   /* ------------------- Toggle Status ------------------- */
+//   const handleToggleStatus = async (id: string, currentStatus: number) => {
+//     const newStatus = currentStatus === 1 ? 0 : 1;
+
+//     setArticles((prev) =>
+//       prev.map((a) => (a._id === id ? { ...a, is_active: newStatus } : a)),
+//     );
+
+//     try {
+//       await toggleStatus(id, newStatus === 1);
+//     } catch {
+//       toast.error("Failed to update status");
+//       setArticles((prev) =>
+//         prev.map((a) =>
+//           a._id === id ? { ...a, is_active: currentStatus } : a,
+//         ),
+//       );
+//     }
+//   };
+
+//   /* ------------------- Delete ------------------- */
+//   const handleDelete = async () => {
+//     if (!deleteModalId) return;
+//     const res = await deleteRecord(deleteModalId);
+//     res?.success
+//       ? toast.success("Article deleted")
+//       : toast.error("Delete failed");
+//     setDeleteModalId(null);
+//     setOpenDropdownId(null);
+//     refetch();
+//   };
+
+//   const SERVER_URL = import.meta.env.VITE_API_BASE.replace("/api", "");
+//   const getHeroImageUrl = (path?: string | File) => {
+//     if (!path) return "/no-image.png";
+//     if (typeof path === "object") return URL.createObjectURL(path);
+//     const filename = path.replace(/\\/g, "/").split("/").pop();
+//     return filename
+//       ? `${SERVER_URL}/uploads/hero/${filename}`
+//       : "/no-image.png";
+//   };
+
+//   const truncateText = (text: string, max: number) =>
+//     text.length > max ? text.slice(0, max) + "…" : text;
+
+//   /* ------------------- Table Columns ------------------- */
+//   const columns: TableColumn<Article>[] = [
+//     {
+//       key: "index",
+//       label: "#",
+//       render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
+//     },
+//     {
+//       key: "hero_image",
+//       label: "Image",
+//       render: (row) => (
+//         <div
+//           className="w-20 h-14 border border-gray-200 rounded-md overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer group"
+//           onClick={() =>
+//             row.hero_image && setPreviewImage(getHeroImageUrl(row.hero_image))
+//           }
+//         >
+//           {row.hero_image ? (
+//             <img
+//               src={getHeroImageUrl(row.hero_image)}
+//               alt={row.title}
+//               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+//             />
+//           ) : (
+//             <span className="text-gray-400 text-sm">No Image</span>
+//           )}
+//         </div>
+//       ),
+//     },
+//     {
+//       key: "title",
+//       label: "Title",
+//       sortable: true,
+//       render: (row) => truncateText(row.title, 30),
+//     },
+//     {
+//       key: "topic_id",
+//       label: "Topic",
+//       sortable: true,
+//       render: (row) => truncateText(row.topic_id?.title || "-", 30),
+//     },
+//     {
+//       key: "is_active",
+//       label: "Active",
+//       render: (row) => (
+//         <button
+//           onClick={() => handleToggleStatus(row._id, row.is_active)}
+//           className={`px-4 py-1 rounded text-white ${
+//             row.is_active ? "bg-green-600" : "bg-gray-600"
+//           }`}
+//         >
+//           {row.is_active ? "Active" : "Inactive"}
+//         </button>
+//       ),
+//     },
+//     {
+//       key: "actions",
+//       label: "Actions",
+//       render: (row) => (
+//         <div className="relative">
+//           <button
+//             onClick={(e) => handleDropdownClick(e, row._id)}
+//             className="p-2 rounded-full hover:bg-gray-100"
+//           >
+//             <FiMoreVertical />
+//           </button>
+
+//           {openDropdownId === row._id && (
+//             <div
+//               ref={dropdownRef}
+//               className="absolute right-0 top-full mt-2 w-36 bg-white border rounded-xl shadow-lg z-50"
+//               onClick={(e) => e.stopPropagation()}
+//             >
+//               <button
+//                 onClick={() => {
+//                   navigate(`/${role}/article/view/${row._id}`);
+//                   setOpenDropdownId(null);
+//                 }}
+//                 className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 w-full"
+//               >
+//                 <FiEye /> View
+//               </button>
+
+//               <button
+//                 onClick={() => {
+//                   navigate(`/${role}/article/edit/${row._id}`);
+//                   setOpenDropdownId(null);
+//                 }}
+//                 className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full"
+//               >
+//                 <FiEdit /> Edit
+//               </button>
+
+//               <button
+//                 onClick={() => {
+//                   setDeleteModalId(row._id);
+//                   setOpenDropdownId(null);
+//                 }}
+//                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 w-full"
+//               >
+//                 <FiTrash2 /> Delete
+//               </button>
+//             </div>
+//           )}
+//         </div>
+//       ),
+//     },
+//   ];
+
+//   return (
+//     <div className="bg-gray-50 min-h-screen p-4 relative">
+//       <div className="flex justify-between items-center mb-6">
+//         <h2 className="text-xl font-medium text-gray-800">Articles</h2>
+//         {(role === "admin" || role === "editor") && (
+//           <button
+//             onClick={() => navigate(`/${role}/article/create`)}
+//             className="bg-[#043f79] text-white px-3 py-2 rounded-md flex items-center gap-2"
+//           >
+//             <FiPlus /> Add
+//           </button>
+//         )}
+//       </div>
+
+//       <DataTable
+//         columns={columns}
+//         data={articles}
+//         loading={isLoading}
+//         page={page}
+//         totalPages={totalPages}
+//         totalRecords={totalRecords}
+//         recordsPerPage={recordsPerPage}
+//         onPageChange={setPage}
+//         onRecordsPerPageChange={setRecordsPerPage}
+//         searchValue={searchValue}
+//         onSearchChange={setSearchValue}
+//         sortField={sortField}
+//         sortOrder={sortOrder}
+//         onSortChange={setSort}
+//       />
+
+//       {/* Delete Modal */}
+//       {deleteModalId &&
+//         createPortal(
+//           <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
+//             <div className="bg-white p-6 rounded-xl w-96">
+//               <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+//               <p className="mb-6 text-gray-600">
+//                 Are you sure you want to delete this article?
+//               </p>
+//               <div className="flex justify-end gap-3">
+//                 <button
+//                   onClick={() => setDeleteModalId(null)}
+//                   className="px-4 py-2 bg-gray-300 rounded"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={handleDelete}
+//                   className="px-4 py-2 bg-red-600 text-white rounded"
+//                 >
+//                   Delete
+//                 </button>
+//               </div>
+//             </div>
+//           </div>,
+//           document.body,
+//         )}
+
+//       {/* Preview Image Modal */}
+//       {previewImage &&
+//         createPortal(
+//           <div
+//             onClick={() => setPreviewImage(null)}
+//             className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[99999]"
+//           >
+//             <div className="relative max-w-4xl w-full">
+//               <button
+//                 onClick={() => setPreviewImage(null)}
+//                 className="absolute top-3 right-3 text-white text-2xl"
+//               >
+//                 <FiX />
+//               </button>
+//               <img
+//                 src={previewImage}
+//                 className="max-h-[90vh] mx-auto rounded-lg shadow-xl"
+//               />
+//             </div>
+//           </div>,
+//           document.body,
+//         )}
+//     </div>
+//   );
+// }
 
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import {
   FiEdit,
@@ -30,7 +385,10 @@ interface Article {
 export default function ArticleListing() {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+
+  const MODULE_KEY = `${role}-article`;
+  const [isMounted, setIsMounted] = useState(false);
 
   if (!role) {
     toast.error("Role is missing in URL");
@@ -47,18 +405,57 @@ export default function ArticleListing() {
     setRecordsPerPage,
     setSearchValue,
     setSort,
+    setCurrentModule,
+    cacheModuleState,
+    restoreModuleState,
+    markEditNavigation,
+    markTabSwitch,
+    lastAction,
+    currentModule,
   } = useDataTableStore();
 
-  /* ------------------- Restore URL → Zustand ------------------- */
+  /* ------------------- Detect tab switching ------------------- */
   useEffect(() => {
-    const urlPage = Number(searchParams.get("page")) || 1;
-    const urlLimit = Number(searchParams.get("limit")) || 10;
-    
-    if (page === 1) {
-      setPage(urlPage);
-      setRecordsPerPage(urlLimit);
+    // Store current path to detect tab switches
+    const currentPath = location.pathname;
+    const storedPath = sessionStorage.getItem("lastPath");
+
+    // Check if we're switching tabs (different module)
+    if (
+      storedPath &&
+      !storedPath.includes("/article") &&
+      currentPath.includes("/article")
+    ) {
+      // Coming from different tab, mark as tab switch
+      markTabSwitch();
+      console.log("Tab switched detected - will reset to page 1");
     }
-  }, [searchParams]);
+
+    // Store current path for next navigation
+    sessionStorage.setItem("lastPath", currentPath);
+  }, [location.pathname]);
+
+  /* ------------------- Initialize module state ------------------- */
+  useEffect(() => {
+    // Set current module
+    setCurrentModule(MODULE_KEY);
+
+    // Check if we should restore from edit
+    if (lastAction === "edit") {
+      console.log("Restoring from edit navigation");
+      restoreModuleState(MODULE_KEY);
+    } else if (lastAction === "tab-switch") {
+      console.log("Tab switch - resetting to page 1");
+      setPage(1);
+    }
+
+    setIsMounted(true);
+
+    // Cache state before unmounting
+    return () => {
+      cacheModuleState(MODULE_KEY);
+    };
+  }, [MODULE_KEY]);
 
   /* ------------------- Fetch Data ------------------- */
   const { data, isLoading, deleteRecord, toggleStatus, refetch, extractList } =
@@ -70,6 +467,7 @@ export default function ArticleListing() {
       searchValue,
       sortField,
       sortOrder,
+      enabled: isMounted,
     });
 
   const [articles, setArticles] = useState<Article[]>([]);
@@ -80,17 +478,69 @@ export default function ArticleListing() {
 
   /* ------------------- Debounced Refetch ------------------- */
   useEffect(() => {
+    if (!isMounted) return;
+
     const timer = setTimeout(() => refetch(), 400);
     return () => clearTimeout(timer);
-  }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
+  }, [searchValue, sortField, sortOrder, page, recordsPerPage, isMounted]);
 
-  /* ------------------- Sync Zustand → URL ------------------- */
+  /* ------------------- Navigation handlers ------------------- */
+  const handleEditClick = (id: string) => {
+    // Mark that we're going to edit
+    markEditNavigation();
+    // Cache current state
+    cacheModuleState(MODULE_KEY);
+
+    navigate(`/${role}/article/edit/${id}`);
+  };
+
+  const handleViewClick = (id: string) => {
+    // Mark that we're going to view
+    markEditNavigation();
+    // Cache current state
+    cacheModuleState(MODULE_KEY);
+
+    navigate(`/${role}/article/view/${id}`);
+  };
+
+  /* ------------------- Handlers ------------------- */
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleRecordsPerPageChange = (value: number) => {
+    setRecordsPerPage(value);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchValue(value);
+  };
+
+  const handleSortChange = (field: string, order: "asc" | "desc") => {
+    setSort(field, order);
+  };
+
+  /* ------------------- Track tab clicks globally ------------------- */
   useEffect(() => {
-    setSearchParams({
-      page: String(page),
-      limit: String(recordsPerPage),
-    });
-  }, [page, recordsPerPage]);
+    // Listen for clicks on navigation links
+    const handleNavClick = () => {
+      // Use setTimeout to detect after the click
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes("/article")) {
+          // User navigated away from articles
+          markTabSwitch();
+        }
+      }, 100);
+    };
+
+    // Listen for clicks on any link
+    document.addEventListener("click", handleNavClick);
+
+    return () => {
+      document.removeEventListener("click", handleNavClick);
+    };
+  }, []);
 
   /* ------------------- Dropdown, Delete & Preview ------------------- */
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
@@ -98,7 +548,10 @@ export default function ArticleListing() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const handleDropdownClick = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+  const handleDropdownClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    id: string,
+  ) => {
     e.stopPropagation();
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
@@ -106,7 +559,10 @@ export default function ArticleListing() {
   /* ------------------- Close dropdown on outside click ------------------- */
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setOpenDropdownId(null);
       }
     };
@@ -119,7 +575,7 @@ export default function ArticleListing() {
     const newStatus = currentStatus === 1 ? 0 : 1;
 
     setArticles((prev) =>
-      prev.map((a) => (a._id === id ? { ...a, is_active: newStatus } : a))
+      prev.map((a) => (a._id === id ? { ...a, is_active: newStatus } : a)),
     );
 
     try {
@@ -127,7 +583,9 @@ export default function ArticleListing() {
     } catch {
       toast.error("Failed to update status");
       setArticles((prev) =>
-        prev.map((a) => (a._id === id ? { ...a, is_active: currentStatus } : a))
+        prev.map((a) =>
+          a._id === id ? { ...a, is_active: currentStatus } : a,
+        ),
       );
     }
   };
@@ -136,7 +594,9 @@ export default function ArticleListing() {
   const handleDelete = async () => {
     if (!deleteModalId) return;
     const res = await deleteRecord(deleteModalId);
-    res?.success ? toast.success("Article deleted") : toast.error("Delete failed");
+    res?.success
+      ? toast.success("Article deleted")
+      : toast.error("Delete failed");
     setDeleteModalId(null);
     setOpenDropdownId(null);
     refetch();
@@ -147,21 +607,30 @@ export default function ArticleListing() {
     if (!path) return "/no-image.png";
     if (typeof path === "object") return URL.createObjectURL(path);
     const filename = path.replace(/\\/g, "/").split("/").pop();
-    return filename ? `${SERVER_URL}/uploads/hero/${filename}` : "/no-image.png";
+    return filename
+      ? `${SERVER_URL}/uploads/hero/${filename}`
+      : "/no-image.png";
   };
 
-  const truncateText = (text: string, max: number) => (text.length > max ? text.slice(0, max) + "…" : text);
+  const truncateText = (text: string, max: number) =>
+    text.length > max ? text.slice(0, max) + "…" : text;
 
   /* ------------------- Table Columns ------------------- */
   const columns: TableColumn<Article>[] = [
-    { key: "index", label: "#", render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
+    },
     {
       key: "hero_image",
       label: "Image",
       render: (row) => (
         <div
           className="w-20 h-14 border border-gray-200 rounded-md overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer group"
-          onClick={() => row.hero_image && setPreviewImage(getHeroImageUrl(row.hero_image))}
+          onClick={() =>
+            row.hero_image && setPreviewImage(getHeroImageUrl(row.hero_image))
+          }
         >
           {row.hero_image ? (
             <img
@@ -175,15 +644,27 @@ export default function ArticleListing() {
         </div>
       ),
     },
-    { key: "title", label: "Title", sortable: true, render: (row) => truncateText(row.title, 30) },
-    { key: "topic_id", label: "Topic", sortable: true, render: (row) => truncateText(row.topic_id?.title || "-", 30) },
+    {
+      key: "title",
+      label: "Title",
+      sortable: true,
+      render: (row) => truncateText(row.title, 30),
+    },
+    {
+      key: "topic_id",
+      label: "Topic",
+      sortable: true,
+      render: (row) => truncateText(row.topic_id?.title || "-", 30),
+    },
     {
       key: "is_active",
       label: "Active",
       render: (row) => (
         <button
           onClick={() => handleToggleStatus(row._id, row.is_active)}
-          className={`px-4 py-1 rounded text-white ${row.is_active ? "bg-green-600" : "bg-gray-600"}`}
+          className={`px-4 py-1 rounded text-white ${
+            row.is_active ? "bg-green-600" : "bg-gray-600"
+          }`}
         >
           {row.is_active ? "Active" : "Inactive"}
         </button>
@@ -194,7 +675,10 @@ export default function ArticleListing() {
       label: "Actions",
       render: (row) => (
         <div className="relative">
-          <button onClick={(e) => handleDropdownClick(e, row._id)} className="p-2 rounded-full hover:bg-gray-100">
+          <button
+            onClick={(e) => handleDropdownClick(e, row._id)}
+            className="p-2 rounded-full hover:bg-gray-100"
+          >
             <FiMoreVertical />
           </button>
 
@@ -205,20 +689,14 @@ export default function ArticleListing() {
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                onClick={() => {
-                  navigate(`/${role}/article/view/${row._id}`);
-                  setOpenDropdownId(null);
-                }}
+                onClick={() => handleViewClick(row._id)}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-blue-50 w-full"
               >
                 <FiEye /> View
               </button>
 
               <button
-                onClick={() => {
-                  navigate(`/${role}/article/edit/${row._id}`);
-                  setOpenDropdownId(null);
-                }}
+                onClick={() => handleEditClick(row._id)}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full"
               >
                 <FiEdit /> Edit
@@ -239,6 +717,14 @@ export default function ArticleListing() {
       ),
     },
   ];
+
+  if (!isMounted) {
+    return (
+      <div className="bg-gray-50 min-h-screen p-4 flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 relative">
@@ -262,13 +748,13 @@ export default function ArticleListing() {
         totalPages={totalPages}
         totalRecords={totalRecords}
         recordsPerPage={recordsPerPage}
-        onPageChange={setPage}
-        onRecordsPerPageChange={setRecordsPerPage}
+        onPageChange={handlePageChange}
+        onRecordsPerPageChange={handleRecordsPerPageChange}
         searchValue={searchValue}
-        onSearchChange={setSearchValue}
+        onSearchChange={handleSearchChange}
         sortField={sortField}
         sortOrder={sortOrder}
-        onSortChange={setSort}
+        onSortChange={handleSortChange}
       />
 
       {/* Delete Modal */}
@@ -277,14 +763,26 @@ export default function ArticleListing() {
           <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
             <div className="bg-white p-6 rounded-xl w-96">
               <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
-              <p className="mb-6 text-gray-600">Are you sure you want to delete this article?</p>
+              <p className="mb-6 text-gray-600">
+                Are you sure you want to delete this article?
+              </p>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setDeleteModalId(null)} className="px-4 py-2 bg-gray-300 rounded">Cancel</button>
-                <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded">Delete</button>
+                <button
+                  onClick={() => setDeleteModalId(null)}
+                  className="px-4 py-2 bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {/* Preview Image Modal */}
@@ -301,10 +799,13 @@ export default function ArticleListing() {
               >
                 <FiX />
               </button>
-              <img src={previewImage} className="max-h-[90vh] mx-auto rounded-lg shadow-xl" />
+              <img
+                src={previewImage}
+                className="max-h-[90vh] mx-auto rounded-lg shadow-xl"
+              />
             </div>
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );
