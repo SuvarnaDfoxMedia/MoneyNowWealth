@@ -381,7 +381,7 @@ export default function SubscriptionListing() {
     }
 
     sessionStorage.setItem("lastPath", currentPath);
-  }, [location.pathname]);
+  }, [location.pathname, markTabSwitch]);
 
   /* ------------------- Initialize module state ------------------- */
   useEffect(() => {
@@ -395,7 +395,6 @@ export default function SubscriptionListing() {
 
     // Set default sort if not set
     if (!sortField || !sortOrder) {
-      console.log("Setting default sort to created_at desc");
       setSort("created_at", "desc");
     }
 
@@ -404,7 +403,17 @@ export default function SubscriptionListing() {
     return () => {
       cacheModuleState(MODULE_KEY);
     };
-  }, [MODULE_KEY]);
+  }, [
+    MODULE_KEY,
+    cacheModuleState,
+    lastAction,
+    restoreModuleState,
+    setCurrentModule,
+    setPage,
+    setSort,
+    sortField,
+    sortOrder,
+  ]);
 
   /* ------------------- Navigation to edit ------------------- */
   const handleEditClick = (id: string) => {
@@ -443,7 +452,7 @@ export default function SubscriptionListing() {
 
     document.addEventListener("click", handleNavClick);
     return () => document.removeEventListener("click", handleNavClick);
-  }, []);
+  }, [markTabSwitch]);
 
   // ------------------ Fetch Data ------------------
   const { data, refetch, deleteRecord, toggleStatus, isLoading } =
@@ -504,8 +513,8 @@ export default function SubscriptionListing() {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setDropdownPos({
-      top: rect.bottom + window.scrollY + 6,
-      left: rect.left + window.scrollX - 80,
+      top: rect.bottom + 6,
+      left: rect.left - 80,
     });
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
@@ -579,8 +588,10 @@ export default function SubscriptionListing() {
                 ),
               );
               toast.success(res?.message || "Status updated");
-            } catch (err: any) {
-              toast.error(err?.message || "Failed to update status");
+            } catch (err: unknown) {
+              const message =
+                err instanceof Error ? err.message : "Failed to update status";
+              toast.error(message);
             }
           }}
           className={`px-4 py-1 rounded-md text-white ${
@@ -608,7 +619,7 @@ export default function SubscriptionListing() {
             createPortal(
               <div
                 ref={dropdownRef}
-                className="fixed bg-white border rounded-xl shadow-lg z-[99999]"
+                className="fixed z-[99999] rounded-xl border border-gray-200 bg-white p-1 shadow-lg"
                 style={{
                   top: dropdownPos.top,
                   left: dropdownPos.left,
@@ -620,7 +631,7 @@ export default function SubscriptionListing() {
                     handleEditClick(row._id);
                     setOpenDropdownId(null);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 w-full"
+                  className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
                 >
                   <FiEdit /> Edit
                 </button>
@@ -630,7 +641,7 @@ export default function SubscriptionListing() {
                     setDeleteModalId(row._id);
                     setOpenDropdownId(null);
                   }}
-                  className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 text-red-600 w-full"
+                  className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-red-600 transition hover:bg-red-50"
                 >
                   <FiTrash2 /> Delete
                 </button>
@@ -686,22 +697,24 @@ export default function SubscriptionListing() {
 
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
-            <div className="bg-white p-6 rounded-xl w-96">
-              <h3 className="text-lg font-semibold">Confirm Delete</h3>
-              <p className="my-4 text-gray-600">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirm Delete
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
                 Are you sure you want to delete this plan?
               </p>
-              <div className="flex justify-end gap-3">
+              <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteModalId(null)}
-                  className="border px-4 py-2 rounded-lg"
+                  className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg"
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
                 >
                   Delete
                 </button>

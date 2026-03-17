@@ -190,7 +190,7 @@
 
 //           <div className="text-right">
 //             <p className="text-gray-600 text-sm mb-1">
-//               Date: {new Date(invoice.paymentDate).toLocaleDateString("en-IN")}
+//               Date: {new Date(invoice.paymentDate).toLocaleDateString("en-GB")}
 //             </p>
 //             <p className="text-gray-600 text-sm mb-1">
 //               Invoice #: {invoice.invoiceId.substring(0, 8)}
@@ -298,15 +298,15 @@
 //             </h3>
 //             <p className="text-gray-700 mb-1">
 //               <span className="font-medium">Start Date:</span>{" "}
-//               {new Date(invoice.validity.startDate).toLocaleDateString("en-IN")}
+//               {new Date(invoice.validity.startDate).toLocaleDateString("en-GB")}
 //             </p>
 //             <p className="text-gray-700 mb-1">
 //               <span className="font-medium">End Date:</span>{" "}
-//               {new Date(invoice.validity.endDate).toLocaleDateString("en-IN")}
+//               {new Date(invoice.validity.endDate).toLocaleDateString("en-GB")}
 //             </p>
 //             <p className="text-gray-700">
 //               <span className="font-medium">Payment Date:</span>{" "}
-//               {new Date(invoice.paymentDate).toLocaleDateString("en-IN")}
+//               {new Date(invoice.paymentDate).toLocaleDateString("en-GB")}
 //             </p>
 //           </div>
 //         </div>
@@ -522,7 +522,7 @@
 
 //           <div className="text-right">
 //             <p className="text-[#4B5563] text-sm mb-1">
-//               Date: {new Date(invoice.paymentDate).toLocaleDateString("en-IN")}
+//               Date: {new Date(invoice.paymentDate).toLocaleDateString("en-GB")}
 //             </p>
 //             <p className="text-[#4B5563] text-sm mb-1">
 //               Invoice #: {invoice.invoiceId.substring(0, 8)}
@@ -581,7 +581,7 @@
 //                     {new Date(invoice.validity.startDate).toLocaleDateString(
 //                       "en-IN",
 //                     )}
-//                     {/* {new Date(invoice.paymentDate).toLocaleDateString("en-IN")} */}
+//                     {/* {new Date(invoice.paymentDate).toLocaleDateString("en-GB")} */}
 //                   </td>
 //                   <td className="p-4">
 //                     {new Date(invoice.validity.endDate).toLocaleDateString(
@@ -631,15 +631,15 @@
 //             </h3>
 //             <p className="text-[#111827] mb-1">
 //               <span className="font-medium">Start Date:</span>{" "}
-//               {new Date(invoice.validity.startDate).toLocaleDateString("en-IN")}
+//               {new Date(invoice.validity.startDate).toLocaleDateString("en-GB")}
 //             </p>
 //             <p className="text-[#111827] mb-1">
 //               <span className="font-medium">End Date:</span>{" "}
-//               {new Date(invoice.validity.endDate).toLocaleDateString("en-IN")}
+//               {new Date(invoice.validity.endDate).toLocaleDateString("en-GB")}
 //             </p>
 //             <p className="text-[#111827]">
 //               <span className="font-medium">Payment Date:</span>{" "}
-//               {new Date(invoice.paymentDate).toLocaleDateString("en-IN")}
+//               {new Date(invoice.paymentDate).toLocaleDateString("en-GB")}
 //             </p>
 //           </div>
 //         </div>
@@ -722,7 +722,7 @@ interface InvoiceData {
 const safeDate = (value?: string) => {
   if (!value) return "-";
   const d = new Date(value);
-  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-IN");
+  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-GB");
 };
 
 const InvoicePage = () => {
@@ -1010,3 +1010,4 @@ const InvoicePage = () => {
 };
 
 export default InvoicePage;
+

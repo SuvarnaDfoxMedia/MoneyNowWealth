@@ -1,45 +1,10 @@
-// import { Schema, model, type Document } from "mongoose";
-
-// export interface INewsletter extends Document {
-//   name: string;
-//   email: string;
-//   created_at?: Date;
-//   updated_at?: Date;
-//   deleted_at?: Date | null;
-//   is_deleted?: boolean;
-// }
-
-// const NewsletterSchema = new Schema<INewsletter>(
-//   {
-//     name: { type: String, required: true, trim: true },
-
-//     // Email: required, unique, lowercase
-//     email: {
-//       type: String,
-//       required: true,
-//       unique: true,
-//       lowercase: true,
-//       trim: true,
-//     },
-
-//     is_deleted: { type: Boolean, default: false },
-//     deleted_at: { type: Date, default: null },
-//   },
-//   {
-//     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
-//   },
-// );
-
-// NewsletterSchema.index({ email: 1 }, { unique: true });
-
-// export const Newsletter = model<INewsletter>("Newsletter", NewsletterSchema);
-
 import { Schema, model, type Document } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
 
 export interface INewsletter extends Document {
-  name: string;
+  name: string | null;
   email: string;
+  is_terms_accepted: boolean;
   created_at?: Date;
   updated_at?: Date;
   deleted_at?: Date | null;
@@ -48,7 +13,12 @@ export interface INewsletter extends Document {
 
 const NewsletterSchema = new Schema<INewsletter>(
   {
-    name: { type: String, required: true, trim: true },
+    // Name: optional for now (default null)
+    name: {
+      type: String,
+      default: null,
+      trim: true,
+    },
 
     // Email: required, unique, lowercase
     email: {
@@ -59,12 +29,20 @@ const NewsletterSchema = new Schema<INewsletter>(
       trim: true,
     },
 
+    // Terms Acceptance
+    is_terms_accepted: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+
+    // Soft delete fields
     is_deleted: { type: Boolean, default: false },
     deleted_at: { type: Date, default: null },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
-  },
+  }
 );
 
 /* -------------------------
@@ -72,10 +50,11 @@ const NewsletterSchema = new Schema<INewsletter>(
 ------------------------- */
 NewsletterSchema.plugin(capitalizePlugin, {
   except: [
-    // Email field (should stay lowercase)
+    // Email must remain lowercase
     "email",
 
-    // Boolean field
+    // Boolean fields
+    "is_terms_accepted",
     "is_deleted",
 
     // Date fields
@@ -83,12 +62,13 @@ NewsletterSchema.plugin(capitalizePlugin, {
     "created_at",
     "updated_at",
 
-    // MongoDB internal fields
+    // Mongo internal
     "_id",
     "__v",
   ],
 });
 
+// Unique email index
 NewsletterSchema.index({ email: 1 }, { unique: true });
 
 export const Newsletter = model<INewsletter>("Newsletter", NewsletterSchema);

@@ -297,7 +297,7 @@ export default function AddEditNewsletter() {
   };
 
   const inputClass =
-    "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200";
+    "w-full h-11 border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-200";
 
   return (
     <div className="p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
@@ -437,9 +437,9 @@ export default function AddEditNewsletter() {
                         </p>
                         <p className="text-sm text-gray-500">
                           {values.newsletter_file
-                            ? `${getFileExtension(values.newsletter_file.name)} • ${formatFileSize(values.newsletter_file.size)}`
+                            ? `${getFileExtension(values.newsletter_file.name)} - ${formatFileSize(values.newsletter_file.size)}`
                             : existingFile
-                              ? `Existing file • ${getFileExtension(existingFile)}`
+                              ? `Existing file - ${getFileExtension(existingFile)}`
                               : ""}
                         </p>
                       </div>
@@ -485,7 +485,7 @@ export default function AddEditNewsletter() {
                 <button
                   type="button"
                   onClick={handleChooseFile}
-                  className="bg-blue-600 text-white px-4 py-2.5 rounded-md hover:bg-blue-700 transition flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+                  className="bg-[#043f79] text-white px-4 py-2.5 rounded-md hover:bg-[#0654a4] transition flex items-center gap-2 whitespace-nowrap flex-shrink-0"
                 >
                   <FiUpload size={18} />
                   Browse
@@ -535,3 +535,4 @@ export default function AddEditNewsletter() {
     </div>
   );
 }
+

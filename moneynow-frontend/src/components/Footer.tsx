@@ -1,8 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
+import React from "react";
 import {
   FaFacebookF,
   FaInstagram,
@@ -10,193 +10,172 @@ import {
   FaYoutube,
   FaWhatsapp,
 } from "react-icons/fa";
-import { FiPhone, FiMail } from "react-icons/fi";
+import { HiOutlineArrowNarrowRight } from "react-icons/hi";
 
 const Footer = () => {
-  const FooterColumn = ({
-    title,
-    links,
-  }: {
-    title: string;
-    links: { label: string; href: string }[];
-  }) => (
-    <div className="w-full sm:w-auto">
-      <p className="text-white font-poppins font-semibold text-[18px] mb-4 inline-block">
-        {title}
-      </p>
-      <ul className="space-y-3 text-sm">
-        {links.map((link, index) => (
-          <li key={index}>
-            <Link
-              href={link.href}
-              className="text-white font-inter text-[15px] hover:text-blue-500 transition-colors"
-            >
-              {link.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-
-  // ------------------ LINKS ------------------
-  const quickLinks = [
-    { label: "Home", href: "/" },
-    { label: "Contact Us", href: "/contact-us" },
-    { label: "Login", href: "/auth/login" },
-    { label: "Sign Up", href: "/auth/register" },
-  ];
-
-  const mutualFundLinks = [
-    { label: "Download The Money Now App", href: "/app" },
-    { label: "Choose Your Journey", href: "/journey" },
-    { label: "Explore Portfolios & Fund Picks", href: "/portfolios" },
-    { label: "Sign Up", href: "/signup" },
-  ];
-
-  const insuranceLinks = [
-    { label: "Life Insurance", href: "/insurance/life" },
-    { label: "Health Insurance", href: "/insurance/health" },
-    { label: "Guaranteed Income Plans", href: "/insurance/income-plans" },
-    { label: "Personal Accident (PA) Cover", href: "/insurance/pa-cover" },
-    { label: "Critical Illness Cover", href: "/insurance/critical-illness" },
-    { label: "Vehicle Insurance", href: "/insurance/vehicle" },
-  ];
-
-  const toolsAndResources = [
-    { label: "Calculators Hub", href: "/calculators" },
-    { label: "Blogs", href: "/blogs" },
-    { label: "FAQs", href: "/faq" },
-  ];
-
-  const policies = [
-    { label: "General Disclaimer", href: "/general-disclaimer" },
-    { label: "Privacy Policy", href: "/privacy-policy" },
-    { label: "Website Usage Terms and Conditions", href: "/website-usage-terms-and-conditions" },
-  ];
-
-  // Icon sizes
-  const iconSize = 25;
-  const mobileIconSize = 18;
-
   const socialIcons = [
-    {
-      icon: (m: boolean) => <FaFacebookF size={m ? mobileIconSize : iconSize} />,
-      href: "https://facebook.com",
-    },
-    {
-      icon: (m: boolean) => <FaInstagram size={m ? mobileIconSize : iconSize} />,
-      href: "https://instagram.com",
-    },
-    {
-      icon: (m: boolean) => <FaLinkedinIn size={m ? mobileIconSize : iconSize} />,
-      href: "https://linkedin.com",
-    },
-    {
-      icon: (m: boolean) => <FaYoutube size={m ? mobileIconSize : iconSize} />,
-      href: "https://youtube.com",
-    },
-    {
-      icon: (m: boolean) => <FaWhatsapp size={m ? mobileIconSize : iconSize} />,
-      href: "https://wa.me/919833559143",
-    },
+    { id: "fb", icon: <FaFacebookF size={26} />, href: "https://facebook.com" },
+    { id: "ig", icon: <FaInstagram size={26} />, href: "https://instagram.com" },
+    { id: "li", icon: <FaLinkedinIn size={26} />, href: "https://linkedin.com" },
+    { id: "yt", icon: <FaYoutube size={26} />, href: "https://youtube.com" },
+    { id: "wa", icon: <FaWhatsapp size={26} />, href: "https://wa.me/919833559143" },
   ];
 
   return (
-    <footer className="w-full bg-[#010D19] text-white">
-      <div className="max-w-7xl mx-auto py-8 px-6">
+    <>
+      <div
+        className="relative w-full overflow-hidden bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/images/footer-bg.png')",
+          fontFamily: "'Poppins', sans-serif",
+        }}
+      >
 
-        {/* ---------------- TOP SECTION ---------------- */}
-        <div className="flex flex-col md:flex-row justify-between items-start border-b border-[#002243] pb-6 mb-6">
+        {/* CONTENT CONTAINER */}
+        <div className="relative z-10 text-[#FFFFFF]">
+          {/* Top Section */}
+          <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12">
+            {/* Brand/Left Column */}
+            <div className="lg:col-span-6">
+              <div className="flex items-center mb-6">
+                <Image
+                  src="/images/footer-logo.png"
+                  alt="MoneyNow Logo"
+                  width={180}
+                  height={40}
+                  priority
+                />
+              </div>
+              <p className="font-semibold text-[16px] mb-2">
+                Moneynow Wealth Management LLP
+              </p>
+              <p className="text-[15px] mb-6">
+                GST Number – <span className="font-bold">27ABWFM0337M1ZN</span>
+              </p>
+              <p className="text-[15px] leading-relaxed max-w-lg">
+                Helping investors make informed, long-term investment decisions through simple tools, practical learning, and transparent processes.
+              </p>
+            </div>
 
-          {/* Social Icons */}
-          <div className="flex flex-wrap gap-3 mb-6">
-            {socialIcons.map((social, index) => (
-              <Link
-                key={index}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center border border-white border-dashed rounded-full hover:border-blue-500 hover:text-blue-500 transition-colors w-[38px] h-[38px] sm:w-[50px] sm:h-[50px]"
-              >
-                <span className="block sm:hidden">{social.icon(true)}</span>
-                <span className="hidden sm:block">{social.icon(false)}</span>
-              </Link>
-            ))}
+            {/* Right Links Columns */}
+            <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-3 gap-10">
+              <div>
+                <h4 className="font-semibold text-[16px] mb-5 border-b-1 border-[#FFFFFF] w-fit">Explore</h4>
+                <ul className="space-y-3 text-[14px]">
+                  <li><Link href="/mutual-funds" className="hover:text-[#60e6eb] transition">Mutual Funds</Link></li>
+                  <li><Link href="/calculators" className="hover:text-[#60e6eb] transition">Calculators</Link></li>
+                  <li><Link href="/blog-listing" className="hover:text-[#60e6eb] transition">Learn</Link></li>
+                  <li><Link href="/investments" className="hover:text-[#60e6eb] transition">Investments</Link></li>
+                  <li><Link href="/portfolio" className="hover:text-[#60e6eb] transition">My Portfolio</Link></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-[16px] mb-5 border-b-1 border-[#FFFFFF] w-fit ">Company</h4>
+                <ul className="space-y-3 text-[14px]">
+                  <li><Link href="/about" className="hover:text-[#60e6eb] transition">About Us</Link></li>
+                  <li><Link href="/partner" className="hover:text-[#60e6eb] transition">Partner with Us</Link></li>
+                  <li><Link href="/testimonials" className="hover:text-[#60e6eb] transition">What Investors say</Link></li>
+                  <li><Link href="/contact" className="hover:text-[#60e6eb] transition">Contact Us</Link></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-[16px] mb-5 border-b-1 border-[#FFFFFF] w-fit text-[#FFFFFF]">Legal & Support</h4>
+                <ul className="space-y-3 text-[14px]">
+                  <li><Link href="/privacy-policy" className="hover:text-[#60e6eb] transition">Privacy Policy</Link></li>
+                  <li><Link href="/terms" className="hover:text-[#60e6eb] transition">Terms of Use</Link></li>
+                  <li><Link href="/risk-disclosure" className="hover:text-[#60e6eb] transition">Risk Disclosure</Link></li>
+                  <li><Link href="/grievance" className="hover:text-[#60e6eb] transition">Grievance Redressal</Link></li>
+                </ul>
+              </div>
+            </div>
           </div>
 
-          {/* Contact Info */}
-          <div className="flex flex-col sm:flex-row sm:space-x-10 space-y-6 sm:space-y-0 w-full sm:w-auto">
-
-            {/* Phone */}
-            <div className="flex items-center">
-              <div className="flex items-center justify-center border border-white border-dashed rounded-full mr-3 w-[38px] h-[38px] sm:w-[50px] sm:h-[50px]">
-                <span className="block sm:hidden">
-                  <FiPhone size={mobileIconSize} color="#ffffff" />
-                </span>
-                <span className="hidden sm:block">
-                  <FiPhone size={iconSize} color="#ffffff" />
-                </span>
+          {/* MIDDLE SECTION: Detailed Lists */}
+          <div className="max-w-7xl mx-auto px-6 py-8 border-t border-[#575757]/40 leading-[26px]">
+            {/* Row 1: AMCs */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-6">
+              <div className="md:col-span-10 font-normal text-[#FFFFFF] text-[15px]">
+                <span className="font-semibold text-[16px]">Asset Management Companies (AMCs) –</span> Aditya Birla Sun Life | Axis | Canara Robeco | DSP | Edelweiss | Franklin Templeton | HDFC | HSBC | ICICI Prudential | IDFC | Kotak | LIC | Mirae Asset | Motilal Oswal | Nippon India | PGIM | PPFAS | Quant | SBI | Sundaram | Tata | UTI
               </div>
-              <div className="font-inter">
-                <p className="text-[14px] sm:text-[18px] font-semibold">+ 91 98335 59143</p>
-                <p className="text-[13px]">Any questions? Call us.</p>
+              <div className="md:col-span-2 text-left">
+                <Link href="#" className="flex items-center gap-1 whitespace-nowrap hover:underline font-medium text-[15px]">
+                  View all AMCs <HiOutlineArrowNarrowRight size={18} className="mt-0.5" />
+                </Link>
+              </div>
+            </div>
+            
+
+            {/* Row 2: Tools */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-6">
+              <div className="md:col-span-10 text-[#FFFFFF] text-[15px]">
+                <span className="font-semibold text-[16px]">Mutual Fund Tools & Calculators –</span> SIP Calculator | Lumpsum Calculator | Goal Calculator | Retirement Calculator | SWP Calculator | ELSS Calculator | NPS Calculator
+              </div>
+              <div className="md:col-span-2 text-left">
+                <Link href="#" className="flex items-center gap-1 whitespace-nowrap hover:underline font-medium text-[15px]">
+                  View all calculators <HiOutlineArrowNarrowRight size={18} className="mt-0.5" />
+                </Link>
               </div>
             </div>
 
-            {/* Email */}
-            <div className="flex items-center">
-              <div className="flex items-center justify-center border border-white border-dashed rounded-full mr-3 w-[38px] h-[38px] sm:w-[50px] sm:h-[50px]">
-                <span className="block sm:hidden">
-                  <FiMail size={mobileIconSize} color="#ffffff" />
-                </span>
-                <span className="hidden sm:block">
-                  <FiMail size={iconSize} color="#ffffff" />
-                </span>
+            {/* Row 3: Categories */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+              <div className="md:col-span-10 text-[#FFFFFF] text-[15px]">
+                <span className="font-semibold text-[16px]">Popular Mutual Fund Categories –</span> Equity Funds | Debt Funds | Hybrid Funds | Solution Oriented Funds | Index Funds | ETF | Overnight Funds
               </div>
-              <div className="font-inter">
-                <p className="text-[14px] sm:text-[18px] font-semibold">support@moneynowwealth.com</p>
-                <p className="text-[13px]">Any questions? Email us.</p>
+              <div className="md:col-span-2 text-left">
+                <Link href="#" className="flex items-center gap-1 whitespace-nowrap hover:underline font-medium text-[15px]">
+                  Explore fund categories  <HiOutlineArrowNarrowRight size={18} className="mt-0.5" />
+                </Link>
               </div>
             </div>
+          </div>
 
+          {/* LICENSE & DISCLAIMER SECTION */}
+          <div className="max-w-7xl mx-auto px-6 py-8 border-t border-white/20 grid grid-cols-1 md:grid-cols-2 gap-8 text-[15px]">
+            <p>
+              <span className="font-semibold text-[16px]">License & Registration –</span> AMFI Registered Mutual Fund Distributor (ARN: XXXXX)
+            </p>
+            <p>
+              <span className="font-semibold text-[16px]">Risk Disclaimer –</span> Mutual fund investments are subject to market risks. Read all scheme related documents carefully.
+            </p>
           </div>
         </div>
-
-        {/* ---------------- MAIN COLUMNS ---------------- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-y-10 gap-x-6">
-          <FooterColumn title="Quick Links" links={quickLinks} />
-          <FooterColumn title="Mutual Fund" links={mutualFundLinks} />
-          <FooterColumn title="Insurance" links={insuranceLinks} />
-
-          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-6">
-            <FooterColumn title="Tools & Resources" links={toolsAndResources} />
-            <FooterColumn title="Policies" links={policies} />
-          </div>
-        </div>
-
       </div>
 
-      {/* ---------------- BOTTOM BAR ---------------- */}
-      <div className="bg-[#010D19] py-4 border-t border-[#002243]">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center text-[16px] font-inter">
-          <p className="mb-2 sm:mb-0">
-            &copy; {new Date().getFullYear()} <strong>MoneyNow Wealth</strong>. Built with trust, clarity, and confidence.
-          </p>
+      {/* Final Bottom Bar */}
+      <div className="max-w-full px-6 lg:px-12 py-5 flex flex-col md:flex-row justify-between items-center text-[#FFFFFF] bg-[#001325] border-t border-[#575757]/40">
+        <p className="text-[16px] mb-6 md:mb-0">
+          © 2026 <span className="font-bold">Moneynow</span>. All rights reserved.
+        </p>
 
-          <p className="flex items-center gap-2">
-            Developed and Managed By
-            <Image
-              src="/images/dfox-img.png"
-              alt="Developer"
-              width={20}
-              height={20}
-              className="rounded-full"
-            />
-          </p>
+        <div className="flex gap-4 mb-6 md:mb-0">
+          {socialIcons.map((social) => (
+            <Link
+              key={social.id}
+              href={social.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-[50px] h-[50px] flex items-center justify-center border border-white border-dashed rounded-full hover:bg-[#60e6eb] hover:text-[#0B3B6E] transition-all duration-300"
+            >
+              {social.icon}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 text-[16px]">
+          <span>Developed and Managed By</span>
+          <Image
+            src="/images/dfox-img.png"
+            alt="Developer"
+            width={20}
+            height={20}
+            className="object-contain"
+          />
         </div>
       </div>
-    </footer>
+    </>
   );
 };
 

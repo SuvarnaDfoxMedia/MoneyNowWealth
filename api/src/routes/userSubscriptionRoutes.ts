@@ -13,15 +13,15 @@ import {
   getMySubscriptionHistory,
 } from "../controllers/userSubscriptionController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
-import { protect } from "../middlewares/authMiddleware";
+import { adminProtect, userProtect } from "../middlewares/authMiddleware";
 import { getUserSubscriptionHistory } from "@/controllers/userSubscriptionPaymentController";
 
 const router = express.Router();
 
 /* -------------------- USER ROUTES (Authenticated) -------------------- */
-router.get("/subscriptions/me", protect, getMySubscription);
-router.get("/subscriptions/me/history", protect, getMySubscriptionHistory);
-router.post("/subscriptions/purchase", protect, purchaseSubscription);
+router.get("/subscriptions/me", userProtect, getMySubscription);
+router.get("/subscriptions/me/history", userProtect, getMySubscriptionHistory);
+router.post("/subscriptions/purchase", userProtect, purchaseSubscription);
 router.get("/subscriptions/:id", getUserSubscriptionById);
 
 /* -------------------- ADMIN ROUTES -------------------- */
@@ -30,21 +30,21 @@ const adminMiddleware = roleFromUrl(["admin"]);
 /* -------------------- ADMIN VIEW -------------------- */
 router.get(
   "/:role/subscriptions/:id",
-  protect,
+  adminProtect,
   adminMiddleware,
   getUserSubscriptionById,
 );
 
 router.get(
   "/:role/subscriptions",
-  protect,
+  adminProtect,
   adminMiddleware,
   getUserSubscriptions,
 );
 
 router.get(
   "/:role/subscriptions/user/:userId/history",
-  protect,
+  adminProtect,
   adminMiddleware,
   getUserSubscriptionHistory,
 );
@@ -52,7 +52,7 @@ router.get(
 /* -------------------- CREATE -------------------- */
 router.post(
   "/:role/subscriptions/create",
-  protect,
+  adminProtect,
   adminMiddleware,
   addUserSubscription,
 );
@@ -60,7 +60,7 @@ router.post(
 /* -------------------- MANUAL ASSIGNMENT -------------------- */
 router.post(
   "/:role/subscriptions/assign",
-  protect,
+  adminProtect,
   adminMiddleware,
   assignUserSubscription,
 );
@@ -68,7 +68,7 @@ router.post(
 /* -------------------- UPDATE -------------------- */
 router.put(
   "/:role/subscriptions/edit/:id",
-  protect,
+  adminProtect,
   adminMiddleware,
   updateUserSubscription,
 );
@@ -76,7 +76,7 @@ router.put(
 /* -------------------- TOGGLE STATUS -------------------- */
 router.patch(
   "/:role/subscriptions/change/:id/status",
-  protect,
+  adminProtect,
   adminMiddleware,
   toggleUserSubscriptionStatus,
 );
@@ -84,7 +84,7 @@ router.patch(
 /* -------------------- DELETE -------------------- */
 router.delete(
   "/:role/subscriptions/delete/:id",
-  protect,
+  adminProtect,
   adminMiddleware,
   deleteUserSubscription,
 );
@@ -92,7 +92,7 @@ router.delete(
 /* -------------------- RESTORE -------------------- */
 router.patch(
   "/:role/subscriptions/:id/restore",
-  protect,
+  adminProtect,
   adminMiddleware,
   restoreUserSubscription,
 );

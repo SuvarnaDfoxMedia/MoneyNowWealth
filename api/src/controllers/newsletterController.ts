@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import * as newsletterService from "../services/newsletterService";
 import { Newsletter } from "../models/newsletterModel";
-import { sendEmail } from "@/emails";
+import { addContactToGetResponse } from "../services/getresponseService";
+import { getResponseEmailService } from "../services/getResponseEmailService";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 /* ---------------------------------------------------
    Get paginated newsletter subscribers
 --------------------------------------------------- */
@@ -24,12 +26,19 @@ export const getNewsletters = async (req: Request, res: Response) => {
       sort: { [sortBy]: sortOrder },
     });
 
-    return res.status(200).json(response);
+    return sendSuccess(
+      res,
+      "Newsletter subscribers fetched successfully",
+      response,
+      200,
+      { ...response },
+    );
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch newsletter subscribers",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to fetch newsletter subscribers",
+      500,
+    );
   }
 };
 
@@ -39,83 +48,87 @@ export const getNewsletters = async (req: Request, res: Response) => {
 export const getNewsletterById = async (req: Request, res: Response) => {
   try {
     const subscriber = await newsletterService.getNewsletterById(req.params.id);
-    return res.status(200).json({ success: true, subscriber });
-  } catch (error: any) {
-    return res.status(404).json({
-      success: false,
-      message: error.message || "Subscriber not found",
+    return sendSuccess(res, "Subscriber fetched successfully", subscriber, 200, {
+      subscriber,
     });
+  } catch (error: any) {
+    return sendError(res, error.message || "Subscriber not found", 404);
   }
 };
 
+
+
 export const addNewsletter = async (req: Request, res: Response) => {
   try {
-    const { name, email } = req.body;
+    const { email, is_terms_accepted } = req.body;
 
-    // ------------------ Validations ------------------
-    if (!name || !email) {
-      return res.status(400).json({
-        success: false,
-        message: "Name and email are required",
-      });
+    /* ------------------ Validations ------------------ */
+
+    if (!email) {
+      return sendError(res, "Email is required", 400);
     }
 
-    const cleanName = name.trim();
+    if (!is_terms_accepted) {
+      return sendError(res, "You must accept the Terms and Conditions", 400);
+    }
+
     const cleanEmail = email.trim().toLowerCase();
 
-    // ------------------ Email format validation ------------------
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format",
-      });
+      return sendError(res, "Invalid email format", 400);
     }
 
-    // ------------------ Check for duplicate (ignore soft-deleted) ------------------
+    /* ------------------ Check Duplicate ------------------ */
+
     const existing = await Newsletter.findOne({
       email: cleanEmail,
       is_deleted: false,
     });
+
     if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is already exist",
-      });
+      return sendError(res, "Email is already subscribed", 400);
     }
 
-    // ------------------ Save subscriber ------------------
+    /* ------------------ Save Subscriber ------------------ */
+
     let subscriber;
+
     try {
       subscriber = await newsletterService.createNewsletter({
-        name: cleanName,
+        name: null,
         email: cleanEmail,
+        is_terms_accepted: true,
       });
     } catch (err: any) {
-      // Handle duplicate key error from MongoDB unique index
       if (err.code === 11000) {
-        return res.status(400).json({
-          success: false,
-          message: "Email is already subscribed",
-        });
+        return sendError(res, "Email is already subscribed", 400);
       }
-      throw err; // re-throw other errors
+      throw err;
     }
 
-    // ------------------ Send thank-you email ------------------
+    /* ------------------ Add to GetResponse ------------------ */
+    try {
+      await addContactToGetResponse(cleanEmail);
+    } catch (err: any) {
+      console.error("GetResponse Error:", err.message);
+      // Do NOT fail subscription if GetResponse fails
+    }
+
+    /* ------------------ Send Thank You Email ------------------ */
+
     const html = `
       <div style="font-family:Arial, sans-serif;
                   max-width:600px;margin:auto;padding:25px;
                   background:#f5f8ff;border-radius:12px;
                   border:1px solid #e0e7ff;">
-        <h2 style="text-align:center;color:#043F79;">Thank You for Subscribing!</h2>
-        <p style="font-size:16px;color:#333;">
-          Hi <strong>${cleanName}</strong>,
-        </p>
+        <h2 style="text-align:center;color:#043F79;">
+          Thank You for Subscribing!
+        </h2>
         <p style="font-size:16px;color:#333;">
           You have been successfully subscribed to our newsletter.
         </p>
         <p style="font-size:16px;color:#333;">
-          You’ll now receive the latest updates, offers, and news directly to your inbox.
+          You’ll now receive the latest updates, insights, and news directly to your inbox.
         </p>
         <br/>
         <p style="color:#043F79;text-align:center;font-size:14px;">
@@ -124,40 +137,143 @@ export const addNewsletter = async (req: Request, res: Response) => {
       </div>
     `;
 
-    await sendEmail({
-      to: cleanEmail,
-      subject: "You're Subscribed! ",
-      html,
-    });
+    try {
+      /* OLD SMTP IMPLEMENTATION (COMMENTED)
+      await sendEmail({
+        to: cleanEmail,
+        subject: "You're Subscribed!",
+        html,
+      });
+      */
+      await getResponseEmailService.sendMarketingEmail(
+        cleanEmail,
+        "You're Subscribed!",
+        html,
+      );
+    } catch (err: any) {
+      console.error("Email Send Error:", err.message);
+    }
 
-    // ------------------ Response ------------------
-    return res.status(201).json({
-      success: true,
-      message: "Subscribed successfully",
+    /* ------------------ Final Response ------------------ */
+
+    return sendSuccess(res, "Subscribed successfully", subscriber, 201, {
       subscriber,
     });
+
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Subscription failed",
-    });
+    return sendError(res, error.message || "Subscription failed", 500);
   }
 };
+
+// export const addNewsletter = async (req: Request, res: Response) => {
+//   try {
+//     const { name, email } = req.body;
+
+//     // ------------------ Validations ------------------
+//     if (!name || !email) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Name and email are required",
+//       });
+//     }
+
+//     const cleanName = name.trim();
+//     const cleanEmail = email.trim().toLowerCase();
+
+//     // ------------------ Email format validation ------------------
+//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid email format",
+//       });
+//     }
+
+//     // ------------------ Check for duplicate (ignore soft-deleted) ------------------
+//     const existing = await Newsletter.findOne({
+//       email: cleanEmail,
+//       is_deleted: false,
+//     });
+//     if (existing) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email is already exist",
+//       });
+//     }
+
+//     // ------------------ Save subscriber ------------------
+//     let subscriber;
+//     try {
+//       subscriber = await newsletterService.createNewsletter({
+//         name: cleanName,
+//         email: cleanEmail,
+//       });
+//     } catch (err: any) {
+//       // Handle duplicate key error from MongoDB unique index
+//       if (err.code === 11000) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Email is already subscribed",
+//         });
+//       }
+//       throw err; // re-throw other errors
+//     }
+
+//     // ------------------ Send thank-you email ------------------
+//     const html = `
+//       <div style="font-family:Arial, sans-serif;
+//                   max-width:600px;margin:auto;padding:25px;
+//                   background:#f5f8ff;border-radius:12px;
+//                   border:1px solid #e0e7ff;">
+//         <h2 style="text-align:center;color:#043F79;">Thank You for Subscribing!</h2>
+//         <p style="font-size:16px;color:#333;">
+//           Hi <strong>${cleanName}</strong>,
+//         </p>
+//         <p style="font-size:16px;color:#333;">
+//           You have been successfully subscribed to our newsletter.
+//         </p>
+//         <p style="font-size:16px;color:#333;">
+//           You’ll now receive the latest updates, offers, and news directly to your inbox.
+//         </p>
+//         <br/>
+//         <p style="color:#043F79;text-align:center;font-size:14px;">
+//           — Team MoneyNow
+//         </p>
+//       </div>
+//     `;
+
+//     await sendEmail({
+//       to: cleanEmail,
+//       subject: "You're Subscribed! ",
+//       html,
+//     });
+
+//     // ------------------ Response ------------------
+//     return res.status(201).json({
+//       success: true,
+//       message: "Subscribed successfully",
+//       subscriber,
+//     });
+//   } catch (error: any) {
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Subscription failed",
+//     });
+//   }
+// };
 
 export const deleteNewsletter = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const subscriber = await newsletterService.deleteNewsletter(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Subscriber deleted successfully (soft delete)",
+    return sendSuccess(
+      res,
+      "Subscriber deleted successfully (soft delete)",
       subscriber,
-    });
+      200,
+      { subscriber },
+    );
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to delete subscriber",
-    });
+    return sendError(res, error.message || "Failed to delete subscriber", 500);
   }
 };

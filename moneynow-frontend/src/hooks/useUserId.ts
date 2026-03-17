@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useProfileStore } from "@/stores/profileStore";
 import { API } from "@/app/api/axios";
 
+const pickPayload = (raw: any) => raw?.user || raw?.data || raw;
+
 export const useUserId = () => {
   const profile = useProfileStore((state) => state.profile);
 
@@ -25,16 +27,17 @@ export const useUserId = () => {
       setError(null);
 
       try {
-        const { data } = await API.get("/api/auth/me", {
+        const { data } = await API.get("/api/user/profile/me", {
           withCredentials: true,
         });
+        const payload = pickPayload(data);
 
-        setUserId(data?.id || data?._id || null);
+        setUserId(payload?.id || payload?._id || null);
       } catch (err: any) {
         const status = err?.response?.status;
 
         //  401 means user is logged out → don't show red error
-        if (status === 401) {
+        if (status === 401 || status === 403) {
           setUserId(null);
           setError(null);
           return;

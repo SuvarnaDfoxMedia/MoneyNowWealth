@@ -1,13 +1,13 @@
-
 "use client";
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { toast, Toaster } from "react-hot-toast";
+import Link from "next/link";
+import { toast } from "react-hot-toast";
+import { FiArrowLeft } from "react-icons/fi";
 
 const ForgotPassword = () => {
-  const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE;
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError("");
 
-    if (!email) {
+    if (!email.trim()) {
       setError("Email is required.");
       return;
     }
@@ -25,20 +25,17 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/auth/forgot-password`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }
-      );
+      const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
       const result = await response.json();
 
       if (response.ok) {
         toast.success(
-          result.message || "Password reset link sent to your email"
+          result.message || "Password reset link sent to your email",
         );
         setEmail("");
       } else {
@@ -53,73 +50,107 @@ const ForgotPassword = () => {
   };
 
   return (
-    <section
-      className={`
-        w-full min-h-[110dvh] flex flex-col justify-center items-center
-        font-poppins
-        bg-white
-        md:bg-[url('/images/forgot-pass-bg2.png')]
-        md:bg-no-repeat md:bg-center md:bg-cover
-      `}
-    >
-      <Toaster position="top-right" />
-
+    <section className="w-full py-[30px] min-h-screen flex flex-col items-center justify-center px-4 font-poppins bg-[url('/images/log-in-bg.png')] bg-cover bg-center bg-no-repeat bg-fixed">
       {/* Logo */}
-      <div className="mb-4 sm:mb-6">
-        <Image
-          src="/images/moneynow-logo2.png"
-          alt="MoneyNow Logo"
-          width={180}
-          height={60}
-          className="mx-auto h-14 w-auto"
-          priority
-        />
+      <div className="relative pb-6">
+        <div className="relative w-[246px] h-[40px]">
+          <Image
+            src="/images/register-money-now-logo.png"
+            alt="MoneyNow Logo"
+            fill
+            priority
+            className="object-contain"
+          />
+        </div>
       </div>
 
-      {/* Form Card */}
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 sm:mx-6 px-4 sm:px-6 py-6 sm:py-8">
-        
-        {/* Header */}
-        <div className="border-b border-gray-300 pb-3 mb-4 sm:pb-4 sm:mb-6">
-          <h2 className="text-center text-[24px] font-bold">
-            Forgot Your Password
-          </h2>
-          <p className="text-center text-[13px] mt-1">
-            Enter your email address below and you will receive a link to reset your password.
-          </p>
-        </div>
+      {/* Heading */}
+      <h1 className="text-center text-[30px] md:text-[40px] font-semibold leading-[1.3] text-[#080808] mb-8">
+        Access Restored In Minutes.
+      </h1>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          
+      {/* Main Card */}
+      <div className="w-full max-w-[470px] bg-[#FFFFFF] rounded-[14px] shadow-[0px_12px_38px_rgba(0,0,0,0.08)] px-8 py-8">
+        <h2 className="text-center text-[24px] md:text-[24px] font-semibold">
+          Forget Your Password?
+        </h2>
+
+        <p className="text-center text-[14px] md:text-[14px] leading-[1.5]  mt-4 mb-6">
+          Enter your registered email address.
+          <br />
+          We&apos;ll send you a secure link to reset your password.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
           <div>
-            <label className="block mb-1 text-[14px]">
-              Email:<span className="text-red-500">*</span>
+            <label className="block mb-2 text-[15px] md:text-[16px]">
+              Email
             </label>
+
             <input
               type="email"
-              className={`w-full border rounded h-[40px] px-3 text-[15px]
-                focus:outline-none focus:ring-2 focus:ring-blue-600
-                ${error ? "border-red-500" : "border-gray-300"}`}
-              placeholder="Enter your email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className={`w-full h-[50px] rounded-[4px] border px-4 text-[14px] outline-none transition-all ${
+                error
+                  ? "border-red-500 focus:ring-2 focus:ring-red-200"
+                  : "border-[#D7D7D7] focus:border-[#0A4A86] focus:ring-2 focus:ring-[#DCE9F9]"
+              }`}
             />
-            {error && (
-              <p className="text-red-500 text-[13px] mt-1">{error}</p>
-            )}
+
+            {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
           </div>
 
-          {/* Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-[#043F79] hover:bg-[#002b6d] text-white py-[10px] sm:py-[12px] px-6 sm:px-8 rounded text-[15px] sm:text-[16px] font-semibold transition-colors"
-          >
-            {loading ? "Sending..." : "Reset Password"}
-          </button>
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              disabled={loading}
+              className="py-[10px] px-[30px] rounded-[4px] bg-[#0A4A86] text-[#ffffff] text-[16px] font-medium hover:bg-[#083c6d] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
+            </button>
+          </div>
+
+          {/* Back */}
+          <div className="text-center">
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center gap-2 text-[#0A4A86] text-[14px] font-medium hover:underline"
+            >
+              <FiArrowLeft className="text-[16px]" />
+              Back to Login
+            </Link>
+          </div>
+
+          {/* Assistance */}
+          <p className="text-center text-[13px] text-[#323232]">
+            Need assistance?{" "}
+            <Link href="/contact-us" className="underline hover:text-black">
+              Contact us
+            </Link>
+          </p>
         </form>
+      </div>
+
+      {/* Bottom Card */}
+      <div className="mt-10 bg-white/36 backdrop-blur-md border border-[#E5E5E5] rounded-2xl px-6 md:px-8 py-5 flex items-center gap-4 shadow-sm max-w-[430px] w-[92%] sm:w-full mx-4">
+        <div className="relative w-[50px] h-[50px] flex-shrink-0">
+          <Image
+            src="/images/login-bottom-mobile.png"
+            alt="Mobile"
+            fill
+            className="object-contain"
+          />
+        </div>
+        <div>
+          <h4 className="font-medium text-[14px] md:text-[16px] mb-1">
+            Access MoneyNow on the Go
+          </h4>
+          <p className="text-[12px] md:text-[14px]">
+            Track your investments anytime, anywhere.
+          </p>
+        </div>
       </div>
     </section>
   );

@@ -47,7 +47,7 @@ const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);
 
 // Add this:
 router.get("/:role/topic", ...adminEditorMiddleware, getTopics);
-router.get("/:role/topic/:id", getTopicById);
+router.get("/:role/topic/:id", ...adminEditorMiddleware, getTopicById);
 
 /* -------------------- CREATE -------------------- */
 router.post(

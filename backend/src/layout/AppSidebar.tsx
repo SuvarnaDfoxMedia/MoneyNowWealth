@@ -1,355 +1,5 @@
-// import { useCallback, useEffect, useRef, useState } from "react";
-// import { Link, useLocation } from "react-router-dom";
-// import {
-//   FiChevronDown,
-//   FiSettings,
-//   FiEdit3,
-//   FiGrid,
-//   FiFileText,
-//   FiUsers,
-//   FiMessageSquare,
-//   FiFile,
-//   FiMail,
-// } from "react-icons/fi";
-// import { BsThreeDots } from "react-icons/bs";
-// import { useSidebar } from "../context/SidebarContext";
-// import { useAuth } from "../context/AuthContext";
 
-// type NavItem = {
-//   name: string;
-//   icon: React.ReactNode;
-//   path?: string;
-//   subItems?: { name: string; path: string; roles?: string[] }[];
-//   roles?: string[];
-// };
-
-// const AppSidebar: React.FC = () => {
-//   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-//   const location = useLocation();
-//   const { user } = useAuth();
-//   const role = user?.role || "";
-
-//   // ================================
-//   // ================================
-//   const allNavItems: NavItem[] = [
-//     {
-//       icon: <FiGrid />,
-//       name: "Dashboard",
-//       path: `/${role}/dashboard`,
-//       roles: ["admin", "editor", "user"],
-//     },
-//     {
-//       name: "Blog Contents",
-//       icon: <FiEdit3 />,
-//       roles: ["admin"],
-//       subItems: [
-//         {
-//           name: "Cluster",
-//           path: `/${role}/cluster`,
-//           roles: ["admin", "editor"],
-//         },
-//         {
-//           name: "Topics",
-//           path: `/${role}/topic`,
-//           roles: ["admin", "editor"],
-//         },
-//         {
-//           name: "Articles",
-//           path: `/${role}/article`,
-//           roles: ["admin", "editor"],
-//         },
-//       ],
-//     },
-//     {
-//       name: "CMS Pages",
-//       icon: <FiFileText />,
-//       path: `/${role}/cmspages`,
-//       roles: ["admin"],
-//     },
-//     {
-//       name: "Subscription Plan",
-//       icon: <FiFile />,
-//       path: `/${role}/subscriptionplan`,
-//       roles: ["admin"],
-//     },
-//     {
-//       name: "User Subscription",
-//       icon: <FiUsers />,
-//       path: `/${role}/user-subscription`,
-//       roles: ["admin"],
-//     },
-//     {
-//       name: "Customer",
-//       icon: <FiUsers />,
-//       path: `/${role}/customers`,
-//       roles: ["admin"],
-//     },
-//     // {
-//     //   name: "Newsletter",
-//     //   icon: <FiMail />,
-//     //   path: `/${role}/newsletter`,
-//     //   roles: ["admin"],
-//     // },
-//     {
-//       name: "Newsletter",
-//       icon: <FiMail />,
-//       roles: ["admin"],
-//       subItems: [
-//         {
-//           name: "Newsletter Subscribers",
-//           path: `/${role}/newsletter`,
-//           roles: ["admin", "editor"],
-//         },
-//         {
-//           name: "Newsletter Listing",
-//           path: `/${role}/list-newsletter`,
-//           roles: ["admin", "editor"],
-//         },
-//       ],
-//     },
-
-//     {
-//       name: "Contact Enquiry",
-//       icon: <FiMessageSquare />,
-//       path: `/${role}/contactenquiry`,
-//       roles: ["admin"],
-//     },
-//     {
-//       name: "Settings",
-//       icon: <FiSettings />,
-//       roles: ["admin"],
-//       subItems: [
-//         // { name: "Cluster", path: `/${role}/cluster`, roles: ["admin", "editor"] },
-//       ],
-//     },
-//   ];
-
-//   // Filter items based on user role
-//   const navItems: NavItem[] = allNavItems
-//     .filter((item) => !item.roles || item.roles.includes(role))
-//     .map((item) => ({
-//       ...item,
-//       subItems: item.subItems?.filter(
-//         (sub) => !sub.roles || sub.roles.includes(role),
-//       ),
-//     }));
-
-//   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
-//   const [manuallyOpened, setManuallyOpened] = useState<number | null>(null);
-//   const subMenuRefs = useRef<Record<number, HTMLDivElement | null>>({});
-
-//   const isActive = useCallback(
-//     (path: string) => {
-//       // Extract base path from navigation path (remove query parameters)
-//       const basePath = path.split("?")[0];
-//       return (
-//         location.pathname === basePath ||
-//         location.pathname.startsWith(basePath + "/")
-//       );
-//     },
-//     [location.pathname],
-//   );
-
-//   const isSubmenuActive = useCallback(
-//     (subItems: NavItem["subItems"]) => {
-//       if (!subItems) return false;
-//       return subItems.some((subItem) => isActive(subItem.path));
-//     },
-//     [isActive],
-//   );
-
-//   // Auto-open submenu if any of its sub-items are active, close otherwise
-//   useEffect(() => {
-//     const activeSubmenuIndex = navItems.findIndex(
-//       (nav, index) => nav.subItems && isSubmenuActive(nav.subItems),
-//     );
-
-//     if (activeSubmenuIndex !== -1) {
-//       // Auto-open when sub-item is active
-//       setOpenSubmenu(activeSubmenuIndex);
-//       setManuallyOpened(null); // Clear manual state when auto-opening
-//     } else {
-//       // Close only if it was auto-opened, not manually opened
-//       if (openSubmenu !== null && manuallyOpened === null) {
-//         setOpenSubmenu(null);
-//       }
-//     }
-//   }, [
-//     location.pathname,
-//     navItems,
-//     isSubmenuActive,
-//     openSubmenu,
-//     manuallyOpened,
-//   ]);
-
-//   const toggleSubmenu = (index: number) => {
-//     const newState = openSubmenu === index ? null : index;
-//     setOpenSubmenu(newState);
-//     setManuallyOpened(newState); // Track that this was manually opened
-//   };
-
-//   const renderMenuItems = (items: NavItem[]) => (
-//     <ul className="flex flex-col gap-4">
-//       {items.map((nav, index) => (
-//         <li key={nav.name}>
-//           {nav.subItems ? (
-//             <>
-//               <button
-//                 onClick={() => toggleSubmenu(index)}
-//                 className={`menu-item group ${
-//                   openSubmenu === index || isSubmenuActive(nav.subItems)
-//                     ? "menu-item-active"
-//                     : "menu-item-inactive"
-//                 } cursor-pointer ${
-//                   !isExpanded && !isHovered
-//                     ? "lg:justify-center"
-//                     : "lg:justify-start"
-//                 }`}
-//               >
-//                 <span
-//                   className={`menu-item-icon-size ${
-//                     openSubmenu === index || isSubmenuActive(nav.subItems)
-//                       ? "menu-item-icon-active"
-//                       : "menu-item-icon-inactive"
-//                   }`}
-//                 >
-//                   {nav.icon}
-//                 </span>
-//                 {(isExpanded || isHovered || isMobileOpen) && (
-//                   <span className="menu-item-text">{nav.name}</span>
-//                 )}
-//                 {(isExpanded || isHovered || isMobileOpen) && (
-//                   <FiChevronDown
-//                     className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-//                       openSubmenu === index ? "rotate-180 text-brand-500" : ""
-//                     }`}
-//                   />
-//                 )}
-//               </button>
-//               <div
-//                 ref={(el) => {
-//                   subMenuRefs.current[index] = el;
-//                 }}
-//                 className="overflow-hidden transition-all duration-300"
-//                 style={{
-//                   height:
-//                     openSubmenu === index
-//                       ? `${subMenuRefs.current[index]?.scrollHeight}px`
-//                       : "0px",
-//                 }}
-//               >
-//                 <ul className="mt-2 space-y-1 ml-9">
-//                   {nav.subItems.map((subItem) => (
-//                     <li key={subItem.name}>
-//                       <Link
-//                         to={subItem.path}
-//                         className={`menu-dropdown-item ${
-//                           isActive(subItem.path)
-//                             ? "menu-dropdown-item-active"
-//                             : "menu-dropdown-item-inactive"
-//                         }`}
-//                       >
-//                         {subItem.name}
-//                       </Link>
-//                     </li>
-//                   ))}
-//                 </ul>
-//               </div>
-//             </>
-//           ) : (
-//             nav.path && (
-//               <Link
-//                 to={nav.path}
-//                 className={`menu-item group ${
-//                   isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-//                 } cursor-pointer ${
-//                   !isExpanded && !isHovered
-//                     ? "lg:justify-center"
-//                     : "lg:justify-start"
-//                 }`}
-//               >
-//                 <span
-//                   className={`menu-item-icon-size ${
-//                     isActive(nav.path)
-//                       ? "menu-item-icon-active"
-//                       : "menu-item-icon-inactive"
-//                   }`}
-//                 >
-//                   {nav.icon}
-//                 </span>
-//                 {(isExpanded || isHovered || isMobileOpen) && (
-//                   <span className="menu-item-text">{nav.name}</span>
-//                 )}
-//               </Link>
-//             )
-//           )}
-//         </li>
-//       ))}
-//     </ul>
-//   );
-
-//   return (
-//     <aside
-//       className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 ${
-//         isExpanded || isMobileOpen
-//           ? "w-[290px]"
-//           : isHovered
-//             ? "w-[290px]"
-//             : "w-[90px]"
-//       } ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
-//       onMouseEnter={() => !isExpanded && setIsHovered(true)}
-//       onMouseLeave={() => setIsHovered(false)}
-//     >
-//       {/* Logo */}
-//       <div
-//         className={`py-8 flex ${
-//           !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-//         }`}
-//       >
-//         <Link to="/">
-//           {isExpanded || isHovered || isMobileOpen ? (
-//             <img
-//               className="dark:hidden"
-//               src="/images/logo/logo.png"
-//               alt="Logo"
-//               width={150}
-//               height={40}
-//             />
-//           ) : (
-//             <img
-//               src="/images/logo/moneynowwealth-icon.png"
-//               alt="Logo"
-//               width={32}
-//               height={32}
-//             />
-//           )}
-//         </Link>
-//       </div>
-
-//       {/* Menu */}
-//       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-//         <nav className="mb-6">
-//           <h2
-//             className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-//               !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-//             }`}
-//           >
-//             {isExpanded || isHovered || isMobileOpen ? (
-//               "Menu"
-//             ) : (
-//               <BsThreeDots className="size-6" />
-//             )}
-//           </h2>
-//           {renderMenuItems(navItems)}
-//         </nav>
-//       </div>
-//     </aside>
-//   );
-// };
-
-// export default AppSidebar;
-
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   FiChevronDown,
@@ -364,7 +14,7 @@ import {
 } from "react-icons/fi";
 import { BsThreeDots } from "react-icons/bs";
 import { useSidebar } from "../context/SidebarContext";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 
 type NavItem = {
   name: string;
@@ -382,108 +32,144 @@ const AppSidebar: React.FC = () => {
 
   // ================================
   // ================================
-  const allNavItems: NavItem[] = [
-    {
-      icon: <FiGrid />,
-      name: "Dashboard",
-      path: `/${role}/dashboard`,
-      roles: ["admin", "editor", "user"],
-    },
-    {
-      name: "Blog Contents",
-      icon: <FiEdit3 />,
-      roles: ["admin", "editor"],
-      subItems: [
-        {
-          name: "Cluster",
-          path: `/${role}/cluster`,
-          roles: ["admin", "editor"],
-        },
-        {
-          name: "Topics",
-          path: `/${role}/topic`,
-          roles: ["admin", "editor"],
-        },
-        {
-          name: "Articles",
-          path: `/${role}/article`,
-          roles: ["admin", "editor"],
-        },
-      ],
-    },
-    {
-      name: "CMS Pages",
-      icon: <FiFileText />,
-      path: `/${role}/cmspages`,
-      roles: ["admin"],
-    },
-    {
-      name: "Subscription Plan",
-      icon: <FiFile />,
-      path: `/${role}/subscriptionplan`,
-      roles: ["admin"],
-    },
-    {
-      name: "User Subscription",
-      icon: <FiUsers />,
-      path: `/${role}/user-subscription`,
-      roles: ["admin"],
-    },
-    {
-      name: "Customer",
-      icon: <FiUsers />,
-      path: `/${role}/customers`,
-      roles: ["admin"],
-    },
-    // {
-    //   name: "Newsletter",
-    //   icon: <FiMail />,
-    //   path: `/${role}/newsletter`,
-    //   roles: ["admin"],
-    // },
-    {
-      name: "Newsletter",
-      icon: <FiMail />,
-      roles: ["admin"],
-      subItems: [
-        {
-          name: "Newsletter Subscribers",
-          path: `/${role}/newsletter`,
-          roles: ["admin", "editor"],
-        },
-        {
-          name: "Newsletter Listing",
-          path: `/${role}/list-newsletter`,
-          roles: ["admin", "editor"],
-        },
-      ],
-    },
-
-    {
-      name: "Contact Enquiry",
-      icon: <FiMessageSquare />,
-      path: `/${role}/contactenquiry`,
-      roles: ["admin"],
-    },
-    {
-      name: "Settings",
-      icon: <FiSettings />,
-      roles: ["admin"],
-      subItems: [
-        // { name: "Cluster", path: `/${role}/cluster`, roles: ["admin", "editor"] },
-      ],
-    },
-  ];
+  const allNavItems: NavItem[] = useMemo(
+    () => [
+      {
+        icon: <FiGrid />,
+        name: "Dashboard",
+        path: `/${role}/dashboard`,
+        roles: ["admin", "editor", "user"],
+      },
+      {
+        name: "Blog Contents",
+        icon: <FiEdit3 />,
+        roles: ["admin", "editor"],
+        subItems: [
+          {
+            name: "Cluster",
+            path: `/${role}/cluster`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Topics",
+            path: `/${role}/topic`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Articles",
+            path: `/${role}/article`,
+            roles: ["admin", "editor"],
+          },
+        ],
+      },
+      {
+        name: "CMS Pages",
+        icon: <FiFileText />,
+        path: `/${role}/cmspages`,
+        roles: ["admin"],
+      },
+      {
+        name: "Subscription Plan",
+        icon: <FiFile />,
+        path: `/${role}/subscriptionplan`,
+        roles: ["admin"],
+      },
+      {
+        name: "User Subscription",
+        icon: <FiUsers />,
+        path: `/${role}/user-subscription`,
+        roles: ["admin"],
+      },
+      {
+        name: "Customer",
+        icon: <FiUsers />,
+        path: `/${role}/customers`,
+        roles: ["admin"],
+      },
+      {
+        name: "Newsletter",
+        icon: <FiMail />,
+        roles: ["admin"],
+        subItems: [
+          {
+            name: "Newsletter Subscribers",
+            path: `/${role}/newsletter`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Newsletter Listing",
+            path: `/${role}/list-newsletter`,
+            roles: ["admin", "editor"],
+          },
+        ],
+      },
+      {
+        name: "Mutual Funds",
+        icon: <FiFileText />,
+        roles: ["admin", "editor"],
+        subItems: [
+          {
+            name: "Main Category",
+            path: `/${role}/mf/main-categories`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Sub Category",
+            path: `/${role}/mf/categories`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Fund",
+            path: `/${role}/mf/funds`,
+            roles: ["admin", "editor"],
+          },
+          // {
+          //   name: "AMCs",
+          //   path: `/${role}/mf/amcs`,
+          //   roles: ["admin", "editor"],
+          // },
+          {
+            name: "NFO",
+            path: `/${role}/mf/nfo`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Index Snapshots",
+            path: `/${role}/mf/index-snapshots`,
+            roles: ["admin", "editor"],
+          },
+          // MF import entry intentionally disabled
+        ],
+      },
+      {
+        name: "Contact Enquiry",
+        icon: <FiMessageSquare />,
+        path: `/${role}/contactenquiry`,
+        roles: ["admin"],
+      },
+      {
+        name: "Settings",
+        icon: <FiSettings />,
+        roles: ["admin"],
+        subItems: [],
+      },
+    ],
+    [role],
+  );
 
   // Filter items based on user role
-  const navItems: NavItem[] = allNavItems
-    .filter((item) => !item.roles || item.roles.includes(role))
-    .map((item) => ({
-      ...item,
-      subItems: item.subItems?.filter(
-        (sub) => !sub.roles || sub.roles.includes(role),
-      ),
-    }));
+  const navItems: NavItem[] = useMemo(
+    () =>
+      allNavItems
+        .filter((item) => !item.roles || item.roles.includes(role))
+        .map((item) => ({
+          ...item,
+          subItems: item.subItems?.filter(
+            (sub) => !sub.roles || sub.roles.includes(role),
+          ),
+        })),
+    [allNavItems, role],
+  );
 
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
   const [manuallyOpened, setManuallyOpened] = useState<number | null>(null);
@@ -512,28 +198,16 @@ const AppSidebar: React.FC = () => {
   // Auto-open submenu if any of its sub-items are active, close otherwise
   useEffect(() => {
     const activeSubmenuIndex = navItems.findIndex(
-      (nav, index) => nav.subItems && isSubmenuActive(nav.subItems),
+      (nav) => nav.subItems && isSubmenuActive(nav.subItems),
     );
 
-    // if (activeSubmenuIndex !== -1) {
-    //   setOpenSubmenu(activeSubmenuIndex);
-    //   setManuallyOpened(null);
-    // }
-    if (activeSubmenuIndex !== -1 && manuallyOpened === null) {
-      setOpenSubmenu(activeSubmenuIndex);
-    } else {
-      // Close only if it was auto-opened, not manually opened
-      if (openSubmenu !== null && manuallyOpened === null) {
-        setOpenSubmenu(null);
+    if (manuallyOpened === null) {
+      const nextOpen = activeSubmenuIndex !== -1 ? activeSubmenuIndex : null;
+      if (openSubmenu !== nextOpen) {
+        setOpenSubmenu(nextOpen);
       }
     }
-  }, [
-    location.pathname,
-    navItems,
-    isSubmenuActive,
-    openSubmenu,
-    manuallyOpened,
-  ]);
+  }, [navItems, isSubmenuActive, openSubmenu, manuallyOpened]);
 
   const toggleSubmenu = (index: number) => {
     const newState = openSubmenu === index ? null : index;
@@ -705,3 +379,6 @@ const AppSidebar: React.FC = () => {
 };
 
 export default AppSidebar;
+
+
+

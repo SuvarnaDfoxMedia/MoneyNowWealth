@@ -1025,6 +1025,7 @@ import { newsletterPublishService } from "../services/newsletterPublishService";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 // Define Request interface with file property
 declare global {
@@ -1158,16 +1159,20 @@ export const getNewsletterPublications = async (
 
     const result = await newsletterPublishService.getAll(serviceParams);
 
-    return res.status(200).json({
-      success: true,
-      ...result,
-    });
+    return sendSuccess(
+      res,
+      "Newsletter publications fetched successfully",
+      result,
+      200,
+      { ...result },
+    );
   } catch (error: any) {
     console.error("Get newsletter publications error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch newsletter publications",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to fetch newsletter publications",
+      500,
+    );
   }
 };
 
@@ -1199,22 +1204,23 @@ export const getNewsletterPublicationById = async (
     }
 
     if (!newsletter) {
-      return res.status(404).json({
-        success: false,
-        message: "Newsletter publication not found",
-      });
+      return sendError(res, "Newsletter publication not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(
+      res,
+      "Newsletter publication fetched successfully",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Get newsletter publication error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch newsletter publication",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to fetch newsletter publication",
+      500,
+    );
   }
 };
 
@@ -1236,27 +1242,18 @@ export const createNewsletterPublication = async (
     // Validate required fields
     if (!title || !publish_date) {
       cleanupUploadedFile(req.file);
-      return res.status(400).json({
-        success: false,
-        message: "Title and publish date are required",
-      });
+      return sendError(res, "Title and publish date are required", 400);
     }
 
     // Validate publish_date
     const publishDateObj = new Date(publish_date);
     if (isNaN(publishDateObj.getTime())) {
       cleanupUploadedFile(req.file);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid publish date format",
-      });
+      return sendError(res, "Invalid publish date format", 400);
     }
 
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "File is required",
-      });
+      return sendError(res, "File is required", 400);
     }
 
     // Prepare newsletter data
@@ -1275,20 +1272,23 @@ export const createNewsletterPublication = async (
 
     const newsletter = await newsletterPublishService.create(newsletterData);
 
-    return res.status(201).json({
-      success: true,
-      message: "Newsletter publication created successfully",
+    return sendSuccess(
+      res,
+      "Newsletter publication created successfully",
       newsletter,
-    });
+      201,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Create newsletter publication error:", error);
 
     cleanupUploadedFile(req.file);
 
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to create newsletter publication",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to create newsletter publication",
+      400,
+    );
   }
 };
 
@@ -1309,10 +1309,7 @@ export const updateNewsletterPublication = async (
       const dt = new Date(updateData.publish_date);
       if (isNaN(dt.getTime())) {
         cleanupUploadedFile(req.file);
-        return res.status(400).json({
-          success: false,
-          message: "Invalid publish date format",
-        });
+        return sendError(res, "Invalid publish date format", 400);
       }
       updateData.publish_date = dt;
     }
@@ -1328,26 +1325,26 @@ export const updateNewsletterPublication = async (
     if (!newsletter) {
       cleanupUploadedFile(req.file);
 
-      return res.status(404).json({
-        success: false,
-        message: "Newsletter publication not found",
-      });
+      return sendError(res, "Newsletter publication not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Newsletter publication updated successfully",
+    return sendSuccess(
+      res,
+      "Newsletter publication updated successfully",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Update newsletter publication error:", error);
 
     cleanupUploadedFile(req.file);
 
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to update newsletter publication",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to update newsletter publication",
+      400,
+    );
   }
 };
 
@@ -1360,16 +1357,20 @@ export const sendNewsletterEmails = async (req: Request, res: Response) => {
 
     const result = await newsletterPublishService.sendNewsletterEmails(id);
 
-    return res.status(200).json({
-      success: true,
-      ...result,
-    });
+    return sendSuccess(
+      res,
+      "Newsletter emails sent successfully",
+      result,
+      200,
+      { ...result },
+    );
   } catch (error: any) {
     console.error("Send newsletter emails error:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to send newsletter emails",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to send newsletter emails",
+      400,
+    );
   }
 };
 
@@ -1382,17 +1383,16 @@ export const publishNewsletterNow = async (req: Request, res: Response) => {
 
     const newsletter = await newsletterPublishService.publishNow(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Newsletter published successfully",
+    return sendSuccess(
+      res,
+      "Newsletter published successfully",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Publish newsletter error:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to publish newsletter",
-    });
+    return sendError(res, error.message || "Failed to publish newsletter", 400);
   }
 };
 
@@ -1405,33 +1405,26 @@ export const scheduleNewsletter = async (req: Request, res: Response) => {
     const { publish_date } = req.body;
 
     if (!publish_date) {
-      return res.status(400).json({
-        success: false,
-        message: "Publish date is required for scheduling",
-      });
+      return sendError(res, "Publish date is required for scheduling", 400);
     }
 
     const dt = new Date(publish_date);
     if (isNaN(dt.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid publish date format",
-      });
+      return sendError(res, "Invalid publish date format", 400);
     }
 
     const newsletter = await newsletterPublishService.schedule(id, dt);
 
-    return res.status(200).json({
-      success: true,
-      message: "Newsletter scheduled successfully",
+    return sendSuccess(
+      res,
+      "Newsletter scheduled successfully",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Schedule newsletter error:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to schedule newsletter",
-    });
+    return sendError(res, error.message || "Failed to schedule newsletter", 400);
   }
 };
 
@@ -1447,17 +1440,20 @@ export const deleteNewsletterPublication = async (
 
     const newsletter = await newsletterPublishService.softDelete(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Newsletter publication deleted successfully",
+    return sendSuccess(
+      res,
+      "Newsletter publication deleted successfully",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Delete newsletter publication error:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to delete newsletter publication",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to delete newsletter publication",
+      400,
+    );
   }
 };
 
@@ -1473,17 +1469,20 @@ export const restoreNewsletterPublication = async (
 
     const newsletter = await newsletterPublishService.restore(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Newsletter publication restored successfully",
+    return sendSuccess(
+      res,
+      "Newsletter publication restored successfully",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Restore newsletter publication error:", error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to restore newsletter publication",
-    });
+    return sendError(
+      res,
+      error.message || "Failed to restore newsletter publication",
+      400,
+    );
   }
 };
 
@@ -1493,17 +1492,12 @@ export const restoreNewsletterPublication = async (
 export const uploadNewsletterFileOnly = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "No file uploaded",
-      });
+      return sendError(res, "No file uploaded", 400);
     }
 
     const fileInfo = await newsletterPublishService.uploadFile(req.file);
 
-    return res.status(200).json({
-      success: true,
-      message: "File uploaded successfully",
+    return sendSuccess(res, "File uploaded successfully", fileInfo, 200, {
       file: fileInfo,
     });
   } catch (error: any) {
@@ -1511,10 +1505,7 @@ export const uploadNewsletterFileOnly = async (req: Request, res: Response) => {
 
     cleanupUploadedFile(req.file);
 
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to upload file",
-    });
+    return sendError(res, error.message || "Failed to upload file", 500);
   }
 };
 
@@ -1536,11 +1527,11 @@ export const toggleNewsletterStatus = async (req: Request, res: Response) => {
     } else if (typeof is_active === "string") {
       isActiveBool = is_active.toLowerCase() === "true" || is_active === "1";
     } else {
-      return res.status(400).json({
-        success: false,
-        message:
-          "is_active boolean required (true/false, 1/0, or 'true'/'false')",
-      });
+      return sendError(
+        res,
+        "is_active boolean required (true/false, 1/0, or 'true'/'false')",
+        400,
+      );
     }
 
     const newsletter = await newsletterPublishService.update(id, {
@@ -1548,23 +1539,19 @@ export const toggleNewsletterStatus = async (req: Request, res: Response) => {
     });
 
     if (!newsletter) {
-      return res.status(404).json({
-        success: false,
-        message: "Newsletter not found",
-      });
+      return sendError(res, "Newsletter not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      message: isActiveBool ? "Activated" : "Deactivated",
+    return sendSuccess(
+      res,
+      isActiveBool ? "Activated" : "Deactivated",
       newsletter,
-    });
+      200,
+      { newsletter },
+    );
   } catch (error: any) {
     console.error("Toggle status error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to toggle status",
-    });
+    return sendError(res, error.message || "Failed to toggle status", 500);
   }
 };
 
@@ -1582,20 +1569,11 @@ export const handleNewsletterUploadErrors = (
 
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({
-        success: false,
-        message: "File too large. Max size is 25MB.",
-      });
+      return sendError(res, "File too large. Max size is 25MB.", 400);
     }
 
-    return res.status(400).json({
-      success: false,
-      message: err.message || "File upload error",
-    });
+    return sendError(res, err.message || "File upload error", 400);
   }
 
-  return res.status(500).json({
-    success: false,
-    message: err.message || "Unexpected upload error",
-  });
+  return sendError(res, err.message || "Unexpected upload error", 500);
 };

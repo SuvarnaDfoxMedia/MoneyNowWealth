@@ -218,7 +218,7 @@ export default function ViewArticle() {
 
               <p className="text-[16px] font-inter font-medium">
                 {article.author || "Team Money Now"} |{" "}
-                {article.created_at && new Date(article.created_at).toLocaleDateString()}
+                {article.created_at && new Date(article.created_at).toLocaleDateString("en-GB")}
               </p>
             </div>
 
@@ -330,3 +330,4 @@ export default function ViewArticle() {
     </>
   );
 }
+

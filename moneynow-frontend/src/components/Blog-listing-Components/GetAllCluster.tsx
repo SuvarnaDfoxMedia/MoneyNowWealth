@@ -137,11 +137,7 @@ const GetAllCluster = () => {
 
     {cluster.created_at && (
       <p className="text-[14px]  mt-1 font-semibold">
-        {new Date(cluster.created_at).toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}
+        {new Date(cluster.created_at).toLocaleDateString("en-GB")}
       </p>
     )}
   </div>
@@ -173,3 +169,4 @@ const GetAllCluster = () => {
 };
 
 export default GetAllCluster;
+

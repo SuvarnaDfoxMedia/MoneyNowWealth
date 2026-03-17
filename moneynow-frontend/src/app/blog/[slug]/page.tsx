@@ -221,15 +221,11 @@
 //                   <FaWhatsapp />
 //                 </a>
 //               </div>
-//               {/* <p className="text-[16px] font-inter font-medium">{article.author || "Team Money Now"} | {article.created_at && new Date(article.created_at).toLocaleDateString()}</p> */}
+//               {/* <p className="text-[16px] font-inter font-medium">{article.author || "Team Money Now"} | {article.created_at && new Date(article.created_at).toLocaleDateString("en-GB")}</p> */}
 //               <p className="text-[16px] font-inter font-medium">
 //                 {article.author || "Team Money Now"} |{" "}
 //                 {article.published_at &&
-//                   new Date(article.published_at).toLocaleDateString("en-IN", {
-//                     day: "2-digit",
-//                     month: "short",
-//                     year: "numeric",
-//                   })}
+//                   new Date(article.published_at).toLocaleDateString("en-GB")}
 //               </p>
 //             </div>
 
@@ -680,11 +676,7 @@ const BlogDetails = () => {
               <p className="text-[16px] font-inter font-medium">
                 {article.author || "Team Money Now"} |{" "}
                 {article.published_at &&
-                  new Date(article.published_at).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  new Date(article.published_at).toLocaleDateString("en-GB")}
               </p>
             </div>
 
@@ -907,3 +899,4 @@ const BlogDetails = () => {
 };
 
 export default BlogDetails;
+

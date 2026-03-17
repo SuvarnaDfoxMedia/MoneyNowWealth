@@ -1,9 +1,11 @@
 export const uploadFile = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
+  const apiBase =
+    (import.meta.env.VITE_API_BASE as string | undefined)?.trim() || "/api";
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/upload`, {
+    const response = await fetch(`${apiBase}/upload`, {
       method: "POST",
       body: formData,
     });
@@ -14,8 +16,7 @@ export const uploadFile = async (file: File): Promise<string> => {
 
     const data = await response.json();
     return data.filePath;
-  } catch (error) {
-    console.error("Upload error:", error);
+  } catch {
     return "";
   }
 };

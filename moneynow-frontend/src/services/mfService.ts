@@ -1,0 +1,54 @@
+import { API } from "@/app/api/axios";
+
+export interface MfListResponse<T> {
+  success: boolean;
+  data: T[];
+  total: number;
+  currentPage: number;
+  totalPages: number;
+  limit: number;
+}
+
+export const mfService = {
+  getMainCategories: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/main-categories", { params });
+    return data;
+  },
+  getCategories: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/categories", { params });
+    return data;
+  },
+  getFunds: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/funds", { params });
+    return data;
+  },
+  getPopularFunds: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/popular-funds", { params });
+    return data;
+  },
+  getNfos: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/nfo", { params });
+    return data;
+  },
+  getIndexSnapshots: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/index-snapshots", { params });
+    return data;
+  },
+  getDiscover: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/discover", { params });
+    return data;
+  },
+  getHome: async () => {
+    const { data } = await API.get("/api/mf/home");
+    return data;
+  },
+  getFilters: async (params?: Record<string, any>) => {
+    const { data } = await API.get("/api/mf/filters", { params });
+    return data;
+  },
+  // Legacy slug route (deprecated)
+  // getFundBySlug: async (slug: string) => {
+  //   const { data } = await API.get(`/api/mf/funds/slug/${slug}`);
+  //   return data;
+  // },
+};

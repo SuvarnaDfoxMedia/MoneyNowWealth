@@ -1,13 +1,15 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
 export type IUser = Document & {
-  title: "Mr" | "Mrs";
+  title?: "Mr" | "Mrs";
   firstname: string;
-  lastname: string;
+  lastname?: string;
   email: string;
   password?: string;
-  countryCode: string;
-  mobile: string;
+  countryCode?: string;
+  mobile?: string;
+  googleId?: string;
+  provider: "local" | "google";
   role: "user" | "editor" | "admin";
   isTermsAccepted: boolean;
   is_deleted: boolean;
@@ -23,9 +25,12 @@ export type IUser = Document & {
 
 const userSchema: Schema<IUser> = new Schema(
   {
-    title: { type: String, enum: ["Mr", "Mrs"], required: true },
+    title: {
+      type: String,
+      enum: ["Mr", "Mrs"],
+    },
     firstname: { type: String, required: true, trim: true },
-    lastname: { type: String, required: true, trim: true },
+    lastname: { type: String, trim: true, default: "" },
     email: {
       type: String,
       required: true,
@@ -33,11 +38,35 @@ const userSchema: Schema<IUser> = new Schema(
       lowercase: true,
       trim: true,
     },
-    password: { type: String, select: false },
+    password: {
+      type: String,
+      select: false,
+      required: function (this: IUser) {
+        return (this.provider || "local") === "local";
+      },
+    },
 
-    countryCode: { type: String, required: true, trim: true },
+    countryCode: {
+      type: String,
+      trim: true,
+      required: function (this: IUser) {
+        return (this.provider || "local") === "local";
+      },
+    },
 
-    mobile: { type: String, required: true, trim: true },
+    mobile: {
+      type: String,
+      trim: true,
+      required: function (this: IUser) {
+        return (this.provider || "local") === "local";
+      },
+    },
+    googleId: { type: String, unique: true, sparse: true },
+    provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
 
     role: { type: String, enum: ["user", "editor", "admin"], default: "user" },
     isTermsAccepted: { type: Boolean, required: true },
@@ -55,7 +84,7 @@ const userSchema: Schema<IUser> = new Schema(
 );
 
 userSchema.index({ mobile: 1 });
-userSchema.index({ countryCode: 1, mobile: 1 }, { unique: true });
+userSchema.index({ countryCode: 1, mobile: 1 });
 
 const User: Model<IUser> =
   mongoose.models.User || mongoose.model<IUser>("User", userSchema);

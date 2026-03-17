@@ -81,14 +81,7 @@ const ClusterArticlePagination: React.FC<Props> = ({
                   <>
                     <span>|</span>
                     <span>
-                      {new Date(article.created_at).toLocaleDateString(
-                        "en-IN",
-                        {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        },
-                      )}
+                      {new Date(article.created_at).toLocaleDateString("en-GB")}
                     </span>
                   </>
                 )}
@@ -140,20 +133,37 @@ const ClusterArticlePagination: React.FC<Props> = ({
         </button>
 
         {/* Page Numbers */}
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            onClick={() => setCurrentPage(page)}
-            className={`w-9 h-9 text-sm flex items-center justify-center border
-        ${
-          currentPage === page
-            ? "bg-[#043F79] text-white border-[#043F79] font-medium"
-            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-        }`}
-          >
-            {page}
-          </button>
-        ))}
+        {(() => {
+          const pages: (number | string)[] = [];
+          if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+          } else {
+            if (currentPage <= 4) {
+              pages.push(1, 2, 3, 4, 5, "...", totalPages);
+            } else if (currentPage >= totalPages - 3) {
+              pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+            } else {
+              pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+            }
+          }
+          return pages.map((p, i) => (
+            <button
+              key={i}
+              disabled={p === "..."}
+              onClick={() => p !== "..." && setCurrentPage(Number(p))}
+              className={`w-9 h-9 text-sm flex items-center justify-center border
+          ${
+            p === "..."
+              ? "bg-transparent text-gray-500 border-transparent cursor-default font-bold"
+              : currentPage === p
+              ? "bg-[#043F79] text-white border-[#043F79] font-medium"
+              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+          }`}
+            >
+              {p}
+            </button>
+          ));
+        })()}
 
         {/* Next */}
         <button
@@ -171,3 +181,5 @@ const ClusterArticlePagination: React.FC<Props> = ({
 };
 
 export default ClusterArticlePagination;
+
+

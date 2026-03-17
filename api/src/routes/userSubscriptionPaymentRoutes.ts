@@ -10,17 +10,17 @@ import {
   getMyPaymentHistory,
 } from "../controllers/userSubscriptionPaymentController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
-import { protect } from "../middlewares/authMiddleware";
+import { adminProtect, userProtect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
 /* -------------------- USER ROUTES (Authenticated) -------------------- */
 router.post(
   "/subscription-payment/purchase",
-  protect,
+  userProtect,
   userPurchaseSubscription,
 );
-router.get("/subscription-payment/history/me", protect, getMyPaymentHistory);
+router.get("/subscription-payment/history/me", userProtect, getMyPaymentHistory);
 router.get("/subscription-payment/:id", getSubscriptionPaymentById);
 router.get("/subscription-payment/invoice/:paymentId", getInvoiceByPaymentId);
 router.get("/subscription-payment/history/:userId", getUserSubscriptionHistory);
@@ -31,7 +31,7 @@ const adminMiddleware = roleFromUrl(["admin"]);
 /* -------------------- CREATE -------------------- */
 router.post(
   "/:role/subscription-payment/create",
-  protect,
+  adminProtect,
   adminMiddleware,
   addSubscriptionPayment,
 );
@@ -39,7 +39,7 @@ router.post(
 /* -------------------- UPDATE -------------------- */
 router.put(
   "/:role/subscription-payment/edit/:id",
-  protect,
+  adminProtect,
   adminMiddleware,
   updateSubscriptionPayment,
 );
@@ -47,7 +47,7 @@ router.put(
 /* -------------------- GET LATEST PAYMENT -------------------- */
 router.get(
   "/:role/subscription-payment/user/:user_id/latest",
-  protect,
+  adminProtect,
   adminMiddleware,
   getLatestPaymentByUser,
 );

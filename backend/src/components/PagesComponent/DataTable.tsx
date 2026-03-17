@@ -12,6 +12,7 @@ interface DataTableProps<T> {
   columns: TableColumn<T>[];
   data: T[];
   loading?: boolean;
+  isFetching?: boolean;
   customFilters?: {
     key: keyof T | string;
     label: string;
@@ -34,10 +35,11 @@ interface DataTableProps<T> {
   onSortChange?: (field: string, order: "asc" | "desc") => void;
 }
 
-function DataTableComponent<T = any>({
+function DataTableComponent<T = Record<string, unknown>>({
   columns,
   data,
   loading = false,
+  isFetching = false,
   page,
   totalPages,
   totalRecords = 0, // default value
@@ -50,8 +52,28 @@ function DataTableComponent<T = any>({
   sortOrder = "asc",
   onSortChange,
 }: DataTableProps<T>) {
-  const startIdx = data.length === 0 ? 0 : (page - 1) * recordsPerPage + 1;
-  const endIdx = Math.min(startIdx + data.length - 1, totalRecords);
+  React.useEffect(() => {
+    if (loading || isFetching) return;
+    if (totalPages < 1) return;
+    if (page > totalPages) onPageChange(totalPages);
+    if (page < 1) onPageChange(1);
+  }, [page, totalPages, onPageChange, loading, isFetching]);
+
+  const startIdx = totalRecords === 0 ? 0 : (page - 1) * recordsPerPage + 1;
+  const endIdx = Math.min(startIdx + recordsPerPage - 1, totalRecords);
+  const renderFallbackCell = (row: T, key: string): React.ReactNode => {
+    const value = (row as Record<string, unknown>)[key];
+    if (value == null) return "";
+    if (React.isValidElement(value)) return value;
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "[object]";
+      }
+    }
+    return String(value);
+  };
 
   const handleSort = (col: TableColumn<T>) => {
     if (!col.sortable || !onSortChange) return;
@@ -61,15 +83,15 @@ function DataTableComponent<T = any>({
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md w-full">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+    <div className="w-full rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+      <div className="mb-6 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
         {/* Records Per Page */}
-        <div className="flex items-center gap-2">
-          <label className="text-gray-700">Show</label>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Show</label>
           <select
             value={recordsPerPage}
             onChange={(e) => onRecordsPerPageChange(Number(e.target.value))}
-            className="border border-gray-300 rounded px-2 py-1 text-gray-700"
+            className="h-10 rounded-lg border border-gray-300 px-3 text-sm text-gray-700 focus:border-[#043f79] focus:outline-none"
           >
             {[5, 10, 25, 50, 100].map((num) => (
               <option key={num} value={num}>
@@ -77,28 +99,30 @@ function DataTableComponent<T = any>({
               </option>
             ))}
           </select>
-          <span className="text-gray-700">entries</span>
+          <span className="text-sm text-gray-700">entries</span>
         </div>
 
         {/* Search */}
         {onSearchChange && (
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <label className="text-gray-700 whitespace-nowrap">Search:</label>
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
+            <label className="whitespace-nowrap text-sm font-medium text-gray-700">
+              Search:
+            </label>
             <input
               type="text"
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Type to search..."
-              className="border border-gray-300 rounded px-3 py-1 text-gray-700 w-full md:w-auto"
+              className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-700 focus:border-[#043f79] focus:outline-none md:w-64"
             />
           </div>
         )}
       </div>
 
       {/* Table */}
-      <div className="border rounded-md">
-        <table className="min-w-full text-sm text-left border-collapse">
-          <thead className="text-gray-700 border-b bg-gray-100">
+      <div className="overflow-x-auto rounded-xl border border-gray-100">
+        <table className="min-w-full border-collapse text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50 text-gray-700">
             <tr>
               {columns.map((col) => {
                 const isSorted = sortField === col.key;
@@ -106,9 +130,9 @@ function DataTableComponent<T = any>({
                   <th
                     key={col.key as string}
                     onClick={() => handleSort(col)}
-                    className={`px-4 py-3 font-medium whitespace-nowrap border-r last:border-r-0
-                      ${col.sortable ? "cursor-pointer hover:bg-gray-200" : "cursor-default"}
-                      ${isSorted ? "bg-gray-200" : ""}`}
+                    className={`whitespace-nowrap border-r border-gray-200 px-4 py-3.5 text-sm font-semibold last:border-r-0
+                      ${col.sortable ? "cursor-pointer hover:bg-gray-100" : "cursor-default"}
+                      ${isSorted ? "bg-gray-100" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <span>{col.label}</span>
@@ -142,7 +166,7 @@ function DataTableComponent<T = any>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="text-center py-6 text-gray-500"
+                  className="py-6 text-center text-sm text-gray-500"
                 >
                   Loading...
                 </td>
@@ -152,7 +176,7 @@ function DataTableComponent<T = any>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="text-center py-6 text-gray-500"
+                  className="py-6 text-center text-sm text-gray-500"
                 >
                   No records found
                 </td>
@@ -162,16 +186,16 @@ function DataTableComponent<T = any>({
               data.map((row, idx) => (
                 <tr
                   key={idx}
-                  className={`border-b ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-gray-100 transition`}
+                  className={`border-b border-gray-100 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50/60"} transition hover:bg-gray-100/80`}
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key as string}
-                      className="px-4 py-2 border-r last:border-r-0 whitespace-nowrap"
+                      className="whitespace-nowrap border-r border-gray-100 px-4 py-3 text-sm text-gray-700 last:border-r-0"
                     >
                       {col.render
                         ? col.render(row, idx)
-                        : (row as any)[col.key]}
+                        : renderFallbackCell(row, col.key as string)}
                     </td>
                   ))}
                 </tr>
@@ -181,40 +205,61 @@ function DataTableComponent<T = any>({
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-col md:flex-row justify-between items-center mt-4 text-sm text-gray-700">
+      <div className="mt-5 flex flex-col items-start justify-between gap-3 text-sm text-gray-700 md:flex-row md:items-center">
         <p>
           Showing <strong>{startIdx}</strong> to <strong>{endIdx}</strong> of{" "}
           <strong>{totalRecords}</strong> entries
         </p>
 
-        <div className="flex items-center gap-1 mt-2 md:mt-0 flex-wrap">
+        <div className="mt-1 w-full overflow-x-auto md:mt-0 md:w-auto">
+          <div className="flex min-w-max items-center gap-2">
           <button
             disabled={page === 1}
             onClick={() => onPageChange(page - 1)}
-            className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-gray-100"
+            className="h-9 rounded-lg border border-gray-300 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-100"
           >
             Prev
           </button>
 
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => onPageChange(i + 1)}
-              className={`px-3 py-1 border rounded min-w-[38px] ${
-                page === i + 1 ? "bg-blue-500 text-white" : "hover:bg-gray-100"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          {(() => {
+            const pages: (number | string)[] = [];
+            if (totalPages <= 7) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              if (page <= 4) {
+                pages.push(1, 2, 3, 4, 5, "...", totalPages);
+              } else if (page >= totalPages - 3) {
+                pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+              } else {
+                pages.push(1, "...", page - 1, page, page + 1, "...", totalPages);
+              }
+            }
+            return pages.map((p, i) => (
+              <button
+                key={i}
+                disabled={p === "..."}
+                onClick={() => p !== "..." && onPageChange(Number(p))}
+                className={`h-9 min-w-[38px] rounded-lg border px-3 text-sm flex items-center justify-center ${
+                  p === "..." 
+                    ? "cursor-default border-transparent text-gray-500 bg-transparent font-bold" :
+                  page === p
+                    ? "border-[#043f79] bg-[#043f79] text-white"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {p}
+              </button>
+            ));
+          })()}
 
           <button
             disabled={page === totalPages}
             onClick={() => onPageChange(page + 1)}
-            className="px-3 py-1 border rounded disabled:opacity-40 hover:bg-gray-100"
+            className="h-9 rounded-lg border border-gray-300 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-100"
           >
             Next
           </button>
+          </div>
         </div>
       </div>
     </div>
@@ -225,3 +270,5 @@ function DataTableComponent<T = any>({
 export const DataTable = React.memo(
   DataTableComponent,
 ) as typeof DataTableComponent;
+
+

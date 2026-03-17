@@ -279,7 +279,7 @@ export default function LatestUsersCard() {
             </div>
 
             <span className="text-xs text-gray-400">
-              {new Date(user.created_at).toLocaleDateString()}
+              {new Date(user.created_at).toLocaleDateString("en-GB")}
             </span>
           </div>
         ))}
@@ -287,3 +287,4 @@ export default function LatestUsersCard() {
     </div>
   );
 }
+

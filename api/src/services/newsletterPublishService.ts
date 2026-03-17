@@ -1031,7 +1031,7 @@ import NewsletterPublish, {
   INewsletterPublish,
 } from "../models/newsletterPublishModel";
 import { Newsletter } from "../models/newsletterModel";
-import { emailService } from "@/emails/emailService";
+import { getResponseEmailService } from "./getResponseEmailService";
 import fs from "fs";
 import path from "path";
 
@@ -1377,12 +1377,21 @@ export const newsletterPublishService = {
     let failedDeliveries = 0;
 
     try {
+      const fileUrl = `${process.env.BASE_URL}/uploads/newsletters/${newsletter.pdf_file}`;
+      /* OLD SMTP IMPLEMENTATION (COMMENTED)
       await emailService.newsletter(
         subscriberEmails,
         filePath,
         newsletter.title,
       );
-      successfulDeliveries = subscriberEmails.length;
+      */
+      const result = await getResponseEmailService.sendNewsletterBulk(
+        subscriberEmails,
+        newsletter.title,
+        fileUrl,
+      );
+      successfulDeliveries = result.successful;
+      failedDeliveries = result.failed;
     } catch (error) {
       console.error("Failed to send newsletter emails:", error);
       failedDeliveries = subscriberEmails.length;

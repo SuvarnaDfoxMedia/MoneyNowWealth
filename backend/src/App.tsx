@@ -6,7 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -62,23 +62,33 @@ import CustomerListing from "./components/tables/ListingComponents/CustomerListi
 import CustomerHistory from "./components/CustomerHistory";
 import AddNewsletter from "./components/AddEditNewsletter";
 import NewsletterPublishListing from "./components/tables/ListingComponents/NewsletterPublishListing";
+import MFMainCategoryListing from "./components/tables/ListingComponents/MFMainCategoryListing";
+import MFCategoryListing from "./components/tables/ListingComponents/MFCategoryListing";
+import MFFundListing from "./components/tables/ListingComponents/MFFundListing";
+import MFNfoListing from "./components/tables/ListingComponents/MFNfoListing";
+import MFIndexSnapshotListing from "./components/tables/ListingComponents/MFIndexSnapshotListing";
+import MFAmcListing from "./components/tables/ListingComponents/MFAmcListing";
+import AddMFMainCategory from "./components/mf/AddMFMainCategory";
+import AddMFCategory from "./components/mf/AddMFSubCategory";
+import AddMFFund from "./components/mf/AddMFFund";
+import AddMFNfo from "./components/mf/AddMFNfo";
+import AddMFIndexSnapshot from "./components/mf/AddMFIndexSnapshot";
+import AddMFAmc from "./components/mf/AddMFAmc";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              zIndex: 999999,
-            },
-          }}
-        />
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+    <Router>
+      <ScrollToTop />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            zIndex: 999999,
+          },
+        }}
+      />
+      <AppRoutes />
+    </Router>
   );
 }
 
@@ -87,7 +97,9 @@ function AppRoutes() {
 
   if (loading) return <p className="p-5 text-center">Loading...</p>;
 
-  const role = user?.role;
+  const role = user?.role?.toLowerCase();
+  const isAdminOrEditor = role === "admin" || role === "editor";
+  const isUserRole = role === "user";
 
   return (
     <Routes>
@@ -96,10 +108,12 @@ function AppRoutes() {
         path="/"
         element={
           user ? (
-            role === "admin" || role === "editor" ? (
+            isAdminOrEditor ? (
               <Navigate to={`/${role}/dashboard`} replace />
-            ) : (
+            ) : isUserRole ? (
               <Navigate to="/user/dashboard" replace />
+            ) : (
+              <Navigate to="/signin" replace />
             )
           ) : (
             <Navigate to="/signin" replace />
@@ -190,6 +204,51 @@ function AppRoutes() {
           element={<ContactEnquiryListing />}
         />
 
+        {/* MF Admin Module */}
+        <Route
+          path="/:role/mf/main-categories"
+          element={<MFMainCategoryListing />}
+        />
+        <Route
+          path="/:role/mf/main-categories/create"
+          element={<AddMFMainCategory />}
+        />
+        <Route
+          path="/:role/mf/main-categories/edit/:id"
+          element={<AddMFMainCategory />}
+        />
+        <Route path="/:role/mf/categories" element={<MFCategoryListing />} />
+        <Route
+          path="/:role/mf/categories/create"
+          element={<AddMFCategory />}
+        />
+        <Route
+          path="/:role/mf/categories/edit/:id"
+          element={<AddMFCategory />}
+        />
+        <Route path="/:role/mf/funds" element={<MFFundListing />} />
+        <Route path="/:role/mf/funds/create" element={<AddMFFund />} />
+        <Route path="/:role/mf/funds/edit/:id" element={<AddMFFund />} />
+        <Route path="/:role/mf/nfo" element={<MFNfoListing />} />
+        <Route path="/:role/mf/nfo/create" element={<AddMFNfo />} />
+        <Route path="/:role/mf/nfo/edit/:id" element={<AddMFNfo />} />
+        <Route path="/:role/mf/amcs" element={<MFAmcListing />} />
+        <Route path="/:role/mf/amcs/create" element={<AddMFAmc />} />
+        <Route path="/:role/mf/amcs/edit/:id" element={<AddMFAmc />} />
+        <Route
+          path="/:role/mf/index-snapshots"
+          element={<MFIndexSnapshotListing />}
+        />
+        <Route
+          path="/:role/mf/index-snapshots/create"
+          element={<AddMFIndexSnapshot />}
+        />
+        <Route
+          path="/:role/mf/index-snapshots/edit/:id"
+          element={<AddMFIndexSnapshot />}
+        />
+        {/* MF import route intentionally disabled */}
+
         {/* Admin-only routes */}
         {role === "admin" && (
           <>
@@ -230,3 +289,7 @@ function AppRoutes() {
     </Routes>
   );
 }
+
+
+
+

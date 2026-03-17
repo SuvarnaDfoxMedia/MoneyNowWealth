@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { ContactEnquiry } from "../models/contactEnquiryModel";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 /* -------------------------
    Add Contact Enquiry
@@ -28,25 +28,17 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
       !subject ||
       !message
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
+      return sendError(res, "All fields are required", 400);
     }
 
     if (!terms_accepted) {
-      return res.status(400).json({
-        success: false,
-        message: "You must accept Terms and Conditions",
-      });
+      return sendError(res, "You must accept Terms and Conditions", 400);
     }
 
     // ------------------ Validate Email ------------------
     const emailTrim = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid email format" });
+      return sendError(res, "Invalid email format", 400);
     }
 
     // ------------------ Normalize Phone (Optional) ------------------
@@ -67,10 +59,12 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
       status: "new",
     });
 
-    return res.status(201).json({ success: true, enquiry });
+    return sendSuccess(res, "Contact enquiry submitted successfully", enquiry, 201, {
+      enquiry,
+    });
   } catch (err: any) {
     console.error("Add contact enquiry error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, "Server error", 500);
   }
 };
 
@@ -92,7 +86,7 @@ export const getContactEnquiries = async (req: Request, res: Response) => {
     const sortOrder =
       typeof req.query.sortOrder === "string" ? req.query.sortOrder : "desc";
 
-    const filter: any = { is_active: 1 };
+    const filter: Record<string, unknown> = { is_active: 1 };
 
     if (search) {
       const regex = new RegExp(search, "i");
@@ -106,7 +100,7 @@ export const getContactEnquiries = async (req: Request, res: Response) => {
       ];
     }
 
-    const sort: any = {};
+    const sort: Record<string, 1 | -1> = {};
     sort[sortField] = sortOrder.toLowerCase() === "asc" ? 1 : -1;
 
     const total = await ContactEnquiry.countDocuments(filter);
@@ -115,8 +109,7 @@ export const getContactEnquiries = async (req: Request, res: Response) => {
       .skip(skip)
       .limit(limit);
 
-    return res.json({
-      success: true,
+    return sendSuccess(res, "Contact enquiries fetched successfully", enquiries, 200, {
       enquiries,
       total,
       page,
@@ -125,7 +118,7 @@ export const getContactEnquiries = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Get contact enquiries error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, "Server error", 500);
   }
 };
 
@@ -142,15 +135,15 @@ export const softDeleteContactEnquiry = async (req: Request, res: Response) => {
     );
 
     if (!enquiry) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Contact enquiry not found" });
+      return sendError(res, "Contact enquiry not found", 404);
     }
 
-    return res.json({ success: true, enquiry });
+    return sendSuccess(res, "Contact enquiry deleted successfully", enquiry, 200, {
+      enquiry,
+    });
   } catch (err: any) {
     console.error("Soft delete contact enquiry error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, "Server error", 500);
   }
 };
 
@@ -166,9 +159,7 @@ export const updateContactEnquiryStatus = async (
     const { status } = req.body;
 
     if (!["new", "in-progress", "resolved"].includes(status)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid status" });
+      return sendError(res, "Invalid status", 400);
     }
 
     const enquiry = await ContactEnquiry.findByIdAndUpdate(
@@ -178,14 +169,14 @@ export const updateContactEnquiryStatus = async (
     );
 
     if (!enquiry) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Contact enquiry not found" });
+      return sendError(res, "Contact enquiry not found", 404);
     }
 
-    return res.json({ success: true, enquiry });
+    return sendSuccess(res, "Contact enquiry status updated successfully", enquiry, 200, {
+      enquiry,
+    });
   } catch (err: any) {
     console.error("Update contact enquiry status error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, "Server error", 500);
   }
 };

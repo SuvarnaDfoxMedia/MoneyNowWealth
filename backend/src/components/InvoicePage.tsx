@@ -157,7 +157,7 @@ export default function InvoicePage() {
             <p className="text-xl font-semibold tracking-wide">INVOICE</p>
             <p className="text-sm mt-1 opacity-90">
               {payment?.payment_date
-                ? new Date(payment.payment_date).toLocaleDateString()
+                ? new Date(payment.payment_date).toLocaleDateString("en-GB")
                 : "—"}
             </p>
           </div>
@@ -233,7 +233,7 @@ export default function InvoicePage() {
                 Subscription Start
               </p>
               <p className="text-gray-700 text-lg">
-                {new Date(subscription.start_date).toLocaleDateString()}
+                {new Date(subscription.start_date).toLocaleDateString("en-GB")}
               </p>
             </div>
 
@@ -242,7 +242,7 @@ export default function InvoicePage() {
                 Subscription End
               </p>
               <p className="text-gray-700 text-lg">
-                {new Date(subscription.end_date).toLocaleDateString()}
+                {new Date(subscription.end_date).toLocaleDateString("en-GB")}
               </p>
             </div>
           </div>
@@ -286,3 +286,4 @@ export default function InvoicePage() {
     </div>
   );
 }
+

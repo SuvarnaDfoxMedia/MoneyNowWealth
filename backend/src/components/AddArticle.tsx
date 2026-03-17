@@ -51,7 +51,10 @@ interface ArticleForm {
   related_reads: RelatedRead[];
 }
 
-const UPLOAD_BASE = `${import.meta.env.VITE_API_BASE.replace("/api", "")}/uploads/hero`;
+const API_ORIGIN =
+  (import.meta.env.VITE_API_BASE as string | undefined)?.replace("/api", "") ||
+  "";
+const UPLOAD_BASE = `${API_ORIGIN}/uploads/hero`;
 
 const generateSlug = (text: string) =>
   text
@@ -60,6 +63,11 @@ const generateSlug = (text: string) =>
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-");
+
+const inputClass =
+  "w-full h-11 border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-200";
+const textareaClass =
+  "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200";
 
 export default function AddArticle() {
   const { id, role } = useParams<{ id?: string; role?: string }>();
@@ -294,28 +302,28 @@ export default function AddArticle() {
   };
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-md border border-gray-200">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
+      <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-semibold text-[#043f79]">
           {id ? "Edit Article" : "Add New Article"}
         </h2>
         <button
           onClick={() => navigate(`/${role}/article`)}
-          className="bg-[#043f79] text-white px-3 py-2 rounded-md shadow hover:opacity-90 flex items-center gap-2"
+          className="flex items-center gap-2 bg-[#043f79] text-white px-4 py-2 rounded-md hover:bg-[#0654a4] transition"
         >
           <FiArrowLeft /> Back
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-8">
         {/* Topic & Title */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Topic Dropdown */}
           <div ref={topicWrapperRef} className="relative">
-            <label className="font-medium text-gray-700">Topic</label>
+            <label className="block mb-2 text-gray-700 font-medium">Topic</label>
             <div
               onClick={() => setTopicDropdownOpen((prev) => !prev)}
-              className={`w-full mt-2 p-2 rounded-md flex justify-between items-center cursor-pointer border ${
+              className={`w-full h-11 px-3 rounded-md flex justify-between items-center cursor-pointer border ${
                 errors.topic_id ? "border-red-500" : "border-gray-300"
               }`}
             >
@@ -349,7 +357,7 @@ export default function AddArticle() {
                   placeholder="Search topic..."
                   value={topicSearch}
                   onChange={(e) => setTopicSearch(e.target.value)}
-                  className="w-full px-3 py-2 border-b border-gray-200 focus:outline-none"
+                  className={`${inputClass} border-0 border-b border-gray-200 rounded-none`}
                 />
                 {topics
                   .filter((t) =>
@@ -380,13 +388,13 @@ export default function AddArticle() {
 
           {/* Title Input */}
           <div>
-            <label className="font-medium text-gray-700">Title</label>
+            <label className="block mb-2 text-gray-700 font-medium">Title</label>
             <input
               name="title"
               value={values.title}
               onChange={onChange}
               placeholder="Enter article title"
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
             {errors.title && (
               <p className="text-red-500 text-sm">{errors.title}</p>
@@ -397,23 +405,23 @@ export default function AddArticle() {
         {/* Slug & SEO */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="font-medium text-gray-700">Slug</label>
+            <label className="block mb-2 text-gray-700 font-medium">Slug</label>
             <input
               name="slug"
               value={values.slug}
               onChange={onChange}
               placeholder="Enter slug"
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="font-medium text-gray-700">SEO Title</label>
+            <label className="block mb-2 text-gray-700 font-medium">SEO Title</label>
             <input
               name="seo_title"
               value={values.seo_title}
               onChange={onChange}
               placeholder="Enter SEO title"
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
           </div>
         </div>
@@ -434,13 +442,13 @@ export default function AddArticle() {
 
         {/* SEO Description */}
         <div>
-          <label className="font-medium text-gray-700">SEO Description</label>
+          <label className="block mb-2 text-gray-700 font-medium">SEO Description</label>
           <textarea
             name="seo_description"
             value={values.seo_description}
             onChange={onChange}
             rows={3}
-            className="w-full border mt-2 p-2 rounded-md"
+            className={textareaClass}
           />
         </div>
 
@@ -469,12 +477,12 @@ export default function AddArticle() {
             )}
           </div>
           <div>
-            <label className="font-medium text-gray-700">Focus Keyword</label>
+            <label className="block mb-2 text-gray-700 font-medium">Focus Keyword</label>
             <input
               name="focus_keyword"
               value={values.focus_keyword}
               onChange={onChange}
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
           </div>
         </div>
@@ -482,12 +490,12 @@ export default function AddArticle() {
         {/* Status & Author */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="font-medium text-gray-700">Status</label>
+            <label className="block mb-2 text-gray-700 font-medium">Status</label>
             <select
               name="status"
               value={values.status}
               onChange={onChange}
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
@@ -495,13 +503,13 @@ export default function AddArticle() {
             </select>
           </div>
           <div>
-            <label className="font-medium text-gray-700">Author</label>
+            <label className="block mb-2 text-gray-700 font-medium">Author</label>
             <input
               name="author"
               value={values.author}
               onChange={onChange}
               placeholder="Enter author name"
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
           </div>
         </div>
@@ -518,7 +526,7 @@ export default function AddArticle() {
             | Tool[]
             | RelatedRead[];
           return (
-            <div key={key} className="border-gray-200 rounded-md p-4">
+            <div key={key} className="border border-gray-200 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-lg font-semibold text-[#043f79] capitalize">
                   {key.replace("_", " ")}
@@ -612,18 +620,18 @@ export default function AddArticle() {
         })}
 
         {/* Submit & Reset */}
-        <div className="flex justify-end gap-4 pt-6">
+        <div className="flex justify-end gap-4 pt-8 border-t border-gray-100">
           <button
             type="button"
             onClick={resetForm}
-            className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:opacity-90"
+            className="flex items-center gap-2 bg-gray-200 text-gray-700 px-5 py-2.5 rounded-md hover:bg-gray-300 transition"
           >
             <FiRefreshCw /> Reset
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2 hover:opacity-90"
+            className="flex items-center gap-2 bg-[#043f79] text-white px-6 py-2.5 rounded-md hover:bg-[#0654a4] transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiSave /> {id ? "Update" : "Save"}
           </button>

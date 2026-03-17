@@ -8,7 +8,7 @@
 // import Label from "../form/Label";
 // import axios from "axios";
 // import toast from "react-hot-toast";
-// import { useAuth } from "../../context/AuthContext";
+// import { useAuth } from "../../context/useAuth";
 // import intlTelInput from "intl-tel-input";
 // import "intl-tel-input/build/css/intlTelInput.css";
 
@@ -443,7 +443,7 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import intlTelInput from "intl-tel-input";
 import "intl-tel-input/build/css/intlTelInput.css";
 
@@ -996,3 +996,4 @@ export default function UserMetaCard() {
     </>
   );
 }
+

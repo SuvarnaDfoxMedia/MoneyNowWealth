@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { axiosApi } from "../api/axios";
 import { toast } from "react-hot-toast";
 
@@ -12,6 +13,7 @@ export interface CommonCrudProps {
   sortOrder?: "asc" | "desc";
   listKey?: string;
   enabled?: boolean;
+  liveIntervalMs?: number;
 }
 
 export interface ApiMessage {
@@ -20,11 +22,13 @@ export interface ApiMessage {
   data?: any;
 }
 
-export interface CrudResponse<T> {
+export interface CrudResponse<T = unknown> {
   total?: number;
   limit?: number;
   currentPage?: number;
   totalPages?: number;
+  items?: T[];
+  data?: T[] | T;
   [key: string]: any;
 }
 
@@ -38,23 +42,19 @@ export const useCommonCrud = <T>({
   sortOrder = "asc",
   listKey,
   enabled = true,
+  liveIntervalMs = 0,
 }: CommonCrudProps) => {
   const queryClient = useQueryClient();
   const defaultListKey = listKey ?? `${module}s`;
   const queryKey = [
+    role || "public",
     module,
     "list",
     { page, limit, searchValue, sortField, sortOrder },
   ];
 
-  const extractListFromData = (data?: CrudResponse<T>): T[] => {
-    if (!data) return [];
-    const list = data[defaultListKey] ?? data.items ?? data.data ?? [];
-    return Array.isArray(list) ? list : [];
-  };
-
   /* ------------------ FETCH LIST ------------------ */
-  const { data, isLoading, refetch } = useQuery<CrudResponse<T>>({
+  const { data, isLoading, isFetching, refetch } = useQuery<CrudResponse<T>>({
     queryKey,
     queryFn: async () => {
       const endpoint = role ? `/${role}/${module}` : `/${module}`;
@@ -65,41 +65,22 @@ export const useCommonCrud = <T>({
         sortField,
         sortOrder,
       });
-      return (
-        res ?? {
-          total: 0,
-          limit,
-          currentPage: page,
-          totalPages: 1,
-          [defaultListKey]: [],
-        }
-      );
+      return res ?? { total: 0, limit, currentPage: page, totalPages: 1, [defaultListKey]: [] };
     },
-    placeholderData: {
-      total: 0,
-      limit,
-      currentPage: page,
-      totalPages: 1,
-      [defaultListKey]: [],
-    },
+    placeholderData: keepPreviousData,
     retry: false,
     enabled,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchOnMount: "always",
+    refetchInterval: liveIntervalMs > 0 ? liveIntervalMs : false,
   });
 
   /* ------------------ FETCH ONE ------------------ */
-  const getOne = async (id: string) => {
-    try {
-      const endpoint = role ? `/${role}/${module}/${id}` : `/${module}/${id}`;
-      return await axiosApi.getOne<T>(endpoint);
-    } catch (err: any) {
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to fetch record";
-      toast.error(errorMessage);
-      throw err;
-    }
-  };
+  const getOne = useCallback(async (id: string) => {
+    const endpoint = role ? `/${role}/${module}/${id}` : `/${module}/${id}`;
+    return axiosApi.getOne<T>(endpoint);
+  }, [module, role]);
 
   /* ------------------ CREATE ------------------ */
   const createMutation = useMutation({
@@ -115,13 +96,13 @@ export const useCommonCrud = <T>({
     },
     onError: (err: any) => {
       console.error("Create Error:", err);
-      const errorMessage =
-        err?.response?.data?.message || err?.message || "Create failed";
-      toast.error(errorMessage);
     },
   });
 
-  const createRecord = (payload: any) => createMutation.mutateAsync(payload);
+  const createRecord = useCallback(
+    (payload: any) => createMutation.mutateAsync(payload),
+    [createMutation],
+  );
 
   /* ------------------ UPDATE ------------------ */
   const updateMutation = useMutation({
@@ -137,14 +118,12 @@ export const useCommonCrud = <T>({
       toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => {
-      const errorMessage = err?.response?.data?.message || "Update failed";
-      toast.error(errorMessage);
-    },
   });
 
-  const updateRecord = (id: string, payload: any) =>
-    updateMutation.mutateAsync({ id, payload });
+  const updateRecord = useCallback(
+    (id: string, payload: any) => updateMutation.mutateAsync({ id, payload }),
+    [updateMutation],
+  );
 
   /* ------------------ DELETE ------------------ */
   const deleteMutation = useMutation({
@@ -160,13 +139,12 @@ export const useCommonCrud = <T>({
       toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => {
-      const errorMessage = err?.response?.data?.message || "Delete failed";
-      toast.error(errorMessage);
-    },
   });
 
-  const deleteRecord = (id: string) => deleteMutation.mutateAsync(id);
+  const deleteRecord = useCallback(
+    (id: string) => deleteMutation.mutateAsync(id),
+    [deleteMutation],
+  );
 
   /* ------------------ TOGGLE STATUS ------------------ */
   const toggleStatusMutation = useMutation({
@@ -181,20 +159,25 @@ export const useCommonCrud = <T>({
       toast.success(message);
       queryClient.invalidateQueries({ queryKey });
     },
-    onError: (err: any) => {
-      const errorMessage =
-        err?.response?.data?.message || "Failed to update status";
-      toast.error(errorMessage);
-    },
   });
 
-  const toggleStatus = (id: string, status: boolean) =>
-    toggleStatusMutation.mutateAsync({ id, status });
+  const toggleStatus = useCallback(
+    (id: string, status: boolean) =>
+      toggleStatusMutation.mutateAsync({ id, status }),
+    [toggleStatusMutation],
+  );
+
+  const extractList = useMemo<T[]>(() => {
+    if (!data) return [];
+    const list = data[defaultListKey] ?? data.items ?? data.data ?? [];
+    return Array.isArray(list) ? list : [];
+  }, [data, defaultListKey]);
 
   return {
     data,
-    extractList: extractListFromData(data),
+    extractList,
     isLoading,
+    isFetching,
     refetch,
     getOne,
     createRecord,

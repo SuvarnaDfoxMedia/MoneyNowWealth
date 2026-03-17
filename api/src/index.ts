@@ -131,6 +131,7 @@ import cookieParser from "cookie-parser";
 
 // Database
 import connectDatabase from "./db/dbConnection";
+import { cleanupLegacyMfIndexes } from "./db/cleanupLegacyMfIndexes";
 
 // Routes
 import authRoutes from "./routes/authRoutes";
@@ -150,9 +151,11 @@ import subscriptionPaymentRoutes from "./routes/userSubscriptionPaymentRoutes";
 import newsletterRoutes from "./routes/newsletterRoutes";
 import { startNewsletterPublishScheduler } from "./cron/newsletterPublishCron";
 import newsletterPublishRoutes from "./routes/newsletterPublishRoutes";
+import mfRoutes from "./routes/mfRoutes";
 
 dotenv.config();
 await connectDatabase();
+await cleanupLegacyMfIndexes();
 startTopicScheduler();
 startSubscriptionScheduler();
 startNewsletterPublishScheduler();
@@ -165,12 +168,15 @@ const __dirname = path.dirname(__filename);
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));
 
-// FIXED: Proper CORS configuration
+// CORS: environment-driven allowlist with safe localhost fallbacks for dev.
 const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_URL,
+  process.env.WEBSITE_URL,
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:5000",
-];
+].filter(Boolean) as string[];
 
 app.use(
   cors({
@@ -200,6 +206,45 @@ app.use(
 
 app.use(cookieParser());
 app.use(helmet());
+
+// Basic in-memory rate limiter for auth-sensitive/public endpoints.
+// Replace with Redis-backed limiter for multi-instance production.
+const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
+const MAX_REQ = Number(process.env.RATE_LIMIT_MAX || 120);
+app.use((req, res, next) => {
+  // Limit only auth/public-sensitive endpoints to avoid blocking admin CRUD UX.
+  const path = req.path || "";
+  const shouldRateLimit =
+    path.startsWith("/api/auth") ||
+    path === "/api/newsletter" ||
+    path === "/api/contact-enquiries";
+
+  if (!shouldRateLimit) {
+    return next();
+  }
+
+  const key = `${req.ip}:${req.path}`;
+  const now = Date.now();
+  const current = requestBuckets.get(key);
+
+  if (!current || now > current.resetAt) {
+    requestBuckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return next();
+  }
+
+  if (current.count >= MAX_REQ) {
+    return res.status(429).json({
+      success: false,
+      message: "Too many requests. Please try again shortly.",
+      data: null,
+    });
+  }
+
+  current.count += 1;
+  requestBuckets.set(key, current);
+  return next();
+});
 
 // FIXED: Static uploads with proper CORS headers
 app.use(
@@ -244,6 +289,7 @@ app.use("/api", subscriptionPaymentRoutes);
 app.use("/api", uploadRoutes);
 app.use("/api", newsletterRoutes);
 app.use("/api", newsletterPublishRoutes);
+app.use("/api", mfRoutes);
 
 // Admin route example
 app.get(
@@ -251,7 +297,11 @@ app.get(
   protect,
   authorizeRoles("admin"),
   (_req: Request, res: Response) => {
-    res.json({ message: "Admin dashboard: Access granted" });
+    res.json({
+      success: true,
+      message: "Admin dashboard: Access granted",
+      data: null,
+    });
   },
 );
 
@@ -261,15 +311,41 @@ app.get(
   protect,
   authorizeRoles("editor"),
   (_req: Request, res: Response) => {
-    res.json({ message: "Editor panel: Access granted" });
+    res.json({
+      success: true,
+      message: "Editor panel: Access granted",
+      data: null,
+    });
   },
 );
 
 // Health check endpoint
 app.get("/health", (_req: Request, res: Response) => {
-  res.json({ status: "OK", timestamp: new Date().toISOString() });
+  res.json({
+    success: true,
+    message: "OK",
+    data: { status: "OK", timestamp: new Date().toISOString() },
+  });
+});
+
+app.use((_req: Request, res: Response) => {
+  return res.status(404).json({
+    success: false,
+    message: "Route not found",
+    data: null,
+  });
+});
+
+app.use((error: any, _req: Request, res: Response, _next: express.NextFunction) => {
+  const status = Number(error?.statusCode) || 500;
+  return res.status(status).json({
+    success: false,
+    message: error?.message || "Internal server error",
+    data: null,
+  });
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+

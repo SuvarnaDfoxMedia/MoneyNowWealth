@@ -121,10 +121,10 @@
 //                         {inv.planName}
 //                       </span>
 //                       <span className="text-sm">
-//                         {new Date(inv.startDate).toLocaleDateString("en-IN")}
+//                         {new Date(inv.startDate).toLocaleDateString("en-GB")}
 //                       </span>
 //                       <span className="text-sm">
-//                         {new Date(inv.endDate).toLocaleDateString("en-IN")}
+//                         {new Date(inv.endDate).toLocaleDateString("en-GB")}
 //                       </span>
 //                       <span className="text-sm font-semibold">
 //                         ₹{inv.amount.toFixed(2)}
@@ -196,7 +196,7 @@
 //                   <span className="font-normal">
 //                     {new Date(
 //                       latestSubscription.paymentDate,
-//                     ).toLocaleDateString("en-IN")}
+//                     ).toLocaleDateString("en-GB")}
 //                   </span>
 //                 </p>
 
@@ -244,7 +244,7 @@ import { Pagination } from "@/components/Pagination";
 const safeDate = (value?: string) => {
   if (!value) return "-";
   const d = new Date(value);
-  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-IN");
+  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-GB");
 };
 
 const SubscriptionsListing = () => {
@@ -447,3 +447,4 @@ const SubscriptionsListing = () => {
 };
 
 export default SubscriptionsListing;
+

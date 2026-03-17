@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { FiTrash2, FiMoreVertical, FiEye } from "react-icons/fi";
 import { createPortal } from "react-dom";
@@ -25,13 +25,12 @@ interface UserSubscription {
   trial_type?: string;
   is_deleted?: boolean;
   created_at: string;
-  last_payment_id?: any;
+  last_payment_id?: unknown;
 }
 
 export default function UserSubscriptionListing() {
   const { role = "admin" } = useParams<{ role: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -84,7 +83,7 @@ export default function UserSubscriptionListing() {
         if (subscription.is_deleted) return null;
 
         return {
-          _id: subscription._id,
+          _id: subscription._id || "N/A",
           user_id: {
             _id: user._id,
             firstname: user.firstname,
@@ -96,15 +95,15 @@ export default function UserSubscriptionListing() {
             _id: subscription.plan_id?._id || subscription.plan_id?.id || "N/A",
             name: subscription.plan_id?.name || "N/A",
           },
-          start_date: subscription.start_date,
-          end_date: subscription.end_date,
+          start_date: subscription.start_date ?? null,
+          end_date: subscription.end_date ?? null,
 
           //  FIX: status should toggle like before
           status: item.currentStatus || subscription.status || "new",
 
           trial_type: subscription.trial_type,
           is_deleted: subscription.is_deleted || false,
-          created_at: subscription.created_at,
+          created_at: subscription.created_at || "",
           last_payment_id: subscription.last_payment_id,
         };
       })
@@ -117,7 +116,7 @@ export default function UserSubscriptionListing() {
   useEffect(() => {
     const timer = setTimeout(() => refetch(), 400);
     return () => clearTimeout(timer);
-  }, [searchValue, sortField, sortOrder, page, recordsPerPage, refetch]);
+  }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
 
   //  Delete
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
@@ -134,8 +133,10 @@ export default function UserSubscriptionListing() {
       } else {
         toast.error(response?.message || "Delete failed");
       }
-    } catch (error: any) {
-      toast.error(error?.message || "Delete failed");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Delete failed";
+      toast.error(message);
     } finally {
       setDeleteModalId(null);
     }
@@ -291,14 +292,14 @@ export default function UserSubscriptionListing() {
       label: "Start Date",
       sortable: true,
       render: (row) =>
-        row.start_date ? new Date(row.start_date).toLocaleDateString() : "N/A",
+        row.start_date ? new Date(row.start_date).toLocaleDateString("en-GB") : "N/A",
     },
     {
       key: "end_date",
       label: "End Date",
       sortable: true,
       render: (row) =>
-        row.end_date ? new Date(row.end_date).toLocaleDateString() : "N/A",
+        row.end_date ? new Date(row.end_date).toLocaleDateString("en-GB") : "N/A",
     },
     {
       key: "status",
@@ -354,17 +355,19 @@ export default function UserSubscriptionListing() {
       {/* Delete Modal */}
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
-            <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-              <h3 className="text-lg font-semibold">Confirm Delete</h3>
-              <p className="my-4 text-gray-600">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirm Delete
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
                 Are you sure you want to delete this subscription?
               </p>
 
-              <div className="flex justify-end gap-3">
+              <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteModalId(null)}
-                  className="border px-4 py-2 rounded-lg"
+                  className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60"
                   disabled={isDeleting}
                 >
                   Cancel
@@ -372,7 +375,7 @@ export default function UserSubscriptionListing() {
 
                 <button
                   onClick={handleDelete}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
                   disabled={isDeleting}
                 >
                   {isDeleting ? "Deleting..." : "Delete"}
@@ -385,3 +388,4 @@ export default function UserSubscriptionListing() {
     </div>
   );
 }
+

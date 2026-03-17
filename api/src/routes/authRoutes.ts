@@ -72,13 +72,18 @@ import {
   softDeleteUser,
   registerUser,
   loginUser,
+  loginAdmin,
+  loginPublicUser,
   logoutUser,
+  logoutAdmin,
+  logoutPublicUser,
   forgotPassword,
   resetPassword,
   changePassword,
+  googleLogin
 } from "../controllers/authController";
 import { validateRegister } from "../middlewares/validateRequest";
-import { protect } from "../middlewares/authMiddleware";
+import { adminProtect, protect, userProtect } from "../middlewares/authMiddleware";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 
 const router = express.Router();
@@ -95,6 +100,12 @@ router.post("/login", loginUser);
 router.post("/logout", logoutUser);
 router.get("/users", getAllUsers);
 
+router.post("/google-login", googleLogin);
+router.post("/admin/login", loginAdmin);
+router.post("/user/login", loginPublicUser);
+router.post("/admin/logout", logoutAdmin);
+router.post("/user/logout", logoutPublicUser);
+
 /* -------------------- ADMIN / PROTECTED ROUTES -------------------- */
 router.delete("/:role/users/delete/:id", adminMiddleware, softDeleteUser);
 
@@ -109,6 +120,32 @@ router.get(
   adminMiddleware,
   getAllUsers, // Reuse existing controller
 );
+
+router.get("/admin/session", adminProtect, (req: AuthRequest, res: Response) => {
+  const session = {
+    id: req.user?.id,
+    role: req.user?.role,
+  };
+
+  res.json({
+    success: true,
+    message: "Admin session active",
+    data: session,
+  });
+});
+
+router.get("/user/session", userProtect, (req: AuthRequest, res: Response) => {
+  const session = {
+    id: req.user?.id,
+    role: req.user?.role,
+  };
+
+  res.json({
+    success: true,
+    message: "User session active",
+    data: session,
+  });
+});
 
 router.get(
   "/:role/admin",

@@ -5,8 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
 import ResearchDesk from "@/components/Blog-listing-Components/ResearchDesk";
-import HomeInvestTrack from "@/components/home/home-invest-track";
-import StayConnected from "@/components/home/stay-connected";
+import HomeInvestTrack from "@/components/home/invest-with-confidence";
+import StayConnected from "@/components/home/home-newsletters";
 import { homeInvestTrackData } from "@/data/homePageData";
 import GetAllCluster from "@/components/Blog-listing-Components/GetAllCluster";
 import DOMPurify from "dompurify";
@@ -106,11 +106,7 @@ const FeaturedArticle = () => {
         <p className="text-[13px] md:text-[16px] font-medium font-inter mb-[25px]">
           {article.author || "Team Money Now"} &nbsp;|&nbsp;
           {article.created_at
-            ? new Date(article.created_at).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
+            ? new Date(article.created_at).toLocaleDateString("en-GB")
             : ""}
         </p>
       </div>
@@ -239,3 +235,4 @@ const LatestArticle = () => {
 };
 
 export default LatestArticle;
+

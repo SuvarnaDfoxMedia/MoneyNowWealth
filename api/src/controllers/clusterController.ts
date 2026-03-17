@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import * as clusterService from "../services/clusterService";
-import slugify from "slugify";
 import Cluster from "../models/clusterModel";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -70,13 +70,10 @@ export const getClusters = async (req: Request, res: Response) => {
       sort: { [sortBy]: sortOrder },
     });
 
-    return res.status(200).json(response);
+    return sendSuccess(res, "Clusters fetched successfully", response, 200, response);
   } catch (error: any) {
     console.error("Get clusters failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch clusters",
-    });
+    return sendError(res, error?.message || "Failed to fetch clusters", 500);
   }
 };
 
@@ -110,13 +107,20 @@ export const getActiveClusters = async (req: Request, res: Response) => {
       includeDeleted,
     });
 
-    return res.status(200).json(response);
+    return sendSuccess(
+      res,
+      "Active clusters fetched successfully",
+      response,
+      200,
+      response,
+    );
   } catch (error: any) {
     console.error("Get active clusters failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch active clusters",
-    });
+    return sendError(
+      res,
+      error?.message || "Failed to fetch active clusters",
+      500,
+    );
   }
 };
 
@@ -125,31 +129,19 @@ export const getClusterBySlug = async (req: Request, res: Response) => {
     const { slug } = req.params; // slug will come from the route, e.g., /clusters/:slug
 
     if (!slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Slug is required",
-      });
+      return sendError(res, "Slug is required", 400);
     }
 
     const cluster = await clusterService.getClusterBySlug(slug);
 
     if (!cluster) {
-      return res.status(404).json({
-        success: false,
-        message: "Cluster not found",
-      });
+      return sendError(res, "Cluster not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      data: cluster,
-    });
+    return sendSuccess(res, "Cluster fetched successfully", cluster);
   } catch (error: any) {
     console.error("Get cluster by slug failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch cluster",
-    });
+    return sendError(res, error?.message || "Failed to fetch cluster", 500);
   }
 };
 
@@ -161,22 +153,18 @@ export const getClusterById = async (req: Request, res: Response) => {
     const cluster = await clusterService.getClusterById(req.params.id);
 
     if (!cluster) {
-      return res.status(404).json({
-        success: false,
-        message: "Cluster not found",
-      });
+      return sendError(res, "Cluster not found", 404);
     }
 
     const clusterObj = cluster.toObject ? cluster.toObject() : cluster;
     clusterObj.slug = clusterObj.slug || generateSlug(clusterObj.title || "");
 
-    return res.status(200).json({ success: true, cluster: clusterObj });
+    return sendSuccess(res, "Cluster fetched successfully", clusterObj, 200, {
+      cluster: clusterObj,
+    });
   } catch (error: any) {
     console.error("Get cluster by ID failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch cluster",
-    });
+    return sendError(res, error?.message || "Failed to fetch cluster", 500);
   }
 };
 
@@ -186,10 +174,7 @@ export const getClusterById = async (req: Request, res: Response) => {
 export const addCluster = async (req: MulterRequest, res: Response) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Request body is missing",
-      });
+      return sendError(res, "Request body is missing", 400);
     }
 
     const thumbnail = req.file ? req.file.filename : "";
@@ -212,17 +197,16 @@ export const addCluster = async (req: MulterRequest, res: Response) => {
 
     const cluster = await clusterService.createCluster(clusterData);
 
-    return res.status(201).json({
-      success: true,
-      message: "Cluster created successfully",
+    return sendSuccess(
+      res,
+      "Cluster created successfully",
       cluster,
-    });
+      201,
+      { cluster },
+    );
   } catch (error: any) {
     console.error("Add cluster failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to create cluster",
-    });
+    return sendError(res, error?.message || "Failed to create cluster", 500);
   }
 };
 
@@ -341,23 +325,13 @@ export const updateCluster = async (req: MulterRequest, res: Response) => {
     const cluster = await clusterService.updateCluster(id, updatedData);
 
     if (!cluster) {
-      return res.status(404).json({
-        success: false,
-        message: "Cluster not found",
-      });
+      return sendError(res, "Cluster not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Cluster updated successfully",
-      cluster,
-    });
+    return sendSuccess(res, "Cluster updated successfully", cluster, 200, { cluster });
   } catch (error: any) {
     console.error("Update cluster failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to update cluster",
-    });
+    return sendError(res, error?.message || "Failed to update cluster", 500);
   }
 };
 
@@ -369,17 +343,20 @@ export const toggleClusterStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const cluster = await clusterService.toggleClusterStatus(id);
 
-    return res.status(200).json({
-      success: true,
-      message: `Cluster is now ${cluster.is_active ? "active" : "inactive"}`,
+    return sendSuccess(
+      res,
+      `Cluster is now ${cluster.is_active ? "active" : "inactive"}`,
       cluster,
-    });
+      200,
+      { cluster },
+    );
   } catch (error: any) {
     console.error("Toggle cluster status failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to toggle cluster status",
-    });
+    return sendError(
+      res,
+      error?.message || "Failed to toggle cluster status",
+      500,
+    );
   }
 };
 
@@ -391,17 +368,16 @@ export const deleteCluster = async (req: Request, res: Response) => {
     const { id } = req.params;
     const cluster = await clusterService.deleteCluster(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Cluster deleted successfully (soft delete)",
+    return sendSuccess(
+      res,
+      "Cluster deleted successfully (soft delete)",
       cluster,
-    });
+      200,
+      { cluster },
+    );
   } catch (error: any) {
     console.error("Delete cluster failed:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to delete cluster",
-    });
+    return sendError(res, error?.message || "Failed to delete cluster", 500);
   }
 };
 
@@ -628,16 +604,15 @@ export const getAllClustersFirstTopicWithArticle = async (
       // { $limit: 1 },
     ]);
 
-    return res.status(200).json({
-      success: true,
-      total: clusters.length,
+    return sendSuccess(
+      res,
+      "Clusters with first topic/article fetched successfully",
       clusters,
-    });
+      200,
+      { total: clusters.length, clusters },
+    );
   } catch (error: any) {
     console.error("Error fetching all clusters first topic & article:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch data",
-    });
+    return sendError(res, error?.message || "Failed to fetch data", 500);
   }
 };

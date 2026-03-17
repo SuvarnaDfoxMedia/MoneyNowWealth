@@ -5,6 +5,7 @@ import { userSubscriptionService } from "@/services/userSubscriptionService";
 import SubscriptionPlanModel from "@/models/subscriptionPlan.model";
 import UserSubscriptionPayment from "@/models/userSubscriptionPaymentModel";
 import UserSubscription from "@/models/userSubscriptionModel";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 interface AddSubscriptionPaymentBody {
   user_id: string;
@@ -36,28 +37,23 @@ export const addSubscriptionPayment = async (
 
     // ---------- VALIDATION ----------
     if (!user_id || !plan_id || !type) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: user_id, plan_id, type",
-      });
+      return sendError(
+        res,
+        "Missing required fields: user_id, plan_id, type",
+        400,
+      );
     }
 
     if (
       !mongoose.Types.ObjectId.isValid(user_id) ||
       !mongoose.Types.ObjectId.isValid(plan_id)
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid ObjectId",
-      });
+      return sendError(res, "Invalid ObjectId", 400);
     }
 
     const plan = await SubscriptionPlanModel.findById(plan_id).lean();
     if (!plan) {
-      return res.status(400).json({
-        success: false,
-        message: "Plan not found",
-      });
+      return sendError(res, "Plan not found", 400);
     }
 
     const isFreePlan = plan.name.toLowerCase() === "free";
@@ -70,9 +66,7 @@ export const addSubscriptionPayment = async (
           plan_id,
         );
       if (!eligibility.canPurchase) {
-        return res.status(403).json({
-          success: false,
-          message: eligibility.message,
+        return sendError(res, eligibility.message, 403, null, {
           code: eligibility.code || "PURCHASE_BLOCKED",
         });
       }
@@ -95,10 +89,7 @@ export const addSubscriptionPayment = async (
       );
     } catch (err: any) {
       console.error("Failed to create subscription:", err);
-      return res.status(500).json({
-        success: false,
-        message: err.message || "Failed to create subscription",
-      });
+      return sendError(res, err.message || "Failed to create subscription", 500);
     }
 
     // ---------- 2. Create Payment Entry ----------
@@ -155,18 +146,16 @@ export const addSubscriptionPayment = async (
     await subscription.save();
 
     // ---------- 4. RESPONSE ----------
-    return res.status(201).json({
-      success: true,
-      message: "Subscription payment created successfully",
-      payment,
-      subscription,
-    });
+    return sendSuccess(
+      res,
+      "Subscription payment created successfully",
+      { payment, subscription },
+      201,
+      { payment, subscription },
+    );
   } catch (error: any) {
     console.error("Error creating subscription payment:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -177,25 +166,16 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
     const { plan_id, payment_method = "manual", amount } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
+      return sendError(res, "User not authenticated", 401);
     }
 
     if (!plan_id) {
-      return res.status(400).json({
-        success: false,
-        message: "plan_id is required",
-      });
+      return sendError(res, "plan_id is required", 400);
     }
 
     const plan = await SubscriptionPlanModel.findById(plan_id).lean();
     if (!plan) {
-      return res.status(400).json({
-        success: false,
-        message: "Plan not found",
-      });
+      return sendError(res, "Plan not found", 400);
     }
 
     const isFreePlan = plan.name.toLowerCase() === "free";
@@ -205,9 +185,7 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
       const eligibility =
         await userSubscriptionService.checkPurchaseEligibility(userId, plan_id);
       if (!eligibility.canPurchase) {
-        return res.status(403).json({
-          success: false,
-          message: eligibility.message,
+        return sendError(res, eligibility.message, 403, null, {
           code: eligibility.code || "PURCHASE_BLOCKED",
         });
       }
@@ -280,18 +258,16 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
     subscription.last_payment_id = payment._id;
     await subscription.save();
 
-    return res.status(201).json({
-      success: true,
-      message: "Subscription purchased successfully",
-      payment,
-      subscription,
-    });
+    return sendSuccess(
+      res,
+      "Subscription purchased successfully",
+      { payment, subscription },
+      201,
+      { payment, subscription },
+    );
   } catch (error: any) {
     console.error("User purchase error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -303,31 +279,18 @@ export const updateSubscriptionPayment = async (
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid payment ID",
-      });
+      return sendError(res, "Invalid payment ID", 400);
     }
 
     const updated = await userSubscriptionPaymentService.update(id, req.body);
     if (!updated) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found",
-      });
+      return sendError(res, "Payment not found", 404);
     }
 
-    return res.json({
-      success: true,
-      message: "Subscription payment updated",
-      data: updated,
-    });
+    return sendSuccess(res, "Subscription payment updated", updated);
   } catch (error: any) {
     console.error("Update payment error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -339,10 +302,7 @@ export const getSubscriptionPaymentById = async (
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid payment ID",
-      });
+      return sendError(res, "Invalid payment ID", 400);
     }
 
     const payment = await UserSubscriptionPayment.findById(id)
@@ -351,23 +311,13 @@ export const getSubscriptionPaymentById = async (
       .populate("user_subscription_id", "status plan_type start_date end_date");
 
     if (!payment) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found",
-      });
+      return sendError(res, "Payment not found", 404);
     }
 
-    return res.json({
-      success: true,
-      message: "Payment fetched successfully",
-      data: payment,
-    });
+    return sendSuccess(res, "Payment fetched successfully", payment);
   } catch (error: any) {
     console.error("Get payment error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -376,17 +326,11 @@ export const getLatestPaymentByUser = async (req: Request, res: Response) => {
   try {
     const { user_id } = req.params;
     if (!user_id) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required",
-      });
+      return sendError(res, "User ID is required", 400);
     }
 
     if (!mongoose.Types.ObjectId.isValid(user_id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID",
-      });
+      return sendError(res, "Invalid user ID", 400);
     }
 
     const latestPayment = await UserSubscriptionPayment.findOne({
@@ -397,22 +341,15 @@ export const getLatestPaymentByUser = async (req: Request, res: Response) => {
       .populate("user_id", "firstname lastname email");
 
     if (!latestPayment) {
-      return res.status(404).json({
-        success: false,
-        message: "No payments found",
-      });
+      return sendError(res, "No payments found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
+    return sendSuccess(res, "Latest payment fetched successfully", latestPayment, 200, {
       payment: latestPayment,
     });
   } catch (err: any) {
     console.error("Get latest payment error:", err);
-    return res.status(500).json({
-      success: false,
-      message: err.message || "Server error",
-    });
+    return sendError(res, err.message || "Server error", 500);
   }
 };
 
@@ -422,10 +359,7 @@ export const getMyPaymentHistory = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
+      return sendError(res, "User not authenticated", 401);
     }
 
     const payments = await UserSubscriptionPayment.find({
@@ -435,10 +369,7 @@ export const getMyPaymentHistory = async (req: Request, res: Response) => {
       .populate("user_subscription_id", "status plan_type end_date")
       .sort({ payment_date: -1 });
 
-    return res.status(200).json({
-      success: true,
-      total: payments.length,
-      payments: payments.map((p) => ({
+    const mappedPayments = payments.map((p) => ({
         _id: p._id.toString(),
         planName: (p.plan_id as any)?.name || "Unknown",
         amount: p.amount,
@@ -449,14 +380,18 @@ export const getMyPaymentHistory = async (req: Request, res: Response) => {
         paymentStatus: p.payment_status,
         transactionId: p.transaction_id,
         metadata: p.metadata,
-      })),
-    });
+      }));
+
+    return sendSuccess(
+      res,
+      "Payment history fetched successfully",
+      mappedPayments,
+      200,
+      { total: mappedPayments.length, payments: mappedPayments },
+    );
   } catch (error: any) {
     console.error("Get payment history error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error?.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -666,7 +601,7 @@ export const getUserSubscriptionHistory = async (
     const { userId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid user ID" });
+      return sendError(res, "Invalid user ID", 400);
     }
 
     const payments = await UserSubscriptionPayment.find({
@@ -676,10 +611,7 @@ export const getUserSubscriptionHistory = async (
       .sort({ payment_date: -1 })
       .lean();
 
-    return res.status(200).json({
-      success: true,
-      total: payments.length,
-      payments: payments.map((p: any) => ({
+    const mappedPayments = payments.map((p: any) => ({
         _id: p._id.toString(),
         subscriptionId: p.user_subscription_id?.toString(),
 
@@ -699,14 +631,18 @@ export const getUserSubscriptionHistory = async (
         paymentMethod: p.payment_method,
         paymentStatus: p.payment_status,
         metadata: p.metadata,
-      })),
-    });
+      }));
+
+    return sendSuccess(
+      res,
+      "User subscription history fetched successfully",
+      mappedPayments,
+      200,
+      { total: mappedPayments.length, payments: mappedPayments },
+    );
   } catch (err) {
     console.error("Error fetching subscription history:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    return sendError(res, "Server error", 500);
   }
 };
 
@@ -740,10 +676,7 @@ export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
     const { paymentId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(paymentId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid payment ID",
-      });
+      return sendError(res, "Invalid payment ID", 400);
     }
 
     const payment = await UserSubscriptionPayment.findById(paymentId)
@@ -752,19 +685,14 @@ export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
       .populate("user_subscription_id", "start_date end_date trial_type");
 
     if (!payment) {
-      return res.status(404).json({
-        success: false,
-        message: "Invoice not found",
-      });
+      return sendError(res, "Invoice not found", 404);
     }
 
     const plan = payment.plan_id as any;
     const user = payment.user_id as any;
     const subscription = payment.user_subscription_id as any;
 
-    return res.json({
-      success: true,
-      invoice: {
+    const invoice = {
         _id: payment._id.toString(),
         invoiceId: payment._id.toString(),
 
@@ -790,13 +718,13 @@ export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
           startDate: payment.start_date || payment.payment_date,
           endDate: payment.end_date || payment.payment_date,
         },
-      },
+      };
+
+    return sendSuccess(res, "Invoice fetched successfully", invoice, 200, {
+      invoice,
     });
   } catch (error) {
     console.error("Invoice fetch error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    return sendError(res, "Server error", 500);
   }
 };

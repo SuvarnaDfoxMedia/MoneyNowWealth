@@ -1411,8 +1411,8 @@ export default function CalculatorInputs({
   };
 
   return (
-    <div className="bg-[#E6F2FE] p-6 rounded-lg mb-6">
-      <div className="grid md:grid-cols-3 gap-6">
+    <div className="bg-[#E6F2FE] p-4 sm:p-6 rounded-lg mb-6 overflow-hidden min-w-0">
+      <div className="grid md:grid-cols-3 gap-6 min-w-0">
         {/* 1. Lumpsum Calculator */}
         {tab === "Lumpsum" && (
           <>
@@ -2114,11 +2114,11 @@ const Slider = ({
   suffix = "",
   onChange,
 }: any) => (
-  <div>
-    <div className="flex justify-between mb-2 text-sm">
-      <span>{label}</span>
-      <div className="flex items-center gap-2">
-        {prefix && <span>{prefix}</span>}
+  <div className="min-w-0">
+    <div className="flex items-start justify-between gap-3 mb-2 text-sm min-w-0">
+      <span className="min-w-0 break-words">{label}</span>
+      <div className="flex items-center gap-2 shrink-0">
+        {prefix && <span className="shrink-0">{prefix}</span>}
         <input
           type="number"
           value={value}
@@ -2128,7 +2128,7 @@ const Slider = ({
           onChange={(e) => onChange(Number(e.target.value))}
           className="w-24 border-b text-right bg-transparent"
         />
-        {suffix && <span>{suffix}</span>}
+        {suffix && <span className="shrink-0">{suffix}</span>}
       </div>
     </div>
     <input

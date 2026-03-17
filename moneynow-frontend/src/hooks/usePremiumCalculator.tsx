@@ -72,15 +72,11 @@ export const usePremiumCalculator = () => {
             break;
         }
 
-        const token = localStorage.getItem("token"); // or from auth context
-
         const { data } = await axios.post(
           `/api/premium/calc/${PREMIUM_TAB_MAP[tab]}`,
           payload,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            withCredentials: true,
           }
         );
 

@@ -44,13 +44,13 @@ export const sendEmail = async ({
     });
 
     console.log(
-      ` Email sent to ${recipients.length} recipient(s): ${recipientString}`,
+      `EMAIL_SENT_SMTP recipients=${recipients.length} to=${recipientString}`,
     );
   } catch (err: unknown) {
     if (err instanceof Error) {
-      console.error(` Email sending error: ${err.message}`);
+      console.error(`EMAIL_FAILED channel=smtp message=${err.message}`);
     } else {
-      console.error(" Email sending error:", err);
+      console.error("EMAIL_FAILED channel=smtp", err);
     }
     throw err;
   }

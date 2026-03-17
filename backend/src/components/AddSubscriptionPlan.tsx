@@ -316,7 +316,7 @@
 "use client";
 
 import React, { useEffect, useState, ChangeEvent } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { FiSave, FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
@@ -396,7 +396,7 @@ export default function AddSubscriptionPlan() {
         });
       } catch (error) {
         toast.error("Failed to load subscription plan");
-        console.log(error);
+        console.error(error);
       }
     })();
   }, [id]);
@@ -503,8 +503,6 @@ export default function AddSubscriptionPlan() {
         features: values.features.filter((f) => f.trim() !== ""),
         is_active: values.is_active,
       };
-
-      console.log("Submitting payload:", payload); // Debug log
 
       // SEND JSON NOT FORMDATA
       if (id) {

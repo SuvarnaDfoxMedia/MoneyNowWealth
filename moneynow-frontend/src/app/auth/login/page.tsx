@@ -1,203 +1,12 @@
-// "use client";
-
-// import React, { useState } from "react";
-// import Image from "next/image";
-// import Link from "next/link";
-// import { toast, Toaster } from "react-hot-toast";
-// import { useRouter } from "next/navigation";
-// import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-
-// const Login = () => {
-//   const router = useRouter();
-
-//   const API_BASE =
-//     process.env.NEXT_PUBLIC_API_BASE ;
-
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [rememberMe, setRememberMe] = useState(false);
-//   const [loading, setLoading] = useState(false);
-//   const [showPassword, setShowPassword] = useState(false);
-//   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-
-//   const handleLogin = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setLoading(true);
-
-//     let validationErrors: { email?: string; password?: string } = {};
-//     if (!email) validationErrors.email = "Email is required.";
-//     if (!password) validationErrors.password = "Password is required.";
-//     setErrors(validationErrors);
-
-//     if (Object.keys(validationErrors).length > 0) {
-//       setLoading(false);
-//       return;
-//     }
-
-//     try {
-//       const res = await fetch(`${API_BASE}/api/auth/login`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ email, password }),
-//       });
-
-//       const data = await res.json();
-
-//       if (res.ok) {
-//         toast.success(data.message || "Login successful");
-//         localStorage.setItem("token", data.token);
-//         localStorage.setItem("user", JSON.stringify(data.user));
-//         router.push("/user/dashboard");
-//       } else {
-//         setErrors(data.errors || { email: data.message });
-//       }
-//     } catch (error) {
-//       console.error(error);
-//       setErrors({ email: "Something went wrong. Please try again." });
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <section
-//       className={`
-//         w-full min-h-[111dvh] flex flex-col justify-center items-center
-//         font-poppins
-//         bg-cover bg-center bg-no-repeat
-//         md:bg-[url('/images/login-bg2.png')]
-//         bg-white
-//       `}
-//     >
-//       <Toaster position="top-right" reverseOrder={false} />
-
-//       {/* Logo */}
-//       <div className="mb-2 sm:mb-3">
-//         <Image
-//           src="/images/moneynow-logo2.png"
-//           alt="MoneyNow Logo"
-//           width={150}
-//           height={46}
-//           className="h-12 w-auto mx-auto"
-//           priority
-//         />
-//       </div>
-
-//       {/* Form Card */}
-//       <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 sm:mx-6 px-4 sm:px-5 py-5">
-//         <div className="border-b border-gray-300 pb-2 mb-2">
-//           <h2 className="text-center text-[24px] font-bold">
-//             Welcome To MONEYNOW
-//           </h2>
-//           <p className="text-center text-[13px] mt-1 px-4">
-//             Already registered? If you have an account with us, please log in.
-//           </p>
-//         </div>
-
-//         <form className="space-y-4" onSubmit={handleLogin}>
-//           {/* Email */}
-//           <div>
-//             <label className="block mb-1 text-[15px]">
-//               Email:<span className="text-red-500">*</span>
-//             </label>
-//             <input
-//               type="email"
-//               className={`w-full border rounded h-[38px] px-3 text-[15px]
-//                 focus:outline-none focus:ring-2 focus:ring-blue-600
-//                 ${errors.email ? "border-red-500" : "border-gray-300"}`}
-//               value={email}
-//               onChange={(e) => setEmail(e.target.value)}
-//               placeholder="Enter your email"
-//             />
-//             {errors.email && (
-//               <p className="text-red-500 text-[13px] mt-1">
-//                 {errors.email}
-//               </p>
-//             )}
-//           </div>
-
-//           {/* Password */}
-//           <div>
-//             <label className="block mb-1 text-[15px]">
-//               Password:<span className="text-red-500">*</span>
-//             </label>
-//             <div className="relative">
-//               <input
-//                 type={showPassword ? "text" : "password"}
-//                 className={`w-full border rounded h-[38px] px-3 pr-10 text-[15px]
-//                   focus:outline-none focus:ring-2 focus:ring-blue-600
-//                   ${errors.password ? "border-red-500" : "border-gray-300"}`}
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//                 placeholder="Enter your password"
-//               />
-//               <span
-//                 onClick={() => setShowPassword(!showPassword)}
-//                 className="absolute right-3 top-2 cursor-pointer text-gray-500"
-//               >
-//                 {showPassword ? <AiOutlineEye /> : <AiOutlineEyeInvisible />}
-//               </span>
-//             </div>
-//             {errors.password && (
-//               <p className="text-red-500 text-[13px] mt-1">
-//                 {errors.password}
-//               </p>
-//             )}
-//           </div>
-
-//           {/* Remember / Forgot */}
-//           <div className="flex flex-col sm:flex-row justify-between items-center text-[14px] text-gray-600">
-//             <Link
-//               href="/auth/forgot-password"
-//               className="text-[#FF0000] underline mb-1 sm:mb-0"
-//             >
-//               Forgot your Password?
-//             </Link>
-
-//             <label className="flex items-center gap-2">
-//               <input
-//                 type="checkbox"
-//                 checked={rememberMe}
-//                 onChange={() => setRememberMe(!rememberMe)}
-//               />
-//               Remember me
-//             </label>
-//           </div>
-
-//           {/* Submit */}
-//           <button
-//             type="submit"
-//             disabled={loading}
-//             className="bg-[#043F79] hover:bg-[#002b6d] text-white py-[9px] px-6 rounded text-[15px] font-semibold"
-//           >
-//             {loading ? "Logging in..." : "Login Now"}
-//           </button>
-
-//           <p className="text-[14px] text-gray-600">
-//             Not registered yet?{" "}
-//             <Link
-//               href="/auth/register"
-//               className="text-[#355DEF] underline"
-//             >
-//               Sign Up Now
-//             </Link>
-//           </p>
-//         </form>
-//       </div>
-//     </section>
-//   );
-// };
-
-// export default Login;
-
 "use client";
 
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { toast, Toaster } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const router = useRouter();
@@ -212,6 +21,7 @@ const Login = () => {
     {},
   );
 
+  // ================= NORMAL LOGIN =================
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -220,16 +30,17 @@ const Login = () => {
     if (!email) validationErrors.email = "Email is required.";
     if (!password) validationErrors.password = "Password is required.";
     setErrors(validationErrors);
+
     if (Object.keys(validationErrors).length > 0) {
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const res = await fetch(`${API_BASE}/api/auth/user/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Important! Sends/receives cookies
+        credentials: "include",
         body: JSON.stringify({ email, password, rememberMe }),
       });
 
@@ -237,125 +48,216 @@ const Login = () => {
 
       if (res.ok) {
         toast.success(data.message || "Login successful");
-        router.push("/user/dashboard"); // Redirect after login
+        router.push("/user/dashboard");
       } else {
         setErrors(data.errors || { email: data.message });
       }
-    } catch (error) {
-      console.error(error);
+    } catch {
       setErrors({ email: "Something went wrong. Please try again." });
     } finally {
       setLoading(false);
     }
   };
 
+  // ================= GOOGLE LOGIN =================
+  const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse?.credential) {
+      toast.error("Google Login Failed");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          token: credentialResponse.credential,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Login successful");
+        router.push("/user/dashboard");
+      } else {
+        toast.error(data.message || "Google Login Failed");
+      }
+    } catch {
+      toast.error("Google Login Failed");
+    }
+  };
+
   return (
-    <section className="w-full min-h-[111dvh] flex flex-col justify-center items-center font-poppins md:bg-[url('/images/login-bg2.png')] bg-white bg-cover bg-center bg-no-repeat">
-      <Toaster position="top-right" reverseOrder={false} />
+    <section className="w-full min-h-screen flex flex-col items-center py-8 md:py-12 font-poppins bg-[url('/images/log-in-bg.png')] bg-cover bg-center bg-no-repeat bg-fixed">
+      {/* Header */}
+      <div className="text-center mb-6 px-6">
+        <p className="uppercase text-[16px] md:text-[20px] tracking-[4px] font-bold mb-4">
+          Welcome Back To
+        </p>
 
-      <div className="mb-2 sm:mb-3">
-        <Image
-          src="/images/moneynow-logo2.png"
-          alt="MoneyNow Logo"
-          width={150}
-          height={46}
-          className="h-12 w-auto mx-auto"
-          priority
-        />
-      </div>
-
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 sm:mx-6 px-4 sm:px-5 py-5">
-        <div className="border-b border-gray-300 pb-2 mb-2">
-          <h2 className="text-center text-[24px] font-bold">
-            Welcome To MONEYNOW
-          </h2>
-          <p className="text-center text-[13px] mt-1 px-4">
-            Already registered? If you have an account with us, please log in.
-          </p>
+        <div className="relative w-[200px] md:w-[300px] h-[40px] md:h-[58px] mx-auto mb-4">
+          <Image
+            src="/images/login-page-logo.png"
+            alt="MoneyNow Logo"
+            fill
+            className="object-contain"
+            priority
+          />
         </div>
 
-        <form className="space-y-4" onSubmit={handleLogin}>
+        <p className="text-[14px] md:text-[18px] leading-[22px] md:leading-[28px] max-w-[90%] md:max-w-full mx-auto">
+          Access your mutual fund investments securely and continue your journey
+          toward long-term goals.
+        </p>
+      </div>
+
+      {/* Card */}
+      <div className="bg-white rounded-[18px] shadow-[0px_10px_40px_rgba(0,0,0,0.06)] max-w-[430px] w-[92%] sm:w-full mx-4 p-6 md:p-8">
+        <h2 className="text-center text-[20px] md:text-[24px] font-semibold mb-6">
+          Log In To Your Account
+        </h2>
+
+        {/* GOOGLE LOGIN */}
+        <div className="w-full mb-6 flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleLogin}
+            onError={() => toast.error("Google Login Failed")}
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="relative flex items-center justify-center mb-8">
+          <div className="w-[20px] border-t border-[#E5E5E5]"></div>
+          <span className="mx-3 text-[14px]">or</span>
+          <div className="w-[20px] border-t border-[#E5E5E5]"></div>
+        </div>
+
+        {/* FORM */}
+        <form
+          className="space-y-4 md:space-y-5"
+          onSubmit={handleLogin}
+          noValidate
+        >
+          {/* Email */}
           <div>
-            <label className="block mb-1 text-[15px]">
-              Email:<span className="text-red-500">*</span>
+            <label className="block mb-1.5 text-[14px] md:text-[16px]">
+              Email
             </label>
             <input
               type="email"
-              className={`w-full border rounded h-[38px] px-3 text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-600 ${errors.email ? "border-red-500" : "border-gray-300"}`}
+              className={`w-full border border-[#E5E5E5] rounded-[4px] h-[40px] md:h-[44px] px-4 text-[14px] md:text-[15px] focus:outline-none focus:ring-1 focus:ring-[#E5E5E5] ${
+                errors.email ? "border-red-500" : ""
+              }`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
             />
             {errors.email && (
-              <p className="text-red-500 text-[13px] mt-1">{errors.email}</p>
+              <p className="text-red-500 text-[11px] md:text-[12px] mt-1">
+                {errors.email}
+              </p>
             )}
           </div>
 
+          {/* Password */}
           <div>
-            <label className="block mb-1 text-[15px]">
-              Password:<span className="text-red-500">*</span>
+            <label className="block mb-1.5 text-[14px] md:text-[16px]">
+              Password
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                className={`w-full border rounded h-[38px] px-3 pr-10 text-[15px] focus:outline-none focus:ring-2 focus:ring-blue-600 ${errors.password ? "border-red-500" : "border-gray-300"}`}
+                className={`w-full border border-[#E5E5E5] rounded-[4px] h-[40px] md:h-[44px] px-4 pr-12 text-[14px] md:text-[15px] focus:outline-none focus:ring-1 focus:ring-[#E5E5E5] ${
+                  errors.password ? "border-red-500" : ""
+                }`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
               />
               <span
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2 cursor-pointer text-gray-500"
+                className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-gray-500"
               >
-                {showPassword ? <AiOutlineEye /> : <AiOutlineEyeInvisible />}
+                {showPassword ? (
+                  <AiOutlineEye size={18} />
+                ) : (
+                  <AiOutlineEyeInvisible size={18} />
+                )}
               </span>
             </div>
             {errors.password && (
-              <p className="text-red-500 text-[13px] mt-1">{errors.password}</p>
+              <p className="text-red-500 text-[11px] md:text-[12px] mt-1">
+                {errors.password}
+              </p>
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center text-[14px] text-gray-600">
+          {/* Remember + Forgot */}
+          <div className="flex flex-col gap-4">
             <Link
               href="/auth/forgot-password"
-              className="text-[#FF0000] underline mb-1 sm:mb-0"
+              className="text-[#006AD3] text-[12px] md:text-[13px] hover:underline w-fit"
             >
-              Forgot your Password?
+              Forgot password?
             </Link>
-            <label className="flex items-center gap-2">
+
+            <label className="flex items-center gap-2 cursor-pointer w-fit">
               <input
                 type="checkbox"
+                className="w-4 h-4 border border-[#E5E5E5]"
                 checked={rememberMe}
                 onChange={() => setRememberMe(!rememberMe)}
               />
-              Remember me
+              <span className="text-[12px] md:text-[13px]">
+                Keep me logged in
+              </span>
             </label>
           </div>
 
-          {/* <button
-            type="submit"
-            disabled={loading}
-            className="bg-[#043F79] hover:bg-[#002b6d] text-white py-[9px] px-6 rounded text-[15px] font-semibold "
-          >
-            {loading ? "Logging in..." : "Login Now"}
-          </button> */}
-          <div className="flex justify-center">
+          {/* Submit */}
+          <div className="pt-2 text-center">
             <button
               type="submit"
               disabled={loading}
-              className="bg-[#043F79] hover:bg-[#002b6d] text-white py-[9px] px-6 rounded text-[15px] font-semibold"
+              className=" bg-[#043F79] hover:bg-[#032f5a] text-white py-[10px] px-[30px] rounded-md text-[15px] md:text-[16px] font-medium transition-all disabled:opacity-70"
             >
-              {loading ? "Logging in..." : "Login Now"}
+              {loading ? "Logging in..." : "Log in"}
             </button>
           </div>
-
-          <p className="text-[14px] text-gray-600 text-center">
-            Not registered yet?{" "}
-            <Link href="/auth/register" className="text-[#355DEF] underline">
-              Sign Up Now
-            </Link>
-          </p>
         </form>
+      </div>
+
+      {/* Register */}
+      <div className="mt-8 text-center px-4">
+        <p className="text-[14px] md:text-[15px]">
+          Don't have an account?{" "}
+          <Link
+            href="/auth/register"
+            className="font-bold border-b-[2px] border-black pb-0.5 ml-1 inline-block"
+          >
+            Register Now
+          </Link>
+        </p>
+      </div>
+
+      {/* Bottom Card */}
+      <div className="mt-10 bg-white/36 backdrop-blur-md border border-[#E5E5E5] rounded-2xl px-6 md:px-8 py-5 flex items-center gap-4 shadow-sm max-w-[430px] w-[92%] sm:w-full mx-4">
+        <div className="relative w-[50px] h-[50px] flex-shrink-0">
+          <Image
+            src="/images/login-bottom-mobile.png"
+            alt="Mobile"
+            fill
+            className="object-contain"
+          />
+        </div>
+        <div>
+          <h4 className="font-medium text-[14px] md:text-[16px] mb-1">
+            Access MoneyNow on the Go
+          </h4>
+          <p className="text-[12px] md:text-[14px]">
+            Track your investments anytime, anywhere.
+          </p>
+        </div>
       </div>
     </section>
   );

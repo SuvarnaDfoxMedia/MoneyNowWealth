@@ -20,6 +20,7 @@ const router = express.Router();
 
 /* -------------------- PUBLIC ROUTES -------------------- */
 router.get("/article", getArticles);
+router.get("/articles", getArticles); // alias for frontend compatibility
 router.get("/article/:id", getArticleById);
 router.get("/cluster/:clusterId/hierarchy", getClusterHierarchy);
 router.get("/cluster/slug/:slug/", getClusterHierarchyBySlug);

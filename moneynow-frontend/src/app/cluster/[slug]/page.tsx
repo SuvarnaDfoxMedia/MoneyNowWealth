@@ -6,8 +6,8 @@ import { useParams } from "next/navigation";
 import ClusterArticleSlider from "@/components/Blog-listing-Components/ClusterArticlePagination";
 import SeniorCitizen from "@/components/blog-details-Page/SeniorCitizen";
 import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
-import HomeInvestTrack from "@/components/home/home-invest-track";
-import StayConnected from "@/components/home/stay-connected";
+import HomeInvestTrack from "@/components/home/invest-with-confidence";
+import StayConnected from "@/components/home/home-newsletters";
 import { homeInvestTrackData } from "@/data/homePageData";
 
 /* ---------------- Types ---------------- */
@@ -84,11 +84,7 @@ const ClusterPage: React.FC = () => {
   const articles: Article[] = topics.flatMap((t) => t.articles || []);
 
   const formattedDate = cluster.created_at
-    ? new Date(cluster.created_at).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? new Date(cluster.created_at).toLocaleDateString("en-GB")
     : "";
 
   return (
@@ -172,3 +168,4 @@ const ClusterPage: React.FC = () => {
 };
 
 export default ClusterPage;
+

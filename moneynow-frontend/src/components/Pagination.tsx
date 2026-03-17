@@ -29,36 +29,36 @@ export const Pagination: React.FC<PaginationProps> = ({
   const isSinglePage = totalPages <= 1;
 
   const renderPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-
-    if (endPage - startPage + 1 < maxVisible) {
-      startPage = Math.max(1, endPage - maxVisible + 1);
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, "...", totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+      }
     }
 
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => onPageChange(i)}
-          disabled={isSinglePage}
-          className={`min-w-[36px] h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
-            currentPage === i
-              ? "bg-[#043F79] text-white"
-              : isSinglePage
-                ? "text-gray-400 cursor-default"
-                : "text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          {i}
-        </button>,
-      );
-    }
-
-    return pages;
+    return pages.map((p, i) => (
+      <button
+        key={i}
+        onClick={() => p !== "..." && onPageChange(Number(p))}
+        disabled={isSinglePage || p === "..."}
+        className={`min-w-[36px] h-9 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
+          p === "..." ? "cursor-default text-gray-500 bg-transparent" :
+          currentPage === p
+            ? "bg-[#043F79] text-white"
+            : isSinglePage
+              ? "text-gray-400 cursor-default"
+              : "text-gray-700 hover:bg-gray-100 border border-gray-100"
+        }`}
+      >
+        {p}
+      </button>
+    ));
   };
 
   return (

@@ -4,7 +4,7 @@ import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 interface Errors {
   email?: string;
@@ -61,8 +61,8 @@ export default function SignInForm() {
       !currentPath.includes(`${role}/dashboard`)
     ) {
       navigate(`/${role}/dashboard`, { replace: true });
-    } else if (role === "user" && currentPath !== "/userdashboard") {
-      navigate("/userdashboard", { replace: true });
+    } else if (role === "user" && currentPath !== "/user/dashboard") {
+      navigate("/user/dashboard", { replace: true });
     }
   }, [user, navigate]);
 
@@ -187,3 +187,4 @@ export default function SignInForm() {
     </div>
   );
 }
+

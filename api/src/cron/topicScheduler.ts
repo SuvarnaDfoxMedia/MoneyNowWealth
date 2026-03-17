@@ -154,8 +154,7 @@ import cron from "node-cron";
 import Topic, { type ITopic } from "../models/topicModel";
 import Article from "../models/articleModel";
 import User from "../models/userModel";
-import UserSubscription from "../models/userSubscriptionModel";
-import { emailService } from "@/emails/emailService";
+import { sendBlogNotificationViaGetResponse } from "../services/getresponseService";
 
 /* ---------------------------------------------------
    Topic & Article Scheduler (runs every 5 minutes)
@@ -277,12 +276,27 @@ export function startTopicScheduler() {
             // Use topicPublished method for individual user emails
             for (const subscriber of activeSubscribers) {
               if (subscriber.email && subscriber.email.includes("@")) {
-                await emailService.topicPublished(subscriber.email, {
+                const payload = {
                   userName: subscriber.firstname || "Subscriber",
                   title: topic.title,
                   summary: topic.summary || "Check out our latest topic",
                   link: `${process.env.WEBSITE_URL}/blog/${topic.slug}`,
-                });
+                };
+
+                try {
+                  await sendBlogNotificationViaGetResponse(
+                    subscriber.email,
+                    payload,
+                  );
+                } catch (grError: any) {
+                  console.error(
+                    ` EMAIL_FAILED channel=getresponse to=${subscriber.email} operation=topic_notification`,
+                    grError?.message || grError,
+                  );
+                  /* OLD SMTP IMPLEMENTATION (COMMENTED)
+                  await emailService.topicPublished(subscriber.email, payload);
+                  */
+                }
               }
             }
 
@@ -320,10 +334,25 @@ export function startTopicScheduler() {
             // Send to each subscriber with their name
             for (const subscriber of activeSubscribers) {
               if (subscriber.email && subscriber.email.includes("@")) {
-                await emailService.topicPublished(subscriber.email, {
+                const payload = {
                   userName: subscriber.firstname || "Subscriber",
                   ...contentData,
-                });
+                };
+
+                try {
+                  await sendBlogNotificationViaGetResponse(
+                    subscriber.email,
+                    payload,
+                  );
+                } catch (grError: any) {
+                  console.error(
+                    ` EMAIL_FAILED channel=getresponse to=${subscriber.email} operation=article_notification`,
+                    grError?.message || grError,
+                  );
+                  /* OLD SMTP IMPLEMENTATION (COMMENTED)
+                  await emailService.topicPublished(subscriber.email, payload);
+                  */
+                }
               }
             }
 

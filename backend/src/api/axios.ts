@@ -1,19 +1,19 @@
 import axios, { AxiosInstance } from "axios";
-import { refreshAuthUser, logoutAuth } from "../context/AuthContext";
-import { toast } from "react-hot-toast";
+import { refreshAuthUser, logoutAuth } from "../context/authSession";
 
 export interface QueryParams {
   [key: string]: string | number | boolean | undefined | null;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
   total?: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE;
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE as string | undefined)?.trim() || "/api";
 
 /* -------------------- AXIOS INSTANCE -------------------- */
 export const axiosInstance: AxiosInstance = axios.create({
@@ -32,8 +32,9 @@ axiosInstance.interceptors.response.use(
         await refreshAuthUser();
       } catch {
         await logoutAuth();
-        toast.error("Session expired. Please login again.");
-        window.location.href = "/signin";
+        if (typeof window !== "undefined") {
+          window.location.href = "/signin";
+        }
       }
     }
     return Promise.reject(error);
@@ -42,7 +43,7 @@ axiosInstance.interceptors.response.use(
 
 /* -------------------- HANDLER -------------------- */
 const handleRequest = async <T>(
-  request: Promise<any>,
+  request: Promise<{ data: ApiResponse<T> }>,
 ): Promise<ApiResponse<T>> => {
   const res = await request;
   return res.data;
@@ -79,33 +80,23 @@ export const axiosApi = {
   getOne: <T>(endpoint: string) =>
     handleRequest<T>(axiosInstance.get(endpoint)),
 
-  post: <T>(endpoint: string, payload: any) =>
+  post: <T>(endpoint: string, payload: unknown) =>
     handleRequest<T>(axiosInstance.post(endpoint, payload)),
 
-  create: <T>(endpoint: string, payload: any) => {
+  create: <T>(endpoint: string, payload: unknown) => {
     const isFormData = payload instanceof FormData;
 
     const headers = isFormData
-      ? {
-          "Content-Type":
-            "multipart/form-data; boundary=----WebKitFormBoundary",
-        }
+      ? { "Content-Type": "multipart/form-data" }
       : { "Content-Type": "application/json" };
-
-    console.log(" Axios create - headers:", headers);
-
-    if (isFormData) {
-      console.log(" Bypassing handleRequest for FormData");
-      return axiosInstance.post(endpoint, payload, { headers });
-    }
 
     return handleRequest<T>(axiosInstance.post(endpoint, payload, { headers }));
   },
 
-  update: <T>(endpoint: string, payload: any) =>
+  update: <T>(endpoint: string, payload: unknown) =>
     handleRequest<T>(axiosInstance.put(endpoint, payload)),
 
-  patch: <T>(endpoint: string, payload: any) =>
+  patch: <T>(endpoint: string, payload: unknown) =>
     handleRequest<T>(axiosInstance.patch(endpoint, payload)),
 
   remove: <T>(endpoint: string) =>

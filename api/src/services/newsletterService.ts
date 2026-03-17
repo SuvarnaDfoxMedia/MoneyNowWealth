@@ -55,34 +55,28 @@ export const getNewsletterById = async (id: string) => {
    Create a new subscriber
 --------------------------------------------------- */
 export const createNewsletter = async (data: Partial<INewsletter>) => {
-  if (!data.name || !data.email) {
-    throw new Error("Name and email are required");
+  if (!data.email) {
+    throw new Error("Email is required");
   }
 
-  const cleanName = data.name.trim();
+  if (!data.is_terms_accepted) {
+    throw new Error("Terms must be accepted");
+  }
+
   const cleanEmail = data.email.trim().toLowerCase();
 
-  // Check duplicate manually before creating
-  const existing = await Newsletter.findOne({
-    email: cleanEmail,
-    is_deleted: false,
-  });
-  if (existing) {
-    throw new Error("Email is already subscribed");
-  }
-
   const newsletter = new Newsletter({
-    name: cleanName,
+    name: data.name ?? null,
     email: cleanEmail,
+    is_terms_accepted: true,
   });
 
   try {
     await newsletter.save();
     return newsletter;
   } catch (err: any) {
-    // Handle Mongo duplicate key error (extra safety)
     if (err.code === 11000) {
-      throw new Error("Email is already exist");
+      throw new Error("Email is already subscribed");
     }
     throw err;
   }

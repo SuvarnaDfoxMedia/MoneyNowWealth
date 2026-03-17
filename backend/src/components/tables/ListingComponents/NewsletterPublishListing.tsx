@@ -79,7 +79,7 @@ export default function NewsletterPublishListing() {
     }
 
     sessionStorage.setItem("lastPath", currentPath);
-  }, [location.pathname]);
+  }, [location.pathname, markTabSwitch]);
 
   /* ------------------- Initialize module state ------------------- */
   useEffect(() => {
@@ -101,7 +101,17 @@ export default function NewsletterPublishListing() {
     return () => {
       cacheModuleState(MODULE_KEY);
     };
-  }, [MODULE_KEY]);
+  }, [
+    MODULE_KEY,
+    cacheModuleState,
+    lastAction,
+    restoreModuleState,
+    setCurrentModule,
+    setPage,
+    setSort,
+    sortField,
+    sortOrder,
+  ]);
 
   /* ------------------- Navigation to edit ------------------- */
   const handleEditClick = (id: string) => {
@@ -140,7 +150,7 @@ export default function NewsletterPublishListing() {
 
     document.addEventListener("click", handleNavClick);
     return () => document.removeEventListener("click", handleNavClick);
-  }, []);
+  }, [markTabSwitch]);
 
   /* ---------------- useCommonCrud hook ---------------- */
   const { data, extractList, refetch, deleteRecord, toggleStatus, isLoading } =
@@ -199,7 +209,13 @@ export default function NewsletterPublishListing() {
 
   /* ---------------- View PDF ---------------- */
   const viewFile = (newsletter: NewsletterPublish) => {
-    const baseUrl = import.meta.env.VITE_UPLOAD_BASE;
+    const baseUrl =
+      (import.meta.env.VITE_UPLOAD_BASE as string | undefined)?.trim() ||
+      (import.meta.env.VITE_API_BASE as string | undefined)?.replace(
+        "/api",
+        "",
+      ) ||
+      "";
     const fileUrl = `${baseUrl}/uploads/newsletters/${newsletter.pdf_file}`;
 
     // const baseUrl = import.meta.env.VITE_API_BASE || "http://localhost:5000";
@@ -233,7 +249,7 @@ export default function NewsletterPublishListing() {
       } else {
         toast.error("Delete failed");
       }
-    } catch (error) {
+    } catch {
       toast.error("Error deleting newsletter");
     } finally {
       setDeleteModalId(null);
@@ -243,11 +259,7 @@ export default function NewsletterPublishListing() {
 
   /* ---------------- Utils ---------------- */
   const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    new Date(date).toLocaleDateString("en-GB");
 
   const getStatusBadge = (status: string) => {
     const badges = {
@@ -366,7 +378,7 @@ export default function NewsletterPublishListing() {
             createPortal(
               <div
                 ref={dropdownRef}
-                className="fixed bg-white border rounded-xl shadow-lg z-[99999]"
+                className="fixed z-[99999] rounded-xl border border-gray-200 bg-white p-1 shadow-lg"
                 style={{
                   top: dropdownPos.top,
                   left: dropdownPos.left,
@@ -375,21 +387,21 @@ export default function NewsletterPublishListing() {
               >
                 <button
                   onClick={() => handleEditClick(row._id)}
-                  className="flex gap-2 px-4 py-2 hover:bg-indigo-50 w-full"
+                  className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
                 >
                   <FiEdit /> Edit
                 </button>
 
                 <button
                   onClick={() => viewFile(row)}
-                  className="flex gap-2 px-4 py-2 hover:bg-gray-50 w-full"
+                  className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
                 >
                   <FiEye /> View
                 </button>
 
                 <button
                   onClick={() => setDeleteModalId(row._id)}
-                  className="flex gap-2 px-4 py-2 text-red-600 hover:bg-red-50 w-full"
+                  className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-red-600 transition hover:bg-red-50"
                 >
                   <FiTrash2 /> Delete
                 </button>
@@ -461,19 +473,24 @@ export default function NewsletterPublishListing() {
 
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
-            <div className="bg-white p-6 rounded-xl w-96">
-              <h3 className="text-lg font-semibold">Confirm Delete</h3>
-              <div className="flex justify-end gap-3 mt-5">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirm Delete
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete this publish entry?
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteModalId(null)}
-                  className="border px-4 py-2 rounded"
+                  className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="bg-red-600 text-white px-4 py-2 rounded"
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
                 >
                   Delete
                 </button>
@@ -485,3 +502,4 @@ export default function NewsletterPublishListing() {
     </div>
   );
 }
+

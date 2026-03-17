@@ -274,7 +274,7 @@ import UserSubscription from "../models/userSubscriptionModel";
 import SubscriptionPlan from "../models/subscriptionPlan.model";
 import User from "../models/userModel";
 import UserSubscriptionPayment from "@/models/userSubscriptionPaymentModel";
-import { emailService } from "@/emails/emailService";
+import { getResponseEmailService } from "../services/getResponseEmailService";
 import { addDurationToDate, getMidnight } from "@/utils/dateUtils";
 
 export const startSubscriptionScheduler = async () => {
@@ -409,14 +409,33 @@ export const startSubscriptionScheduler = async () => {
 
       // Emails
       if (user?.email) {
+        /* OLD SMTP IMPLEMENTATION (COMMENTED)
         await emailService.subscriptionExpired(user.email, {
           userName: user.firstname || "User",
           planName: "Premium",
           startDate: sub.start_date,
           endDate: premiumExpiredAt,
         });
+        */
+        await getResponseEmailService.sendSubscriptionExpired(user.email, {
+          userName: user.firstname || "User",
+          planName: "Premium",
+          startDate: sub.start_date,
+          endDate: premiumExpiredAt,
+        });
 
+        /* OLD SMTP IMPLEMENTATION (COMMENTED)
         await emailService.subscriptionActivated(user.email, {
+          userName: user.firstname || "User",
+          planName: "Free",
+          startDate: freeStartDate,
+          endDate: freeEndDate,
+          planPrice: 0,
+          status: "downgrade",
+          isPromotional: false,
+        });
+        */
+        await getResponseEmailService.sendSubscriptionActivated(user.email, {
           userName: user.firstname || "User",
           planName: "Free",
           startDate: freeStartDate,
@@ -529,7 +548,20 @@ export const startSubscriptionScheduler = async () => {
         await subscription.save();
 
         if (user.email) {
+          /* OLD SMTP IMPLEMENTATION (COMMENTED)
           await emailService.trialUpgraded(user.email, {
+            userName: user.firstname || "User",
+            endDate: promoEndDate,
+            isPromotional: true,
+            features: [
+              "Access to Premium content",
+              "Ad-free experience",
+              "Exclusive investment insights",
+              "Priority customer support",
+            ],
+          });
+          */
+          await getResponseEmailService.sendTrialUpgraded(user.email, {
             userName: user.firstname || "User",
             endDate: promoEndDate,
             isPromotional: true,
@@ -575,7 +607,17 @@ export const startSubscriptionScheduler = async () => {
       );
 
       try {
+        /* OLD SMTP IMPLEMENTATION (COMMENTED)
         await emailService.subscriptionReminder(user.email, {
+          userName: user.firstname || "User",
+          planName: "Premium",
+          endDate: sub.end_date,
+          hoursRemaining,
+          daysRemaining: Math.ceil(hoursRemaining / 24),
+          isPromotional: sub.is_promotional,
+        });
+        */
+        await getResponseEmailService.sendSubscriptionUpdate(user.email, {
           userName: user.firstname || "User",
           planName: "Premium",
           endDate: sub.end_date,

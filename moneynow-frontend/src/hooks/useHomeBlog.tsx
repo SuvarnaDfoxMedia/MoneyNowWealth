@@ -15,7 +15,7 @@ const IMAGE_BASE = API.defaults.baseURL + "/uploads";
 
 export const useFetchCards = (
   endpoint: string,
-  limit: number = 3
+  limit: number = 4
 ) => {
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);

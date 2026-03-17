@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ChangeEvent } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   FiSave,
   FiRefreshCw,
@@ -31,6 +31,38 @@ interface CmsPageForm {
   page_code?: string;
 }
 
+type CmsListKey = "sections" | "faqs";
+type CmsListItem<K extends CmsListKey> = CmsPageForm[K][number];
+
+const extractCmsPage = (payload: unknown): Partial<CmsPageForm> | undefined => {
+  if (!payload || typeof payload !== "object") return undefined;
+  const record = payload as Record<string, unknown>;
+
+  if ("page" in record && record.page && typeof record.page === "object") {
+    return record.page as Partial<CmsPageForm>;
+  }
+
+  if ("data" in record && record.data && typeof record.data === "object") {
+    const dataRecord = record.data as Record<string, unknown>;
+    if ("page" in dataRecord && dataRecord.page && typeof dataRecord.page === "object") {
+      return dataRecord.page as Partial<CmsPageForm>;
+    }
+    return record.data as Partial<CmsPageForm>;
+  }
+
+  return payload as Partial<CmsPageForm>;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object" && "message" in error) {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+  }
+  return fallback;
+};
+
 const generateSlug = (text: string) =>
   text
     .toLowerCase()
@@ -60,6 +92,9 @@ export default function AddCmsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [slugEdited, setSlugEdited] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const inputClass =
+    "w-full h-11 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-200";
+  const labelClass = "block mb-2 text-sm font-medium text-gray-700";
 
   useEffect(() => {
     if (!id) return;
@@ -67,12 +102,12 @@ export default function AddCmsPage() {
     const fetchPage = async () => {
       setLoading(true);
       try {
-        const res: any = await getOne(id);
-        const page = res?.page ?? res?.data ?? res;
+        const res = (await getOne(id)) as unknown;
+        const page = extractCmsPage(res);
 
         if (!page || typeof page !== "object") {
           toast.error("CMS page not found");
-          navigate("/admin/cmspages");
+          navigate(`/${role || "admin"}/cmspages`);
           return;
         }
 
@@ -85,16 +120,16 @@ export default function AddCmsPage() {
           is_active: page.is_active ?? 1,
           page_code: page.page_code,
         });
-      } catch (err) {
+      } catch {
         toast.error("Failed to fetch CMS page");
-        navigate("/admin/cmspages");
+        navigate(`/${role || "admin"}/cmspages`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchPage();
-  }, [id, navigate]);
+  }, [id, navigate, getOne, role]);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -111,13 +146,13 @@ export default function AddCmsPage() {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const addItem = (key: keyof CmsPageForm, item: any) =>
-    setValues((prev) => ({ ...prev, [key]: [...(prev[key] as any[]), item] }));
+  const addItem = <K extends CmsListKey>(key: K, item: CmsListItem<K>) =>
+    setValues((prev) => ({ ...prev, [key]: [...prev[key], item] }));
 
-  const removeItem = (key: keyof CmsPageForm, index: number) =>
+  const removeItem = <K extends CmsListKey>(key: K, index: number) =>
     setValues((prev) => ({
       ...prev,
-      [key]: (prev[key] as any[]).filter((_, i) => i !== index),
+      [key]: prev[key].filter((_, i) => i !== index),
     }));
 
   const handleSectionChange = (
@@ -137,77 +172,6 @@ export default function AddCmsPage() {
       arr[index] = { ...arr[index], [field]: value };
       return { ...prev, faqs: arr };
     });
-
-  const toFormData = (data: CmsPageForm): FormData => {
-    const form = new FormData();
-    form.append("title", data.title);
-    form.append("slug", data.slug);
-    form.append("status", data.status);
-    form.append("is_active", String(data.is_active ?? 1));
-
-    if (data.page_code) form.append("page_code", data.page_code);
-
-    // Only send sections/faqs if they have content
-    if (data.sections && data.sections.length > 0) {
-      const validSections = data.sections.filter(
-        (s) => s.title.trim() || s.content.trim(),
-      );
-      if (validSections.length > 0) {
-        form.append("sections", JSON.stringify(validSections));
-      }
-    }
-
-    if (data.faqs && data.faqs.length > 0) {
-      const validFaqs = data.faqs.filter(
-        (f) => f.question.trim() || f.answer.trim(),
-      );
-      if (validFaqs.length > 0) {
-        form.append("faqs", JSON.stringify(validFaqs));
-      }
-    }
-
-    // Debug: Log FormData contents
-    console.log(" FormData being sent:");
-    for (let [key, value] of form.entries()) {
-      console.log(`${key}:`, value);
-    }
-
-    return form;
-  };
-
-  // Alternative: Send as JSON object
-  const toJsonPayload = (data: CmsPageForm) => {
-    const payload: any = {
-      title: data.title,
-      slug: data.slug,
-      status: data.status,
-      is_active: data.is_active ?? 1,
-    };
-
-    if (data.page_code) payload.page_code = data.page_code;
-
-    // Only send sections/faqs if they have content
-    if (data.sections && data.sections.length > 0) {
-      const validSections = data.sections.filter(
-        (s) => s.title.trim() || s.content.trim(),
-      );
-      if (validSections.length > 0) {
-        payload.sections = validSections;
-      }
-    }
-
-    if (data.faqs && data.faqs.length > 0) {
-      const validFaqs = data.faqs.filter(
-        (f) => f.question.trim() || f.answer.trim(),
-      );
-      if (validFaqs.length > 0) {
-        payload.faqs = validFaqs;
-      }
-    }
-
-    console.log(" JSON Payload being sent:", payload);
-    return payload;
-  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,15 +200,12 @@ export default function AddCmsPage() {
           }),
       };
 
-      console.log(" JSON Payload being sent:", jsonPayload);
-
       if (id) await updateRecord(id, jsonPayload);
       else await createRecord(jsonPayload);
       toast.success(`CMS Page ${id ? "updated" : "created"}`);
-      navigate(`/${role}/cmspages`);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || "Failed to save CMS page");
+      navigate(`/${role || "admin"}/cmspages`);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Failed to save CMS page"));
     } finally {
       setIsSubmitting(false);
     }
@@ -266,7 +227,7 @@ export default function AddCmsPage() {
   if (loading) return <div className="p-6">Loading page...</div>;
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-md border">
+    <div className="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-[#043f79]">
           {id ? "Edit CMS Page" : "Add New CMS Page"}
@@ -274,7 +235,7 @@ export default function AddCmsPage() {
 
         <button
           type="button"
-          onClick={() => navigate(`/admin/cmspages`)}
+          onClick={() => navigate(`/${role || "admin"}/cmspages`)}
           className="bg-[#043f79] text-white px-3 py-1 rounded-md shadow flex items-center gap-2"
         >
           <FiArrowLeft /> Back
@@ -285,36 +246,36 @@ export default function AddCmsPage() {
         {/* TITLE & SLUG */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="font-medium">Title</label>
+            <label className={labelClass}>Title</label>
             <input
               name="title"
               value={values.title}
               onChange={handleChange}
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
             {errors.title && <p className="text-red-500">{errors.title}</p>}
           </div>
 
           <div>
-            <label className="font-medium">Slug</label>
+            <label className={labelClass}>Slug</label>
             <input
               name="slug"
               value={values.slug}
               onChange={handleChange}
-              className="w-full border mt-2 p-2 rounded-md"
+              className={inputClass}
             />
             {errors.slug && <p className="text-red-500">{errors.slug}</p>}
           </div>
         </div>
 
         {/* SECTIONS */}
-        <div className="p-2">
+        <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/40">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-semibold text-[#043f79]">Sections</h3>
             <button
               type="button"
               onClick={() => addItem("sections", { title: "", content: "" })}
-              className="bg-[#043f79] text-white px-3 py-1 rounded-md flex items-center gap-2"
+              className="bg-[#043f79] text-white px-3 h-10 rounded-lg flex items-center gap-2"
             >
               <FiPlus /> Add Section
             </button>
@@ -331,7 +292,7 @@ export default function AddCmsPage() {
                 onChange={(e) =>
                   handleSectionChange(i, "title", e.target.value)
                 }
-                className="w-full border p-2 rounded-md mb-4 focus:ring focus:ring-blue-200"
+                className={inputClass}
               />
 
               <div className="rounded-lg overflow-hidden border">
@@ -353,13 +314,13 @@ export default function AddCmsPage() {
         </div>
 
         {/* FAQS */}
-        <div className="p-2">
+        <div className="p-4 border border-gray-100 rounded-xl bg-gray-50/40">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-semibold text-[#043f79]">FAQs</h3>
             <button
               type="button"
               onClick={() => addItem("faqs", { question: "", answer: "" })}
-              className="bg-[#043f79] text-white px-3 py-1 rounded-md flex items-center gap-2"
+              className="bg-[#043f79] text-white px-3 h-10 rounded-lg flex items-center gap-2"
             >
               <FiPlus /> Add FAQ
             </button>
@@ -371,7 +332,7 @@ export default function AddCmsPage() {
                 placeholder="Question"
                 value={faq.question}
                 onChange={(e) => handleFAQChange(i, "question", e.target.value)}
-                className="w-full border mt-2 p-2 rounded-md mb-2"
+                className={inputClass}
               />
 
               <RichTextField
@@ -393,12 +354,12 @@ export default function AddCmsPage() {
 
         {/* STATUS */}
         <div className="md:w-1/2">
-          <label className="font-medium">Status</label>
+          <label className={labelClass}>Status</label>
           <select
             name="status"
             value={values.status}
             onChange={handleChange}
-            className="w-full border mt-2 p-2 rounded-md"
+            className={inputClass}
           >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
@@ -407,11 +368,11 @@ export default function AddCmsPage() {
         </div>
 
         {/* BUTTONS */}
-        <div className="flex justify-end gap-4 pt-4 ">
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
           <button
             type="button"
             onClick={resetForm}
-            className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2"
+            className="bg-gray-200 text-gray-700 px-5 h-11 rounded-lg flex items-center gap-2"
           >
             <FiRefreshCw /> Reset
           </button>
@@ -419,7 +380,7 @@ export default function AddCmsPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-[#043f79] text-white px-4 py-2 rounded-md flex items-center gap-2"
+            className="bg-[#043f79] text-white px-6 h-11 rounded-lg flex items-center gap-2"
           >
             <FiSave /> {isSubmitting ? "Saving..." : id ? "Update" : "Save"}
           </button>

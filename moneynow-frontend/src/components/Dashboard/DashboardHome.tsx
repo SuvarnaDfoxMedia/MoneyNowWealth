@@ -86,7 +86,7 @@
 //                   <span className="font-normal">
 //                     {new Date(
 //                       latestSubscription.paymentDate,
-//                     ).toLocaleDateString("en-IN")}
+//                     ).toLocaleDateString("en-GB")}
 //                   </span>
 //                 </p>
 
@@ -94,7 +94,7 @@
 //                   <span className="font-semibold">Expiry Date:</span>{" "}
 //                   <span className="font-normal">
 //                     {new Date(latestSubscription.endDate).toLocaleDateString(
-//                       "en-IN",
+//                       "en-GB",
 //                     )}
 //                   </span>
 //                 </p>
@@ -208,7 +208,10 @@ const DashboardHome = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 items-start w-full">
         {/* LEFT: Latest Blogs */}
         <div className="lg:col-span-8">
-          <LatestRecommendationBlogs />
+          <LatestRecommendationBlogs
+            title="Latest Recommendation Blogs"
+            subtitle="Curated ideas from our latest research and insights."
+          />
         </div>
 
         {/* RIGHT: Subscription Status */}
@@ -242,7 +245,7 @@ const DashboardHome = () => {
                   <span className="font-normal">
                     {new Date(
                       latestSubscription.paymentDate,
-                    ).toLocaleDateString("en-IN")}
+                    ).toLocaleDateString("en-GB")}
                   </span>
                 </p>
 
@@ -250,7 +253,7 @@ const DashboardHome = () => {
                   <span className="font-semibold">Expiry Date:</span>{" "}
                   <span className="font-normal">
                     {new Date(latestSubscription.endDate).toLocaleDateString(
-                      "en-IN",
+                      "en-GB",
                     )}
                   </span>
                 </p>
@@ -345,3 +348,6 @@ const DashboardHome = () => {
 };
 
 export default DashboardHome;
+
+
+

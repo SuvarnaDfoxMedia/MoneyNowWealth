@@ -68,6 +68,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
     fetchArticles();
   }, []);
 
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
@@ -106,11 +107,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
   <p className="text-[13px] sm:text-[15px] font-inter font-medium">
     {article.author || "Team Money Now"} &nbsp;|&nbsp;
     {article.created_at
-      ? new Date(article.created_at).toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
+      ? new Date(article.created_at).toLocaleDateString("en-GB")
       : ""}
   </p>
 </div>
@@ -137,3 +134,4 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 };
 
 export default MostPopularBlogs;
+

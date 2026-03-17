@@ -1312,7 +1312,7 @@ import UserSubscription from "../models/userSubscriptionModel";
 import User from "../models/userModel";
 import SubscriptionPlanModel from "../models/subscriptionPlan.model";
 import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel";
-import { emailService } from "@/emails/emailService";
+import { getResponseEmailService } from "./getResponseEmailService";
 import { addDurationToDate, getMidnight } from "@/utils/dateUtils";
 
 interface PaginationOptions {
@@ -1370,6 +1370,18 @@ export const userSubscriptionService = {
       user_id: userObjId,
       is_deleted: false,
     });
+
+    // Idempotency guard for repeated user purchase calls:
+    // if same plan is already active and valid, reuse current subscription.
+    if (
+      isUserPurchase &&
+      subscription &&
+      subscription.is_active &&
+      subscription.end_date > now &&
+      subscription.plan_id?.toString() === planObjId.toString()
+    ) {
+      return subscription.populateFull();
+    }
 
     const oldPlanType = subscription?.plan_type || "none";
     let paymentType: "new" | "upgrade" | "downgrade" = "new";
@@ -1494,7 +1506,15 @@ export const userSubscriptionService = {
       try {
         if (paymentType === "upgrade" && subscription.is_promotional) {
           // Trial upgraded email - send immediately
+          /* OLD SMTP IMPLEMENTATION (COMMENTED)
           await emailService.trialUpgraded(user.email, {
+            userName: user.firstname || "User",
+            endDate,
+            isPromotional: true,
+            features: ["Access to Premium content", "Ad-free experience"],
+          });
+          */
+          await getResponseEmailService.sendTrialUpgraded(user.email, {
             userName: user.firstname || "User",
             endDate,
             isPromotional: true,
@@ -1505,6 +1525,7 @@ export const userSubscriptionService = {
           setTimeout(
             async () => {
               try {
+                /* OLD SMTP IMPLEMENTATION (COMMENTED)
                 await emailService.subscriptionActivated(user.email!, {
                   userName: user.firstname || "User",
                   planName: plan.name,
@@ -1515,6 +1536,20 @@ export const userSubscriptionService = {
                   isUserPurchase,
                   isPromotional: subscription.is_promotional,
                 });
+                */
+                await getResponseEmailService.sendSubscriptionActivated(
+                  user.email!,
+                  {
+                    userName: user.firstname || "User",
+                    planName: plan.name,
+                    startDate,
+                    endDate,
+                    planPrice: plan.price || 0,
+                    status: paymentType,
+                    isUserPurchase,
+                    isPromotional: subscription.is_promotional,
+                  },
+                );
                 console.log(
                   ` Delayed subscription email sent to: ${user.email}`,
                 );

@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import mongoose from "mongoose";
 import Article from "@/models/articleModel";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 const router = express.Router();
 
@@ -61,9 +62,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       if (!req.file) {
-        return res
-          .status(400)
-          .json({ success: false, message: "No file uploaded" });
+        return sendError(res, "No file uploaded", 400);
       }
 
       const fileUrl = `${
@@ -92,14 +91,16 @@ router.post(
         }
       }
 
-      return res.json({
-        success: true,
-        fileName: req.file.filename,
-        url: fileUrl,
-      });
+      return sendSuccess(
+        res,
+        "Image uploaded successfully",
+        { fileName: req.file.filename, url: fileUrl },
+        200,
+        { fileName: req.file.filename, url: fileUrl },
+      );
     } catch (err: any) {
       console.error("Upload failed:", err.message);
-      return res.status(500).json({ success: false, message: "Upload failed" });
+      return sendError(res, "Upload failed", 500);
     }
   },
 );

@@ -86,7 +86,7 @@ import {
 } from "../controllers/profileController";
 import type { AuthenticatedRequest } from "../controllers/profileController";
 
-import { protect } from "../middlewares/authMiddleware";
+import { adminProtect, protect, userProtect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -132,7 +132,8 @@ const handleValidationErrors = (
 
 /* -------------------- PROFILE ROUTES -------------------- */
 router.get("/get-profile", protect, getProfile);
-router.get("/auth/me", protect, getCurrentUser);
+router.get("/user/profile/me", userProtect, getCurrentUser);
+router.get("/admin/profile/me", adminProtect, getCurrentUser);
 
 router.put(
   "/profile",

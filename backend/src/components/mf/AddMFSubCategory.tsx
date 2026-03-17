@@ -1,0 +1,446 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useCommonCrud } from "../../hooks/useCommonCrud";
+import { axiosApi } from "../../api/axios";
+import {
+  MFFormActions,
+  MFFormContainer,
+  MFFormHeader,
+  mfCheckboxClass,
+  mfInputClass,
+} from "./MFFormShared";
+import { RichTextField } from "../PagesComponent/RichTextField";
+
+interface MainCategoryOption {
+  _id: string;
+  name: string;
+}
+
+export default function AddMFCategory() {
+  const { id, role = "admin" } = useParams();
+  const navigate = useNavigate();
+  const { getOne, createRecord, updateRecord } = useCommonCrud({
+    role,
+    module: "mf/categories",
+    listKey: "data",
+  });
+
+  const [mainCategoryOptions, setMainCategoryOptions] = useState<MainCategoryOption[]>([]);
+  const [mainCategoryDropdownOpen, setMainCategoryDropdownOpen] = useState(false);
+  const mainCategoryWrapperRef = useRef<HTMLDivElement>(null);
+  const [mainCategorySearch, setMainCategorySearch] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    main_category_id: "",
+    description: "",
+    benchmark_index_name: "",
+    y1: "",
+    y3: "",
+    y5: "",
+    y10: "",
+    risk_level: "",
+    suggested_use_case: "",
+    is_active: 1,
+  });
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof typeof form, string>>
+  >({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res: any = await axiosApi.get(`/${role}/mf/main-categories`, {
+        limit: 500,
+        page: 1,
+      });
+      setMainCategoryOptions(Array.isArray(res?.data) ? res.data : []);
+    })();
+  }, [role]);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      const res: any = await getOne(id);
+      const d = res?.data || {};
+      setForm({
+        name: d.name || "",
+        main_category_id: d.main_category_id?._id || "",
+        description: d.description || "",
+        benchmark_index_name: d.benchmark_index_name || "",
+        y1: d.benchmark_returns?.y1?.toString?.() || "",
+        y3: d.benchmark_returns?.y3?.toString?.() || "",
+        y5: d.benchmark_returns?.y5?.toString?.() || "",
+        y10: d.benchmark_returns?.y10?.toString?.() || "",
+        risk_level: d.risk_level || "",
+        suggested_use_case: d.suggested_use_case || "",
+        is_active: d.is_active ?? 1,
+      });
+    })();
+  }, [id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        mainCategoryWrapperRef.current &&
+        !mainCategoryWrapperRef.current.contains(event.target as Node)
+      ) {
+        setMainCategoryDropdownOpen(false);
+        setMainCategorySearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const validateNumber = (
+    value: string,
+    label: string,
+    min = -1000,
+    max = 1000,
+  ) => {
+    if (value === "") return "";
+    const num = Number(value);
+    if (Number.isNaN(num)) return `${label} must be a number`;
+    if (num < min || num > max)
+      return `${label} must be between ${min} and ${max}`;
+    return "";
+  };
+
+  const validate = () => {
+    const next: Partial<Record<keyof typeof form, string>> = {};
+    if (!form.main_category_id) next.main_category_id = "Main category is required";
+    if (!form.name.trim()) next.name = "Name is required";
+    if (form.name.trim().length > 120)
+      next.name = "Name must be under 120 characters";
+    if (form.description && form.description.length > 5000)
+      next.description = "Description must be under 5000 characters";
+    if (form.benchmark_index_name.length > 200)
+      next.benchmark_index_name =
+        "Benchmark index name must be under 200 characters";
+
+    const y1Err = validateNumber(form.y1, "Benchmark 1Y return");
+    if (y1Err) next.y1 = y1Err;
+    const y3Err = validateNumber(form.y3, "Benchmark 3Y return");
+    if (y3Err) next.y3 = y3Err;
+    const y5Err = validateNumber(form.y5, "Benchmark 5Y return");
+    if (y5Err) next.y5 = y5Err;
+    const y10Err = validateNumber(form.y10, "Benchmark 10Y return");
+    if (y10Err) next.y10 = y10Err;
+
+    if (form.risk_level.length > 200)
+      next.risk_level = "Risk level must be under 200 characters";
+    if (form.suggested_use_case.length > 500)
+      next.suggested_use_case =
+        "Suggested use case must be under 500 characters";
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const applyApiErrors = (err: any) => {
+    const apiErrors = err?.response?.data?.errors;
+    if (!Array.isArray(apiErrors)) return false;
+    const next: Partial<Record<keyof typeof form, string>> = {};
+    apiErrors.forEach((e: any) => {
+      const field = e?.path || e?.param;
+      const msg = e?.msg || "Invalid value";
+      if (field === "name") next.name = msg;
+      if (field === "main_category_id") next.main_category_id = msg;
+      if (field === "description") next.description = msg;
+      if (field === "benchmark_index_name") next.benchmark_index_name = msg;
+      if (field === "benchmark_returns.y1") next.y1 = msg;
+      if (field === "benchmark_returns.y3") next.y3 = msg;
+      if (field === "benchmark_returns.y5") next.y5 = msg;
+      if (field === "benchmark_returns.y10") next.y10 = msg;
+      if (field === "risk_level") next.risk_level = msg;
+      if (field === "suggested_use_case") next.suggested_use_case = msg;
+    });
+    setErrors(next);
+    return true;
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaving(true);
+    const payload = {
+      name: form.name,
+      main_category_id: form.main_category_id,
+      description: form.description,
+      benchmark_index_name: form.benchmark_index_name,
+      benchmark_returns: {
+        y1: form.y1 === "" ? null : Number(form.y1),
+        y3: form.y3 === "" ? null : Number(form.y3),
+        y5: form.y5 === "" ? null : Number(form.y5),
+        y10: form.y10 === "" ? null : Number(form.y10),
+      },
+      risk_level: form.risk_level,
+      suggested_use_case: form.suggested_use_case,
+      is_active: form.is_active,
+    };
+
+    try {
+      if (id) await updateRecord(id, payload);
+      else await createRecord(payload);
+      navigate(`/${role}/mf/categories`);
+    } catch (err: any) {
+      if (applyApiErrors(err)) return;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      name: "",
+      main_category_id: "",
+      description: "",
+      benchmark_index_name: "",
+      y1: "",
+      y3: "",
+      y5: "",
+      y10: "",
+      risk_level: "",
+      suggested_use_case: "",
+      is_active: 1,
+    });
+    setErrors({});
+  };
+
+  const error = (m?: string) =>
+    m ? <p className="text-red-500 text-sm mt-1">{m}</p> : null;
+
+  return (
+    <MFFormContainer>
+      <MFFormHeader
+        title={`${id ? "Edit" : "Add"} MF Category`}
+        onBack={() => navigate(`/${role}/mf/categories`)}
+      />
+      <form onSubmit={onSubmit} className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+
+          <div ref={mainCategoryWrapperRef} className="relative">
+            <label className="block mb-2 text-gray-700 font-medium">Main Category</label>
+            <div
+              onClick={() => setMainCategoryDropdownOpen((prev) => !prev)}
+              className={`w-full h-11 px-3 rounded-md flex justify-between items-center cursor-pointer border ${
+                errors.main_category_id ? "border-red-500" : "border-gray-300"
+              }`}
+            >
+              <span>
+                {mainCategoryOptions.length === 0
+                  ? "Loading categories..."
+                  : (mainCategoryOptions.find((t) => t._id === form.main_category_id)?.name ??
+                    "Select Main Category")}
+              </span>
+              <svg
+                className={`w-4 h-4 transform transition-transform ${mainCategoryDropdownOpen ? "rotate-180" : "rotate-0"}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+            {error(errors.main_category_id)}
+            {mainCategoryDropdownOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md max-h-60 overflow-y-auto shadow-lg">
+                <input
+                  type="text"
+                  placeholder="Search main category..."
+                  value={mainCategorySearch}
+                  onChange={(e) => setMainCategorySearch(e.target.value)}
+                  className="w-full h-11 border-0 border-b border-gray-200 rounded-none px-3 focus:outline-none"
+                />
+                {mainCategoryOptions
+                  .filter((t) =>
+                    t.name.toLowerCase().includes(mainCategorySearch.toLowerCase()),
+                  )
+                  .map((t) => (
+                    <div
+                      key={t._id}
+                      onClick={() => {
+                        setForm({ ...form, main_category_id: t._id });
+                        setMainCategoryDropdownOpen(false);
+                        setMainCategorySearch("");
+                        setErrors((prev) => ({ ...prev, main_category_id: "" }));
+                      }}
+                      className={`p-2 cursor-pointer hover:bg-blue-100 ${form.main_category_id === t._id ? "bg-blue-50 font-medium" : ""}`}
+                    >
+                      {t.name}
+                    </div>
+                  ))}
+                {mainCategoryOptions.filter((t) =>
+                  t.name.toLowerCase().includes(mainCategorySearch.toLowerCase()),
+                ).length === 0 && (
+                  <p className="text-gray-400 text-sm p-2">No categories found.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+            <div>
+            <label htmlFor="category_name" className="block mb-2 text-gray-700 font-medium">Name</label>
+            <input
+              id="category_name"
+              className={mfInputClass}
+              placeholder="Category name"
+              value={form.name}
+              onChange={(e) => {
+                setForm({ ...form, name: e.target.value });
+                setErrors((prev) => ({ ...prev, name: "" }));
+              }}
+            />
+            {error(errors.name)}
+          </div>
+        </div>
+
+        <div>
+          <label className="block mb-2 text-gray-700 font-medium">Short Description</label>
+          <RichTextField
+            value={form.description}
+            onChange={(val) => {
+              setForm({ ...form, description: val });
+              setErrors((prev) => ({ ...prev, description: "" }));
+            }}
+            height={260}
+          />
+          {error(errors.description)}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="benchmark_index_name" className="block mb-2 text-gray-700 font-medium">Benchmark Index Name</label>
+            <input
+              id="benchmark_index_name"
+              className={mfInputClass}
+              placeholder="Benchmark index"
+              value={form.benchmark_index_name}
+              onChange={(e) => {
+                setForm({ ...form, benchmark_index_name: e.target.value });
+                setErrors((prev) => ({ ...prev, benchmark_index_name: "" }));
+              }}
+            />
+            {error(errors.benchmark_index_name)}
+          </div>
+        </div>
+
+        <div>
+          <label className="block mb-2 text-gray-700 font-medium">Benchmark Returns</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label htmlFor="benchmark_y1" className="block mb-2 text-gray-700 font-medium">1Y</label>
+              <input
+                id="benchmark_y1"
+                className={mfInputClass}
+                placeholder="1Y"
+                value={form.y1}
+                onChange={(e) => {
+                  setForm({ ...form, y1: e.target.value });
+                  setErrors((prev) => ({ ...prev, y1: "" }));
+                }}
+              />
+              {error(errors.y1)}
+            </div>
+            <div>
+              <label htmlFor="benchmark_y3" className="block mb-2 text-gray-700 font-medium">3Y</label>
+              <input
+                id="benchmark_y3"
+                className={mfInputClass}
+                placeholder="3Y"
+                value={form.y3}
+                onChange={(e) => {
+                  setForm({ ...form, y3: e.target.value });
+                  setErrors((prev) => ({ ...prev, y3: "" }));
+                }}
+              />
+              {error(errors.y3)}
+            </div>
+            <div>
+              <label htmlFor="benchmark_y5" className="block mb-2 text-gray-700 font-medium">5Y</label>
+              <input
+                id="benchmark_y5"
+                className={mfInputClass}
+                placeholder="5Y"
+                value={form.y5}
+                onChange={(e) => {
+                  setForm({ ...form, y5: e.target.value });
+                  setErrors((prev) => ({ ...prev, y5: "" }));
+                }}
+              />
+              {error(errors.y5)}
+            </div>
+            <div>
+              <label htmlFor="benchmark_y10" className="block mb-2 text-gray-700 font-medium">10Y</label>
+              <input
+                id="benchmark_y10"
+                className={mfInputClass}
+                placeholder="10Y"
+                value={form.y10}
+                onChange={(e) => {
+                  setForm({ ...form, y10: e.target.value });
+                  setErrors((prev) => ({ ...prev, y10: "" }));
+                }}
+              />
+              {error(errors.y10)}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="risk_level" className="block mb-2 text-gray-700 font-medium">Risk Level</label>
+            <input
+              id="risk_level"
+              className={mfInputClass}
+              placeholder="Risk level"
+              value={form.risk_level}
+              onChange={(e) => {
+                setForm({ ...form, risk_level: e.target.value });
+                setErrors((prev) => ({ ...prev, risk_level: "" }));
+              }}
+            />
+            {error(errors.risk_level)}
+          </div>
+
+          <div>
+            <label htmlFor="suggested_use_case" className="block mb-2 text-gray-700 font-medium">Suggested Use Case</label>
+            <input
+              id="suggested_use_case"
+              className={mfInputClass}
+              placeholder="Suggested use case"
+              value={form.suggested_use_case}
+              onChange={(e) => {
+                setForm({ ...form, suggested_use_case: e.target.value });
+                setErrors((prev) => ({ ...prev, suggested_use_case: "" }));
+              }}
+            />
+            {error(errors.suggested_use_case)}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-3 text-gray-700 font-medium">
+          <input
+            className={mfCheckboxClass}
+            type="checkbox"
+            checked={form.is_active === 1}
+            onChange={(e) => setForm({ ...form, is_active: e.target.checked ? 1 : 0 })}
+          />
+          Active
+        </label>
+
+        <MFFormActions
+          onReset={resetForm}
+          isSubmitting={saving}
+          submitLabel={id ? "Update" : "Save"}
+        />
+      </form>
+    </MFFormContainer>
+  );
+}

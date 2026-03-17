@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import * as articleService from "../services/articleService";
 import Cluster from "../models/clusterModel";
 import mongoose from "mongoose";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 declare global {
   namespace Express {
@@ -42,19 +43,16 @@ export const getArticles = async (req: Request, res: Response) => {
       sort,
     });
 
-    return res.status(200).json({
-      success: true,
-      articles: result.articles || [],
+    const articles = result.articles || [];
+    return sendSuccess(res, "Articles fetched successfully", articles, 200, {
+      articles,
       total: result.total || 0,
       currentPage: result.currentPage || page,
       totalPages: result.totalPages || 1,
       limit,
     });
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch articles",
-    });
+    return sendError(res, error.message || "Failed to fetch articles", 500);
   }
 };
 
@@ -65,21 +63,12 @@ export const getArticleById = async (req: Request, res: Response) => {
     const article = await articleService.getArticleById(id);
 
     if (!article) {
-      return res.status(404).json({
-        success: false,
-        message: "Article not found",
-      });
+      return sendError(res, "Article not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      data: article,
-    });
+    return sendSuccess(res, "Article fetched successfully", article);
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch article",
-    });
+    return sendError(res, error.message || "Failed to fetch article", 500);
   }
 };
 
@@ -118,16 +107,9 @@ export const addArticle = async (req: Request, res: Response) => {
 
     const article = await articleService.createArticle(body);
 
-    return res.status(201).json({
-      success: true,
-      message: "Article created successfully",
-      data: article,
-    });
+    return sendSuccess(res, "Article created successfully", article, 201);
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to create article",
-    });
+    return sendError(res, error.message || "Failed to create article", 500);
   }
 };
 
@@ -170,22 +152,12 @@ export const updateArticle = async (req: Request, res: Response) => {
     const updated = await articleService.updateArticle(id, body);
 
     if (!updated) {
-      return res.status(404).json({
-        success: false,
-        message: "Article not found",
-      });
+      return sendError(res, "Article not found", 404);
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Article updated successfully",
-      data: updated,
-    });
+    return sendSuccess(res, "Article updated successfully", updated);
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to update article",
-    });
+    return sendError(res, error.message || "Failed to update article", 500);
   }
 };
 
@@ -194,24 +166,18 @@ export const toggleArticleStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Article ID is required",
-      });
+      return sendError(res, "Article ID is required", 400);
     }
 
     const article = await articleService.toggleArticleStatus(id);
 
-    return res.status(200).json({
-      success: true,
-      message: `Article is now ${article.is_active ? "active" : "inactive"}`,
-      data: article,
-    });
+    return sendSuccess(
+      res,
+      `Article is now ${article.is_active ? "active" : "inactive"}`,
+      article,
+    );
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to toggle article status",
-    });
+    return sendError(res, error.message || "Failed to toggle article status", 500);
   }
 };
 
@@ -222,26 +188,20 @@ export const deleteArticle = async (req: Request, res: Response) => {
     const article = await articleService.getArticleById(id);
 
     if (!article) {
-      return res.status(404).json({
-        success: false,
-        message: "Article not found",
-      });
+      return sendError(res, "Article not found", 404);
     }
 
     article.is_deleted = true;
     article.deleted_at = new Date();
     await article.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Article deleted successfully (soft delete)",
-      data: article,
-    });
+    return sendSuccess(
+      res,
+      "Article deleted successfully (soft delete)",
+      article,
+    );
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to delete article",
-    });
+    return sendError(res, error.message || "Failed to delete article", 500);
   }
 };
 
@@ -251,10 +211,7 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
     const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
 
     if (!clusterId) {
-      return res.status(400).json({
-        success: false,
-        message: "Cluster ID is required",
-      });
+      return sendError(res, "Cluster ID is required", 400);
     }
 
     // Aggregation to get cluster + topics + articles
@@ -324,41 +281,34 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
     ]);
 
     if (!result || result.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Cluster not found or not published",
-      });
+      return sendError(res, "Cluster not found or not published", 404);
     }
 
     const clusterData = result[0];
 
-    res.status(200).json({
-      success: true,
-      data: {
-        clusters: [
-          {
-            _id: clusterData._id,
-            title: clusterData.title,
-            description: clusterData.description || null,
-            thumbnail: clusterData.thumbnail || null,
-            created_at: clusterData.created_at || null,
-          },
-        ],
-        topics: clusterData.topics || [],
-        totalArticles:
-          clusterData.topics?.reduce(
-            (acc: number, t: any) => acc + t.articleCount,
-            0,
-          ) || 0,
-        totalTopics: clusterData.topics?.length || 0,
-      },
-    });
+    const data = {
+      clusters: [
+        {
+          _id: clusterData._id,
+          title: clusterData.title,
+          description: clusterData.description || null,
+          thumbnail: clusterData.thumbnail || null,
+          created_at: clusterData.created_at || null,
+        },
+      ],
+      topics: clusterData.topics || [],
+      totalArticles:
+        clusterData.topics?.reduce(
+          (acc: number, t: any) => acc + t.articleCount,
+          0,
+        ) || 0,
+      totalTopics: clusterData.topics?.length || 0,
+    };
+
+    return sendSuccess(res, "Cluster hierarchy fetched successfully", data);
   } catch (error: any) {
     console.error("Error fetching cluster hierarchy:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch cluster hierarchy",
-    });
+    return sendError(res, error.message || "Failed to fetch cluster hierarchy", 500);
   }
 };
 
@@ -371,10 +321,7 @@ export const getClusterHierarchyBySlug = async (
     const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
 
     if (!slug) {
-      return res.status(400).json({
-        success: false,
-        message: "Cluster slug is required",
-      });
+      return sendError(res, "Cluster slug is required", 400);
     }
 
     // Aggregation to get cluster + topics + articles
@@ -444,41 +391,34 @@ export const getClusterHierarchyBySlug = async (
     ]);
 
     if (!result || result.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Cluster not found or not published",
-      });
+      return sendError(res, "Cluster not found or not published", 404);
     }
 
     const clusterData = result[0];
 
-    res.status(200).json({
-      success: true,
-      data: {
-        clusters: [
-          {
-            _id: clusterData._id,
-            title: clusterData.title,
-            description: clusterData.description || null,
-            thumbnail: clusterData.thumbnail || null,
-            created_at: clusterData.created_at || null,
-          },
-        ],
-        topics: clusterData.topics || [],
-        totalArticles:
-          clusterData.topics?.reduce(
-            (acc: number, t: any) => acc + t.articleCount,
-            0,
-          ) || 0,
-        totalTopics: clusterData.topics?.length || 0,
-      },
-    });
+    const data = {
+      clusters: [
+        {
+          _id: clusterData._id,
+          title: clusterData.title,
+          description: clusterData.description || null,
+          thumbnail: clusterData.thumbnail || null,
+          created_at: clusterData.created_at || null,
+        },
+      ],
+      topics: clusterData.topics || [],
+      totalArticles:
+        clusterData.topics?.reduce(
+          (acc: number, t: any) => acc + t.articleCount,
+          0,
+        ) || 0,
+      totalTopics: clusterData.topics?.length || 0,
+    };
+
+    return sendSuccess(res, "Cluster hierarchy fetched successfully", data);
   } catch (error: any) {
     console.error("Error fetching cluster hierarchy by slug:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch cluster hierarchy",
-    });
+    return sendError(res, error.message || "Failed to fetch cluster hierarchy", 500);
   }
 };
 
@@ -489,10 +429,7 @@ export const publishArticle = async (req: Request, res: Response) => {
 
     const article = await articleService.getArticleById(id);
     if (!article) {
-      return res.status(404).json({
-        success: false,
-        message: "Article not found",
-      });
+      return sendError(res, "Article not found", 404);
     }
 
     // Update article status
@@ -503,16 +440,12 @@ export const publishArticle = async (req: Request, res: Response) => {
 
     await article.save();
 
-    return res.status(200).json({
-      success: true,
-      message:
-        "Article published successfully. Email notifications will be sent via scheduler.",
-      data: article,
-    });
+    return sendSuccess(
+      res,
+      "Article published successfully. Email notifications will be sent via scheduler.",
+      article,
+    );
   } catch (error: any) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to publish article",
-    });
+    return sendError(res, error.message || "Failed to publish article", 500);
   }
 };

@@ -3,7 +3,7 @@ import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -100,3 +100,4 @@ export default function UserDropdown() {
     </div>
   );
 }
+

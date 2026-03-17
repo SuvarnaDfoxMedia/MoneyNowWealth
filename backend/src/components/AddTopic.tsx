@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiCalendar, FiRefreshCw, FiSave } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
-import axiosApi from "../api/axios";
+import { axiosApi } from "../api/axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { useDataTableStore } from "../store/dataTableStore";
 
 /* ================= TYPES ================= */
 
@@ -34,14 +33,78 @@ interface ClusterOption {
   title: string;
 }
 
+interface TopicDetail {
+  cluster_id: string | { _id: string };
+  title?: string;
+  slug?: string;
+  keywords?: string[];
+  summary?: string;
+  status?: "draft" | "published" | "archived";
+  author?: string;
+  read_time_minutes?: number;
+  tags?: string[];
+  is_active?: number;
+  publish_date?: string;
+  access_type?: "free" | "premium";
+}
+
+const extractTopic = (payload: unknown): TopicDetail | undefined => {
+  if (!payload || typeof payload !== "object") return undefined;
+  const record = payload as Record<string, unknown>;
+  if ("topic" in record && record.topic && typeof record.topic === "object") {
+    return record.topic as TopicDetail;
+  }
+  if ("data" in record && record.data && typeof record.data === "object") {
+    const dataRecord = record.data as Record<string, unknown>;
+    if (
+      "topic" in dataRecord &&
+      dataRecord.topic &&
+      typeof dataRecord.topic === "object"
+    ) {
+      return dataRecord.topic as TopicDetail;
+    }
+  }
+  return undefined;
+};
+
+const extractClusters = (payload: unknown): ClusterOption[] => {
+  if (!payload || typeof payload !== "object") return [];
+  const record = payload as Record<string, unknown>;
+
+  const candidates = [
+    record.data,
+    record.clusters,
+    (record.data as Record<string, unknown> | undefined)?.clusters,
+    (record.data as Record<string, unknown> | undefined)?.items,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate as ClusterOption[];
+    }
+  }
+
+  return [];
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object" && "message" in error) {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+  }
+  return fallback;
+};
+
 /* ================= COMPONENT ================= */
 
 export default function AddTopic() {
-  const { id } = useParams<{ id?: string }>();
+  const { id, role } = useParams<{ id?: string; role?: string }>();
   const navigate = useNavigate();
 
   const { getOne, createRecord, updateRecord } = useCommonCrud({
-    role: "admin",
+    role: role || "admin",
     module: "topic",
   });
 
@@ -66,47 +129,55 @@ export default function AddTopic() {
   const [clusters, setClusters] = useState<ClusterOption[]>([]);
   const [slugEdited, setSlugEdited] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputClass =
+    "w-full h-11 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-200";
+  const labelClass = "block mb-2 text-sm font-medium text-gray-700";
 
   /* ================= EFFECTS ================= */
 
   // Load clusters
   useEffect(() => {
+    const currentRole = role || "admin";
     axiosApi
-      .get("/cluster?limit=1000")
-      .then((res) => setClusters(res.data?.clusters || []))
+      .get(`/${currentRole}/cluster`, { limit: 1000, page: 1 })
+      .then((res) => setClusters(extractClusters(res)))
       .catch(() => toast.error("Failed to load clusters"));
-  }, []);
+  }, [role]);
 
   // Load topic for edit
   useEffect(() => {
     if (!id) return;
 
-    getOne(id).then((res: any) => {
-      if (!res?.topic) return;
+    (async () => {
+      const res = (await getOne(id)) as unknown;
+      const topic = extractTopic(res);
+      if (!topic) return;
 
       setValues({
         cluster_id:
-          typeof res.topic.cluster_id === "object"
-            ? res.topic.cluster_id._id
-            : res.topic.cluster_id,
-        title: res.topic.title || "",
-        slug: res.topic.slug || "",
-        keywords: res.topic.keywords?.join(", ") || "",
-        summary: res.topic.summary || "",
-        status: res.topic.status || "draft",
-        author: res.topic.author || "",
-        read_time_minutes: res.topic.read_time_minutes || 0,
-        tags: res.topic.tags?.join(", ") || "",
-        is_active: res.topic.is_active ?? 0,
-        publish_date: res.topic.publish_date
-          ? new Date(res.topic.publish_date)
+          topic.cluster_id &&
+          typeof topic.cluster_id === "object" &&
+          "_id" in topic.cluster_id
+            ? topic.cluster_id._id
+            : (topic.cluster_id as string) || "",
+        title: topic.title || "",
+        slug: topic.slug || "",
+        keywords: topic.keywords?.join(", ") || "",
+        summary: topic.summary || "",
+        status: topic.status || "draft",
+        author: topic.author || "",
+        read_time_minutes: topic.read_time_minutes || 0,
+        tags: topic.tags?.join(", ") || "",
+        is_active: topic.is_active ?? 0,
+        publish_date: topic.publish_date
+          ? new Date(topic.publish_date)
           : null,
-        access_type: res.topic.access_type || "free",
+        access_type: topic.access_type || "free",
       });
 
       setSlugEdited(false); // IMPORTANT
-    });
-  }, [id]);
+    })();
+  }, [id, getOne]);
 
   /* ================= HELPERS ================= */
 
@@ -180,15 +251,19 @@ export default function AddTopic() {
           : null,
       };
 
-      id ? await updateRecord(id, payload) : await createRecord(payload);
+      if (id) {
+        await updateRecord(id, payload);
+      } else {
+        await createRecord(payload);
+      }
 
       toast.success(
         id ? "Topic updated successfully" : "Topic created successfully",
       );
-      navigate(`/admin/topic`);
+      navigate(`/${role || "admin"}/topic`);
       // setPage(1);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Something went wrong");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Something went wrong"));
     } finally {
       setIsSubmitting(false);
     }
@@ -217,22 +292,19 @@ export default function AddTopic() {
 
   /* ================= UI HELPERS ================= */
 
-  const inputClass =
-    "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200";
-
   const error = (m?: string) =>
     m ? <p className="text-red-500 text-sm mt-1">{m}</p> : null;
 
   /* ================= JSX ================= */
 
   return (
-    <div className="p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-semibold">
+    <div className="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
+      <div className="flex justify-between items-center mb-6 md:mb-8">
+        <h2 className="text-2xl font-semibold text-[#043f79]">
           {id ? "Edit Topic" : "Add Topic"}
         </h2>
         <button
-          onClick={() => navigate(`/admin/topic`)}
+          onClick={() => navigate(`/${role || "admin"}/topic`)}
           className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md"
         >
           <FiArrowLeft /> Back
@@ -242,7 +314,7 @@ export default function AddTopic() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Cluster */}
         <div>
-          <label className="block mb-2 font-medium">Cluster</label>
+          <label className={labelClass}>Cluster</label>
           <select
             name="cluster_id"
             value={values.cluster_id}
@@ -262,7 +334,7 @@ export default function AddTopic() {
         {/* Title + Slug */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2 font-medium">Title</label>
+            <label className={labelClass}>Title</label>
             <input
               name="title"
               value={values.title}
@@ -272,7 +344,7 @@ export default function AddTopic() {
             {error(errors.title)}
           </div>
           <div>
-            <label className="block mb-2 font-medium">Slug</label>
+            <label className={labelClass}>Slug</label>
             <input
               name="slug"
               value={values.slug}
@@ -285,7 +357,7 @@ export default function AddTopic() {
 
         {/* Access Type */}
         <div>
-          <label className="block mb-2 font-medium">Topic Type</label>
+          <label className={labelClass}>Topic Type</label>
           <select
             name="access_type"
             value={values.access_type}
@@ -299,12 +371,12 @@ export default function AddTopic() {
 
         {/* Summary */}
         <div>
-          <label className="block mb-2 font-medium">Summary</label>
+          <label className={labelClass}>Summary</label>
           <textarea
             name="summary"
             value={values.summary}
             onChange={handleInputChange}
-            className={inputClass}
+            className="w-full min-h-28 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-200"
             rows={3}
           />
         </div>
@@ -312,7 +384,7 @@ export default function AddTopic() {
         {/* Keywords + Tags */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2 font-medium">Keywords</label>
+            <label className={labelClass}>Keywords</label>
             <input
               name="keywords"
               value={values.keywords}
@@ -321,7 +393,7 @@ export default function AddTopic() {
             />
           </div>
           <div>
-            <label className="block mb-2 font-medium">Tags</label>
+            <label className={labelClass}>Tags</label>
             <input
               name="tags"
               value={values.tags}
@@ -334,7 +406,7 @@ export default function AddTopic() {
         {/* Author + Read Time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2 font-medium">Author</label>
+            <label className={labelClass}>Author</label>
             <input
               name="author"
               value={values.author}
@@ -343,7 +415,7 @@ export default function AddTopic() {
             />
           </div>
           <div>
-            <label className="block mb-2 font-medium">
+            <label className={labelClass}>
               Read Time (minutes)
             </label>
             <input
@@ -360,7 +432,7 @@ export default function AddTopic() {
         {/* Status + Publish Date */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2 font-medium">Status</label>
+            <label className={labelClass}>Status</label>
             <select
               name="status"
               value={values.status}
@@ -373,12 +445,12 @@ export default function AddTopic() {
             </select>
           </div>
           <div>
-            <label className="block mb-2 font-medium">Publish Date</label>
+            <label className={labelClass}>Publish Date</label>
             <div className="relative">
               <DatePicker
                 selected={values.publish_date}
                 onChange={(d) => setValues((p) => ({ ...p, publish_date: d }))}
-                dateFormat="yyyy-MM-dd"
+                dateFormat="dd/MM/yyyy"
                 className={`${inputClass} pr-10`}
               />
               <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -388,18 +460,18 @@ export default function AddTopic() {
         </div>
 
         {/* Buttons */}
-        <div className="flex justify-end gap-4 pt-6">
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-2 bg-gray-200 px-5 py-2.5 rounded-md"
+            className="flex items-center gap-2 bg-gray-200 px-5 h-11 rounded-lg"
           >
             <FiRefreshCw /> Reset
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex items-center gap-2 bg-[#043f79] text-white px-6 py-2.5 rounded-md"
+            className="flex items-center gap-2 bg-[#043f79] text-white px-6 h-11 rounded-lg"
           >
             <FiSave /> {isSubmitting ? "Saving..." : id ? "Update" : "Save"}
           </button>
@@ -408,3 +480,4 @@ export default function AddTopic() {
     </div>
   );
 }
+

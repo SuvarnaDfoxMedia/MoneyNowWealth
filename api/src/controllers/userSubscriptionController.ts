@@ -3,16 +3,17 @@ import User from "@/models/userModel";
 import SubscriptionPlan from "@/models/subscriptionPlan.model";
 import { userSubscriptionService } from "@/services/userSubscriptionService";
 import { userSubscriptionPaymentService } from "@/services/userSubscriptionPaymentService";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 export const getUserSubscriptions = async (req: Request, res: Response) => {
   try {
     const result = await userSubscriptionService.getAll(req.query);
-    return res.status(200).json(result);
+    return sendSuccess(res, "Subscriptions fetched successfully", result, 200, {
+      ...result,
+    });
   } catch (error) {
     console.error("Get subscriptions error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -22,9 +23,7 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
 
     let subscription = await userSubscriptionService.getById(id);
     if (!subscription) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subscription not found" });
+      return sendError(res, "Subscription not found", 404);
     }
 
     const payment =
@@ -32,16 +31,16 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
         subscription._id.toString(),
       );
 
-    return res.json({
-      success: true,
-      subscription,
-      payment,
-    });
+    return sendSuccess(
+      res,
+      "Subscription fetched successfully",
+      { subscription, payment },
+      200,
+      { subscription, payment },
+    );
   } catch (error) {
     console.error("Get subscription by ID error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -50,17 +49,12 @@ export const addUserSubscription = async (req: Request, res: Response) => {
     const { user_id, plan_id, trial_type } = req.body;
 
     if (!user_id || !plan_id) {
-      return res.status(400).json({
-        success: false,
-        message: "user_id and plan_id are required",
-      });
+      return sendError(res, "user_id and plan_id are required", 400);
     }
 
     const planDoc = await SubscriptionPlan.findById(plan_id);
     if (!planDoc) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid plan_id" });
+      return sendError(res, "Invalid plan_id", 400);
     }
 
     const subscription =
@@ -74,13 +68,12 @@ export const addUserSubscription = async (req: Request, res: Response) => {
         "manual_assign",
       );
 
-    return res.status(201).json({ success: true, subscription });
+    return sendSuccess(res, "Subscription created successfully", subscription, 201, {
+      subscription,
+    });
   } catch (error: any) {
     console.error("Create subscription error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendError(res, error.message || "Internal server error", 500);
   }
 };
 
@@ -90,17 +83,15 @@ export const updateUserSubscription = async (req: Request, res: Response) => {
 
     const subscription = await userSubscriptionService.update(id, req.body);
     if (!subscription) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subscription not found" });
+      return sendError(res, "Subscription not found", 404);
     }
 
-    return res.json({ success: true, subscription });
+    return sendSuccess(res, "Subscription updated successfully", subscription, 200, {
+      subscription,
+    });
   } catch (error) {
     console.error("Update subscription error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -113,23 +104,21 @@ export const toggleUserSubscriptionStatus = async (
 
     const subscription = await userSubscriptionService.toggleActiveStatus(id);
     if (!subscription) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subscription not found" });
+      return sendError(res, "Subscription not found", 404);
     }
 
-    return res.json({
-      success: true,
-      message: subscription.is_active
+    return sendSuccess(
+      res,
+      subscription.is_active
         ? "Subscription activated successfully"
         : "Subscription deactivated successfully",
       subscription,
-    });
+      200,
+      { subscription },
+    );
   } catch (error) {
     console.error("Toggle subscription status error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -140,22 +129,19 @@ export const deleteUserSubscription = async (req: Request, res: Response) => {
     const subscription = await userSubscriptionService.softDelete(id);
 
     if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "Subscription not found",
-      });
+      return sendError(res, "Subscription not found", 404);
     }
 
-    return res.json({
-      success: true,
-      message: "Subscription soft deleted successfully",
+    return sendSuccess(
+      res,
+      "Subscription soft deleted successfully",
       subscription,
-    });
+      200,
+      { subscription },
+    );
   } catch (error) {
     console.error("Delete subscription error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -165,21 +151,19 @@ export const restoreUserSubscription = async (req: Request, res: Response) => {
 
     const subscription = await userSubscriptionService.restore(id);
     if (!subscription) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Subscription not found" });
+      return sendError(res, "Subscription not found", 404);
     }
 
-    return res.json({
-      success: true,
-      message: "Subscription restored successfully",
+    return sendSuccess(
+      res,
+      "Subscription restored successfully",
       subscription,
-    });
+      200,
+      { subscription },
+    );
   } catch (error) {
     console.error("Restore subscription error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -188,18 +172,12 @@ export const assignUserSubscription = async (req: Request, res: Response) => {
     const { user_id, plan_name, duration_days, reason } = req.body;
 
     if (!user_id || !plan_name) {
-      return res.status(400).json({
-        success: false,
-        message: "user_id and plan_name are required",
-      });
+      return sendError(res, "user_id and plan_name are required", 400);
     }
 
     const user = await User.findById(user_id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return sendError(res, "User not found", 404);
     }
 
     const plan = await SubscriptionPlan.findOne({
@@ -209,21 +187,19 @@ export const assignUserSubscription = async (req: Request, res: Response) => {
     });
 
     if (!plan) {
-      return res.status(404).json({
-        success: false,
-        message: "Plan not found",
-      });
+      return sendError(res, "Plan not found", 404);
     }
 
     if (plan_name === "Premium" && plan.price === 0) {
       const existingSub = await userSubscriptionService.getByUserId(user_id);
       if (existingSub?.promotional_trial_used) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "User has already used promotional trial. Assign a paid Premium plan instead.",
-          code: "TRIAL_ALREADY_USED",
-        });
+        return sendError(
+          res,
+          "User has already used promotional trial. Assign a paid Premium plan instead.",
+          400,
+          null,
+          { code: "TRIAL_ALREADY_USED" },
+        );
       }
     }
 
@@ -241,18 +217,16 @@ export const assignUserSubscription = async (req: Request, res: Response) => {
         "manual_assign",
       );
 
-    return res.status(201).json({
-      success: true,
-      message: "Subscription assigned successfully",
+    return sendSuccess(
+      res,
+      "Subscription assigned successfully",
       subscription,
-      reason: reason || "Manual assignment",
-    });
+      201,
+      { subscription, reason: reason || "Manual assignment" },
+    );
   } catch (error) {
     console.error("Assign subscription error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -261,34 +235,28 @@ export const getMySubscription = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
+      return sendError(res, "User not authenticated", 401);
     }
 
     const subscription = await userSubscriptionService.getByUserId(userId);
 
     if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "No active subscription found",
-      });
+      return sendError(res, "No active subscription found", 404);
     }
 
     const paymentHistory =
       await userSubscriptionService.getPaymentHistory(userId);
 
-    return res.json({
-      success: true,
-      subscription,
-      paymentHistory,
-    });
+    return sendSuccess(
+      res,
+      "Subscription fetched successfully",
+      { subscription, paymentHistory },
+      200,
+      { subscription, paymentHistory },
+    );
   } catch (error) {
     console.error("Get my subscription error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };
 
@@ -298,24 +266,16 @@ export const purchaseSubscription = async (req: Request, res: Response) => {
     const { plan_id } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
+      return sendError(res, "User not authenticated", 401);
     }
 
     if (!plan_id) {
-      return res.status(400).json({
-        success: false,
-        message: "plan_id is required",
-      });
+      return sendError(res, "plan_id is required", 400);
     }
 
     const planDoc = await SubscriptionPlan.findById(plan_id);
     if (!planDoc) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid plan_id" });
+      return sendError(res, "Invalid plan_id", 400);
     }
 
     const eligibility = await userSubscriptionService.checkPurchaseEligibility(
@@ -323,9 +283,7 @@ export const purchaseSubscription = async (req: Request, res: Response) => {
       plan_id,
     );
     if (!eligibility.canPurchase) {
-      return res.status(403).json({
-        success: false,
-        message: eligibility.message,
+      return sendError(res, eligibility.message, 403, null, {
         code: eligibility.code || "PURCHASE_BLOCKED",
       });
     }
@@ -341,17 +299,16 @@ export const purchaseSubscription = async (req: Request, res: Response) => {
         "user_purchase",
       );
 
-    return res.status(201).json({
-      success: true,
-      message: "Subscription purchased successfully",
+    return sendSuccess(
+      res,
+      "Subscription purchased successfully",
       subscription,
-    });
+      201,
+      { subscription },
+    );
   } catch (error: any) {
     console.error("Purchase subscription error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendError(res, error.message || "Internal server error", 500);
   }
 };
 
@@ -360,19 +317,13 @@ export const getMySubscriptionHistory = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
+      return sendError(res, "User not authenticated", 401);
     }
 
     const subscription = await userSubscriptionService.getByUserId(userId);
 
     if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "No subscription found",
-      });
+      return sendError(res, "No subscription found", 404);
     }
 
     const paymentHistory =
@@ -389,21 +340,33 @@ export const getMySubscriptionHistory = async (req: Request, res: Response) => {
       is_promotional: payment.metadata?.is_promotional || false,
     }));
 
-    return res.json({
-      success: true,
-      current_subscription: {
-        plan: subscription.plan_type,
-        status: subscription.status,
-        start_date: subscription.start_date,
-        end_date: subscription.end_date,
-        is_promotional: subscription.is_promotional,
+    return sendSuccess(
+      res,
+      "Subscription history fetched successfully",
+      {
+        current_subscription: {
+          plan: subscription.plan_type,
+          status: subscription.status,
+          start_date: subscription.start_date,
+          end_date: subscription.end_date,
+          is_promotional: subscription.is_promotional,
+        },
+        history,
       },
-      history,
-    });
+      200,
+      {
+        current_subscription: {
+          plan: subscription.plan_type,
+          status: subscription.status,
+          start_date: subscription.start_date,
+          end_date: subscription.end_date,
+          is_promotional: subscription.is_promotional,
+        },
+        history,
+      },
+    );
   } catch (error) {
     console.error("Get subscription history error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return sendError(res, "Internal server error", 500);
   }
 };

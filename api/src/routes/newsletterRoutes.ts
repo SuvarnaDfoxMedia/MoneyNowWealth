@@ -18,10 +18,10 @@ const adminMiddleware = roleFromUrl(["admin"]);
 /* -------------------- PROTECTED ADMIN ENDPOINTS -------------------- */
 
 // Get all subscribers (with pagination, filters, search)
-router.get("/:role/newsletter", adminMiddleware, getNewsletters);
+router.get("/:role/newsletter", ...adminMiddleware, getNewsletters);
 
 // Get one subscriber by id
-router.get("/newsletter/:id", ...adminMiddleware, getNewsletterById);
+router.get("/:role/newsletter/:id", ...adminMiddleware, getNewsletterById);
 
 // Soft delete subscriber
 router.delete(

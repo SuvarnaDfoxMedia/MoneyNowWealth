@@ -1,8 +1,11 @@
 import type { Request, Response } from "express";
 import * as cmsPageService from "../services/cmsPageService";
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
+  body: Record<string, any>;
+  files?: { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[];
 }
 
 /* ---------------------------------------------------
@@ -25,16 +28,18 @@ export const getPages = async (req: Request, res: Response) => {
       includeInactive: includeInactive === "true",
     });
 
-    return res.status(200).json({
-      success: true,
-      ...result,
-    });
+    const data = (result as { pages?: unknown })?.pages ?? result;
+    const extra =
+      result && typeof result === "object"
+        ? Object.fromEntries(
+            Object.entries(result).filter(([key]) => key !== "pages"),
+          )
+        : {};
+
+    return sendSuccess(res, "CMS pages fetched successfully", data, 200, extra);
   } catch (error: any) {
     console.error("Error in getPages:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch CMS pages",
-    });
+    return sendError(res, error.message || "Failed to fetch CMS pages", 500);
   }
 };
 
@@ -44,49 +49,49 @@ export const getPages = async (req: Request, res: Response) => {
 export const getPageById = async (req: Request, res: Response) => {
   try {
     const page = await cmsPageService.getPageById(req.params.id);
-    return res.status(200).json({ success: true, page });
+    return sendSuccess(res, "CMS page fetched successfully", page, 200, { page });
   } catch (error: any) {
     console.error("Error in getPageById:", error);
-    return res.status(404).json({
-      success: false,
-      message: error.message || "CMS page not found",
-    });
+    return sendError(res, error.message || "CMS page not found", 404);
   }
 };
-
-interface MulterRequest extends Request {
-  body: any;
-  files?: any;
-}
 
 export const addPage = async (req: MulterRequest, res: Response) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Request body is missing",
-      });
+      return sendError(res, "Request body is missing", 400);
     }
 
     // Parse JSON fields safely
-    let sections = [];
-    let faqs = [];
+    let sections: unknown[] = [];
+    let faqs: unknown[] = [];
 
     try {
-      sections = req.body.sections ? JSON.parse(req.body.sections) : [];
-      faqs = req.body.faqs ? JSON.parse(req.body.faqs) : [];
-    } catch (err) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format in sections or faqs",
-      });
+      const rawSections = req.body.sections;
+      const rawFaqs = req.body.faqs;
+      sections =
+        typeof rawSections === "string"
+          ? JSON.parse(rawSections)
+          : Array.isArray(rawSections)
+            ? rawSections
+            : [];
+      faqs =
+        typeof rawFaqs === "string"
+          ? JSON.parse(rawFaqs)
+          : Array.isArray(rawFaqs)
+            ? rawFaqs
+            : [];
+    } catch {
+      return sendError(res, "Invalid JSON format in sections or faqs", 400);
     }
 
     // Prepare page data
-    const pageData = {
+    const pageData: Record<string, unknown> = {
       ...req.body,
-      title: req.body.title?.trim(),
-      slug: req.body.slug?.trim().toLowerCase(),
+      title: String(req.body.title || "").trim(),
+      slug: String(req.body.slug || "")
+        .trim()
+        .toLowerCase(),
       status: req.body.status || "draft",
       is_active: req.body.is_active ?? 1,
       page_code: req.body.page_code || undefined,
@@ -96,62 +101,54 @@ export const addPage = async (req: MulterRequest, res: Response) => {
 
     const page = await cmsPageService.createPage(pageData);
 
-    return res.status(201).json({
-      success: true,
-      message: "CMS page created successfully",
-      page,
-    });
+    return sendSuccess(res, "CMS page created successfully", page, 201, { page });
   } catch (error: any) {
     console.error("Error in addPage:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to create CMS page",
-    });
+    return sendError(res, error.message || "Failed to create CMS page", 500);
   }
 };
 
 export const updatePage = async (req: MulterRequest, res: Response) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Request body is missing",
-      });
+      return sendError(res, "Request body is missing", 400);
     }
 
-    const updatedData: any = { ...req.body };
+    const updatedData: Record<string, any> = { ...req.body };
 
     // Trim title & slug
-    if (updatedData.title) updatedData.title = updatedData.title.trim();
+    if (updatedData.title) updatedData.title = String(updatedData.title).trim();
     if (updatedData.slug)
-      updatedData.slug = updatedData.slug.trim().toLowerCase();
+      updatedData.slug = String(updatedData.slug).trim().toLowerCase();
 
     // Parse JSON fields safely
     try {
+      const rawSections = updatedData.sections;
+      const rawFaqs = updatedData.faqs;
       updatedData.sections = updatedData.sections
-        ? JSON.parse(updatedData.sections)
+        ? typeof rawSections === "string"
+          ? JSON.parse(rawSections)
+          : Array.isArray(rawSections)
+            ? rawSections
+            : []
         : [];
-      updatedData.faqs = updatedData.faqs ? JSON.parse(updatedData.faqs) : [];
-    } catch (err) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid JSON format in sections or faqs",
-      });
+      updatedData.faqs = updatedData.faqs
+        ? typeof rawFaqs === "string"
+          ? JSON.parse(rawFaqs)
+          : Array.isArray(rawFaqs)
+            ? rawFaqs
+            : []
+        : [];
+    } catch {
+      return sendError(res, "Invalid JSON format in sections or faqs", 400);
     }
 
     const page = await cmsPageService.updatePage(req.params.id, updatedData);
 
-    return res.status(200).json({
-      success: true,
-      message: "CMS page updated successfully",
-      page,
-    });
+    return sendSuccess(res, "CMS page updated successfully", page, 200, { page });
   } catch (error: any) {
     console.error("Error in updatePage:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to update CMS page",
-    });
+    return sendError(res, error.message || "Failed to update CMS page", 500);
   }
 };
 
@@ -163,17 +160,16 @@ export const togglePageStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const page = await cmsPageService.togglePageStatus(id);
 
-    return res.status(200).json({
-      success: true,
-      message: `CMS page is now ${page.is_active ? "active" : "inactive"}`,
+    return sendSuccess(
+      res,
+      `CMS page is now ${page.is_active ? "active" : "inactive"}`,
       page,
-    });
+      200,
+      { page },
+    );
   } catch (error: any) {
     console.error("Error in togglePageStatus:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to toggle CMS page status",
-    });
+    return sendError(res, error.message || "Failed to toggle CMS page status", 500);
   }
 };
 
@@ -185,29 +181,30 @@ export const deletePage = async (req: Request, res: Response) => {
     const { id } = req.params;
     const page = await cmsPageService.deletePage(id);
 
-    return res.status(200).json({
-      success: true,
-      message: "CMS page deleted successfully (soft delete)",
+    return sendSuccess(
+      res,
+      "CMS page deleted successfully (soft delete)",
       page,
-    });
+      200,
+      { page },
+    );
   } catch (error: any) {
     console.error("Error in deletePage:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to delete CMS page",
-    });
+    return sendError(res, error.message || "Failed to delete CMS page", 500);
   }
 };
 
-export const getPageBySlug = async (req, res) => {
-  const { slug } = req.params;
-  const page = await cmsPageService.findPageBySlug(slug);
+export const getPageBySlug = async (req: Request, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const page = await cmsPageService.findPageBySlug(slug);
 
-  if (!page) {
-    return res
-      .status(404)
-      .json({ success: false, message: "CMS page not found" });
+    if (!page) {
+      return sendError(res, "CMS page not found", 404);
+    }
+
+    return sendSuccess(res, "CMS page fetched successfully", page, 200, { page });
+  } catch (error: any) {
+    return sendError(res, error.message || "Failed to fetch CMS page", 500);
   }
-
-  res.json({ success: true, page });
 };

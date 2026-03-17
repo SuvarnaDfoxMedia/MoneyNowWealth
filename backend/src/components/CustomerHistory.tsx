@@ -1,59 +1,20 @@
 // components/CustomerHistory.tsx
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiFileText } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 import usePaymentHistory from "../hooks/usePaymentHistory";
-
-/* -------------------------------
-   Interfaces (if not already in the hook)
--------------------------------- */
-interface PaymentHistoryItem {
-  paymentId: string;
-  subscriptionId: string;
-  planName: string;
-  amount: number;
-  currency: string;
-  type: "new" | "upgrade" | "downgrade";
-  trialType?: string;
-  status?: string;
-  startDate: string;
-  endDate: string;
-  paymentDate: string;
-  transactionId?: string;
-  orderId?: string;
-}
 
 /* -------------------------------
    Customer History Page
 -------------------------------- */
 export default function CustomerHistoryPage() {
-  const { id, role } = useParams<{ id: string; role: string }>();
+  const { id } = useParams<{ id: string; role: string }>();
   const navigate = useNavigate();
-
-  console.log(" CustomerHistoryPage - User ID from params:", id);
-  console.log(" CustomerHistoryPage - Role from params:", role);
 
   const { data, isLoading, error } = usePaymentHistory(id);
 
   const payments = data?.payments || [];
   const totalPayments = data?.total || 0;
-
-  console.log(" CustomerHistoryPage - Payments data:", payments);
-  console.log(" CustomerHistoryPage - Number of payments:", totalPayments);
-  console.log(" CustomerHistoryPage - Loading state:", isLoading);
-  console.log(" CustomerHistoryPage - Error:", error);
-
-  // Debug: Log each payment
-  payments.forEach((payment, index) => {
-    console.log(` Payment ${index + 1}:`, {
-      paymentId: payment.paymentId,
-      subscriptionId: payment.subscriptionId,
-      planName: payment.planName,
-      type: payment.type,
-      amount: payment.amount,
-      paymentDate: payment.paymentDate,
-    });
-  });
 
   return (
     <div className="w-full p-4">
@@ -136,15 +97,15 @@ export default function CustomerHistoryPage() {
                   <td className="p-4">{p.trialType || "—"}</td>
                   <td className="p-4">
                     {p.startDate
-                      ? new Date(p.startDate).toLocaleDateString()
+                      ? new Date(p.startDate).toLocaleDateString("en-GB")
                       : "—"}
                   </td>
                   <td className="p-4">
-                    {p.endDate ? new Date(p.endDate).toLocaleDateString() : "—"}
+                    {p.endDate ? new Date(p.endDate).toLocaleDateString("en-GB") : "—"}
                   </td>
                   <td className="p-4">
                     {p.paymentDate
-                      ? new Date(p.paymentDate).toLocaleDateString()
+                      ? new Date(p.paymentDate).toLocaleDateString("en-GB")
                       : "—"}
                   </td>
                   <td className="p-4 font-mono text-xs">
@@ -190,3 +151,4 @@ export default function CustomerHistoryPage() {
     </div>
   );
 }
+

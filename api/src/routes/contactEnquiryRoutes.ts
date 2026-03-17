@@ -18,9 +18,12 @@ const adminMiddleware = roleFromUrl(["admin"]);
 
 /* -------------------- ADMIN ROUTES -------------------- */
 // Get all contact enquiries (Admin only)
-router.get("/:role/contact-enquiries", getContactEnquiries);
+router.get("/:role/contact-enquiries", ...adminMiddleware, getContactEnquiries);
 
 // Soft delete contact enquiry (Admin only)
-router.delete("/contact-enquiries/:id", softDeleteContactEnquiry);
+router.delete("/:role/contact-enquiries/delete/:id", ...adminMiddleware, softDeleteContactEnquiry);
+
+// Backward-compatible delete endpoint
+router.delete("/contact-enquiries/:id", ...adminMiddleware, softDeleteContactEnquiry);
 
 export default router;

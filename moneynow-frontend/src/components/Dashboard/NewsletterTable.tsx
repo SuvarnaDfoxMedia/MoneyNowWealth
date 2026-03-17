@@ -67,11 +67,7 @@
 //   const formatDate = (dateValue: string) => {
 //     if (!dateValue) return "-";
 //     const d = new Date(dateValue);
-//     return d.toLocaleDateString("en-IN", {
-//       day: "2-digit",
-//       month: "short",
-//       year: "numeric",
-//     });
+//     return d.toLocaleDateString("en-GB");
 //   };
 
 //   return (
@@ -247,11 +243,7 @@
 //   const formatDate = (dateValue: string) => {
 //     if (!dateValue) return "-";
 //     const d = new Date(dateValue);
-//     return d.toLocaleDateString("en-IN", {
-//       day: "2-digit",
-//       month: "short",
-//       year: "numeric",
-//     });
+//     return d.toLocaleDateString("en-GB");
 //   };
 
 //   return (
@@ -474,11 +466,7 @@ const NewsletterTable = () => {
   const formatDate = (dateValue: string) => {
     if (!dateValue) return "-";
     const d = new Date(dateValue);
-    return d.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+    return d.toLocaleDateString("en-GB");
   };
 
   // Calculate starting index for current page
@@ -618,3 +606,4 @@ const NewsletterTable = () => {
 };
 
 export default NewsletterTable;
+

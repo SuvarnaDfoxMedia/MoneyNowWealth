@@ -4,12 +4,7 @@ import { topicService } from "../services/topicService";
 import Topic from "../models/topicModel";
 import Cluster from "../models/clusterModel";
 import { nanoid } from "nanoid";
-import User from "../models/userModel";
-import dotenv from "dotenv";
-
-dotenv.config(); // Make sure .env variables are loaded
-
-const BASE_URL = process.env.WEBSITE_URL!;
+import { sendError, sendSuccess } from "../utils/apiResponse";
 
 type Request = express.Request;
 type Response = express.Response;
@@ -86,10 +81,20 @@ export const getPublishedClustersTopicsArticles = async (
       },
     ]);
 
-    res.status(200).json({ success: true, count: clusters.length, clusters });
+    return sendSuccess(
+      res,
+      "Published cluster/topic/article data fetched",
+      { clusters, count: clusters.length },
+      200,
+      { clusters, count: clusters.length },
+    );
   } catch (error: any) {
     console.error("Error fetching published clusters/topics/articles:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendError(
+      res,
+      error?.message || "Failed to fetch published cluster/topic/article data",
+      500,
+    );
   }
 };
 
@@ -171,24 +176,25 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
       },
     ]);
 
-    if (!result || result.length === 0)
-      return res.status(404).json({
-        success: false,
-        message: "Topic not found or not published yet",
-      });
+    if (!result || result.length === 0) {
+      return sendError(res, "Topic not found or not published yet", 404);
+    }
 
     const topicData = result[0];
-    res.json({
-      success: true,
-      topic: topicData,
-      cluster: topicData.cluster,
-      articles: topicData.articles,
-    });
+    return sendSuccess(
+      res,
+      "Published topic fetched successfully",
+      topicData,
+      200,
+      {
+        topic: topicData,
+        cluster: topicData.cluster,
+        articles: topicData.articles,
+      },
+    );
   } catch (error: any) {
     console.error("Aggregation get topic by ID error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -229,8 +235,7 @@ export const getTopics = async (req: Request, res: Response) => {
       perPage,
     );
 
-    res.json({
-      success: true,
+    return sendSuccess(res, "Topics fetched successfully", topics, 200, {
       topics,
       total,
       page: pageNum,
@@ -238,10 +243,7 @@ export const getTopics = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Get topics error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -250,17 +252,14 @@ export const getTopicById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const topic = await topicService.getById(id);
 
-    if (!topic)
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+    if (!topic) {
+      return sendError(res, "Topic not found", 404);
+    }
 
-    res.json({ success: true, topic });
+    return sendSuccess(res, "Topic fetched successfully", topic, 200, { topic });
   } catch (error: any) {
     console.error("Get topic by ID error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -301,16 +300,21 @@ export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
     ]);
 
     if (!result.length) {
-      return res.status(404).json({ success: false });
+      return sendError(res, "Topic not found", 404);
     }
 
-    res.json({
-      success: true,
-      topic: result[0],
-      articles: result[0].articles,
-    });
+    return sendSuccess(
+      res,
+      "Published topic fetched successfully",
+      result[0],
+      200,
+      {
+        topic: result[0],
+        articles: result[0].articles,
+      },
+    );
   } catch (err) {
-    res.status(500).json({ success: false });
+    return sendError(res, "Server error", 500);
   }
 };
 
@@ -356,19 +360,22 @@ export const getPublishedTopicByClusterAndSlug = async (
     ]);
 
     if (!result.length) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+      return sendError(res, "Topic not found", 404);
     }
 
-    res.json({
-      success: true,
-      topic: result[0],
-      articles: result[0].articles,
-    });
+    return sendSuccess(
+      res,
+      "Published topic fetched successfully",
+      result[0],
+      200,
+      {
+        topic: result[0],
+        articles: result[0].articles,
+      },
+    );
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return sendError(res, "Server error", 500);
   }
 };
 
@@ -391,10 +398,7 @@ export const addTopic = async (req: Request, res: Response) => {
     } = req.body;
 
     if (!cluster_id || !title || !slug) {
-      return res.status(400).json({
-        success: false,
-        message: "cluster_id, title, and slug are required",
-      });
+      return sendError(res, "cluster_id, title, and slug are required", 400);
     }
 
     const topic_code = `TOPIC-${Date.now()}-${nanoid(6)}`;
@@ -427,26 +431,16 @@ export const addTopic = async (req: Request, res: Response) => {
 
     const topic = await topicService.create(topicData);
 
-    res.status(201).json({
-      success: true,
-      topic,
-    });
+    return sendSuccess(res, "Topic created successfully", topic, 201, { topic });
   } catch (error: any) {
     console.error("Add topic error:", error);
 
     if (error?.code === 11000) {
       const dupKey = error.keyValue ? Object.keys(error.keyValue)[0] : "field";
-      return res.status(400).json({
-        success: false,
-        message: `${dupKey} already exists`,
-        field: dupKey,
-      });
+      return sendError(res, `${dupKey} already exists`, 400, { field: dupKey });
     }
 
-    res.status(500).json({
-      success: false,
-      message: error.message || "Server error",
-    });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -470,27 +464,20 @@ export const updateTopic = async (req: Request, res: Response) => {
 
     const topic = await topicService.update(id, updateData);
 
-    if (!topic)
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+    if (!topic) {
+      return sendError(res, "Topic not found", 404);
+    }
 
-    res.json({ success: true, topic });
+    return sendSuccess(res, "Topic updated successfully", topic, 200, { topic });
   } catch (error: any) {
     console.error("Update topic error:", error);
 
     if (error?.code === 11000) {
       const dupKey = error.keyValue ? Object.keys(error.keyValue)[0] : "field";
-      return res.status(400).json({
-        success: false,
-        message: `${dupKey} already exists`,
-        field: dupKey,
-      });
+      return sendError(res, `${dupKey} already exists`, 400, { field: dupKey });
     }
 
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -500,25 +487,24 @@ export const toggleTopicStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const topic = await Topic.findById(id);
 
-    if (!topic)
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+    if (!topic) {
+      return sendError(res, "Topic not found", 404);
+    }
 
     topic.is_active = topic.is_active === 1 ? 0 : 1;
     topic.updated_at = new Date();
     await topic.save();
 
-    res.json({
-      success: true,
-      message: topic.is_active === 1 ? "Active" : "Inactive",
-      data: { _id: topic._id, is_active: topic.is_active },
-    });
+    return sendSuccess(
+      res,
+      topic.is_active === 1 ? "Active" : "Inactive",
+      { _id: topic._id, is_active: topic.is_active },
+      200,
+      { data: { _id: topic._id, is_active: topic.is_active } },
+    );
   } catch (error: any) {
     console.error("Toggle is_active error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -528,20 +514,14 @@ export const deleteTopic = async (req: Request, res: Response) => {
     const { id } = req.params;
     const topic = await topicService.softDelete(id);
 
-    if (!topic)
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+    if (!topic) {
+      return sendError(res, "Topic not found", 404);
+    }
 
-    res.json({
-      success: true,
-      message: "Topic deleted successfully",
-    });
+    return sendSuccess(res, "Topic deleted successfully", topic);
   } catch (error: any) {
     console.error("Delete topic error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -551,20 +531,14 @@ export const restoreTopic = async (req: Request, res: Response) => {
     const { id } = req.params;
     const topic = await topicService.restore(id);
 
-    if (!topic)
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+    if (!topic) {
+      return sendError(res, "Topic not found", 404);
+    }
 
-    res.json({
-      success: true,
-      message: "Topic restored successfully",
-    });
+    return sendSuccess(res, "Topic restored successfully", topic);
   } catch (error: any) {
     console.error("Restore topic error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };
 
@@ -572,16 +546,10 @@ export const getTopicList = async (_req: Request, res: Response) => {
   try {
     const topics = await topicService.getTopicList();
 
-    res.status(200).json({
-      success: true,
-      data: topics,
-    });
+    return sendSuccess(res, "Topic list fetched successfully", topics);
   } catch (error) {
     console.error("Get Topic List Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch topic list",
-    });
+    return sendError(res, "Failed to fetch topic list", 500);
   }
 };
 
@@ -593,21 +561,18 @@ export const publishTopic = async (req: Request, res: Response) => {
     const topic = await topicService.publishTopic(id);
 
     if (!topic) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Topic not found" });
+      return sendError(res, "Topic not found", 404);
     }
 
-    res.json({
-      success: true,
-      message:
-        "Topic published successfully. Email notifications will be sent via scheduler.",
+    return sendSuccess(
+      res,
+      "Topic published successfully. Email notifications will be sent via scheduler.",
       topic,
-    });
+      200,
+      { topic },
+    );
   } catch (error: any) {
     console.error("Publish topic error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: error.message || "Server error" });
+    return sendError(res, error?.message || "Server error", 500);
   }
 };

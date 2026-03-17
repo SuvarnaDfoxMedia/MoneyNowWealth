@@ -413,9 +413,10 @@ export default function CmsPageListing() {
   }, [MODULE_KEY]);
 
   /* ------------------- Fetch CMS Pages ------------------- */
-  const { data, isLoading, refetch, deleteRecord } = useCommonCrud({
+  const { data, extractList, isLoading, refetch, deleteRecord } = useCommonCrud({
     module: "cmspages",
     role: "admin",
+    listKey: "data",
     page,
     limit: recordsPerPage,
     searchValue,
@@ -430,13 +431,11 @@ export default function CmsPageListing() {
 
   /* ------------------- Sync API → State ------------------- */
   useEffect(() => {
-    if (data?.pages) {
-      const filtered = data.pages.filter(
-        (p: CmsPage) => p.status !== "archived",
-      );
-      setPages(filtered);
-    }
-  }, [data]);
+    const filtered = (extractList as CmsPage[]).filter(
+      (p: CmsPage) => p.status !== "archived",
+    );
+    setPages(filtered);
+  }, [extractList]);
 
   /* ------------------- Debounced search + sort + pagination ------------------- */
   useEffect(() => {
@@ -696,22 +695,24 @@ export default function CmsPageListing() {
       {/* Delete Modal */}
       {deleteModalId &&
         createPortal(
-          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-[99999]">
-            <div className="bg-white p-6 rounded-xl w-96">
-              <h3 className="text-lg font-semibold">Confirm Delete</h3>
-              <p className="my-4 text-gray-600">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirm Delete
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
                 Are you sure you want to delete this page?
               </p>
-              <div className="flex justify-end gap-3">
+              <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteModalId(null)}
-                  className="border px-4 py-2 rounded-lg"
+                  className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg"
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
                 >
                   Delete
                 </button>

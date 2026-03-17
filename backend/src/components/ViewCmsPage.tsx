@@ -118,11 +118,7 @@ export default function ViewCmsPage() {
           <div className="text-gray-500 text-sm mb-8">
             <span>
               {page.created_at
-                ? new Date(page.created_at).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                ? new Date(page.created_at).toLocaleDateString("en-GB")
                 : ""}
             </span>{" "}
             • <span>{page.status || "draft"}</span>{" "}
@@ -206,3 +202,4 @@ export default function ViewCmsPage() {
     </div>
   );
 }
+

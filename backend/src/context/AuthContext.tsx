@@ -1,98 +1,90 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
 import axios from "axios";
+import { AuthContext, User } from "./authContextCore";
+const backendUrl =
+  (import.meta.env.VITE_API_BASE as string | undefined)?.trim() || "/api";
 
-export interface User {
-  _id: string;
-  firstname?: string;
-  lastname?: string;
-  email?: string;
-  role: "admin" | "user" | "editor";
-  profileImage?: string | null;
-  phone?: string;
-  address?: string;
-  countryCode?: string;
-}
+const extractUserPayload = (responseData: any) =>
+  responseData?.data ?? responseData?.user ?? responseData;
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-}
+const normalizeUser = (raw: any): User => {
+  const role = String(raw?.role || "").trim().toLowerCase();
+  const safeRole: User["role"] =
+    role === "admin" || role === "editor" || role === "user" ? role : "user";
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const backendUrl = import.meta.env.VITE_API_BASE;
+  return {
+    ...raw,
+    role: safeRole,
+    firstname: raw?.firstname || "",
+    lastname: raw?.lastname || "",
+    phone: raw?.phone || "",
+    address: raw?.address || "",
+    profileImage: raw?.profileImage || null,
+    countryCode: raw?.countryCode || "",
+  };
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const clearAuth = () => setUser(null);
+  const clearAuth = useCallback(() => setUser(null), []);
 
   /* ------------------------------ REFRESH USER ------------------------------ */
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
-      const res = await axios.get(`${backendUrl}/get-profile`, { withCredentials: true });
-      const data = res.data.user || res.data;
-
-      setUser({
-        ...data,
-        firstname: data.firstname || "",
-        lastname: data.lastname || "",
-        phone: data.phone || "",
-        address: data.address || "",
-        profileImage: data.profileImage || null,
-        countryCode: data.countryCode || "",
+      const res = await axios.get(`${backendUrl}/admin/profile/me`, {
+        withCredentials: true,
       });
+      const data = extractUserPayload(res.data);
+      setUser(normalizeUser(data));
     } catch {
       try {
-        const res = await axios.get(`${backendUrl}/get-profile`, { withCredentials: true });
-        const data = res.data.user || res.data;
-        setUser({
-          ...data,
-          firstname: data.firstname || "",
-          lastname: data.lastname || "",
-          phone: data.phone || "",
-          address: data.address || "",
-          profileImage: data.profileImage || null,
+        const res = await axios.get(`${backendUrl}/admin/profile/me`, {
+          withCredentials: true,
         });
+        const data = extractUserPayload(res.data);
+        setUser(normalizeUser(data));
       } catch {
         clearAuth();
       }
     }
-  };
+  }, [clearAuth]);
 
   /* ------------------------------ LOGIN ------------------------------ */
   const login = async (email: string, password: string) => {
     try {
       const res = await axios.post(
-        `${backendUrl}/auth/login`,
+        `${backendUrl}/auth/admin/login`,
         { email, password },
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       const data = res.data.user;
       if (!data) throw new Error("Invalid credentials");
 
-      setUser({
-        ...data,
-        firstname: data.firstname || "",
-        lastname: data.lastname || "",
-        phone: data.phone || "",
-        address: data.address || "",
-        profileImage: data.profileImage || null,
-        countryCode: data.countryCode || "",
-      });
+      setUser(normalizeUser(data));
 
-      // Refresh user data to get complete profile including countryCode
-      // because login endpoint doesn't return countryCode but get-profile does
+      // Refresh user data from admin-scoped session endpoint.
       setTimeout(() => {
         refreshUser();
       }, 500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearAuth();
-      const msg = err.response?.data?.message || "Invalid email or password";
+      const msg =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response
+          ?.data?.message === "string"
+          ? (err as { response?: { data?: { message?: string } } }).response!
+              .data!.message!
+          : "Invalid email or password";
       throw new Error(msg);
     }
   };
@@ -100,12 +92,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   /* ------------------------------ LOGOUT ------------------------------ */
   const logout = async () => {
     try {
-      await axios.post(`${backendUrl}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`${backendUrl}/auth/admin/logout`, {}, { withCredentials: true });
     } catch (err) {
       console.error("Logout failed", err);
     } finally {
       clearAuth();
-      window.location.href = "/signin";
+      if (typeof window !== "undefined") {
+        window.location.href = "/signin";
+      }
     }
   };
 
@@ -116,42 +110,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     };
     init();
-  }, []);
+  }, [refreshUser]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-/* ------------------------------ USE AUTH HOOK ------------------------------ */
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
-};
-
-/* ------------------------------ EXTRA HELPERS ------------------------------ */
-export const refreshAuthUser = async () => {
-  try {
-    const res = await axios.get(`${backendUrl}/get-profile`, { withCredentials: true });
-    const data = res.data.user || res.data;
-    return {
-      ...data,
-      firstname: data.firstname || "",
-      lastname: data.lastname || "",
-      phone: data.phone || "",
-      address: data.address || "",
-      profileImage: data.profileImage || null,
-    };
-  } catch {
-    throw new Error("Refresh failed");
-  }
-};
-
-export const logoutAuth = async () => {
-  try {
-    await axios.post(`${backendUrl}/auth/logout`, {}, { withCredentials: true });
-  } catch {}
 };

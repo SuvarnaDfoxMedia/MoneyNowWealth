@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   FiSave,
   FiRefreshCw,
@@ -23,16 +23,30 @@ interface ClusterForm {
 }
 
 interface ClusterResponse {
-  data?: { cluster?: any };
-  cluster?: any;
+  data?: { cluster?: Partial<ClusterForm> };
+  cluster?: Partial<ClusterForm>;
 }
 
+const API_ORIGIN =
+  (import.meta.env.VITE_API_BASE as string | undefined)?.replace("/api", "") ||
+  "";
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object" && "message" in error) {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+  }
+  return fallback;
+};
+
 export default function AddCluster() {
-  const { id } = useParams();
+  const { id, role } = useParams<{ id?: string; role?: string }>();
   const navigate = useNavigate();
 
   const { getOne, createRecord, updateRecord } = useCommonCrud({
-    role: "admin",
+    role: role || "admin",
     module: "cluster",
   });
 
@@ -59,6 +73,10 @@ export default function AddCluster() {
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const thumbnailRef = useRef<HTMLInputElement>(null);
 
+  const inputClass =
+    "w-full h-11 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-200";
+  const labelClass = "block mb-2 text-sm font-medium text-gray-700";
+
   // Helper to generate slug
   const generateSlug = (text: string) =>
     text
@@ -73,13 +91,13 @@ export default function AddCluster() {
     (async () => {
       try {
         const res = (await getOne(id)) as ClusterResponse;
-        const cluster = res?.data?.cluster || res?.cluster || res;
+        const cluster = (res?.data?.cluster || res?.cluster || {}) as Partial<ClusterForm>;
 
         if (!cluster) return;
 
         const thumb = cluster.thumbnail || "";
         const fullUrl = thumb
-          ? `${import.meta.env.VITE_API_BASE.replace("/api", "")}/uploads/thumbnail/${thumb}`
+          ? `${API_ORIGIN}/uploads/thumbnail/${thumb}`
           : null;
 
         const clusterValues: ClusterForm = {
@@ -101,7 +119,7 @@ export default function AddCluster() {
         toast.error("Failed to fetch cluster data");
       }
     })();
-  }, [id]);
+  }, [id, getOne]);
 
   // Handle file upload
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -193,10 +211,10 @@ export default function AddCluster() {
         toast.success("Cluster created successfully");
       }
 
-      navigate(`/admin/cluster`);
-    } catch (error: any) {
+      navigate(`/${role || "admin"}/cluster`);
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.message || "Failed to save cluster");
+      toast.error(getErrorMessage(error, "Failed to save cluster"));
     } finally {
       setIsSubmitting(false);
     }
@@ -208,7 +226,7 @@ export default function AddCluster() {
       setValues(originalValues);
       setPreview(
         originalValues.thumbnail
-          ? `${import.meta.env.VITE_API_BASE.replace("/api", "")}/uploads/thumbnail/${originalValues.thumbnail}`
+          ? `${API_ORIGIN}/uploads/thumbnail/${originalValues.thumbnail}`
           : null,
       );
     } else {
@@ -230,26 +248,24 @@ export default function AddCluster() {
   };
 
   return (
-    <div className="p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-semibold text-gray-800">
+    <div className="p-6 md:p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
+      <div className="flex justify-between items-center mb-6 md:mb-8">
+        <h2 className="text-2xl font-semibold text-[#043f79]">
           {id ? "Edit Cluster" : "Add Cluster"}
         </h2>
         <button
-          onClick={() => navigate(`/admin/cluster`)}
+          onClick={() => navigate(`/${role || "admin"}/cluster`)}
           className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition"
         >
           <FiArrowLeft /> Back
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Title + Slug */}
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">
-              Title
-            </label>
+            <label className={labelClass}>Title</label>
             <input
               ref={titleRef}
               type="text"
@@ -257,19 +273,17 @@ export default function AddCluster() {
               value={values.title}
               onChange={handleChange}
               placeholder="Enter cluster title"
-              className={`w-full border rounded-md px-4 py-2 focus:outline-none ${
+              className={`${inputClass} ${
                 errors.title
                   ? "border-red-500"
-                  : "border-gray-300 focus:ring-2 focus:ring-blue-200"
+                  : ""
               }`}
             />
             {errors.title && (
               <p className="text-red-500 text-sm mt-1">{errors.title}</p>
             )}
 
-            <label className="block mb-2 mt-4 text-gray-700 font-medium">
-              Slug
-            </label>
+            <label className={`${labelClass} mt-4`}>Slug</label>
             <input
               ref={slugRef}
               type="text"
@@ -277,10 +291,10 @@ export default function AddCluster() {
               value={values.slug}
               onChange={handleChange}
               placeholder="Auto-generated from title"
-              className={`w-full border rounded-md px-4 py-2 focus:outline-none ${
+              className={`${inputClass} ${
                 errors.slug
                   ? "border-red-500"
-                  : "border-gray-300 focus:ring-2 focus:ring-blue-200"
+                  : ""
               }`}
             />
             {errors.slug && (
@@ -290,10 +304,8 @@ export default function AddCluster() {
 
           {/* Thumbnail */}
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">
-              Thumbnail
-            </label>
-            <label className="flex border border-gray-300 rounded-md px-4 py-2 text-gray-600 cursor-pointer items-center justify-center gap-2 hover:bg-gray-50 transition">
+            <label className={labelClass}>Thumbnail</label>
+            <label className="flex h-11 border border-gray-300 rounded-lg px-4 text-gray-600 cursor-pointer items-center justify-center gap-2 hover:bg-gray-50 transition">
               <FiUpload className="text-gray-500" />
               <span>Upload Image</span>
               <input
@@ -342,19 +354,17 @@ export default function AddCluster() {
 
         {/* Description */}
         <div>
-          <label className="block mb-2 text-gray-700 font-medium">
-            Description
-          </label>
+          <label className={labelClass}>Description</label>
           <textarea
             ref={descriptionRef}
             name="description"
             value={values.description}
             onChange={handleChange}
             placeholder="Enter cluster description"
-            className={`w-full border rounded-md px-4 py-2 focus:outline-none ${
+            className={`w-full min-h-28 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-200 ${
               errors.description
                 ? "border-red-500"
-                : "border-gray-300 focus:ring-2 focus:ring-blue-200"
+                : ""
             }`}
             rows={4}
           />
@@ -364,16 +374,14 @@ export default function AddCluster() {
         </div>
 
         {/* Status + Sort Order */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">
-              Status
-            </label>
+            <label className={labelClass}>Status</label>
             <select
               name="status"
               value={values.status}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-200 focus:outline-none"
+              className={inputClass}
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
@@ -382,15 +390,13 @@ export default function AddCluster() {
           </div>
 
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">
-              Sort Order
-            </label>
+            <label className={labelClass}>Sort Order</label>
             <input
               type="number"
               name="sort_order"
               value={values.sort_order}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-200 focus:outline-none"
+              className={inputClass}
             />
           </div>
         </div>
@@ -408,11 +414,11 @@ export default function AddCluster() {
         </div>
 
         {/* Buttons */}
-        <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
           <button
             type="button"
             onClick={handleReset}
-            className="flex items-center gap-2 bg-gray-200 text-gray-700 px-5 py-2.5 rounded-md hover:bg-gray-300 transition"
+            className="flex items-center gap-2 bg-gray-200 text-gray-700 px-5 h-11 rounded-lg hover:bg-gray-300 transition"
           >
             <FiRefreshCw /> Reset
           </button>
@@ -420,7 +426,7 @@ export default function AddCluster() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex items-center gap-2 bg-[#043f79] text-white px-6 py-2.5 rounded-md hover:bg-[#0654a4] transition"
+            className="flex items-center gap-2 bg-[#043f79] text-white px-6 h-11 rounded-lg hover:bg-[#0654a4] transition"
           >
             <FiSave /> {isSubmitting ? "Saving..." : id ? "Update" : "Save"}
           </button>

@@ -72,17 +72,29 @@ export const useDataTableStore = create<TableState>((set, get) => ({
   lastAction: null,
   moduleCache: {},
 
-  setPage: (page) => set({ page }),
+  setPage: (page) => {
+    const currentPage = get().page;
+    if (currentPage === page) return;
+    set({ page });
+  },
 
   setRecordsPerPage: (recordsPerPage) => {
+    const state = get();
+    if (state.recordsPerPage === recordsPerPage && state.page === 1) return;
     set({ recordsPerPage, page: 1 });
   },
 
   setSearchValue: (searchValue) => {
+    const state = get();
+    if (state.searchValue === searchValue && state.page === 1) return;
     set({ searchValue, page: 1 });
   },
 
-  setSort: (sortField, sortOrder) => set({ sortField, sortOrder }),
+  setSort: (sortField, sortOrder) => {
+    const state = get();
+    if (state.sortField === sortField && state.sortOrder === sortOrder) return;
+    set({ sortField, sortOrder });
+  },
 
   setCurrentModule: (module) => {
     const state = get();
@@ -91,7 +103,9 @@ export const useDataTableStore = create<TableState>((set, get) => ({
     if (state.currentModule && state.currentModule !== module) {
       set({ lastAction: "tab-switch", currentModule: module, page: 1 });
     } else {
-      set({ currentModule: module });
+      if (state.currentModule !== module) {
+        set({ currentModule: module });
+      }
     }
   },
 

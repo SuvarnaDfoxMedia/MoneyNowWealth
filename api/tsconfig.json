@@ -7,7 +7,7 @@
     "strict": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     "paths": {
       "@/*": ["./src/*"]
