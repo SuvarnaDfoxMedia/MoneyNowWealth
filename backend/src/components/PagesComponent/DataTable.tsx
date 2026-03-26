@@ -266,9 +266,6 @@ function DataTableComponent<T = Record<string, unknown>>({
   );
 }
 
-// Export with memo for performance
 export const DataTable = React.memo(
   DataTableComponent,
 ) as typeof DataTableComponent;
-
-

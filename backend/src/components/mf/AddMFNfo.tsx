@@ -320,9 +320,7 @@ export default function AddMFNfo() {
             {error(errors.amc_name)}
           </div>
 
-       
-
-          <div>
+<div>
             <label htmlFor="subscription_start_date" className="block mb-2 text-gray-700 font-medium">Subscription Start Date</label>
             <div className="relative">
               <DatePicker

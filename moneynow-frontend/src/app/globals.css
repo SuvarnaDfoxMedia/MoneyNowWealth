@@ -83,7 +83,7 @@ body {
 .iti input {
   width: 100% !important;
   padding-left: 90px !important;
-  height: 44px !important;
+  height: 50px !important;
   border-radius: 0 !important;
   border: 1px solid #d1d5db !important;
 }
@@ -100,7 +100,9 @@ body {
 
 
 html {
-  scroll-padding-top: 100px;
+  /* scroll-padding-top: 100px; */
+    scroll-behavior: smooth;
+
 }
 
 /* Add to your global CSS or component style */
@@ -154,4 +156,15 @@ html {
   box-shadow: none !important;
   text-shadow: none !important;
   filter: none !important;
+}
+
+@layer base {
+  a, 
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }

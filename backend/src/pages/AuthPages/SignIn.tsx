@@ -8,9 +8,7 @@ export default function SignIn() {
         title="Sign In | MoneyNowWealth"
         description="MoneyNowWealth"
       />
-      {/* <AuthLayout> */}
         <SignInForm />
-      {/* </AuthLayout> */}
     </>
   );
 }

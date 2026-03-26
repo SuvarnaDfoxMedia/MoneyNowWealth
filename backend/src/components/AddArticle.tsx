@@ -1,3 +1,21 @@
+
+
+// // const generateSlug = (text: string) =>
+// //   text
+// //     .toLowerCase()
+// //     .trim()
+// //     .replace(/[^a-z0-9\s-]/g, "")
+// //     .replace(/\s+/g, "-")
+// //     .replace(/-+/g, "-");
+
+// const generateSlug = (text: string) =>
+//   text
+//     .toLowerCase()
+//     .trim()
+//     .replace(/[^a-z0-9\s-]/g, "")
+//     .replace(/\s+/g, "-")
+//     .replace(/-+/g, "-");
+
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -6,6 +24,10 @@ import {
   FiArrowLeft,
   FiPlus,
   FiTrash2,
+  FiChevronDown,
+  FiSearch,
+  FiUpload,
+  FiX,
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { RichTextField } from "../components/PagesComponent/RichTextField";
@@ -105,6 +127,7 @@ export default function AddArticle() {
   const topicWrapperRef = useRef<HTMLDivElement>(null);
   const [topicSearch, setTopicSearch] = useState<string>("");
   const [editorKey, setEditorKey] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -236,6 +259,14 @@ export default function AddArticle() {
     img.src = objectUrl;
   };
 
+  const removeImage = () => {
+    setFile(null);
+    setPreviewUrl("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   // Dynamic arrays
   const addItem = (key: keyof ArticleForm, item: any) =>
     setValues((prev) => ({ ...prev, [key]: [...(prev[key] as any[]), item] }));
@@ -268,6 +299,13 @@ export default function AddArticle() {
     setErrors({});
     setSlugEdited(false);
     setEditorKey((prev) => prev + 1); // reset editors
+  };
+
+  // Get selected topic title
+  const getSelectedTopicTitle = () => {
+    if (topics.length === 0) return "Loading topics...";
+    const selected = topics.find((t) => t._id === values.topic_id);
+    return selected?.title || "-- Select Topic --";
   };
 
   // Submit
@@ -318,77 +356,91 @@ export default function AddArticle() {
       <form onSubmit={onSubmit} className="space-y-8">
         {/* Topic & Title */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Topic Dropdown */}
+          {/* Topic Dropdown with Search */}
           <div ref={topicWrapperRef} className="relative">
-            <label className="block mb-2 text-gray-700 font-medium">Topic</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Topic
+            </label>
             <div
               onClick={() => setTopicDropdownOpen((prev) => !prev)}
               className={`w-full h-11 px-3 rounded-md flex justify-between items-center cursor-pointer border ${
                 errors.topic_id ? "border-red-500" : "border-gray-300"
-              }`}
+              } bg-white hover:border-gray-400 transition-colors`}
             >
-              <span>
-                {topics.length === 0
-                  ? "Loading topics..."
-                  : (topics.find((t) => t._id === values.topic_id)?.title ??
-                    "-- Select Topic --")}
-              </span>
-              <svg
-                className={`w-4 h-4 transform transition-transform ${topicDropdownOpen ? "rotate-180" : "rotate-0"}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <span
+                className={`${!values.topic_id ? "text-gray-500" : "text-gray-700"}`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+                {getSelectedTopicTitle()}
+              </span>
+              <FiChevronDown
+                className={`w-4 h-4 text-gray-400 transition-transform ${
+                  topicDropdownOpen ? "rotate-180" : "rotate-0"
+                }`}
+              />
             </div>
             {errors.topic_id && (
               <p className="text-red-500 text-sm mt-1">{errors.topic_id}</p>
             )}
+
             {topicDropdownOpen && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md max-h-60 overflow-y-auto shadow-lg">
-                <input
-                  type="text"
-                  placeholder="Search topic..."
-                  value={topicSearch}
-                  onChange={(e) => setTopicSearch(e.target.value)}
-                  className={`${inputClass} border-0 border-b border-gray-200 rounded-none`}
-                />
-                {topics
-                  .filter((t) =>
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg overflow-hidden">
+                {/* Search Input with Icon */}
+                <div className="relative border-b border-gray-200">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search topic..."
+                    value={topicSearch}
+                    onChange={(e) => setTopicSearch(e.target.value)}
+                    className="w-full h-10 pl-9 pr-3 text-sm focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Options List */}
+                <div className="max-h-60 overflow-y-auto">
+                  {topics.filter((t) =>
                     t.title.toLowerCase().includes(topicSearch.toLowerCase()),
-                  )
-                  .map((t) => (
-                    <div
-                      key={t._id}
-                      onClick={() => {
-                        setValues((prev) => ({ ...prev, topic_id: t._id }));
-                        setTopicDropdownOpen(false);
-                        setTopicSearch("");
-                        setErrors((prev) => ({ ...prev, topic_id: "" }));
-                      }}
-                      className={`p-2 cursor-pointer hover:bg-blue-100 ${values.topic_id === t._id ? "bg-blue-50 font-medium" : ""}`}
-                    >
-                      {t.title}
+                  ).length > 0 ? (
+                    topics
+                      .filter((t) =>
+                        t.title
+                          .toLowerCase()
+                          .includes(topicSearch.toLowerCase()),
+                      )
+                      .map((t) => (
+                        <div
+                          key={t._id}
+                          onClick={() => {
+                            setValues((prev) => ({ ...prev, topic_id: t._id }));
+                            setTopicDropdownOpen(false);
+                            setTopicSearch("");
+                            setErrors((prev) => ({ ...prev, topic_id: "" }));
+                          }}
+                          className={`px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors ${
+                            values.topic_id === t._id
+                              ? "bg-blue-50 text-blue-700 font-medium"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {t.title}
+                        </div>
+                      ))
+                  ) : (
+                    <div className="px-3 py-4 text-center text-gray-400 text-sm">
+                      No topics found
                     </div>
-                  ))}
-                {topics.filter((t) =>
-                  t.title.toLowerCase().includes(topicSearch.toLowerCase()),
-                ).length === 0 && (
-                  <p className="text-gray-400 text-sm p-2">No topics found.</p>
-                )}
+                  )}
+                </div>
               </div>
             )}
           </div>
 
           {/* Title Input */}
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Title</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Title
+            </label>
             <input
               name="title"
               value={values.title}
@@ -415,7 +467,9 @@ export default function AddArticle() {
             />
           </div>
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">SEO Title</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              SEO Title
+            </label>
             <input
               name="seo_title"
               value={values.seo_title}
@@ -442,7 +496,9 @@ export default function AddArticle() {
 
         {/* SEO Description */}
         <div>
-          <label className="block mb-2 text-gray-700 font-medium">SEO Description</label>
+          <label className="block mb-2 text-gray-700 font-medium">
+            SEO Description
+          </label>
           <textarea
             name="seo_description"
             value={values.seo_description}
@@ -455,29 +511,69 @@ export default function AddArticle() {
         {/* Hero Image & Keyword */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="font-medium text-gray-700">
+            <label className="font-medium text-gray-700 block mb-2">
               Hero Image{" "}
               <span className="text-sm text-gray-500">(1140×590)</span>
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleHeroImageChange}
-              className="mt-2"
-            />
-            {previewUrl && (
-              <img
-                src={previewUrl}
-                alt="Hero Preview"
-                className="mt-3 w-64 h-36 object-cover rounded-md border"
-              />
-            )}
+
+            {/* Image Upload Area */}
+            <div className="space-y-3">
+              {!previewUrl ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                >
+                  <FiUpload className="mx-auto text-gray-400 mb-2" size={40} />
+                  <p className="text-sm text-gray-500">Click to upload</p>
+                  <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHeroImageChange}
+                    className="hidden"
+                  />
+                </div>
+              ) : (
+                <div className="relative" style={{ width: "280px" }}>
+                  <img
+                    src={previewUrl}
+                    alt="Hero Preview"
+                    className="w-full h-40 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition shadow-md"
+                  >
+                    <FiX size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Change image
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleHeroImageChange}
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
             {errors.hero_image && (
-              <p className="text-red-500 text-sm">{errors.hero_image}</p>
+              <p className="text-red-500 text-sm mt-2">{errors.hero_image}</p>
             )}
           </div>
+
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Focus Keyword</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Focus Keyword
+            </label>
             <input
               name="focus_keyword"
               value={values.focus_keyword}
@@ -490,7 +586,9 @@ export default function AddArticle() {
         {/* Status & Author */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Status</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Status
+            </label>
             <select
               name="status"
               value={values.status}
@@ -503,7 +601,9 @@ export default function AddArticle() {
             </select>
           </div>
           <div>
-            <label className="block mb-2 text-gray-700 font-medium">Author</label>
+            <label className="block mb-2 text-gray-700 font-medium">
+              Author
+            </label>
             <input
               name="author"
               value={values.author}
@@ -633,7 +733,7 @@ export default function AddArticle() {
             disabled={isSubmitting}
             className="flex items-center gap-2 bg-[#043f79] text-white px-6 py-2.5 rounded-md hover:bg-[#0654a4] transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FiSave /> {id ? "Update" : "Save"}
+            <FiSave /> {isSubmitting ? "Saving..." : id ? "Update" : "Save"}
           </button>
         </div>
       </form>

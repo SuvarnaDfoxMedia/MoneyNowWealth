@@ -175,7 +175,7 @@ export default function FreeCalculators() {
   ---------------------------------------- */
   return (
     <section className="w-full py-6 font-inter">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto ">
         <p className="text-[28px] text-center font-semibold mb-6 border-[#E8e8e8] border-b pb-4">
           Calculators
         </p>

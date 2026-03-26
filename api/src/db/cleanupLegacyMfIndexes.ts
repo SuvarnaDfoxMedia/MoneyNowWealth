@@ -5,6 +5,7 @@ const legacyIndexMap: Record<string, string[]> = {
   mfnfos: ["nfo_id_1", "slug_1", "code_1"],
   mfmaincategories: ["code_1"],
   mfcategories: ["code_1"],
+  users: ["countryCode_1_mobile_1"],
 };
 
 export const cleanupLegacyMfIndexes = async () => {

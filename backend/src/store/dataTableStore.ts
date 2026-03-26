@@ -1,32 +1,14 @@
-// import { create } from "zustand";
 
-// interface TableState {
-//   page: number;
-//   recordsPerPage: number;
-//   searchValue: string;
-//   sortField: string;
-//   sortOrder: "asc" | "desc";
-
-//   setPage: (page: number) => void;
-//   setRecordsPerPage: (records: number) => void;
-//   setSearchValue: (value: string) => void;
-//   setSort: (field: string, order: "asc" | "desc") => void;
-// }
-
-// export const useDataTableStore = create<TableState>((set) => ({
-//   page: 1,
-//   recordsPerPage: 10,
-//   searchValue: "",
-//   sortField: "",
-//   sortOrder: "asc",
-
-//   setPage: (page) => set({ page }),
-//   setRecordsPerPage: (recordsPerPage) => set({ recordsPerPage }), // Remove page: 1
-//   setSearchValue: (searchValue) => set({ searchValue }), // Remove page: 1
-//   setSort: (sortField, sortOrder) => set({ sortField, sortOrder }), // Remove page: 1
-// }));
 
 import { create } from "zustand";
+
+const DEFAULT_TABLE_STATE = {
+  page: 1,
+  recordsPerPage: 10,
+  searchValue: "",
+  sortField: "",
+  sortOrder: "asc" as const,
+};
 
 interface TableState {
   page: number;
@@ -42,6 +24,7 @@ interface TableState {
     string,
     {
       page: number;
+      recordsPerPage: number;
       searchValue: string;
       sortField: string;
       sortOrder: "asc" | "desc";
@@ -62,11 +45,7 @@ interface TableState {
 }
 
 export const useDataTableStore = create<TableState>((set, get) => ({
-  page: 1,
-  recordsPerPage: 10,
-  searchValue: "",
-  sortField: "",
-  sortOrder: "asc",
+  ...DEFAULT_TABLE_STATE,
 
   currentModule: null,
   lastAction: null,
@@ -98,15 +77,23 @@ export const useDataTableStore = create<TableState>((set, get) => ({
 
   setCurrentModule: (module) => {
     const state = get();
+    if (state.currentModule === module) return;
 
-    // If switching to a different module, mark as tab switch
-    if (state.currentModule && state.currentModule !== module) {
-      set({ lastAction: "tab-switch", currentModule: module, page: 1 });
-    } else {
-      if (state.currentModule !== module) {
-        set({ currentModule: module });
-      }
-    }
+    const cached = state.moduleCache[module];
+
+    set({
+      currentModule: module,
+      lastAction:
+        state.currentModule && state.currentModule !== module
+          ? "tab-switch"
+          : state.lastAction,
+      page: cached?.page ?? DEFAULT_TABLE_STATE.page,
+      recordsPerPage:
+        cached?.recordsPerPage ?? DEFAULT_TABLE_STATE.recordsPerPage,
+      searchValue: cached?.searchValue ?? DEFAULT_TABLE_STATE.searchValue,
+      sortField: cached?.sortField ?? DEFAULT_TABLE_STATE.sortField,
+      sortOrder: cached?.sortOrder ?? DEFAULT_TABLE_STATE.sortOrder,
+    });
   },
 
   cacheModuleState: (module) => {
@@ -116,6 +103,7 @@ export const useDataTableStore = create<TableState>((set, get) => ({
         ...state.moduleCache,
         [module]: {
           page: state.page,
+          recordsPerPage: state.recordsPerPage,
           searchValue: state.searchValue,
           sortField: state.sortField,
           sortOrder: state.sortOrder,
@@ -128,16 +116,15 @@ export const useDataTableStore = create<TableState>((set, get) => ({
     const state = get();
     const cached = state.moduleCache[module];
 
-    if (cached && state.lastAction === "edit") {
-      // Restore from cache if we just edited
-      set({
-        page: cached.page,
-        searchValue: cached.searchValue,
-        sortField: cached.sortField,
-        sortOrder: cached.sortOrder,
-        lastAction: null, // Reset after restore
-      });
-    }
+    set({
+      page: cached?.page ?? DEFAULT_TABLE_STATE.page,
+      recordsPerPage:
+        cached?.recordsPerPage ?? DEFAULT_TABLE_STATE.recordsPerPage,
+      searchValue: cached?.searchValue ?? DEFAULT_TABLE_STATE.searchValue,
+      sortField: cached?.sortField ?? DEFAULT_TABLE_STATE.sortField,
+      sortOrder: cached?.sortOrder ?? DEFAULT_TABLE_STATE.sortOrder,
+      lastAction: null,
+    });
   },
 
   markEditNavigation: () => {

@@ -8,9 +8,14 @@ export interface MFFundRow {
 }
 
 export const useFunds = (params?: Record<string, any>) => {
+  const requestParams = {
+    is_active: 1,
+    limit: 100,
+    ...(params || {}),
+  };
   const { items, loading, error } = useMfList<MFFundRow>(
     mfService.getFunds,
-    params,
+    requestParams,
     "Failed to load funds",
   );
 

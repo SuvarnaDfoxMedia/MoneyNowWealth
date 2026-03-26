@@ -1,12 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
+import { executeRecaptcha, mountRecaptcha, unmountRecaptcha } from "@/lib/recaptcha";
+
+const LOGIN_RECAPTCHA_ACTION = "login";
 
 const Login = () => {
   const router = useRouter();
@@ -21,7 +24,20 @@ const Login = () => {
     {},
   );
 
-  // ================= NORMAL LOGIN =================
+  useEffect(() => {
+    let isMounted = true;
+
+    mountRecaptcha().catch((error) => {
+      if (!isMounted) return;
+      console.error("Failed to initialize reCAPTCHA:", error);
+    });
+
+    return () => {
+      isMounted = false;
+      unmountRecaptcha();
+    };
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -37,11 +53,17 @@ const Login = () => {
     }
 
     try {
+      const recaptchaToken = await executeRecaptcha(LOGIN_RECAPTCHA_ACTION);
       const res = await fetch(`${API_BASE}/api/auth/user/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({
+          email,
+          password,
+          rememberMe,
+          recaptcha_token: recaptchaToken,
+        }),
       });
 
       const data = await res.json();
@@ -52,14 +74,19 @@ const Login = () => {
       } else {
         setErrors(data.errors || { email: data.message });
       }
-    } catch {
-      setErrors({ email: "Something went wrong. Please try again." });
+    } catch (error) {
+      setErrors({
+        email:
+          error instanceof Error &&
+          error.message.includes("RECAPTCHA_SITE_KEY")
+            ? "Captcha is not configured. Please contact support."
+            : "Something went wrong. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // ================= GOOGLE LOGIN =================
   const handleGoogleLogin = async (credentialResponse: CredentialResponse) => {
     if (!credentialResponse?.credential) {
       toast.error("Google Login Failed");

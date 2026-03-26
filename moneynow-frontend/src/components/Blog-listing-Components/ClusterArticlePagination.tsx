@@ -65,7 +65,6 @@ const ClusterArticlePagination: React.FC<Props> = ({
             href={`/blog/${article.slug}`}
             className="flex flex-col md:flex-row bg-white rounded-xl overflow-hidden transition"
           >
-            {/* Left: Content */}
             <div className="flex-1 py-5 pr-5 flex flex-col justify-between">
               <span className="text-[#043F79] font-bold text-[18px] font-inter">
                 {cluster.title}
@@ -100,7 +99,6 @@ const ClusterArticlePagination: React.FC<Props> = ({
               )}
             </div>
 
-            {/* Right: Image */}
             {article.hero_image && (
               <div className="relative w-full md:w-[300px] h-[150px] md:h-auto flex-shrink-0 rounded-xl overflow-hidden">
                 <Image
@@ -181,5 +179,3 @@ const ClusterArticlePagination: React.FC<Props> = ({
 };
 
 export default ClusterArticlePagination;
-
-

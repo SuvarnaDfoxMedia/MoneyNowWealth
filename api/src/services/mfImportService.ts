@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import * as XLSX from "xlsx";
-// import slugify from "slugify";
 import MFMainCategory from "../models/mfMainCategoryModel";
 import MFCategory from "../models/mfCategoryModel";
 import MFAmc from "../models/mfAmcModel";
@@ -74,30 +73,6 @@ const normalizeSheetRows = (workbook: XLSX.WorkBook, sheetName: string) => {
     return normalized;
   });
 };
-
-// Legacy slug helper (deprecated in the new architecture)
-// const slug = (value: string) =>
-//   slugify(value || "", { lower: true, strict: true, trim: true });
-
-// Legacy slug collision helper (deprecated)
-// const uniqueSlugForModel = async (
-//   model: any,
-//   base: string,
-//   matcher: Record<string, unknown>,
-//   dryRun: boolean,
-// ) => {
-//   const initial = base || "item";
-//   let candidate = initial;
-//   let i = 1;
-//   while (true) {
-//     const existing = await model.findOne({ slug: candidate }).select("_id");
-//     if (!existing) return candidate;
-//     const currentDoc = await model.findOne(matcher).select("slug");
-//     if (currentDoc?.slug === candidate) return candidate;
-//     candidate = `${initial}-${i++}`;
-//     if (dryRun && i > 3) return candidate;
-//   }
-// };
 
 const ensureMainCategory = async (
   fundTypeRaw: unknown,
@@ -179,10 +154,7 @@ const findCategoryByRow = async (
     if (byName) return byName;
   }
 
-  // Legacy Excel-based lookup (deprecated)
-  // if (categoryId !== undefined) { ... }
-
-  return null;
+return null;
 };
 
 const upsertCategoryMaster = async (

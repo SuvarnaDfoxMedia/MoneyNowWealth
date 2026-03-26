@@ -1,4 +1,3 @@
-// import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,10 +18,10 @@ import ResetPassword from "./pages/AuthPages/ResetPassword";
 
 import Home from "./pages/Dashboard/Home";
 import UserDashBoard from "./pages/userPages/UserDashboard";
-// import BlogList from "./pages/Blogs/BlogList";
 
 import NewsletterLisging from "./components/tables/ListingComponents/NewsletterLisging";
 import ContactEnquiryListing from "./components/tables/ListingComponents/ContactEnquiryListing";
+import PartnershipEnquiryListing from "./components/tables/ListingComponents/PartnershipEnquiryListing";
 import CmsPageListing from "./components/tables/ListingComponents/CmsPageListing";
 import TopicListing from "./components/tables/ListingComponents/TopicListing";
 
@@ -200,8 +199,12 @@ function AppRoutes() {
           element={<AddNewsletter />}
         />
         <Route
-          path="/:role/contactenquiry"
+          path="/:role/contact-enquiry"
           element={<ContactEnquiryListing />}
+        />
+        <Route
+          path="/:role/partnership-enquiry"
+          element={<PartnershipEnquiryListing />}
         />
 
         {/* MF Admin Module */}
@@ -218,10 +221,7 @@ function AppRoutes() {
           element={<AddMFMainCategory />}
         />
         <Route path="/:role/mf/categories" element={<MFCategoryListing />} />
-        <Route
-          path="/:role/mf/categories/create"
-          element={<AddMFCategory />}
-        />
+        <Route path="/:role/mf/categories/create" element={<AddMFCategory />} />
         <Route
           path="/:role/mf/categories/edit/:id"
           element={<AddMFCategory />}
@@ -289,7 +289,3 @@ function AppRoutes() {
     </Routes>
   );
 }
-
-
-
-

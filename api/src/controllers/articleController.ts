@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import * as articleService from "../services/articleService";
 import Cluster from "../models/clusterModel";
+import Article from "../models/articleModel";
 import mongoose from "mongoose";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 
@@ -205,10 +206,209 @@ export const deleteArticle = async (req: Request, res: Response) => {
   }
 };
 
+export const getPublishedArticleBySlug = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { slug } = req.params;
+    const now = new Date();
+
+    const result = await Article.aggregate([
+      {
+        $match: {
+          slug,
+          is_deleted: false,
+          is_active: 1,
+          status: "published",
+          publish_date: { $lte: now },
+        },
+      },
+      {
+        $lookup: {
+          from: "topics",
+          localField: "topic_id",
+          foreignField: "_id",
+          as: "topic",
+        },
+      },
+      { $unwind: "$topic" },
+      {
+        $match: {
+          "topic.is_deleted": false,
+          "topic.is_active": 1,
+          "topic.status": "published",
+          "topic.publish_date": { $lte: now },
+        },
+      },
+      {
+        $lookup: {
+          from: "clusters",
+          localField: "topic.cluster_id",
+          foreignField: "_id",
+          as: "cluster",
+        },
+      },
+      { $unwind: "$cluster" },
+      {
+        $match: {
+          "cluster.is_deleted": false,
+          "cluster.is_active": 1,
+          "cluster.status": "published",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          article_code: 1,
+          title: 1,
+          slug: 1,
+          hero_image: 1,
+          seo_title: 1,
+          seo_description: 1,
+          focus_keyword: 1,
+          introduction: 1,
+          sections: 1,
+          faqs: 1,
+          tools: 1,
+          related_reads: 1,
+          status: 1,
+          read_time: 1,
+          author: 1,
+          is_active: 1,
+          publish_date: 1,
+          created_at: 1,
+          updated_at: 1,
+          topic: {
+            _id: "$topic._id",
+            title: "$topic.title",
+            slug: "$topic.slug",
+            publish_date: "$topic.publish_date",
+          },
+          cluster: {
+            _id: "$cluster._id",
+            title: "$cluster.title",
+            slug: "$cluster.slug",
+          },
+        },
+      },
+    ]);
+
+    if (!result.length) {
+      return sendError(res, "Article not found or not published yet", 404);
+    }
+
+    const article = result[0];
+    return sendSuccess(res, "Published article fetched successfully", article, 200, {
+      article,
+      topic: article.topic,
+      cluster: article.cluster,
+    });
+  } catch (error: any) {
+    console.error("Get published article by slug error:", error);
+    return sendError(res, error.message || "Failed to fetch article", 500);
+  }
+};
+
+export const getLatestPublishedArticles = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const limit = Math.max(Number(req.query.limit) || 10, 1);
+    const now = new Date();
+
+    const articles = await Article.aggregate([
+      {
+        $match: {
+          is_deleted: false,
+          is_active: 1,
+          status: "published",
+          publish_date: { $lte: now },
+        },
+      },
+      {
+        $lookup: {
+          from: "topics",
+          localField: "topic_id",
+          foreignField: "_id",
+          as: "topic",
+        },
+      },
+      { $unwind: "$topic" },
+      {
+        $match: {
+          "topic.is_deleted": false,
+          "topic.is_active": 1,
+          "topic.status": "published",
+          "topic.publish_date": { $lte: now },
+        },
+      },
+      {
+        $lookup: {
+          from: "clusters",
+          localField: "topic.cluster_id",
+          foreignField: "_id",
+          as: "cluster",
+        },
+      },
+      { $unwind: "$cluster" },
+      {
+        $match: {
+          "cluster.is_deleted": false,
+          "cluster.is_active": 1,
+          "cluster.status": "published",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          slug: 1,
+          hero_image: 1,
+          author: 1,
+          introduction: 1,
+          created_at: 1,
+          publish_date: 1,
+          topic: {
+            _id: "$topic._id",
+            title: "$topic.title",
+            slug: "$topic.slug",
+            publish_date: "$topic.publish_date",
+          },
+          cluster: {
+            _id: "$cluster._id",
+            title: "$cluster.title",
+            slug: "$cluster.slug",
+          },
+        },
+      },
+      { $sort: { publish_date: -1, created_at: -1 } },
+      { $limit: limit },
+    ]);
+
+    return sendSuccess(
+      res,
+      "Latest published articles fetched successfully",
+      articles,
+      200,
+      { articles, total: articles.length },
+    );
+  } catch (error: any) {
+    console.error("Get latest published articles error:", error);
+    return sendError(
+      res,
+      error.message || "Failed to fetch latest published articles",
+      500,
+    );
+  }
+};
+
 export const getClusterHierarchy = async (req: Request, res: Response) => {
   try {
     const { clusterId } = req.params;
     const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
+    const now = new Date();
 
     if (!clusterId) {
       return sendError(res, "Cluster ID is required", 400);
@@ -220,6 +420,7 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
         $match: {
           _id: new mongoose.Types.ObjectId(clusterId),
           is_deleted: false,
+          is_active: 1,
           status: status || "published",
         },
       },
@@ -232,7 +433,9 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
               $match: {
                 $expr: { $eq: ["$cluster_id", "$$clusterId"] },
                 is_deleted: false,
+                is_active: 1,
                 status: "published",
+                publish_date: { $lte: now },
               },
             },
             {
@@ -244,7 +447,9 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
                     $match: {
                       $expr: { $eq: ["$topic_id", "$$topicId"] },
                       is_deleted: false,
+                      is_active: 1,
                       status: "published",
+                      publish_date: { $lte: now },
                     },
                   },
                   { $sort: { publish_date: -1, created_at: -1 } },
@@ -319,6 +524,7 @@ export const getClusterHierarchyBySlug = async (
   try {
     const { slug } = req.params;
     const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
+    const now = new Date();
 
     if (!slug) {
       return sendError(res, "Cluster slug is required", 400);
@@ -330,6 +536,7 @@ export const getClusterHierarchyBySlug = async (
         $match: {
           slug: slug,
           is_deleted: false,
+          is_active: 1,
           status: status || "published",
         },
       },
@@ -342,7 +549,9 @@ export const getClusterHierarchyBySlug = async (
               $match: {
                 $expr: { $eq: ["$cluster_id", "$$clusterId"] },
                 is_deleted: false,
+                is_active: 1,
                 status: "published",
+                publish_date: { $lte: now },
               },
             },
             {
@@ -354,7 +563,9 @@ export const getClusterHierarchyBySlug = async (
                     $match: {
                       $expr: { $eq: ["$topic_id", "$$topicId"] },
                       is_deleted: false,
+                      is_active: 1,
                       status: "published",
+                      publish_date: { $lte: now },
                     },
                   },
                   { $sort: { publish_date: -1, created_at: -1 } },
@@ -422,7 +633,6 @@ export const getClusterHierarchyBySlug = async (
   }
 };
 
-// NEW: Publish Article Immediately (Admin/Editor only)
 export const publishArticle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

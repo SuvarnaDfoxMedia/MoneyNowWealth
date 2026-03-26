@@ -133,21 +133,7 @@ export default function AddMFMainCategory() {
           {error(errors.description)}
         </div>
 
-        {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="sort_order" className="block mb-2 text-gray-700 font-medium">Sort Order</label>
-            <input
-              id="sort_order"
-              className={mfInputClass}
-              type="number"
-              placeholder="0"
-              value={form.sort_order}
-              onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-            />
-          </div>
-        </div> */}
-
-        <label className="flex items-center gap-3 text-gray-700 font-medium">
+<label className="flex items-center gap-3 text-gray-700 font-medium">
           <input
             className={mfCheckboxClass}
             type="checkbox"

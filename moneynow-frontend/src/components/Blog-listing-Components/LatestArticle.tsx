@@ -28,7 +28,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
 const FALLBACK_IMAGE = "/images/most-popular-blog-img-1.png";
 
-// ===== SANITIZE FUNCTION =====
 const sanitize = (html?: string) => ({
   __html: DOMPurify.sanitize(html || ""),
 });
@@ -147,7 +146,7 @@ const FeaturedArticle = () => {
 const LatestArticle = () => {
   return (
     <>
-      <section className="font-poppins w-full py-6 mb-[30px] md:mb-[120px] overflow-x-hidden">
+      <section className="font-poppins w-full py-[20px] mb-[30px] overflow-x-hidden">
         <div className="max-w-full mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-[30px]">
             {/* LEFT SECTION */}
@@ -174,7 +173,7 @@ const LatestArticle = () => {
           </div>
 
           {/* Banner Images */}
-          <div className="hidden sm:block w-full">
+          <div className="hidden sm:block w-full pt-[30px]">
             <Image
               src="/images/blog-listing-MF-sahi.png"
               alt="Latest Article"
@@ -198,7 +197,7 @@ const LatestArticle = () => {
 
           <ResearchDesk />
 
-          <div className="hidden sm:block w-full mt-6">
+          <div className="hidden sm:block w-full">
             <Image
               src="/images/senior-citizen-img.png"
               alt="Senior Citizen"
@@ -210,7 +209,7 @@ const LatestArticle = () => {
             />
           </div>
 
-          <div className="block sm:hidden w-full mt-6">
+          <div className="block sm:hidden w-full ">
             <Image
               src="/images/senior-citizen-img-mb.png"
               alt="Senior Citizen Mobile"
@@ -224,9 +223,10 @@ const LatestArticle = () => {
         </div>
       </section>
 
-      <div className="w-full mt-24 sm:mt-0">
+      <div className="w-full">
         <HomeInvestTrack data={homeInvestTrackData} />
-        <div className="border-t border-[#E5E7EB]">
+
+        <div className="relative pt-[60px] pb-[20px]">
           <StayConnected />
         </div>
       </div>
@@ -235,4 +235,3 @@ const LatestArticle = () => {
 };
 
 export default LatestArticle;
-

@@ -188,8 +188,8 @@ export default function NewsletterPublishListing() {
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setDropdownPos({
-      top: rect.bottom + window.scrollY + 6,
-      left: rect.left + window.scrollX - 100,
+      top: rect.bottom + 6,
+      left: rect.right - 160,
     });
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
@@ -218,8 +218,6 @@ export default function NewsletterPublishListing() {
       "";
     const fileUrl = `${baseUrl}/uploads/newsletters/${newsletter.pdf_file}`;
 
-    // const baseUrl = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-    // const fileUrl = `http://localhost:5000/uploads/newsletters/${newsletter.pdf_file}`;
     window.open(fileUrl, "_blank");
   };
 
@@ -502,4 +500,3 @@ export default function NewsletterPublishListing() {
     </div>
   );
 }
-

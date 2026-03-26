@@ -107,8 +107,7 @@ const GetAllCluster = () => {
   </div>
 </div>
 
-
-        {/* ---------------- Slider ---------------- */}
+{/* ---------------- Slider ---------------- */}
         <div className="overflow-hidden">
           <div
             className="flex transition-transform duration-500 ease-in-out"
@@ -160,13 +159,9 @@ const GetAllCluster = () => {
           </div>
         </div>
 
-       
-
-
-      </div>
+</div>
     </section>
   );
 };
 
 export default GetAllCluster;
-

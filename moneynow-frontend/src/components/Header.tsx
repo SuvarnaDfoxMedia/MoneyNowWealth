@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
@@ -84,7 +86,7 @@ const Header = () => {
             Home
           </Link>
           <Link
-            href="#"
+            href="/mutual-funds"
             className="relative text-white text-[16px] font-medium transition-colors duration-300 hover:text-[#60e6eb]"
           >
             Mutual Funds
@@ -101,7 +103,7 @@ const Header = () => {
         <div className="flex ml-auto items-center gap-3 sm:gap-5">
           {/* Get in Touch - Desktop Only */}
           <Link
-            href="#"
+            href="/contact-us"
             className="hidden md:flex relative text-white text-[17px] font-bold items-center gap-2"
           >
             <span className="hover:text-[#60e6eb] transition-colors">

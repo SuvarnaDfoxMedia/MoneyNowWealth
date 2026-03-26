@@ -1,6 +1,14 @@
 declare module "intl-tel-input" {
   export interface IntlTelInputCountryData {
     dialCode?: string;
+    iso2?: string;
+  }
+
+  export interface IntlTelInputValidationError {
+    INVALID_COUNTRY_CODE: number;
+    TOO_SHORT: number;
+    TOO_LONG: number;
+    NOT_A_NUMBER: number;
   }
 
   export interface IntlTelInputInstance {
@@ -8,6 +16,8 @@ declare module "intl-tel-input" {
     setNumber(value: string): void;
     getNumber(format?: number): string;
     getSelectedCountryData(): IntlTelInputCountryData;
+    isValidNumber(): boolean;
+    getValidationError(): number;
   }
 
   export interface IntlTelInputOptions {
@@ -15,6 +25,7 @@ declare module "intl-tel-input" {
     separateDialCode?: boolean;
     utilsScript?: string;
     customContainer?: string;
+    autoPlaceholder?: string;
   }
 
   export interface IntlTelInputStatic {
@@ -22,6 +33,9 @@ declare module "intl-tel-input" {
       input: HTMLInputElement,
       options?: IntlTelInputOptions,
     ): IntlTelInputInstance;
+    utils?: {
+      validationError: IntlTelInputValidationError;
+    };
   }
 
   const intlTelInput: IntlTelInputStatic;

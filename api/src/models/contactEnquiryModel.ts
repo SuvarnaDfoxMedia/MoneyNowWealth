@@ -1,60 +1,4 @@
-// import mongoose, { Document, Schema, Model } from "mongoose";
-// import { parsePhoneNumberFromString } from "libphonenumber-js";
 
-// /* -------------------------
-//    Interface
-// ------------------------- */
-// export interface IContactEnquiry extends Document {
-//   first_name: string;
-//   last_name: string;
-//   email: string;
-//   mobile: string; // national number only
-//   country_code: string; // e.g., +91
-//   subject: "Support" | "Partner" | "Feedback" | "Others";
-//   message: string;
-//   terms_accepted: boolean;
-//   status: "new" | "in-progress" | "resolved";
-//   is_active: number;
-//   created_at: Date;
-//   updated_at: Date;
-// }
-
-// /* -------------------------
-//    Schema
-// ------------------------- */
-// const contactEnquirySchema = new Schema<IContactEnquiry>(
-//   {
-//     first_name: { type: String, required: true, trim: true },
-//     last_name: { type: String, required: true, trim: true },
-//     email: { type: String, required: true, trim: true, lowercase: true },
-//     mobile: { type: String, required: true, trim: true },
-//     country_code: { type: String, required: true, trim: true },
-//     subject: {
-//       type: String,
-//       enum: ["Support", "Partner", "Feedback", "Others"],
-//       required: true,
-//     },
-//     message: { type: String, required: true, trim: true },
-//     terms_accepted: { type: Boolean, required: true, default: false },
-//     status: {
-//       type: String,
-//       enum: ["new", "in-progress", "resolved"],
-//       default: "new",
-//     },
-//     is_active: { type: Number, default: 1 },
-//     created_at: { type: Date, default: Date.now },
-//     updated_at: { type: Date, default: Date.now },
-//   },
-//   { versionKey: false },
-// );
-
-// /* -------------------------
-//    Pre-save Hook
-// ------------------------- */
-// contactEnquirySchema.pre<IContactEnquiry>("save", function (next) {
-//   this.updated_at = new Date();
-//   next();
-// });
 
 // /* -------------------------
 //    Model
@@ -64,7 +8,6 @@
 //   mongoose.model<IContactEnquiry>("ContactEnquiry", contactEnquirySchema);
 
 import mongoose, { Document, Schema, Model } from "mongoose";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
 
 /* -------------------------
@@ -72,11 +15,18 @@ import { capitalizePlugin } from "../plugins/capitalize.plugin";
 ------------------------- */
 export interface IContactEnquiry extends Document {
   first_name: string;
-  last_name: string;
+  last_name?: string;
   email: string;
   mobile: string; // national number only
   country_code: string; // e.g., +91
-  subject: "Support" | "Partner" | "Feedback" | "Others";
+  city?: string;
+  subject:
+    | "Investment Inquiry"
+    | "Support"
+    | "Partner"
+    | "Partnership"
+    | "Feedback"
+    | "Others";
   message: string;
   terms_accepted: boolean;
   status: "new" | "in-progress" | "resolved";
@@ -91,13 +41,21 @@ export interface IContactEnquiry extends Document {
 const contactEnquirySchema = new Schema<IContactEnquiry>(
   {
     first_name: { type: String, required: true, trim: true },
-    last_name: { type: String, required: true, trim: true },
+    last_name: { type: String, trim: true, default: "" },
     email: { type: String, required: true, trim: true, lowercase: true },
     mobile: { type: String, required: true, trim: true },
     country_code: { type: String, required: true, trim: true },
+    city: { type: String, trim: true, default: "" },
     subject: {
       type: String,
-      enum: ["Support", "Partner", "Feedback", "Others"],
+      enum: [
+        "Investment Inquiry",
+        "Support",
+        "Partner",
+        "Partnership",
+        "Feedback",
+        "Others",
+      ],
       required: true,
     },
     message: { type: String, required: true, trim: true },
@@ -123,8 +81,8 @@ contactEnquirySchema.plugin(capitalizePlugin, {
     "email",
     "mobile",
     "country_code",
+    "city",
 
-    // Enum fields
     "subject",
     "status",
 

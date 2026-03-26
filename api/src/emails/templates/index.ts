@@ -13,7 +13,3 @@ export { subscriptionReminderTemplate } from "./subscription/remainder";
 export { newArticleTemplate } from "./content/newArticle";
 export { topicPublishedTemplate } from "./content/topicPublish";
 export { newsletterTemplate } from "./content/newsletter";
-
-// Admin templates
-// export { manualAssignmentTemplate } from "./admin/manualAssignment";
-// export { userRegisteredTemplate } from "./admin/userRegistered";

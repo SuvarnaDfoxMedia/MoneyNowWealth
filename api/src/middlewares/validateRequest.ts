@@ -5,11 +5,21 @@ export const validateRegister = (
   res: Response,
   next: NextFunction
 ) => {
-  const { firstname, fullname, lastname, email, password, mobile, termsAccepted } =
-    req.body;
+  const {
+    firstname,
+    fullname,
+    lastname,
+    email,
+    password,
+    mobile,
+    termsAccepted,
+  } = req.body;
   const incomingName = String(fullname ?? firstname ?? "").trim();
+  const incomingEmail = String(email ?? "").trim().toLowerCase();
+  const incomingPassword = String(password ?? "");
+  const incomingMobile = String(mobile ?? "").trim().replace(/\s+/g, "");
 
-  if (!incomingName || !email || !password || !mobile) {
+  if (!incomingName || !incomingEmail || !incomingPassword || !incomingMobile) {
     return res.status(400).json({
       success: false,
       message: "Firstname, email, password and mobile are required",
@@ -36,7 +46,7 @@ export const validateRegister = (
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!emailRegex.test(incomingEmail)) {
     return res.status(400).json({
       success: false,
       message: "Valid email is required",
@@ -54,12 +64,12 @@ export const validateRegister = (
       });
   }
 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-  if (!passwordRegex.test(password)) {
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,128}$/;
+  if (!passwordRegex.test(incomingPassword)) {
     return res.status(400).json({
       success: false,
       message:
-        "Password must be at least 8 characters, include uppercase, lowercase, and a number",
+        "Password must be 8+ chars, include 1 uppercase, 1 number & 1 special character",
       data: null,
     });
   }

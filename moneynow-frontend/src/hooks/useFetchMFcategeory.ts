@@ -14,6 +14,56 @@ export interface FundData {
   y10: string;
 }
 
+interface ApiMainCategory {
+  _id: string;
+  name?: string;
+  description?: string;
+}
+
+interface ApiCategory {
+  _id: string;
+  name: string;
+  description?: string;
+}
+
+interface ApiFund {
+  fund_name: string;
+  returns?: {
+    y3_cagr?: number | null;
+    y5_cagr?: number | null;
+    y10_cagr?: number | null;
+  };
+}
+
+const mapMainCategoryName = (name: string) => {
+  const normalized = name.trim();
+
+  if (/elss/i.test(normalized) || /tax/i.test(normalized)) {
+    return "Tax-Savings funds (ELSS)";
+  }
+
+  const map: Record<string, string> = {
+    Equity: "Equity Funds",
+    Hybrid: "Hybrid Funds",
+    Debt: "Debt Funds",
+    Passive: "Index Funds",
+    Commodity: "Commodity Funds",
+  };
+
+  return map[normalized] || normalized;
+};
+
+const normalizeMainCategoryName = (name: string) =>
+  mapMainCategoryName(name)
+    .trim()
+    .toLowerCase();
+
+const extractList = <T,>(response: { data?: T[] | T } | undefined | null) => {
+  if (Array.isArray(response?.data)) return response.data;
+  if (response?.data && typeof response.data === "object") return [response.data] as T[];
+  return [];
+};
+
 export const useFetchMFData = (
   activeCategoryName: string,
   activeSubTab: string,
@@ -32,35 +82,19 @@ export const useFetchMFData = (
     Record<string, string>
   >({});
 
-  const mapMainCategoryName = (name: string) => {
-    const normalized = name.trim();
-
-    if (/elss/i.test(normalized) || /tax/i.test(normalized)) {
-      return "Tax-Savings funds (ELSS)";
-    }
-
-    const map: Record<string, string> = {
-      Equity: "Equity Funds",
-      Hybrid: "Hybrid Funds",
-      Debt: "Debt Funds",
-      Passive: "Index Funds",
-      Commodity: "Commodity Funds",
-    };
-
-    return map[normalized] || normalized;
-  };
-
   useEffect(() => {
     const fetchMaster = async () => {
       try {
-        const res = await mfService.getMainCategories();
+        setError(null);
+        const res = await mfService.getMainCategories({
+          is_active: 1,
+          limit: 100,
+        });
 
-        const categories = Array.isArray(res?.data)
-          ? res.data
-          : res?.data || [];
+        const categories = extractList<ApiMainCategory>(res);
 
         const mappedCategories: MasterCategory[] = categories.map(
-          (cat: any) => ({
+          (cat) => ({
             id: cat._id,
             name: mapMainCategoryName(cat.name || ""),
             description: cat.description || "",
@@ -68,7 +102,7 @@ export const useFetchMFData = (
         );
 
         setMasterCategories(mappedCategories);
-      } catch (err: any) {
+      } catch {
         setError("Failed to load categories");
         setMasterCategories([]);
       }
@@ -95,7 +129,7 @@ export const useFetchMFData = (
 
       try {
         const mainCategory = masterCategories.find(
-          (c) => c.name.toLowerCase() === activeCategoryName.toLowerCase(),
+          (c) => normalizeMainCategoryName(c.name) === normalizeMainCategoryName(activeCategoryName),
         );
 
         if (!mainCategory) {
@@ -107,16 +141,16 @@ export const useFetchMFData = (
 
         const categoryRes = await mfService.getCategories({
           mainCategoryId: mainCategory.id,
+          is_active: 1,
+          limit: 100,
         });
 
-        const categories = Array.isArray(categoryRes?.data)
-          ? categoryRes.data
-          : categoryRes?.data || [];
+        const categories = extractList<ApiCategory>(categoryRes);
 
         const nextMap: Record<string, string> = {};
         const nextDescriptions: Record<string, string> = {};
 
-        categories.forEach((c: any) => {
+        categories.forEach((c) => {
           nextMap[c.name] = c._id;
           nextDescriptions[c.name] = c.description || "";
         });
@@ -125,7 +159,7 @@ export const useFetchMFData = (
         setAvailableSubTabs(Object.keys(nextMap));
         setSubTabDescriptions(nextDescriptions);
 
-        const selectedCategoryId = nextMap[activeSubTab] || "";
+        const selectedCategoryId = nextMap[activeSubTab] || Object.values(nextMap)[0] || "";
 
         if (!selectedCategoryId) {
           setFundData([]);
@@ -136,13 +170,12 @@ export const useFetchMFData = (
         const fundRes = await mfService.getFunds({
           categoryId: selectedCategoryId,
           limit: 100,
+          is_active: 1,
         });
 
-        const funds = Array.isArray(fundRes?.data)
-          ? fundRes.data
-          : fundRes?.data || [];
+        const funds = extractList<ApiFund>(fundRes);
 
-        const mappedFunds: FundData[] = funds.map((s: any) => ({
+        const mappedFunds: FundData[] = funds.map((s) => ({
           name: s.fund_name,
           y3: s.returns?.y3_cagr?.toString?.() || "-",
           y5: s.returns?.y5_cagr?.toString?.() || "-",
@@ -150,7 +183,7 @@ export const useFetchMFData = (
         }));
 
         setFundData(mappedFunds);
-      } catch (err: any) {
+      } catch {
         setError("Failed to load funds");
         setFundData([]);
         setAvailableSubTabs([]);

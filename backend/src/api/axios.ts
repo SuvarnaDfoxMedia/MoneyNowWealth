@@ -54,16 +54,7 @@ export const axiosApi = {
   get: <T>(endpoint: string, params?: QueryParams) =>
     handleRequest<T>(axiosInstance.get(endpoint, { params })),
 
-  // getList: <T>(endpoint: string, params?: QueryParams) => {
-  //   const qp = { ...params };
-  //   if ("searchValue" in qp) {
-  //     qp.search = qp.searchValue;
-  //     delete qp.searchValue;
-  //   }
-  //   return handleRequest<T>(axiosInstance.get(endpoint, { params: qp }));
-  // },
-
-  getList: <T>(endpoint: string, params?: QueryParams) => {
+getList: <T>(endpoint: string, params?: QueryParams) => {
     const qp = { ...params };
     // Transform parameters to match backend expectations
     if ("searchValue" in qp) {

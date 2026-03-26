@@ -1,6 +1,37 @@
 import type { Request, Response } from "express";
 import { ContactEnquiry } from "../models/contactEnquiryModel";
 import { sendError, sendSuccess } from "../utils/apiResponse";
+import { recaptchaService } from "../services/recaptchaService";
+import { contactEnquiryService } from "../services/contactEnquiryService";
+
+const CONTACT_RECAPTCHA_ACTION = "contact_submit";
+type ContactSubject =
+  | "Investment Inquiry"
+  | "Support"
+  | "Partner"
+  | "Partnership"
+  | "Feedback"
+  | "Others";
+
+const splitFullName = (firstName?: string, lastName?: string) => {
+  const normalizedFirstName = typeof firstName === "string" ? firstName.trim() : "";
+  const normalizedLastName = typeof lastName === "string" ? lastName.trim() : "";
+
+  if (!normalizedFirstName) {
+    return { first_name: "", last_name: normalizedLastName };
+  }
+
+  if (normalizedLastName) {
+    return { first_name: normalizedFirstName, last_name: normalizedLastName };
+  }
+
+  const nameParts = normalizedFirstName.replace(/\s+/g, " ").split(" ");
+
+  return {
+    first_name: nameParts[0] || "",
+    last_name: nameParts.slice(1).join(" "),
+  };
+};
 
 /* -------------------------
    Add Contact Enquiry
@@ -13,19 +44,34 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
       email,
       mobile,
       country_code,
+      city,
       subject,
       message,
       terms_accepted,
+      recaptcha_token,
     } = req.body;
+
+    const normalizedSubjectMap: Record<string, ContactSubject> = {
+      partnership: "Partner",
+      partner: "Partner",
+      support: "Support",
+      feedback: "Feedback",
+      others: "Others",
+      "investment inquiry": "Investment Inquiry",
+    };
+
+    const normalizedSubjectKey =
+      typeof subject === "string" ? subject.trim().toLowerCase() : "";
+    const normalizedSubject: ContactSubject | "" =
+      normalizedSubjectMap[normalizedSubjectKey] || "";
 
     // ------------------ Required Fields ------------------
     if (
       !first_name ||
-      !last_name ||
       !email ||
       !mobile ||
       !country_code ||
-      !subject ||
+      !normalizedSubject ||
       !message
     ) {
       return sendError(res, "All fields are required", 400);
@@ -35,25 +81,39 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
       return sendError(res, "You must accept Terms and Conditions", 400);
     }
 
+    const recaptchaResult = await recaptchaService.verify({
+      token: recaptcha_token,
+      expectedAction: CONTACT_RECAPTCHA_ACTION,
+      minScore: 0.5,
+      remoteIp: req.ip,
+    });
+
+    if (!recaptchaResult.ok) {
+      return sendError(
+        res,
+        recaptchaResult.message,
+        recaptchaResult.statusCode,
+        null,
+        { recaptcha: recaptchaResult.details ?? null },
+      );
+    }
+
     // ------------------ Validate Email ------------------
     const emailTrim = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
       return sendError(res, "Invalid email format", 400);
     }
 
-    // ------------------ Normalize Phone (Optional) ------------------
-    // Instead of strict validation, just normalize by trimming
-    const normalizedMobile = mobile.toString().trim();
-    const normalizedCountryCode = country_code.toString().trim();
+    const splitName = splitFullName(first_name, last_name);
 
-    // ------------------ Save to DB ------------------
-    const enquiry = await ContactEnquiry.create({
-      first_name: first_name.trim(),
-      last_name: last_name.trim(),
+    const enquiry = await contactEnquiryService.add({
+      first_name: splitName.first_name,
+      last_name: splitName.last_name,
       email: emailTrim,
-      mobile: normalizedMobile,
-      country_code: normalizedCountryCode,
-      subject,
+      mobile: mobile.toString().trim(),
+      country_code: country_code.toString().trim(),
+      city: typeof city === "string" ? city.trim() : "",
+      subject: normalizedSubject,
       message: message.trim(),
       terms_accepted,
       status: "new",
@@ -64,7 +124,15 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error("Add contact enquiry error:", err);
-    return sendError(res, "Server error", 500);
+    return sendError(
+      res,
+      err?.message === "Missing RECAPTCHA_SECRET_KEY"
+        ? "Captcha is not configured on the server"
+        : err?.message === "Invalid phone number"
+          ? "Please enter a valid mobile number"
+        : "Server error",
+      err?.message === "Invalid phone number" ? 400 : 500,
+    );
   }
 };
 

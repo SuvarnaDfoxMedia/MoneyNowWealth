@@ -9,6 +9,8 @@ import {
   getClusterHierarchy,
   getClusterHierarchyBySlug,
   publishArticle, // NEW
+  getPublishedArticleBySlug,
+  getLatestPublishedArticles,
 } from "../controllers/articleController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 import {
@@ -21,6 +23,8 @@ const router = express.Router();
 /* -------------------- PUBLIC ROUTES -------------------- */
 router.get("/article", getArticles);
 router.get("/articles", getArticles); // alias for frontend compatibility
+router.get("/article/published/latest", getLatestPublishedArticles);
+router.get("/article/published/slug/:slug", getPublishedArticleBySlug);
 router.get("/article/:id", getArticleById);
 router.get("/cluster/:clusterId/hierarchy", getClusterHierarchy);
 router.get("/cluster/slug/:slug/", getClusterHierarchyBySlug);
@@ -82,7 +86,6 @@ router.post(
         .json({ success: false, message: "No image uploaded." });
     }
 
-    // Type-safe access to uploaded file properties
     const file = req.file as unknown as {
       pathUrl?: string;
       relativePath?: string;

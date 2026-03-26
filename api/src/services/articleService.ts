@@ -178,7 +178,6 @@ export const deleteArticle = async (id: string) => {
   ).exec();
 };
 
-// NEW: Get articles scheduled for publishing today
 export const getArticlesToPublishToday = async () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -193,7 +192,6 @@ export const getArticlesToPublishToday = async () => {
   }).populate("topic_id", "title slug");
 };
 
-// NEW: Mark article email as sent
 export const markArticleEmailSent = async (id: string) => {
   return await Article.findByIdAndUpdate(
     id,

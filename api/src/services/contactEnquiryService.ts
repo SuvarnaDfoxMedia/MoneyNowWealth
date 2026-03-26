@@ -3,8 +3,43 @@ import type { IContactEnquiry } from "../models/contactEnquiryModel";
 import type { SortOrder } from "mongoose";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
-// Types
-// -------------------------
+const splitFullName = (firstName?: string, lastName?: string) => {
+  const normalizedFirstName = firstName?.trim() || "";
+  const normalizedLastName = lastName?.trim() || "";
+
+  if (!normalizedFirstName) {
+    return { first_name: "", last_name: normalizedLastName };
+  }
+
+  if (normalizedLastName) {
+    return { first_name: normalizedFirstName, last_name: normalizedLastName };
+  }
+
+  const nameParts = normalizedFirstName.replace(/\s+/g, " ").split(" ");
+
+  return {
+    first_name: nameParts[0] || "",
+    last_name: nameParts.slice(1).join(" "),
+  };
+};
+
+const normalizeSubject = (subject?: string) => {
+  const subjectMap: Record<string, string> = {
+    partnership: "Partner",
+    partner: "Partner",
+    support: "Support",
+    feedback: "Feedback",
+    others: "Others",
+    "investment inquiry": "Investment Inquiry",
+  };
+
+  if (!subject) {
+    return "";
+  }
+
+  return subjectMap[subject.trim().toLowerCase()] || subject.trim();
+};
+
 interface GetAllParams {
   filter?: Record<string, any>;
   skip?: number;
@@ -18,13 +53,14 @@ export const contactEnquiryService = {
   // ADD A NEW ENQUIRY
   // =========================
   add: async (data: Partial<IContactEnquiry>) => {
+    const normalizedSubject = normalizeSubject(data.subject);
+
     if (
       !data.first_name ||
-      !data.last_name ||
       !data.email ||
       !data.mobile ||
       !data.country_code ||
-      !data.subject ||
+      !normalizedSubject ||
       !data.message ||
       data.terms_accepted !== true
     ) {
@@ -44,15 +80,17 @@ export const contactEnquiryService = {
 
     const normalizedMobile = phoneNumber.nationalNumber.toString();
     const normalizedCountryCode = `+${phoneNumber.countryCallingCode}`;
+    const splitName = splitFullName(data.first_name, data.last_name);
 
     // ------------------ Create Enquiry ------------------
     const enquiry = new ContactEnquiry({
-      first_name: data.first_name.trim(),
-      last_name: data.last_name.trim(),
+      first_name: splitName.first_name,
+      last_name: splitName.last_name,
       email: emailTrim,
       mobile: normalizedMobile,
       country_code: normalizedCountryCode,
-      subject: data.subject,
+      city: data.city?.trim() || "",
+      subject: normalizedSubject,
       message: data.message.trim(),
       terms_accepted: true,
       status: "new",

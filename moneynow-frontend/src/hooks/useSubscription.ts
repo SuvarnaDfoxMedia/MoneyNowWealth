@@ -1,207 +1,4 @@
-// // hooks/useSubscription.ts
-// import { useState, useEffect } from "react";
-// import { API } from "@/app/api/axios";
-// import { useUserId } from "./useUserId";
 
-// export interface SubscriptionPayment {
-//   _id: string;
-//   subscriptionId: string;
-//   planName: string;
-//   amount: number;
-//   currency: string;
-//   type: string;
-//   trialType?: string;
-//   status?: string;
-//   startDate: string;
-//   endDate: string;
-//   paymentDate: string;
-//   transactionId?: string;
-//   orderId?: string;
-//   paymentMethod?: string;
-//   paymentStatus?: string;
-//   requiresPurchase?: boolean;
-// }
-
-// export const useSubscription = () => {
-//   const { userId, loading: userIdLoading, error: userIdError } = useUserId();
-//   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
-//   const [latestSubscription, setLatestSubscription] =
-//     useState<SubscriptionPayment | null>(null);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState<string>("");
-
-//   useEffect(() => {
-//     const fetchSubscriptionData = async () => {
-//       if (!userId) return;
-
-//       try {
-//         setLoading(true);
-//         const res = await API.get(
-//           `/api/subscription-payment/history/${userId}`,
-//           { withCredentials: true },
-//         );
-
-//         if (res.data.success) {
-//           const formattedPayments = res.data.payments.map((payment: any) => ({
-//             _id: payment._id || payment.paymentId || payment.subscriptionId,
-//             subscriptionId: payment.subscriptionId,
-//             planName: payment.planName,
-//             amount: payment.amount,
-//             currency: payment.currency,
-//             type: payment.type,
-//             trialType: payment.trialType,
-//             status: payment.status,
-//             startDate: payment.startDate,
-//             endDate: payment.endDate,
-//             paymentDate: payment.paymentDate,
-//             transactionId: payment.transactionId,
-//             orderId: payment.orderId,
-//             paymentMethod: payment.paymentMethod,
-//             paymentStatus: payment.paymentStatus,
-//             requiresPurchase: payment.requiresPurchase,
-//           }));
-
-//           setPayments(formattedPayments);
-
-//           // Set the latest subscription (most recent by payment date)
-//           if (formattedPayments && formattedPayments.length > 0) {
-//             const sorted = [...formattedPayments].sort(
-//               (a, b) =>
-//                 new Date(b.paymentDate).getTime() -
-//                 new Date(a.paymentDate).getTime(),
-//             );
-//             setLatestSubscription(sorted[0]);
-//           }
-//         } else {
-//           setError("No subscription data found.");
-//         }
-//       } catch (err: any) {
-//         setError(err.message || "Failed to fetch subscription data.");
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchSubscriptionData();
-//   }, [userId]);
-
-//   const isActive = (endDate: string) => {
-//     return new Date(endDate) > new Date();
-//   };
-
-//   return {
-//     payments,
-//     latestSubscription,
-//     loading: loading || userIdLoading,
-//     error: error || userIdError,
-//     userId,
-//     isActive,
-//   };
-// };
-
-// // hooks/useSubscription.ts
-// import { useState, useEffect } from "react";
-// import { API } from "@/app/api/axios";
-// import { useUserId } from "./useUserId";
-
-// export interface SubscriptionPayment {
-//   _id: string;
-//   subscriptionId: string;
-//   planName: string;
-//   amount: number;
-//   currency: string;
-//   type: string;
-//   trialType?: string;
-//   status?: string;
-//   startDate: string;
-//   endDate: string;
-//   paymentDate: string;
-//   transactionId?: string;
-//   orderId?: string;
-//   paymentMethod?: string;
-//   paymentStatus?: string;
-//   requiresPurchase?: boolean;
-// }
-
-// export const useSubscription = (page = 1, limit = 10) => {
-//   const { userId, loading: userIdLoading, error: userIdError } = useUserId();
-//   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
-//   const [latestSubscription, setLatestSubscription] =
-//     useState<SubscriptionPayment | null>(null);
-//   const [total, setTotal] = useState(0);
-//   const [totalPages, setTotalPages] = useState(1);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState<string>("");
-
-//   useEffect(() => {
-//     const fetchSubscriptionData = async () => {
-//       if (!userId) return;
-
-//       try {
-//         setLoading(true);
-//         const res = await API.get(
-//           `/api/subscription-payment/history/${userId}`,
-//           {
-//             withCredentials: true,
-//             params: {
-//               page,
-//               limit,
-//               sort: "-paymentDate",
-//             },
-//           },
-//         );
-
-//         if (res.data.success) {
-//           const formattedPayments = res.data.payments.map((payment: any) => ({
-//             _id: payment._id || payment.paymentId || payment.subscriptionId,
-//             subscriptionId: payment.subscriptionId,
-//             planName: payment.planName,
-//             amount: payment.amount,
-//             currency: payment.currency,
-//             type: payment.type,
-//             trialType: payment.trialType,
-//             status: payment.status,
-//             startDate: payment.startDate,
-//             endDate: payment.endDate,
-//             paymentDate: payment.paymentDate,
-//             transactionId: payment.transactionId,
-//             orderId: payment.orderId,
-//             paymentMethod: payment.paymentMethod,
-//             paymentStatus: payment.paymentStatus,
-//             requiresPurchase: payment.requiresPurchase,
-//           }));
-
-//           setPayments(formattedPayments);
-
-//           // Set pagination totals from API response
-//           setTotal(res.data.total || formattedPayments.length);
-//           setTotalPages(res.data.totalPages || 1);
-
-//           // Set the latest subscription (most recent by payment date)
-//           if (formattedPayments && formattedPayments.length > 0) {
-//             const sorted = [...formattedPayments].sort(
-//               (a, b) =>
-//                 new Date(b.paymentDate).getTime() -
-//                 new Date(a.paymentDate).getTime(),
-//             );
-//             setLatestSubscription(sorted[0]);
-//           }
-//         } else {
-//           setError("No subscription data found.");
-//         }
-//       } catch (err: any) {
-//         setError(err.message || "Failed to fetch subscription data.");
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchSubscriptionData();
-//   }, [userId, page, limit]); // Add page and limit as dependencies
-
-//   const isActive = (endDate: string) => {
-//     return new Date(endDate) > new Date();
-//   };
 
 //   return {
 //     payments,
@@ -241,6 +38,16 @@ export interface SubscriptionPayment {
   requiresPurchase?: boolean;
 }
 
+export interface CurrentSubscription {
+  planName: string;
+  amount: number;
+  paymentDate: string;
+  endDate: string;
+  startDate: string;
+  status: string;
+  isPromotional?: boolean;
+}
+
 const normalizePaymentDates = (payment: any) => {
   const startDate =
     payment?.startDate ||
@@ -263,6 +70,8 @@ export const useSubscription = (page = 1, limit = 10) => {
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [latestSubscription, setLatestSubscription] =
     useState<SubscriptionPayment | null>(null);
+  const [currentSubscription, setCurrentSubscription] =
+    useState<CurrentSubscription | null>(null);
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -293,6 +102,7 @@ export const useSubscription = (page = 1, limit = 10) => {
         if (!res.data?.success) {
           setPayments([]);
           setLatestSubscription(null);
+          setCurrentSubscription(null);
           setTotal(0);
           setTotalPages(1);
           setError("No subscription data found.");
@@ -338,6 +148,39 @@ export const useSubscription = (page = 1, limit = 10) => {
         } else {
           setLatestSubscription(null);
         }
+
+        try {
+          const currentRes = await API.get(`/api/subscriptions/me`, {
+            withCredentials: true,
+          });
+
+          const subscription = currentRes.data?.subscription;
+          const paymentHistory = currentRes.data?.paymentHistory || [];
+          const latestCurrentPayment = Array.isArray(paymentHistory)
+            ? paymentHistory[0]
+            : null;
+
+          if (subscription) {
+            setCurrentSubscription({
+              planName:
+                subscription?.plan_id?.name ||
+                subscription?.plan_type ||
+                latestCurrentPayment?.plan_id?.name ||
+                "Unknown",
+              amount: Number(latestCurrentPayment?.amount || 0),
+              paymentDate:
+                latestCurrentPayment?.payment_date || subscription.start_date,
+              startDate: subscription.start_date,
+              endDate: subscription.end_date,
+              status: subscription.status || "active",
+              isPromotional: subscription.is_promotional || false,
+            });
+          } else {
+            setCurrentSubscription(null);
+          }
+        } catch {
+          setCurrentSubscription(null);
+        }
       } catch (err: any) {
         console.error("Subscription history error:", err);
         setError(
@@ -360,6 +203,7 @@ export const useSubscription = (page = 1, limit = 10) => {
   return {
     payments,
     latestSubscription,
+    currentSubscription,
     total,
     totalPages,
     currentPage: page,

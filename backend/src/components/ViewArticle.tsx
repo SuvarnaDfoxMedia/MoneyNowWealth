@@ -1,6 +1,5 @@
 
 
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
@@ -147,7 +146,6 @@ export default function ViewArticle() {
 
   return (
     <>
-      {/* ================= BACK BUTTON ================= */}
       <div className="px-4 md:px-6 py-6 bg-white border-b border-[#E8E8E8]">
         <button
           onClick={() => navigate(`/${role || "admin"}/article`)}
@@ -157,7 +155,6 @@ export default function ViewArticle() {
         </button>
       </div>
 
-      {/* ================= HERO ================= */}
       <section className="w-full bg-white py-10">
         <div className="max-w-full mx-auto px-4 md:px-6 pb-[30px] border-b border-[#E8E8E8]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -235,7 +232,6 @@ export default function ViewArticle() {
         </div>
       </section>
 
-      {/* ================= CONTENT ================= */}
       <section className="w-full font-poppins mb-10 bg-[#ffffff] pb-[30px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -330,4 +326,3 @@ export default function ViewArticle() {
     </>
   );
 }
-

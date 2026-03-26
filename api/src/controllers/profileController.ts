@@ -68,7 +68,6 @@ export const updateProfile = async (
       return sendError(res, "Validation failed", 400, errors.array());
     }
 
-    //  FIXED: read correct field names
     const { name, mobile, countryCode, address } = req.body;
 
     /* ---- Split full name ---- */

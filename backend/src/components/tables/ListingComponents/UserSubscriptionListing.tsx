@@ -98,7 +98,6 @@ export default function UserSubscriptionListing() {
           start_date: subscription.start_date ?? null,
           end_date: subscription.end_date ?? null,
 
-          //  FIX: status should toggle like before
           status: item.currentStatus || subscription.status || "new",
 
           trial_type: subscription.trial_type,
@@ -349,7 +348,6 @@ export default function UserSubscriptionListing() {
         sortField={sortField}
         sortOrder={sortOrder}
         onSortChange={(field, order) => setSort(field, order)}
-        // emptyMessage="No subscriptions found."
       />
 
       {/* Delete Modal */}
@@ -388,4 +386,3 @@ export default function UserSubscriptionListing() {
     </div>
   );
 }
-

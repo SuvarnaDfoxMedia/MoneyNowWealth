@@ -20,11 +20,10 @@ export const topicService = {
       Shows both free and premium topics
   ---------------------------------------------- */
   getPublishedClustersTopicsArticles: async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     return Cluster.aggregate([
-      { $match: { status: "published" } },
+      { $match: { status: "published", is_active: 1, is_deleted: false } },
       { $sort: { sort_order: 1 } },
       {
         $lookup: {
@@ -37,8 +36,9 @@ export const topicService = {
                   $and: [
                     { $eq: ["$cluster_id", "$$clusterId"] },
                     { $eq: ["$is_deleted", false] },
+                    { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", today] }, // Check publish_date
+                    { $lte: ["$publish_date", now] }, // Check publish_date
                     { $in: ["$access_type", ["free", "premium"]] }, // Include both free and premium
                   ],
                 },
@@ -56,8 +56,9 @@ export const topicService = {
                         $and: [
                           { $eq: ["$topic_id", "$$topicId"] },
                           { $eq: ["$is_deleted", false] },
+                          { $eq: ["$is_active", 1] },
                           { $eq: ["$status", "published"] },
-                          { $lte: ["$publish_date", today] }, // Check article publish_date
+                          { $lte: ["$publish_date", now] }, // Check article publish_date
                         ],
                       },
                     },
@@ -79,16 +80,16 @@ export const topicService = {
       Only free topics accessible without subscription
   ---------------------------------------------- */
   getPublishedTopicWithArticlesById: async (topicId: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     const result = await Topic.aggregate([
       {
         $match: {
           _id: new Types.ObjectId(topicId),
           is_deleted: false,
+          is_active: 1,
           status: "published",
-          publish_date: { $lte: today }, // Check publish_date
+          publish_date: { $lte: now }, // Check publish_date
           access_type: "free", // Only free topics accessible publicly
         },
       },
@@ -101,7 +102,7 @@ export const topicService = {
         },
       },
       { $unwind: "$cluster" },
-      { $match: { "cluster.status": "published" } },
+      { $match: { "cluster.status": "published", "cluster.is_active": 1 } },
       {
         $lookup: {
           from: "articles",
@@ -113,8 +114,9 @@ export const topicService = {
                   $and: [
                     { $eq: ["$topic_id", "$$topicId"] },
                     { $eq: ["$is_deleted", false] },
+                    { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", today] }, // Check article publish_date
+                    { $lte: ["$publish_date", now] }, // Check article publish_date
                   ],
                 },
               },
@@ -189,7 +191,6 @@ export const topicService = {
       is_active: data.is_active ?? 0,
       summary: data.summary || "", // Ensure summary exists for cron emails
       publish_date: publish_date,
-      // NEW: Initialize email flag
       is_email_sent: false,
       created_at: now,
       updated_at: now,
@@ -286,6 +287,7 @@ export const topicService = {
     if (!topic) return null;
 
     topic.status = "published";
+    topic.is_active = 1;
     topic.publish_date = new Date();
     topic.is_email_sent = false; // Reset for email notifications
     topic.updated_at = new Date();

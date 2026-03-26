@@ -13,14 +13,12 @@ export interface INewsletter extends Document {
 
 const NewsletterSchema = new Schema<INewsletter>(
   {
-    // Name: optional for now (default null)
     name: {
       type: String,
       default: null,
       trim: true,
     },
 
-    // Email: required, unique, lowercase
     email: {
       type: String,
       required: true,

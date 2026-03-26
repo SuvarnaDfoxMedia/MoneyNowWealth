@@ -38,7 +38,7 @@ export default function AddMFFund() {
     launch_date: null as Date | null,
     min_investment: "",
     exit_load: "",
-    is_featured: true,
+    is_featured: false,
     is_popular: false,
     is_active: 1,
   });
@@ -245,7 +245,7 @@ export default function AddMFFund() {
       launch_date: null,
       min_investment: "",
       exit_load: "",
-      is_featured: true,
+      is_featured: false,
       is_popular: false,
       is_active: 1,
     });
@@ -330,8 +330,7 @@ export default function AddMFFund() {
             </div>
           </div>
 
-
-            <div>
+<div>
             <label htmlFor="plan_type" className="block mb-2 text-gray-700 font-medium">Plan Type</label>
             <select
               id="plan_type"
@@ -377,10 +376,8 @@ export default function AddMFFund() {
             />
             {error(errors.amc_name)}
           </div>
-        
-        
 
-          <div>
+<div>
             <label htmlFor="option_type" className="block mb-2 text-gray-700 font-medium">Option Type</label>
             <select
               id="option_type"

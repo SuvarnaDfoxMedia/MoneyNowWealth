@@ -33,6 +33,8 @@ export const logout = async (navigate: (path: string) => void) => {
     localStorage.removeItem("user");
     navigate("/signin");
   } catch {
-    // Keep current UX: on failure stay on current page.
+    // Swallow logout failures so we still clear local state and return to sign-in.
+    localStorage.removeItem("user");
+    navigate("/signin");
   }
 };

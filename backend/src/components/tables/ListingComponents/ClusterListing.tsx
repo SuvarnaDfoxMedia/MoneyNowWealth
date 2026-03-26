@@ -186,6 +186,7 @@ export default function ClusterListing() {
 
   /* ------------------- Dropdown logic ---------------- */
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   // OUTSIDE CLICK (use CLICK, not mousedown)
@@ -205,6 +206,11 @@ export default function ClusterListing() {
 
   const handleDropdownClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+    setDropdownPos({
+      top: rect.bottom + window.scrollY + 6,
+      left: rect.right + window.scrollX - 144,
+    });
     setOpenDropdownId((prev) => (prev === id ? null : id));
   };
 
@@ -245,6 +251,45 @@ export default function ClusterListing() {
   };
 
   const API_BASE = import.meta.env.VITE_API_BASE?.replace("/api", "");
+
+  const Dropdown = ({
+    clusterId,
+    top,
+    left,
+  }: {
+    clusterId: string;
+    top: number;
+    left: number;
+  }) =>
+    createPortal(
+      <div
+        ref={dropdownRef}
+        className="absolute z-50 w-36 rounded-xl border border-gray-200 bg-white p-1 shadow-lg"
+        style={{ top, left }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => {
+            handleEditClick(clusterId);
+            setOpenDropdownId(null);
+          }}
+          className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
+        >
+          <FiEdit /> Edit
+        </button>
+
+        <button
+          onClick={() => {
+            setDeleteModalId(clusterId);
+            setOpenDropdownId(null);
+          }}
+          className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-red-600 transition hover:bg-red-50"
+        >
+          <FiTrash2 /> Delete
+        </button>
+      </div>,
+      document.body,
+    );
 
   /* ---------------- Columns ---------------- */
   const columns: TableColumn<Cluster>[] = [
@@ -292,7 +337,7 @@ export default function ClusterListing() {
       key: "actions",
       label: "Actions",
       render: (r) => (
-        <div className="relative">
+        <>
           <button
             onClick={(e) => handleDropdownClick(e, r._id)}
             className="rounded-full p-2 text-gray-600 transition hover:bg-gray-100"
@@ -301,30 +346,13 @@ export default function ClusterListing() {
           </button>
 
           {openDropdownId === r._id && (
-            <div
-              ref={dropdownRef}
-              className="absolute right-0 top-full z-50 mt-2 w-36 rounded-xl border border-gray-200 bg-white p-1 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => handleEditClick(r._id)}
-                className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
-              >
-                <FiEdit /> Edit
-              </button>
-
-              <button
-                onClick={() => {
-                  setDeleteModalId(r._id);
-                  setOpenDropdownId(null);
-                }}
-                className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-red-600 transition hover:bg-red-50"
-              >
-                <FiTrash2 /> Delete
-              </button>
-            </div>
+            <Dropdown
+              clusterId={r._id}
+              top={dropdownPos.top}
+              left={dropdownPos.left}
+            />
           )}
-        </div>
+        </>
       ),
     },
   ];

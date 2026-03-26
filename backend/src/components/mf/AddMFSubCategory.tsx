@@ -218,9 +218,8 @@ export default function AddMFCategory() {
       />
       <form onSubmit={onSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
 
-          <div ref={mainCategoryWrapperRef} className="relative">
+<div ref={mainCategoryWrapperRef} className="relative">
             <label className="block mb-2 text-gray-700 font-medium">Main Category</label>
             <div
               onClick={() => setMainCategoryDropdownOpen((prev) => !prev)}

@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -123,11 +122,6 @@ const AppSidebar: React.FC = () => {
             path: `/${role}/mf/funds`,
             roles: ["admin", "editor"],
           },
-          // {
-          //   name: "AMCs",
-          //   path: `/${role}/mf/amcs`,
-          //   roles: ["admin", "editor"],
-          // },
           {
             name: "NFO",
             path: `/${role}/mf/nfo`,
@@ -144,7 +138,13 @@ const AppSidebar: React.FC = () => {
       {
         name: "Contact Enquiry",
         icon: <FiMessageSquare />,
-        path: `/${role}/contactenquiry`,
+        path: `/${role}/contact-enquiry`,
+        roles: ["admin"],
+      },
+      {
+        name: "Partnership Enquiry",
+        icon: <FiMessageSquare />,
+        path: `/${role}/partnership-enquiry`,
         roles: ["admin"],
       },
       {
@@ -379,6 +379,3 @@ const AppSidebar: React.FC = () => {
 };
 
 export default AppSidebar;
-
-
-

@@ -19,18 +19,11 @@ export function startNewsletterScheduler() {
           .filter((email): email is string => !!email && email.includes("@"));
         const newsletterUrl = `${process.env.BASE_URL}/uploads/newsletters/week-1.pdf`;
 
-        /* OLD SMTP IMPLEMENTATION (COMMENTED)
-        emailService.newsletter(
-          users.map((u) => u.email),
-          `${process.env.BASE_URL}/uploads/newsletters/week-1.pdf`,
-          "Weekly Market Newsletter",
-        );
-        */
-        await getResponseEmailService.sendNewsletterBulk(
-          recipients,
-          "Weekly Market Newsletter",
-          newsletterUrl,
-        );
+        // await getResponseEmailService.sendNewsletterBulk(
+        //   recipients,
+        //   "Weekly Market Newsletter",
+        //   newsletterUrl,
+        // );
 
         console.log(`Newsletter job queued for ${users.length} users`);
       } catch (error) {

@@ -45,9 +45,6 @@ export default function ViewCmsPage() {
       try {
         const response = await getOne(id);
 
-        // Works for BOTH:
-        // CMS → { page: {...} }
-        // Others → { data: {...} }
         const cmsPage: CmsPage | null =
           (response as any)?.page ?? response?.data ?? null;
 
@@ -202,4 +199,3 @@ export default function ViewCmsPage() {
     </div>
   );
 }
-

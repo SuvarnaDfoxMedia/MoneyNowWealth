@@ -82,17 +82,15 @@ export default function ChangePasswordForm() {
 
     setLoading(true);
 
-
-    try {
+try {
       const res = await axiosApi.post<{ message: string }>(
-        "/auth/change-password",
+        "/auth/admin/change-password",
         {
           oldPassword,
           newPassword,
         },
       );
 
-      //  FIX: Handle direct response vs Axios wrapped response
       let message: string;
       if (typeof res === "object" && res !== null && "data" in res) {
         // Axios wrapped response
@@ -150,7 +148,6 @@ export default function ChangePasswordForm() {
       setTimeout(() => navigate(-1), 3000); // Increased to 3 seconds
     } catch (err: unknown) {
 
-      //  FIX: Handle different error formats
       const error = err as {
         response?: { data?: { message?: string } | string };
         message?: string;
@@ -264,7 +261,6 @@ export default function ChangePasswordForm() {
                 )}
               </div>
 
-              {/* New Password */}
               <div>
                 <Label>
                   New Password <span className="text-error-500">*</span>
@@ -352,4 +348,3 @@ export default function ChangePasswordForm() {
     </div>
   );
 }
-

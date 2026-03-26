@@ -77,7 +77,6 @@ export const getClusters = async (req: Request, res: Response) => {
   }
 };
 
-// Controller: fetch only ACTIVE clusters
 export const getActiveClusters = async (req: Request, res: Response) => {
   try {
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -213,49 +212,6 @@ export const addCluster = async (req: MulterRequest, res: Response) => {
 /* ---------------------------------------------------
    Update existing cluster
 --------------------------------------------------- */
-// export const updateCluster = async (req: MulterRequest, res: Response) => {
-//   try {
-//     const { id } = req.params;
-
-//     const updatedData: any = {
-//       ...req.body,
-//       title: req.body.title?.trim(),
-//     };
-
-//     // Generate unique slug if title changes or slug is provided
-//     if (req.body.title || req.body.slug) {
-//       updatedData.slug = await generateUniqueSlug(
-//         req.body.slug || req.body.title || "",
-//         id,
-//       );
-//     }
-
-//     if (req.file) {
-//       updatedData.thumbnail = req.file.filename;
-//     }
-
-//     const cluster = await clusterService.updateCluster(id, updatedData);
-
-//     if (!cluster) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Cluster not found",
-//       });
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Cluster updated successfully",
-//       cluster,
-//     });
-//   } catch (error: any) {
-//     console.error("Update cluster failed:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message || "Failed to update cluster",
-//     });
-//   }
-// };
 
 export const updateCluster = async (req: MulterRequest, res: Response) => {
   try {
@@ -278,7 +234,6 @@ export const updateCluster = async (req: MulterRequest, res: Response) => {
       ...updateFields
     } = req.body;
 
-    // Debug: Check what's being sent
     console.log("Received update data:", {
       id,
       bodyKeys: Object.keys(req.body),
@@ -305,7 +260,6 @@ export const updateCluster = async (req: MulterRequest, res: Response) => {
       updatedData.thumbnail = req.file.filename;
     }
 
-    // Double-check: Remove any remaining auto-managed fields
     const fieldsToRemove = [
       "created_at",
       "updated_at",
@@ -381,132 +335,25 @@ export const deleteCluster = async (req: Request, res: Response) => {
   }
 };
 
-// export const getAllClustersFirstTopicWithArticle = async (
-//   req: Request,
-//   res: Response
-// ) => {
-//   try {
-//     const { status = "published" } = req.query;
-
-//     const clusters = await Cluster.aggregate([
-//       {
-//         $match: {
-//           is_deleted: false,
-//           status: status,
-//         },
-//       },
-
-//       /* ---------------- FIRST TOPIC ---------------- */
-//       {
-//         $lookup: {
-//           from: "topics",
-//           let: { clusterId: "$_id" },
-//           pipeline: [
-//             {
-//               $match: {
-//                 $expr: { $eq: ["$cluster_id", "$$clusterId"] },
-//                 is_deleted: false,
-//                 status: "published",
-//               },
-//             },
-//             { $sort: { sort_order: 1, created_at: 1 } },
-//             { $limit: 1 },
-
-//             /* ---------------- FIRST ARTICLE ---------------- */
-//             {
-//               $lookup: {
-//                 from: "articles",
-//                 let: { topicId: "$_id" },
-//                 pipeline: [
-//                   {
-//                     $match: {
-//                       $expr: { $eq: ["$topic_id", "$$topicId"] },
-//                       is_deleted: false,
-//                       status: "published",
-//                     },
-//                   },
-//                   { $sort: { publish_date: -1, created_at: -1 } },
-//                   { $limit: 1 },
-//                 ],
-//                 as: "article",
-//               },
-//             },
-//             {
-//               $unwind: {
-//                 path: "$article",
-//                 preserveNullAndEmptyArrays: true,
-//               },
-//             },
-//             {
-//               $project: {
-//                 _id: 1,
-//                 title: 1,
-//                 slug: 1,
-//                 article: 1,
-//               },
-//             },
-//           ],
-//           as: "topic",
-//         },
-//       },
-
-//       {
-//         $unwind: {
-//           path: "$topic",
-//           preserveNullAndEmptyArrays: true,
-//         },
-//       },
-
-//       /* ---------------- FINAL SHAPE ---------------- */
-//       {
-//         $project: {
-//           _id: 1,
-//           title: 1,
-//           slug: 1,
-//           thumbnail: 1,
-//           created_at: 1,
-//           topic: 1,
-//         },
-//       },
-
-//       /* Optional: remove clusters without article */
-//       {
-//         $match: {
-//           "topic.article._id": { $exists: true },
-//         },
-//       },
-//     ]);
-
-//     return res.status(200).json({
-//       success: true,
-//       total: clusters.length,
-//       clusters,
-//     });
-//   } catch (error: any) {
-//     console.error("Error fetching all clusters first topic & article:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message || "Failed to fetch data",
-//     });
-//   }
-// };
 export const getAllClustersFirstTopicWithArticle = async (
   req: Request,
   res: Response,
 ) => {
   try {
     const { status = "published" } = req.query;
+    const now = new Date();
 
     const clusters = await Cluster.aggregate([
       /* ---------------- MATCH CLUSTERS ---------------- */
       {
         $match: {
           is_deleted: false,
+          is_active: 1,
           status: status,
         },
       },
 
-      /* ---------------- FIRST TOPIC ---------------- */
+      /* ---------------- TOPIC WITH LATEST PUBLISHED ARTICLE ---------------- */
       {
         $lookup: {
           from: "topics",
@@ -516,15 +363,13 @@ export const getAllClustersFirstTopicWithArticle = async (
               $match: {
                 $expr: { $eq: ["$cluster_id", "$$clusterId"] },
                 is_deleted: false,
+                is_active: 1,
                 status: "published",
+                publish_date: { $lte: now },
               },
             },
 
-            // NOTE: this chooses the "first topic" of cluster
-            { $sort: { sort_order: 1, created_at: 1 } },
-            { $limit: 1 },
-
-            /* ---------------- FIRST ARTICLE (LATEST ONE) ---------------- */
+            /* ---------------- LATEST ARTICLE PER TOPIC ---------------- */
             {
               $lookup: {
                 from: "articles",
@@ -534,11 +379,12 @@ export const getAllClustersFirstTopicWithArticle = async (
                     $match: {
                       $expr: { $eq: ["$topic_id", "$$topicId"] },
                       is_deleted: false,
+                      is_active: 1,
                       status: "published",
+                      publish_date: { $lte: now },
                     },
                   },
 
-                  //  latest article first
                   { $sort: { publish_date: -1, created_at: -1 } },
                   { $limit: 1 },
                 ],
@@ -561,6 +407,8 @@ export const getAllClustersFirstTopicWithArticle = async (
                 article: 1,
               },
             },
+            { $sort: { "article.publish_date": -1, "article.created_at": -1 } },
+            { $limit: 1 },
           ],
           as: "topic",
         },
@@ -592,7 +440,6 @@ export const getAllClustersFirstTopicWithArticle = async (
         },
       },
 
-      /* ----------------  IMPORTANT FIX: SORT BY LATEST ARTICLE ---------------- */
       {
         $sort: {
           "topic.article.created_at": -1,
@@ -600,13 +447,11 @@ export const getAllClustersFirstTopicWithArticle = async (
         },
       },
 
-      //  OPTIONAL: If you want ONLY ONE latest article (uncomment this)
-      // { $limit: 1 },
     ]);
 
     return sendSuccess(
       res,
-      "Clusters with first topic/article fetched successfully",
+      "Clusters with latest published article fetched successfully",
       clusters,
       200,
       { total: clusters.length, clusters },

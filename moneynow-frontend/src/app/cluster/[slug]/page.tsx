@@ -89,7 +89,7 @@ const ClusterPage: React.FC = () => {
 
   return (
     <>
-      <section className="font-poppins w-full py-6 mb-[100px] overflow-x-hidden">
+      <section className="font-poppins w-full py-6 mb-[0px] overflow-x-hidden">
         <div className="max-w-full mx-auto px-4 md:px-6 mb-[30px]">
           {/* GRID */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -160,12 +160,12 @@ const ClusterPage: React.FC = () => {
         </div>
         <SeniorCitizen />
       </section>
-
       <HomeInvestTrack data={homeInvestTrackData} />
-      <StayConnected />
+      <div className="relative pt-[60px] pb-[30px]">
+        <StayConnected />
+      </div>{" "}
     </>
   );
 };
 
 export default ClusterPage;
-

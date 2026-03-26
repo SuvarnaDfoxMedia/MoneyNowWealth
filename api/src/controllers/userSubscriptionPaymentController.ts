@@ -78,7 +78,6 @@ export const addSubscriptionPayment = async (
       const durationValue = plan.duration?.value || 1;
       const durationUnit = plan.duration?.unit || "month";
 
-      // Use isUserPurchase = false for admin/system payments
       subscription = await userSubscriptionService.createOrUpdateSubscription(
         user_id,
         plan._id.toString(),
@@ -92,23 +91,6 @@ export const addSubscriptionPayment = async (
       return sendError(res, err.message || "Failed to create subscription", 500);
     }
 
-    // ---------- 2. Create Payment Entry ----------
-    // const payment = await UserSubscriptionPayment.create({
-    //   user_id: new Types.ObjectId(user_id),
-    //   plan_id: new Types.ObjectId(plan_id),
-    //   user_subscription_id: subscription._id,
-    //   amount: isFreePlan ? 0 : amount || plan.price || 0,
-    //   currency: currency || "INR",
-    //   payment_method: isFreePlan ? "free_plan" : payment_method || "system",
-    //   payment_status: "success",
-    //   type: type,
-    //   payment_date: new Date(),
-    //   metadata: {
-    //     ...metadata,
-    //     note: isFreePlan ? "Free plan" : "Paid plan",
-    //     assigned_by: "admin",
-    //   },
-    // });
     const payment = await UserSubscriptionPayment.create({
       user_id: new Types.ObjectId(user_id),
       plan_id: new Types.ObjectId(plan_id),
@@ -121,7 +103,6 @@ export const addSubscriptionPayment = async (
       type,
       payment_date: new Date(),
 
-      //  FIX: store invoice-valid dates
       start_date: subscription.start_date,
       end_date: subscription.end_date,
 
@@ -205,23 +186,6 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
         true, // isUserPurchase = true (user purchase)
       );
 
-    // ---------- 2. Create Payment Entry ----------
-    // const payment = await UserSubscriptionPayment.create({
-    //   user_id: new Types.ObjectId(userId),
-    //   plan_id: new Types.ObjectId(plan_id),
-    //   user_subscription_id: subscription._id,
-    //   amount: isFreePlan ? 0 : amount || plan.price || 0,
-    //   currency: "INR",
-    //   payment_method: isFreePlan ? "free_plan" : payment_method,
-    //   payment_status: "success",
-    //   type: "new",
-    //   payment_date: new Date(),
-    //   metadata: {
-    //     note: isFreePlan ? "Free plan purchase" : "Paid plan purchase",
-    //     purchased_by_user: true,
-    //     is_user_purchase: true,
-    //   },
-    // });
     const payment = await UserSubscriptionPayment.create({
       user_id: new Types.ObjectId(userId),
       plan_id: new Types.ObjectId(plan_id),
@@ -234,7 +198,6 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
       type: "new",
       payment_date: new Date(),
 
-      //  FIX: store invoice-valid dates
       start_date: subscription.start_date,
       end_date: subscription.end_date,
 
@@ -271,7 +234,6 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
   }
 };
 
-// ====================== UPDATE PAYMENT ======================
 export const updateSubscriptionPayment = async (
   req: Request,
   res: Response,
@@ -294,7 +256,6 @@ export const updateSubscriptionPayment = async (
   }
 };
 
-// ====================== GET PAYMENT BY ID ======================
 export const getSubscriptionPaymentById = async (
   req: Request,
   res: Response,
@@ -321,7 +282,6 @@ export const getSubscriptionPaymentById = async (
   }
 };
 
-// ====================== GET LATEST PAYMENT BY USER ======================
 export const getLatestPaymentByUser = async (req: Request, res: Response) => {
   try {
     const { user_id } = req.params;
@@ -353,7 +313,6 @@ export const getLatestPaymentByUser = async (req: Request, res: Response) => {
   }
 };
 
-// ====================== GET MY PAYMENT HISTORY ======================
 export const getMyPaymentHistory = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
@@ -395,142 +354,6 @@ export const getMyPaymentHistory = async (req: Request, res: Response) => {
   }
 };
 
-// ====================== GET USER SUBSCRIPTION HISTORY ======================
-// export const getUserSubscriptionHistory = async (
-//   req: Request,
-//   res: Response,
-// ) => {
-//   try {
-//     const { userId } = req.params;
-
-//     if (!mongoose.Types.ObjectId.isValid(userId)) {
-//       return res.status(400).json({
-//         message: "Invalid user ID",
-//       });
-//     }
-
-//     const payments = await UserSubscriptionPayment.find({
-//       user_id: new Types.ObjectId(userId),
-//     })
-//       .populate({
-//         path: "user_subscription_id",
-//         select: "status start_date end_date plan_type trial_type eligibility",
-//       })
-//       .populate("plan_id", "name price duration")
-//       .sort({ payment_date: -1 });
-
-//     const orderedPayments = payments.sort((a, b) => {
-//       const order = { new: 0, upgrade: 1, downgrade: 2 };
-//       return (
-//         (order[a.type as keyof typeof order] || 99) -
-//         (order[b.type as keyof typeof order] || 99)
-//       );
-//     });
-
-//     return res.status(200).json({
-//       success: true,
-//       total: orderedPayments.length,
-//       payments: orderedPayments.map((p) => {
-//         const sub = p.user_subscription_id as any;
-//         const plan = p.plan_id as any;
-
-//         return {
-//           _id: p._id.toString(),
-//           subscriptionId: sub?._id?.toString(),
-//           planName: plan?.name || "Unknown",
-//           amount: p.amount,
-//           currency: p.currency,
-//           type: p.type,
-//           trialType: sub?.trial_type,
-//           status: sub?.status,
-//           requiresPurchase: sub?.eligibility?.purchase_required || false,
-//           startDate: sub?.start_date,
-//           endDate: sub?.end_date,
-//           paymentDate: p.payment_date,
-//           transactionId: p.transaction_id,
-//           orderId: p.order_id,
-//           paymentMethod: p.payment_method,
-//           paymentStatus: p.payment_status,
-//         };
-//       }),
-//     });
-//   } catch (err) {
-//     console.error("Error fetching subscription history:", err);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//     });
-//   }
-// };
-
-// ====================== GET USER SUBSCRIPTION HISTORY ======================
-// export const getUserSubscriptionHistory = async (
-//   req: Request,
-//   res: Response,
-// ) => {
-//   try {
-//     const { userId } = req.params;
-
-//     if (!mongoose.Types.ObjectId.isValid(userId)) {
-//       return res.status(400).json({
-//         message: "Invalid user ID",
-//       });
-//     }
-
-//     // Get all payments for the user
-//     const payments = await UserSubscriptionPayment.find({
-//       user_id: new Types.ObjectId(userId),
-//     })
-//       .populate("plan_id", "name price duration")
-//       .sort({ payment_date: -1 }); // Sort by payment date
-
-//     // Get the user's current subscription for date calculation
-//     const currentSubscription = await UserSubscription.findOne({
-//       user_id: new Types.ObjectId(userId),
-//       is_deleted: false,
-//     });
-
-//     // Calculate dates for each payment entry
-//     const calculatedPayments = await Promise.all(
-//       payments.map(async (payment, index) => {
-//         const plan = payment.plan_id as any;
-
-//         // Calculate start and end dates for THIS payment
-//         let startDate: Date;
-//         let endDate: Date;
-
-//         if (index === 0) {
-//           // Most recent payment - use dates from current subscription
-//           if (currentSubscription) {
-//             startDate = currentSubscription.start_date;
-//             endDate = currentSubscription.end_date;
-//           } else {
-//             // Fallback: calculate based on payment date
-//             startDate = payment.payment_date;
-//             endDate = new Date(startDate);
-
-//             if (plan?.duration) {
-//               const { value, unit } = plan.duration;
-//               switch (unit) {
-//                 case "day":
-//                   endDate.setDate(endDate.getDate() + value);
-//                   break;
-//                 case "month":
-//                   endDate.setMonth(endDate.getMonth() + value);
-//                   break;
-//                 case "year":
-//                   endDate.setFullYear(endDate.getFullYear() + value);
-//                   break;
-//               }
-//             } else {
-//               endDate.setMonth(endDate.getMonth() + 1); // Default 1 month
-//             }
-//           }
-//         } else {
-//           // Historical payments - calculate dates based on next payment's start date
-//           const nextPayment = payments[index - 1]; // Since array is sorted newest to oldest
-//           const nextPlan = nextPayment.plan_id as any;
-
 //           // End date is day before next payment's start date
 //           const nextPaymentStartDate = await calculatePaymentStartDate(
 //             nextPayment,
@@ -540,59 +363,6 @@ export const getMyPaymentHistory = async (req: Request, res: Response) => {
 //           endDate = new Date(nextPaymentStartDate);
 //           endDate.setDate(endDate.getDate() - 1); // Previous day
 
-//           // Start date is end date minus plan duration
-//           startDate = new Date(endDate);
-
-//           if (plan?.duration) {
-//             const { value, unit } = plan.duration;
-//             switch (unit) {
-//               case "day":
-//                 startDate.setDate(startDate.getDate() - value);
-//                 break;
-//               case "month":
-//                 startDate.setMonth(startDate.getMonth() - value);
-//                 break;
-//               case "year":
-//                 startDate.setFullYear(startDate.getFullYear() - value);
-//                 break;
-//             }
-//           } else {
-//             startDate.setMonth(startDate.getMonth() - 1); // Default 1 month
-//           }
-//         }
-
-//         return {
-//           _id: payment._id.toString(),
-//           subscriptionId: payment.user_subscription_id?.toString(),
-//           planName: plan?.name || "Unknown",
-//           amount: payment.amount,
-//           currency: payment.currency,
-//           type: payment.type,
-//           paymentDate: payment.payment_date,
-//           startDate: startDate,
-//           endDate: endDate,
-//           transactionId: payment.transaction_id,
-//           orderId: payment.order_id,
-//           paymentMethod: payment.payment_method,
-//           paymentStatus: payment.payment_status,
-//           metadata: payment.metadata,
-//         };
-//       }),
-//     );
-
-//     return res.status(200).json({
-//       success: true,
-//       total: calculatedPayments.length,
-//       payments: calculatedPayments,
-//     });
-//   } catch (err) {
-//     console.error("Error fetching subscription history:", err);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//     });
-//   }
-// };
 export const getUserSubscriptionHistory = async (
   req: Request,
   res: Response,
@@ -622,7 +392,6 @@ export const getUserSubscriptionHistory = async (
         type: p.type,
         paymentDate: p.payment_date,
 
-        //  FIXED: payment dates
         startDate: p.start_date,
         endDate: p.end_date,
 
@@ -670,7 +439,6 @@ const calculatePaymentStartDate = async (
   return startDate;
 };
 
-// ====================== GET INVOICE BY PAYMENT ID ======================
 export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
   try {
     const { paymentId } = req.params;
@@ -713,7 +481,6 @@ export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
           email: user?.email || "",
         },
 
-        //  FIXED: always use payment dates
         validity: {
           startDate: payment.start_date || payment.payment_date,
           endDate: payment.end_date || payment.payment_date,

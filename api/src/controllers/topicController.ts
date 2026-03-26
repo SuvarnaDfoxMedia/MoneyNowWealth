@@ -9,19 +9,16 @@ import { sendError, sendSuccess } from "../utils/apiResponse";
 type Request = express.Request;
 type Response = express.Response;
 
-// ==================== PUBLIC API ====================
-
 // Get published clusters with topics & articles (public view)
 export const getPublishedClustersTopicsArticles = async (
   req: Request,
   res: Response,
 ) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     const clusters = await Cluster.aggregate([
-      { $match: { status: "published" } },
+      { $match: { status: "published", is_active: 1, is_deleted: false } },
       { $sort: { sort_order: 1 } },
       {
         $lookup: {
@@ -34,8 +31,9 @@ export const getPublishedClustersTopicsArticles = async (
                   $and: [
                     { $eq: ["$cluster_id", "$$clusterId"] },
                     { $eq: ["$is_deleted", false] },
+                    { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", today] },
+                    { $lte: ["$publish_date", now] },
                     { $in: ["$access_type", ["free", "premium"]] }, // include Premium + Free
                   ],
                 },
@@ -53,8 +51,9 @@ export const getPublishedClustersTopicsArticles = async (
                         $and: [
                           { $eq: ["$topic_id", "$$topicId"] },
                           { $eq: ["$is_deleted", false] },
+                          { $eq: ["$is_active", 1] },
                           { $eq: ["$status", "published"] },
-                          { $lte: ["$publish_date", today] },
+                          { $lte: ["$publish_date", now] },
                         ],
                       },
                     },
@@ -105,16 +104,16 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
 ) => {
   try {
     const { id } = req.params;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     const result = await Topic.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(id),
           is_deleted: false,
+          is_active: 1,
           status: "published",
-          publish_date: { $lte: today },
+          publish_date: { $lte: now },
           access_type: "free",
         },
       },
@@ -127,7 +126,7 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
         },
       },
       { $unwind: "$cluster" },
-      { $match: { "cluster.status": "published" } },
+      { $match: { "cluster.status": "published", "cluster.is_active": 1 } },
       {
         $lookup: {
           from: "articles",
@@ -139,8 +138,9 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
                   $and: [
                     { $eq: ["$topic_id", "$$topicId"] },
                     { $eq: ["$is_deleted", false] },
+                    { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", today] },
+                    { $lte: ["$publish_date", now] },
                   ],
                 },
               },
@@ -197,8 +197,6 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
     return sendError(res, error?.message || "Server error", 500);
   }
 };
-
-// ==================== ADMIN / CRUD ====================
 
 export const getTopics = async (req: Request, res: Response) => {
   try {
@@ -266,16 +264,16 @@ export const getTopicById = async (req: Request, res: Response) => {
 export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     const result = await Topic.aggregate([
       {
         $match: {
           slug,
           is_deleted: false,
+          is_active: 1,
           status: "published",
-          publish_date: { $lte: today },
+          publish_date: { $lte: now },
         },
       },
       {
@@ -288,6 +286,7 @@ export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
                 $expr: {
                   $and: [
                     { $eq: ["$topic_id", "$$topicId"] },
+                    { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
                   ],
                 },
@@ -325,8 +324,7 @@ export const getPublishedTopicByClusterAndSlug = async (
 ) => {
   try {
     const { clusterSlug, slug } = req.params;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
 
     const result = await Topic.aggregate([
       {
@@ -334,8 +332,9 @@ export const getPublishedTopicByClusterAndSlug = async (
           slug,
           cluster_slug: clusterSlug, // <-- match cluster/category slug
           is_deleted: false,
+          is_active: 1,
           status: "published",
-          publish_date: { $lte: today },
+          publish_date: { $lte: now },
         },
       },
       {
@@ -348,6 +347,7 @@ export const getPublishedTopicByClusterAndSlug = async (
                 $expr: {
                   $and: [
                     { $eq: ["$topic_id", "$$topicId"] },
+                    { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
                   ],
                 },

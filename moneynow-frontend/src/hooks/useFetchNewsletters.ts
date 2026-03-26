@@ -1,17 +1,4 @@
-// import { useApiFetch } from "@/hooks/useCommanApiFetch";
 
-// export const useFetchNewsletters = (page = 1, limit = 10) => {
-//   const { data, loading, error } = useApiFetch<any>(
-//     `/api/newsletter-publications?page=${page}&limit=${limit}`,
-//   );
-
-//   return {
-//     newsletters: data?.newsletters ?? [],
-//     totalPages: data?.totalPages ?? 1,
-//     loading,
-//     error,
-//   };
-// };
 
 import { useApiFetch } from "@/hooks/useCommanApiFetch";
 

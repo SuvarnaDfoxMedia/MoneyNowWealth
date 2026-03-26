@@ -9,15 +9,6 @@
 // } from "../controllers/subscriptionPlanController.js";
 // import { roleFromUrl } from "../middlewares/roleUrlMiddleware.js";
 
-// const router = express.Router();
-
-// /* -------------------- PUBLIC ROUTES -------------------- */
-// router.get("/subscription-plan", getSubscriptionPlans); // List all subscription plans
-// router.get("/subscription-plan/:id", getSubscriptionPlanById); // Get single plan
-
-// /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
-// const adminEditorMiddleware = roleFromUrl(["admin"]);
-
 // /* -------------------- CREATE -------------------- */
 // router.post(
 //   "/:role/subscription-plan/create",
@@ -40,20 +31,12 @@
 //   toggleSubscriptionPlanStatus
 // );
 
-// // Optional: for public/non-role routes
-// router.patch(
-//   "/subscription-plan/toggle-status/:id",
-//   toggleSubscriptionPlanStatus
-// );
-
 // /* -------------------- DELETE -------------------- */
 // router.delete(
 //   "/:role/subscription-plan/delete/:id",
 //   ...adminEditorMiddleware,
 //   deleteSubscriptionPlan
 // );
-
-// export default router;
 
 import express from "express";
 import {

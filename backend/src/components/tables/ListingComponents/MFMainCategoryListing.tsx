@@ -100,9 +100,7 @@ export default function MFMainCategoryListing() {
 
   const columns: TableColumn<MFMainCategory>[] = [
     { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
-    // { key: "code", label: "Code", sortable: true },
     { key: "name", label: "Name", sortable: true },
-    // { key: "sort_order", label: "Sort", sortable: true },
     {
       key: "is_active",
       label: "Status",

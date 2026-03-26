@@ -41,9 +41,7 @@ export default function MFIndexSnapshotListing() {
     lastAction,
   } = useDataTableStore();
 
-
-
-  /* ------------------- Initialize module state ------------------- */
+/* ------------------- Initialize module state ------------------- */
   useEffect(() => {
     setCurrentModule(MODULE_KEY);
 
@@ -160,4 +158,3 @@ export default function MFIndexSnapshotListing() {
     </div>
   );
 }
-

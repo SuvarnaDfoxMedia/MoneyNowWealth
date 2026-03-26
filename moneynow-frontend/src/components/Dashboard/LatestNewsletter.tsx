@@ -7,10 +7,17 @@ const FILE_BASE_URL = process.env.NEXT_PUBLIC_API_BASE + "/uploads/newsletters";
 
 const LatestNewsletter = () => {
   const { data, loading, error } = useApiFetch<any>(
-    `/api/newsletter-publications?limit=3&sortField=publish_date&sortOrder=desc`,
+    `/api/newsletter-publications`,
+    {
+      params: {
+        limit: 5,
+        sortField: "publish_date",
+        sortOrder: "desc",
+      },
+    },
   );
 
-  const newsletters = data?.newsletters ?? [];
+  const newsletters = data?.newsletters ?? data?.data?.newsletters ?? [];
 
   return (
     <div className="lg:col-span-3 bg-white rounded-xl p-6 shadow">
@@ -33,7 +40,7 @@ const LatestNewsletter = () => {
 
       {/* Rows */}
       <div className="space-y-3 mt-2">
-        {newsletters.map((item: any, index: number) => {
+        {newsletters.slice(0, 5).map((item: any, index: number) => {
           const fileUrl = `${FILE_BASE_URL}/${item.pdf_file}`;
 
           return (

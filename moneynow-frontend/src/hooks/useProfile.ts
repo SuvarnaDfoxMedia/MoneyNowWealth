@@ -116,8 +116,6 @@ export const useFetchProfile = () => {
   }, [setProfile, setProfileImageUrl]);
 
   useEffect(() => {
-    // Cookie-based auth: always attempt profile fetch and let 401/403
-    // clear state without showing an error.
     fetchProfile();
   }, [fetchProfile]);
 
@@ -141,7 +139,7 @@ export const useUpdateProfile = () => {
         console.log(key, value);
       }
 
-      const res = await API.put("/api/profile", formData, {
+      const res = await API.put("/api/user/profile", formData, {
         withCredentials: true,
         headers: { "Content-Type": "multipart/form-data" },
       });

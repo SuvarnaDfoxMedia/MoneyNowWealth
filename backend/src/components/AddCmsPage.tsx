@@ -44,7 +44,11 @@ const extractCmsPage = (payload: unknown): Partial<CmsPageForm> | undefined => {
 
   if ("data" in record && record.data && typeof record.data === "object") {
     const dataRecord = record.data as Record<string, unknown>;
-    if ("page" in dataRecord && dataRecord.page && typeof dataRecord.page === "object") {
+    if (
+      "page" in dataRecord &&
+      dataRecord.page &&
+      typeof dataRecord.page === "object"
+    ) {
       return dataRecord.page as Partial<CmsPageForm>;
     }
     return record.data as Partial<CmsPageForm>;
@@ -236,7 +240,7 @@ export default function AddCmsPage() {
         <button
           type="button"
           onClick={() => navigate(`/${role || "admin"}/cmspages`)}
-          className="bg-[#043f79] text-white px-3 py-1 rounded-md shadow flex items-center gap-2"
+          className="flex items-center gap-2 bg-[#043f79] text-white px-4 py-2 rounded-md hover:bg-[#0654a4] transition"
         >
           <FiArrowLeft /> Back
         </button>

@@ -1,3 +1,39 @@
+
+// import React, {
+//   useEffect,
+//   useState,
+//   ChangeEvent,
+//   FormEvent,
+//   useRef,
+// } from "react";
+// import { useParams, useNavigate } from "react-router-dom";
+// import {
+//   FiSave,
+//   FiRefreshCw,
+//   FiArrowLeft,
+//   FiUpload,
+//   FiCalendar,
+//   FiFileText,
+//   FiX,
+// } from "react-icons/fi";
+// import { toast } from "react-hot-toast";
+// import useCommonCrud from "../hooks/useCommonCrud";
+// import { RichTextField } from "./PagesComponent/RichTextField";
+// import DatePicker from "react-datepicker";
+// import "react-datepicker/dist/react-datepicker.css";
+
+//   // Extract newsletter data from API response
+//   const extractNewsletter = (res: any) => {
+//     if (!res) return null;
+//     return (
+//       res.data?.newsletter ||
+//       res.data?.data ||
+//       res.newsletter ||
+//       res.data ||
+//       res
+//     );
+//   };
+
 "use client";
 
 import React, {
@@ -22,6 +58,7 @@ import useCommonCrud from "../hooks/useCommonCrud";
 import { RichTextField } from "./PagesComponent/RichTextField";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { getTodayAtMidnight, isPastDate } from "../utils/dateValidation";
 
 type NewsletterType = "daily" | "weekly" | "monthly";
 
@@ -206,16 +243,10 @@ export default function AddEditNewsletter() {
     }
 
     // Validate publish date is not in the past for scheduled/published
-    const publishDate = values.publish_date
-      ? new Date(values.publish_date)
-      : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     if (
-      publishDate &&
+      values.publish_date &&
       (values.status === "scheduled" || values.status === "published") &&
-      publishDate < today
+      isPastDate(values.publish_date)
     ) {
       newErrors.publish_date =
         "Publish date cannot be in the past for scheduled/published newsletters";
@@ -225,7 +256,7 @@ export default function AddEditNewsletter() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Submit Handler - Updated to use useCommonCrud
+  // Submit Handler - Fixed response handling
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -263,22 +294,21 @@ export default function AddEditNewsletter() {
         result = await createRecord(formData);
       }
 
-      const response = result?.data ?? result;
-      const responseData = response?.data ?? response;
+      const isSuccess =
+        result?.success || result?.data?.success || result?.newsletter;
 
-      if (response?.success || responseData?.newsletter) {
-        toast.success(
-          id
-            ? "Newsletter updated successfully"
-            : "Newsletter created successfully",
-        );
-        navigate(`/${role}/list-newsletter`);
+      if (isSuccess) {
+        // Navigate back to list page after successful save
+        setTimeout(() => {
+          navigate(`/${role}/list-newsletter`);
+        }, 1000);
       } else {
-        toast.error(
-          response?.message ||
-            responseData?.message ||
-            "Failed to save newsletter",
-        );
+        // Show error from response
+        const errorMessage =
+          result?.message ||
+          result?.data?.message ||
+          "Failed to save newsletter";
+        toast.error(errorMessage);
       }
     } catch (err: any) {
       console.error("Submission error:", err);
@@ -315,7 +345,6 @@ export default function AddEditNewsletter() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Row 1: Title + Publish Date + Newsletter Type */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Title */}
           <div>
@@ -346,6 +375,7 @@ export default function AddEditNewsletter() {
                 onChange={(date) =>
                   setValues((prev) => ({ ...prev, publish_date: date }))
                 }
+                minDate={getTodayAtMidnight()}
                 dateFormat="dd/MM/yyyy"
                 className={`${inputClass} pr-16`}
                 placeholderText="DD/MM/YYYY"
@@ -378,7 +408,6 @@ export default function AddEditNewsletter() {
           </div>
         </div>
 
-        {/* Row 2: Status + File Upload */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Status */}
           <div>
@@ -501,7 +530,6 @@ export default function AddEditNewsletter() {
           </div>
         </div>
 
-        {/* Row 3: Description */}
         <div>
           <label className="block mb-2 text-gray-700 font-medium">
             Description
@@ -535,4 +563,3 @@ export default function AddEditNewsletter() {
     </div>
   );
 }
-

@@ -25,7 +25,6 @@ import {
 } from "./types";
 
 export const emailService = {
-  // ==================== AUTH EMAILS ====================
   async sendWelcome(to: string, data: AuthEmailData): Promise<boolean> {
     try {
       const tpl = welcomeTemplate(data);
@@ -62,7 +61,6 @@ export const emailService = {
     }
   },
 
-  // ==================== SUBSCRIPTION EMAILS ====================
   async subscriptionActivated(
     to: string,
     data: SubscriptionEmailData,
@@ -132,27 +130,7 @@ export const emailService = {
     }
   },
 
-  // async purchaseConfirmation(
-  //   to: string,
-  //   data: SubscriptionEmailData,
-  // ): Promise<boolean> {
-  //   try {
-  //     const tpl = purchaseConfirmationTemplate(data);
-  //     emailQueue.add({
-  //       to,
-  //       ...tpl,
-  //       metadata: { type: "purchase_confirmation" },
-  //     });
-  //     console.log(` Purchase confirmation email queued for: ${to}`);
-  //     return true;
-  //   } catch (error) {
-  //     console.error("Failed to queue purchase confirmation email:", error);
-  //     return false;
-  //   }
-  // },
-
-  // ==================== CONTENT EMAILS ====================
-  async newArticle(to: string[], data: ContentEmailData): Promise<boolean> {
+async newArticle(to: string[], data: ContentEmailData): Promise<boolean> {
     try {
       const tpl = newArticleTemplate(data);
       emailQueue.addBulk(
@@ -205,36 +183,7 @@ export const emailService = {
     }
   },
 
-  // ==================== ADMIN EMAILS ====================
-  // async manualAssignment(
-  //   to: string,
-  //   data: SubscriptionEmailData,
-  // ): Promise<boolean> {
-  //   try {
-  //     const tpl = manualAssignmentTemplate(data);
-  //     emailQueue.add({ to, ...tpl, metadata: { type: "manual_assignment" } });
-  //     console.log(` Manual assignment email queued for: ${to}`);
-  //     return true;
-  //   } catch (error) {
-  //     console.error("Failed to queue manual assignment email:", error);
-  //     return false;
-  //   }
-  // },
-
-  // async userRegistered(to: string, data: AuthEmailData): Promise<boolean> {
-  //   try {
-  //     const tpl = userRegisteredTemplate(data);
-  //     emailQueue.add({ to, ...tpl, metadata: { type: "user_registered" } });
-  //     console.log(` User registered email queued for: ${to}`);
-  //     return true;
-  //   } catch (error) {
-  //     console.error("Failed to queue user registered email:", error);
-  //     return false;
-  //   }
-  // },
-
-  // ==================== UTILITY METHODS ====================
-  getQueueSize(): number {
+getQueueSize(): number {
     return emailQueue.getQueueSize();
   },
 

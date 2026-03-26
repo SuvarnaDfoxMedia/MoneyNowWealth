@@ -21,8 +21,6 @@ export interface IMFIndexSnapshot extends Document {
 const mfIndexSnapshotSchema = new Schema<IMFIndexSnapshot>(
   {
     benchmark_index_name: { type: String, required: true, trim: true, index: true },
-    // Legacy main_category_code (deprecated in favor of ObjectId relation).
-    // main_category_code: { type: String, trim: true, lowercase: true, default: "" },
     main_category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFMainCategory", default: null, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", default: null, index: true },
     returns: {

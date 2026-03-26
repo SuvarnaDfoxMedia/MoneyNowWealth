@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import * as newsletterService from "../services/newsletterService";
 import { Newsletter } from "../models/newsletterModel";
 import { addContactToGetResponse } from "../services/getresponseService";
-import { getResponseEmailService } from "../services/getResponseEmailService";
+import { sendEmail } from "../emails/sendEmail";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 /* ---------------------------------------------------
    Get paginated newsletter subscribers
@@ -55,8 +55,6 @@ export const getNewsletterById = async (req: Request, res: Response) => {
     return sendError(res, error.message || "Subscriber not found", 404);
   }
 };
-
-
 
 export const addNewsletter = async (req: Request, res: Response) => {
   try {
@@ -138,18 +136,16 @@ export const addNewsletter = async (req: Request, res: Response) => {
     `;
 
     try {
-      /* OLD SMTP IMPLEMENTATION (COMMENTED)
       await sendEmail({
         to: cleanEmail,
         subject: "You're Subscribed!",
         html,
       });
-      */
-      await getResponseEmailService.sendMarketingEmail(
-        cleanEmail,
-        "You're Subscribed!",
-        html,
-      );
+      // await getResponseEmailService.sendMarketingEmail(
+      //   cleanEmail,
+      //   "You're Subscribed!",
+      //   html,
+      // );
     } catch (err: any) {
       console.error("Email Send Error:", err.message);
     }
@@ -164,102 +160,6 @@ export const addNewsletter = async (req: Request, res: Response) => {
     return sendError(res, error.message || "Subscription failed", 500);
   }
 };
-
-// export const addNewsletter = async (req: Request, res: Response) => {
-//   try {
-//     const { name, email } = req.body;
-
-//     // ------------------ Validations ------------------
-//     if (!name || !email) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Name and email are required",
-//       });
-//     }
-
-//     const cleanName = name.trim();
-//     const cleanEmail = email.trim().toLowerCase();
-
-//     // ------------------ Email format validation ------------------
-//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid email format",
-//       });
-//     }
-
-//     // ------------------ Check for duplicate (ignore soft-deleted) ------------------
-//     const existing = await Newsletter.findOne({
-//       email: cleanEmail,
-//       is_deleted: false,
-//     });
-//     if (existing) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Email is already exist",
-//       });
-//     }
-
-//     // ------------------ Save subscriber ------------------
-//     let subscriber;
-//     try {
-//       subscriber = await newsletterService.createNewsletter({
-//         name: cleanName,
-//         email: cleanEmail,
-//       });
-//     } catch (err: any) {
-//       // Handle duplicate key error from MongoDB unique index
-//       if (err.code === 11000) {
-//         return res.status(400).json({
-//           success: false,
-//           message: "Email is already subscribed",
-//         });
-//       }
-//       throw err; // re-throw other errors
-//     }
-
-//     // ------------------ Send thank-you email ------------------
-//     const html = `
-//       <div style="font-family:Arial, sans-serif;
-//                   max-width:600px;margin:auto;padding:25px;
-//                   background:#f5f8ff;border-radius:12px;
-//                   border:1px solid #e0e7ff;">
-//         <h2 style="text-align:center;color:#043F79;">Thank You for Subscribing!</h2>
-//         <p style="font-size:16px;color:#333;">
-//           Hi <strong>${cleanName}</strong>,
-//         </p>
-//         <p style="font-size:16px;color:#333;">
-//           You have been successfully subscribed to our newsletter.
-//         </p>
-//         <p style="font-size:16px;color:#333;">
-//           You’ll now receive the latest updates, offers, and news directly to your inbox.
-//         </p>
-//         <br/>
-//         <p style="color:#043F79;text-align:center;font-size:14px;">
-//           — Team MoneyNow
-//         </p>
-//       </div>
-//     `;
-
-//     await sendEmail({
-//       to: cleanEmail,
-//       subject: "You're Subscribed! ",
-//       html,
-//     });
-
-//     // ------------------ Response ------------------
-//     return res.status(201).json({
-//       success: true,
-//       message: "Subscribed successfully",
-//       subscriber,
-//     });
-//   } catch (error: any) {
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message || "Subscription failed",
-//     });
-//   }
-// };
 
 export const deleteNewsletter = async (req: Request, res: Response) => {
   try {

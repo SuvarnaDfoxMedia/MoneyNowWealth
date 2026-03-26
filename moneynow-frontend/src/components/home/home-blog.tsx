@@ -12,7 +12,9 @@ interface HomeBlogProps {
 }
 
 const HomeBlog: React.FC<HomeBlogProps> = ({ title, subtitle }) => {
-  const { cards, loading, error } = useFetchCards("/api/topic/published");
+  const { cards, loading, error } = useFetchCards(
+    "/api/article/published/latest",
+  );
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
 

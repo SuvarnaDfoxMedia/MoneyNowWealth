@@ -22,28 +22,24 @@ type SendGetResponseEmailArgs = {
 
 class GetResponseEmailService {
   private readonly apiBase =
-    process.env.GETRESPONSE_API_BASE || "https://api.getresponse.com/v3";
+    process.env.GETRESPONSE_API_BASE?.trim() || "https://api.getresponse.com/v3";
 
   private get apiKey(): string {
-    const key = process.env.GETRESPONSE_API_KEY;
+    const key = process.env.GETRESPONSE_API_KEY?.trim();
     if (!key) throw new Error("GETRESPONSE_API_KEY missing");
     return key;
   }
 
   private get fromEmail(): string {
-    return (
-      process.env.GETRESPONSE_FROM_EMAIL ||
-      process.env.SMTP_USER ||
-      "no-reply@moneynowwealth.com"
-    );
+    return process.env.GETRESPONSE_FROM_EMAIL?.trim() || "no-reply@moneynowwealth.com";
   }
 
   private get fromName(): string {
-    return process.env.GETRESPONSE_FROM_NAME || "MoneyNow Wealth";
+    return process.env.GETRESPONSE_FROM_NAME?.trim() || "MoneyNow Wealth";
   }
 
   private get contactCampaignId(): string | undefined {
-    return process.env.GETRESPONSE_CAMPAIGN_ID;
+    return process.env.GETRESPONSE_CAMPAIGN_ID?.trim();
   }
 
   private get contactEndpoint(): string {
@@ -61,6 +57,13 @@ class GetResponseEmailService {
     };
   }
 
+  private isDuplicateContactError(error: any): boolean {
+    return (
+      error?.response?.status === 409 &&
+      Number(error?.response?.data?.code) === 1008
+    );
+  }
+
   async addContact(email: string): Promise<void> {
     const campaignId = this.contactCampaignId;
     if (!campaignId) return;
@@ -76,6 +79,13 @@ class GetResponseEmailService {
       );
       console.log(`EMAIL_SENT_GETRESPONSE contact_added to=${email}`);
     } catch (error: any) {
+      if (this.isDuplicateContactError(error)) {
+        console.log(
+          `EMAIL_EXISTS_GETRESPONSE operation=add_contact to=${email}`,
+        );
+        return;
+      }
+
       console.error(
         `EMAIL_FAILED channel=getresponse operation=add_contact to=${email}`,
         error?.response?.data || error?.message || error,

@@ -290,5 +290,3 @@ export const useSubscriptionCrud = ({
 };
 
 export default useSubscriptionCrud;
-
-

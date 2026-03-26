@@ -91,7 +91,9 @@ export default function AddCluster() {
     (async () => {
       try {
         const res = (await getOne(id)) as ClusterResponse;
-        const cluster = (res?.data?.cluster || res?.cluster || {}) as Partial<ClusterForm>;
+        const cluster = (res?.data?.cluster ||
+          res?.cluster ||
+          {}) as Partial<ClusterForm>;
 
         if (!cluster) return;
 
@@ -255,7 +257,7 @@ export default function AddCluster() {
         </h2>
         <button
           onClick={() => navigate(`/${role || "admin"}/cluster`)}
-          className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition"
+          className="flex items-center gap-2 bg-[#043f79] text-white px-4 py-2 rounded-md hover:bg-[#0654a4] transition"
         >
           <FiArrowLeft /> Back
         </button>
@@ -274,9 +276,7 @@ export default function AddCluster() {
               onChange={handleChange}
               placeholder="Enter cluster title"
               className={`${inputClass} ${
-                errors.title
-                  ? "border-red-500"
-                  : ""
+                errors.title ? "border-red-500" : ""
               }`}
             />
             {errors.title && (
@@ -291,11 +291,7 @@ export default function AddCluster() {
               value={values.slug}
               onChange={handleChange}
               placeholder="Auto-generated from title"
-              className={`${inputClass} ${
-                errors.slug
-                  ? "border-red-500"
-                  : ""
-              }`}
+              className={`${inputClass} ${errors.slug ? "border-red-500" : ""}`}
             />
             {errors.slug && (
               <p className="text-red-500 text-sm mt-1">{errors.slug}</p>
@@ -362,9 +358,7 @@ export default function AddCluster() {
             onChange={handleChange}
             placeholder="Enter cluster description"
             className={`w-full min-h-28 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-200 ${
-              errors.description
-                ? "border-red-500"
-                : ""
+              errors.description ? "border-red-500" : ""
             }`}
             rows={4}
           />

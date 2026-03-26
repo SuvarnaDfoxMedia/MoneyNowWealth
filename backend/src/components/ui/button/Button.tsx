@@ -24,7 +24,6 @@ const Button: React.FC<ButtonProps> = ({
     md: "px-5 py-3.5 text-sm",
   };
 
-  // Variant Classes
   const variantClasses = {
     primary:
       "bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300",

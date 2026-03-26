@@ -1,15 +1,4 @@
-// import FreeCalculators from "@/components/Dashboard/FreeCalculators";
-// import React from "react";
 
-// const page = () => {
-//   return (
-//     <div>
-//       <FreeCalculators />
-//     </div>
-//   );
-// };
-
-// export default page;
 
 import FreeCalculators from "@/components/Dashboard/FreeCalculators";
 import React from "react";

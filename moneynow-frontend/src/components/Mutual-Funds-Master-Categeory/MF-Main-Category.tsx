@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react"; // Optimized icons
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useFetchMFData } from "../../hooks/useFetchMFcategeory";
 import { usePopularFunds } from "../../hooks/usePopularFunds";
 import { useNfoFunds } from "../../hooks/useNfoFunds";
@@ -13,10 +13,8 @@ type SortConfig = {
   direction: "asc" | "desc" | null;
 };
 
-/**
- * Sort Icon Component using Lucide React
- * Mimics the professional UI with stacked arrows
- */
+const formatReturnValue = (value: string) => (value === "-" ? "-" : `${value}%`);
+
 const SortIcons = ({
   columnKey,
   sortConfig,
@@ -48,13 +46,15 @@ export default function MFMainCategory() {
   const [activeMainTab, setActiveMainTab] = useState("Categories");
   const [activeCategory, setActiveCategory] = useState("");
   const [activeSubTab, setActiveSubTab] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "name",
     direction: null,
   });
+
   const itemsPerPage = 10;
+  const isPopularTab = activeMainTab === "Popular Funds";
+  const isNfoTab = activeMainTab === "New Fund Offers";
 
   const {
     masterCategories,
@@ -64,21 +64,29 @@ export default function MFMainCategory() {
     availableSubTabs,
     subTabDescriptions,
   } = useFetchMFData(activeCategory, activeSubTab);
-  const { popularFunds, loading: popularLoading } = usePopularFunds({
-    limit: 50,
-  });
-  const { nfos, loading: nfoLoading } = useNfoFunds({
+  const { popularFunds, loading: popularLoading, error: popularError } =
+    usePopularFunds({
+      limit: 50,
+    });
+  const { nfos, loading: nfoLoading, error: nfoError } = useNfoFunds({
     isOpen: true,
     limit: 50,
   });
 
   useEffect(() => {
     if (masterCategories.length > 0 && activeCategory === "") {
-      const firstCat = masterCategories[0].name;
-      setActiveCategory(firstCat);
+      setActiveCategory(masterCategories[0].name);
       setActiveSubTab("");
     }
   }, [masterCategories, activeCategory]);
+
+  useEffect(() => {
+    if (isPopularTab || isNfoTab || availableSubTabs.length === 0) return;
+    if (!availableSubTabs.includes(activeSubTab)) {
+      setActiveSubTab(availableSubTabs[0]);
+    }
+    setCurrentPage(1);
+  }, [activeSubTab, availableSubTabs, isPopularTab, isNfoTab, activeCategory]);
 
   const handleCategoryChange = (catName: string) => {
     setActiveCategory(catName);
@@ -86,38 +94,21 @@ export default function MFMainCategory() {
     setCurrentPage(1);
   };
 
-  const selectedCategory = useMemo(() => {
-    return masterCategories.find((cat) => cat.name === activeCategory);
-  }, [masterCategories, activeCategory]);
-
-  const currentSubTabs = availableSubTabs;
-
-  const isPopularTab = activeMainTab === "Popular Funds";
-  const isNfoTab = activeMainTab === "New Fund Offers";
-
-  useEffect(() => {
-    if (isPopularTab || isNfoTab || currentSubTabs.length === 0) return;
-    if (!currentSubTabs.includes(activeSubTab)) {
-      setActiveSubTab(currentSubTabs[0]);
-    }
-    setCurrentPage(1);
-  }, [
-    activeCategory,
-    activeSubTab,
-    isPopularTab,
-    isNfoTab,
-    currentSubTabs.join("|"),
-  ]);
+  const selectedCategory = useMemo(
+    () => masterCategories.find((cat) => cat.name === activeCategory),
+    [masterCategories, activeCategory],
+  );
 
   const baseData = useMemo(() => {
     if (isPopularTab) {
       return popularFunds.map((fund) => ({
         name: fund.fund_name,
         y3: fund.returns?.y3_cagr?.toString?.() || "-",
-        y5: "-",
-        y10: "-",
+        y5: fund.returns?.y5_cagr?.toString?.() || "-",
+        y10: fund.returns?.y10_cagr?.toString?.() || "-",
       }));
     }
+
     if (isNfoTab) {
       return nfos.map((fund) => ({
         name: fund.fund_name,
@@ -126,8 +117,9 @@ export default function MFMainCategory() {
         y10: "-",
       }));
     }
+
     return fundData || [];
-  }, [isPopularTab, isNfoTab, popularFunds, nfos, fundData]);
+  }, [fundData, isNfoTab, isPopularTab, nfos, popularFunds]);
 
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" | null = "desc";
@@ -145,14 +137,17 @@ export default function MFMainCategory() {
     return data.sort((a, b) => {
       const valA = a[sortConfig.key as keyof typeof a];
       const valB = b[sortConfig.key as keyof typeof b];
-      const parse = (v: any) =>
-        v === "-" || isNaN(parseFloat(v)) ? -999 : parseFloat(v);
+      const parse = (v: unknown) => {
+        const numericValue = Number.parseFloat(String(v));
+        return v === "-" || Number.isNaN(numericValue) ? -999 : numericValue;
+      };
 
       if (sortConfig.key !== "name") {
         return sortConfig.direction === "asc"
           ? parse(valA) - parse(valB)
           : parse(valB) - parse(valA);
       }
+
       return sortConfig.direction === "asc"
         ? String(valA).localeCompare(String(valB))
         : String(valB).localeCompare(String(valA));
@@ -167,6 +162,7 @@ export default function MFMainCategory() {
       if (currentPage !== 1) setCurrentPage(1);
       return;
     }
+
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
@@ -183,6 +179,7 @@ export default function MFMainCategory() {
     : isNfoTab
       ? nfoLoading
       : loading;
+  const tableError = isPopularTab ? popularError : isNfoTab ? nfoError : error;
 
   return (
     <div className="max-w-7xl mx-auto py-[40px] font-poppins min-h-screen bg-white">
@@ -192,11 +189,10 @@ export default function MFMainCategory() {
         </h2>
         <p className="max-w-5xl mx-auto leading-relaxed text-[16px] md:text-[18px] mb-0">
           Mutual funds are grouped into categories based on how and where they
-          invest. Exploring categories helps you decide how you’d like to begin.
+          invest. Exploring categories helps you decide how you&apos;d like to begin.
         </p>
       </div>
 
-      {/* Main Tabs */}
       <div className="flex bg-[#F8F8F8] mb-[60px] max-w-4xl mx-auto">
         {MAIN_TABS.map((tab) => (
           <button
@@ -217,7 +213,6 @@ export default function MFMainCategory() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* Sidebar */}
         <div className="w-full lg:w-1/4 border border-[#E4E4E4] rounded-lg overflow-hidden lg:sticky lg:top-6 bg-white shadow-sm flex-shrink-0">
           {masterCategories.length > 0 ? (
             masterCategories.map((cat, index) => (
@@ -240,33 +235,20 @@ export default function MFMainCategory() {
           )}
         </div>
 
-        {/* Content Area */}
         <div className="flex-1 min-w-0">
           <h2 className="text-[22px] font-medium mb-4">
             {activeCategory || "Select Category"}
           </h2>
-          {/* <p className="mb-6 text-[15px] leading-[26px] text-gray-600">
-            Investments in{" "}
-            {activeCategory.toLowerCase() || "selected categories"} help in
-            diversification.
-          </p> */}
 
           <p className="mb-6 text-[15px] leading-[26px] text-gray-600">
             {selectedCategory?.description ||
               `Investments in ${activeCategory?.toLowerCase() || "selected categories"} help in diversification.`}
-            {/* {subTabDescriptions?.[activeSubTab] && (
-              <>
-                <br />
-                <br />
-                {subTabDescriptions[activeSubTab]}
-              </>
-            )} */}
           </p>
 
           {!isPopularTab && !isNfoTab && (
             <div className="mb-1 overflow-x-auto scrollbar-hide">
               <div className="flex gap-8 ">
-                {currentSubTabs.map((tab, idx) => (
+                {availableSubTabs.map((tab, idx) => (
                   <button
                     key={`${tab}-${idx}`}
                     onClick={() => {
@@ -285,15 +267,13 @@ export default function MFMainCategory() {
               </div>
             </div>
           )}
+
           <p className="mb-6 mt-2 text-[15px] leading-[26px] text-gray-600">
-            {/* {selectedCategory?.description ||
-                  `Investments in ${activeCategory?.toLowerCase() || "selected categories"} help in diversification.`} */}
             {subTabDescriptions?.[activeSubTab] && (
               <>{subTabDescriptions[activeSubTab]}</>
             )}
           </p>
 
-          {/* Table Container */}
           <div className="border border-[#E4E4E4] rounded-[6px] overflow-hidden bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[800px] table-fixed">
@@ -304,7 +284,7 @@ export default function MFMainCategory() {
                       className="px-5 py-2 border-r border-[#E4E4E4] w-auto cursor-pointer hover:bg-gray-200 transition-colors group"
                     >
                       <div className="flex items-center">
-                        Fund Name{" "}
+                        Fund Name
                         <SortIcons columnKey="name" sortConfig={sortConfig} />
                       </div>
                     </th>
@@ -329,8 +309,7 @@ export default function MFMainCategory() {
                       className="px-5 py-1.5 border-r border-[#E4E4E4] text-center w-[100px] cursor-pointer hover:bg-gray-200 transition-colors group"
                     >
                       <div className="flex items-center justify-center">
-                        10Y{" "}
-                        <SortIcons columnKey="y10" sortConfig={sortConfig} />
+                        10Y <SortIcons columnKey="y10" sortConfig={sortConfig} />
                       </div>
                     </th>
                     <th className="px-5 py-1.5 text-right w-[180px]">
@@ -358,13 +337,13 @@ export default function MFMainCategory() {
                           {fund.name}
                         </td>
                         <td className="px-5 py-1.5 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
-                          {fund.y3}%
+                          {formatReturnValue(fund.y3)}
                         </td>
                         <td className="px-5 py-1.5 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
-                          {fund.y5 === "-" ? "-" : `${fund.y5}%`}
+                          {formatReturnValue(fund.y5)}
                         </td>
                         <td className="px-5 py-1.5 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
-                          {fund.y10 === "-" ? "-" : `${fund.y10}%`}
+                          {formatReturnValue(fund.y10)}
                         </td>
                         <td className="px-5 py-1.5 text-right">
                           <div className="flex justify-end gap-1.5 items-center px-1">
@@ -384,7 +363,7 @@ export default function MFMainCategory() {
                         colSpan={5}
                         className="py-16 text-center text-gray-400 font-medium"
                       >
-                        {error || "No data available"}
+                        {tableError || "No data available"}
                       </td>
                     </tr>
                   )}
@@ -392,7 +371,6 @@ export default function MFMainCategory() {
               </table>
             </div>
 
-            {/* Pagination */}
             {!isLoadingTable && totalItems > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-[#E4E4E4] bg-white gap-4">
                 <div className="text-[13px] text-gray-500">

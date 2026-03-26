@@ -21,7 +21,8 @@ export const useMutualFunds = (mainCategoryId?: string) => {
   useEffect(() => {
     const loadMain = async () => {
       try {
-        const res = await mfService.getMainCategories();
+        setError(null);
+        const res = await mfService.getMainCategories({ is_active: 1, limit: 100 });
         const items = Array.isArray(res?.data) ? res.data : res?.data || [];
         setMainCategories(items);
       } catch {
@@ -39,7 +40,12 @@ export const useMutualFunds = (mainCategoryId?: string) => {
     const loadCategories = async () => {
       setLoading(true);
       try {
-        const res = await mfService.getCategories({ mainCategoryId });
+        setError(null);
+        const res = await mfService.getCategories({
+          mainCategoryId,
+          is_active: 1,
+          limit: 100,
+        });
         const items = Array.isArray(res?.data) ? res.data : res?.data || [];
         setCategories(items);
       } catch {

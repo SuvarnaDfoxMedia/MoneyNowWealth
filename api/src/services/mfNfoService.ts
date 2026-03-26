@@ -10,8 +10,6 @@ const resolveAmcId = async (payload: any) => {
   const name = String(payload.amc_name).trim();
   let amc = await MFAmc.findOne({ name, is_deleted: false });
   if (!amc) {
-    // Legacy slug logic (deprecated)
-    // const slug = baseSlug(name);
     amc = await MFAmc.create({ name, is_active: 1, is_deleted: false });
   }
   return amc._id;
@@ -19,17 +17,29 @@ const resolveAmcId = async (payload: any) => {
 
 const resolveCategoryId = async (payload: any) => {
   if (payload.category_id && /^[a-f\d]{24}$/i.test(String(payload.category_id))) return payload.category_id;
-  // Legacy Excel-based category reference (deprecated).
-  // if (payload.category_excel_id) { ... }
   throw new Error("category_id (mongo) is required");
 };
 
 export const getNfos = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
   const filter: any = { is_deleted: false };
+  const now = new Date();
 
   if (query?.is_active !== undefined) filter.is_active = Number(query.is_active) === 1 ? 1 : 0;
-  if (query?.isOpen !== undefined) filter.is_open = toBoolean(query.isOpen);
+  if (query?.isOpen !== undefined) {
+    filter.is_open = toBoolean(query.isOpen);
+    if (filter.is_open) {
+      filter.$and = [
+        ...(filter.$and || []),
+        {
+          $or: [
+            { subscription_end_date: null },
+            { subscription_end_date: { $gte: now } },
+          ],
+        },
+      ];
+    }
+  }
 
   if (query?.categoryId) {
     if (/^[a-f\d]{24}$/i.test(String(query.categoryId))) filter.category_id = query.categoryId;
@@ -75,8 +85,6 @@ export const createNfo = async (payload: Partial<IMFNfo> & any) => {
 
   const amcId = await resolveAmcId(payload);
   const categoryId = await resolveCategoryId(payload);
-  // Legacy slug logic (deprecated)
-  // const slug = await uniqueSlug(baseSlug(String(payload.fund_name)));
 
   const startDate = toDateOrNull(payload.subscription_start_date);
   const endDate = toDateOrNull(payload.subscription_end_date);
@@ -114,8 +122,6 @@ export const updateNfo = async (id: string, payload: Partial<IMFNfo> & any) => {
   const updateData: any = { ...payload };
   ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
 
-  // Legacy slug logic (deprecated)
-  // if (payload.fund_name) updateData.slug = await uniqueSlug(baseSlug(String(payload.fund_name)), id);
   if (payload.amc_name || payload.amc_id) updateData.amc_id = await resolveAmcId(payload);
   if (payload.category_id) updateData.category_id = await resolveCategoryId(payload);
 

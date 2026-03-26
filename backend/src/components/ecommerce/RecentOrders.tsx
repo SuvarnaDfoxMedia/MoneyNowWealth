@@ -18,7 +18,6 @@ interface Product {
   status: "Delivered" | "Pending" | "Canceled"; 
 }
 
-
 const tableData: Product[] = [
   {
     id: 1,
@@ -153,9 +152,7 @@ export default function RecentOrders() {
             </TableRow>
           </TableHeader>
 
-      
-
-          <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
+<TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
             {tableData.map((product) => (
               <TableRow key={product.id} className="">
                 <TableCell className="py-3">

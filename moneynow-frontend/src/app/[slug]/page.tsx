@@ -1,67 +1,88 @@
+// "use client";
+
+// import { useParams } from "next/navigation";
+// import { useFetchCMS } from "@/hooks/useFetchCMS";
+
+// import FAQPage from "@/components/cms/FAQPage";
+// import PrivacyPolicyPage from "@/components/cms/PrivacyPolicyPage";
+// import TermsPage from "@/components/cms/TermsPage";
+// import DefaultPage from "@/components/cms/DefaultPage";
+// import GeneralDisclaimerPage from "@/components/cms/GeneralDisclaimerPage";
+// import ComingSoon from "@/components/ComminSoon";
+
+// export default function CMSPage() {
+//   const params = useParams();
+//   const slug = params?.slug as string; // This is "privacy-policy" from the URL
+
+//   const { page, loading, error } = useFetchCMS(slug);
+
+//   if (loading) return <p className="text-center py-10">Loading...</p>;
+//   if (error) return <p className="text-center py-10 text-red-600">{error}</p>;
+//   if (!page) return <p className="text-center py-10">Page not found</p>;
+
+//   // SWITCH BASED ON THE URL SLUG
+//   switch (slug) {
+//     case "faq":
+//       return <FAQPage data={page} />;
+//     case "privacy-policy":
+//       return <PrivacyPolicyPage data={page} />;
+//     case "terms":
+//     case "terms-of-use":
+//       return <TermsPage data={page} />;
+//     case "disclaimer":
+//     case "general-disclaimer":
+//       return <GeneralDisclaimerPage data={page} />;
+//     default:
+//       return <ComingSoon />;
+//   }
+// }
+
 "use client";
 
-import React from "react";
 import { useParams } from "next/navigation";
 import { useFetchCMS } from "@/hooks/useFetchCMS";
 
-const CMSPage = () => {
-  const params = useParams();
+import FAQPage from "@/components/cms/FAQPage";
+import PrivacyPolicyPage from "@/components/cms/PrivacyPolicyPage";
+import TermsPage from "@/components/cms/TermsPage";
+import DefaultPage from "@/components/cms/DefaultPage";
+import GeneralDisclaimerPage from "@/components/cms/GeneralDisclaimerPage";
+import AboutUsPage from "@/components/cms/AboutUsPage";
+import PartnerWithUs from "@/components/cms/PartnerWithUs";
 
-  const slug = params.slug as string;
+export default function CMSPage() {
+  const params = useParams();
+  const slug = params?.slug as string;
 
   const { page, loading, error } = useFetchCMS(slug);
 
-  if (loading) {
-    return (
-      <p className="text-center py-10 text-lg">
-        Loading...
-      </p>
-    );
+  // 1. Check for static pages FIRST
+  if (slug === "about-us") {
+    return <AboutUsPage />;
   }
 
-  if (error) {
-    return (
-      <p className="text-center py-10 text-red-600 text-lg">
-        {error}
-      </p>
-    );
+  if (slug === "partner-with-us") {
+    return <PartnerWithUs />;
   }
 
-  if (!page) return null;
+  // 2. Handle loading/error for dynamic CMS pages
+  if (loading) return <p className="text-center py-10">Loading...</p>;
+  if (error) return <p className="text-center py-10 text-red-600">{error}</p>;
+  if (!page) return <p className="text-center py-10">Page not found</p>;
 
-  return (
-    <div className="font-poppins mb-4">
-      {/* Banner */}
-      <div className="w-full bg-[#D9D9D9] py-12 text-center mb-6">
-        <h1 className="text-[36px] font-bold">
-          {page.title}
-        </h1>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 pb-0">
-        <div className="space-y-8">
-          {page.sections?.map((section: any, index: number) => (
-            <div
-              key={index}
-              className="pb-6 border-b border-gray-200 last:border-none"
-            >
-              {section.title && (
-                <h2 className="text-[20px] font-semibold mb-3">
-                  {section.title}
-                </h2>
-              )}
-
-              <div
-                className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: section.content }}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default CMSPage;
+  // 3. Switch for Dynamic CMS content
+  switch (slug) {
+    case "faq":
+      return <FAQPage data={page} />;
+    case "privacy-policy":
+      return <PrivacyPolicyPage data={page} />;
+    case "terms":
+    case "terms-of-use":
+      return <TermsPage data={page} />;
+    case "general-disclaimer":
+    case "disclaimer":
+      return <GeneralDisclaimerPage data={page} />;
+    default:
+      return <DefaultPage data={page} />;
+  }
+}

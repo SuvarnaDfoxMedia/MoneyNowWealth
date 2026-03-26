@@ -2,6 +2,10 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap")
 layer(base);
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap")
+layer(base);
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap")
+layer(base);
 
 @import "tailwindcss";
 
@@ -797,6 +801,31 @@ span.flatpickr-weekday,
 .jodit-workplace {
   margin: 0 !important;
   padding: 0 !important;
+}
+
+.rich-text-field .jodit-container,
+.rich-text-field .jodit-workplace,
+.rich-text-field .jodit-wysiwyg,
+.rich-text-field .jodit-source {
+  font-family: "Poppins", sans-serif !important;
+}
+
+.rich-text-field .jodit-wysiwyg p,
+.rich-text-field .jodit-wysiwyg li,
+.rich-text-field .jodit-wysiwyg td,
+.rich-text-field .jodit-wysiwyg th,
+.rich-text-field .jodit-wysiwyg blockquote,
+.rich-text-field .jodit-source {
+  font-family: "Poppins", sans-serif !important;
+}
+
+.rich-text-field .jodit-wysiwyg h1,
+.rich-text-field .jodit-wysiwyg h2,
+.rich-text-field .jodit-wysiwyg h3,
+.rich-text-field .jodit-wysiwyg h4,
+.rich-text-field .jodit-wysiwyg h5,
+.rich-text-field .jodit-wysiwyg h6 {
+  font-family: "Inter", sans-serif !important;
 }
 
 

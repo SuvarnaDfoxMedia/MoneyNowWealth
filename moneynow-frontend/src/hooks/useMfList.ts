@@ -1,25 +1,37 @@
 import { useEffect, useState } from "react";
 
-type Fetcher<T> = (params?: Record<string, any>) => Promise<{
+type QueryParams = Record<string, unknown>;
+
+type Fetcher<T> = (params?: QueryParams) => Promise<{
   data?: T[] | T;
 }>;
 
+const extractItems = <T,>(response: { data?: T[] | T } | T[] | undefined | null) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (response?.data && typeof response.data === "object") return [response.data] as T[];
+  return [];
+};
+
 export const useMfList = <T>(
   fetcher: Fetcher<T>,
-  params?: Record<string, any>,
+  params?: QueryParams,
   errorMessage = "Failed to load data",
 ) => {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const paramsKey = JSON.stringify(params || {});
 
   useEffect(() => {
+    const requestParams = (JSON.parse(paramsKey || "{}") as QueryParams) || {};
+
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const res = await fetcher(params);
-        const data = Array.isArray(res?.data) ? res.data : res?.data || [];
-        setItems(data as T[]);
+        const res = await fetcher(requestParams);
+        setItems(extractItems<T>(res));
       } catch {
         setError(errorMessage);
         setItems([]);
@@ -28,7 +40,7 @@ export const useMfList = <T>(
       }
     };
     load();
-  }, [fetcher, JSON.stringify(params || {}), errorMessage]);
+  }, [errorMessage, fetcher, paramsKey]);
 
   return { items, loading, error };
 };

@@ -11,8 +11,6 @@ const resolveAmcId = async (payload: any) => {
   const name = String(payload.amc_name).trim();
   let amc = await MFAmc.findOne({ name, is_deleted: false });
   if (!amc) {
-    // Legacy slug logic (deprecated)
-    // const slug = baseSlug(name);
     amc = await MFAmc.create({ name, is_active: 1, is_deleted: false });
   }
   return amc._id;
@@ -20,8 +18,6 @@ const resolveAmcId = async (payload: any) => {
 
 const resolveCategoryId = async (payload: any) => {
   if (payload.category_id && /^[a-f\d]{24}$/i.test(String(payload.category_id))) return payload.category_id;
-  // Legacy Excel-based category reference (deprecated).
-  // if (payload.category_excel_id) { ... }
   throw new Error("category_id (mongo id) is required");
 };
 
@@ -43,7 +39,6 @@ export const getFunds = async (query: any) => {
       const objectId = new mongoose.Types.ObjectId(rawCategoryId);
       let categoryFilter: any = { category_id: objectId };
 
-  // Legacy fallback: handle pre-migration data where funds store category_id/category_excel_id as strings.
       const rawCategory = await MFCategory.collection.findOne(
         { _id: objectId },
         { projection: { category_id: 1 } },
@@ -55,7 +50,6 @@ export const getFunds = async (query: any) => {
             { category_id: objectId },
             // Avoid ObjectId casting errors on legacy string ids.
             { $expr: { $eq: [{ $toString: "$category_id" }, legacyId] } },
-            // Legacy Excel-based category reference (deprecated).
             { category_excel_id: legacyId },
           ],
         };
@@ -66,7 +60,6 @@ export const getFunds = async (query: any) => {
       andFilters.push({
         $or: [
           { $expr: { $eq: [{ $toString: "$category_id" }, rawCategoryId] } },
-          // Legacy Excel-based category reference (deprecated).
           { category_excel_id: rawCategoryId },
         ],
       });
@@ -243,9 +236,6 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
 
   const amcId = await resolveAmcId(payload);
   const categoryId = await resolveCategoryId(payload);
-  // Legacy slug logic (deprecated)
-  // const rawSlug = baseSlug(String(payload.fund_name));
-  // const slug = await uniqueSlug(rawSlug);
 
   const topHoldings = Array.isArray(payload.top_holdings)
     ? payload.top_holdings
@@ -295,12 +285,7 @@ export const updateFund = async (id: string, payload: Partial<IMFFund> & any) =>
   const updateData: any = { ...payload };
   ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
 
-  // Legacy slug logic (deprecated)
-  // if (payload.fund_name) {
-  //   updateData.slug = await uniqueSlug(baseSlug(String(payload.fund_name)), id);
-  // }
-
-  if (payload.amc_name || payload.amc_id) {
+if (payload.amc_name || payload.amc_id) {
     updateData.amc_id = await resolveAmcId(payload);
   }
 

@@ -135,7 +135,6 @@ const SetNewPassword = () => {
             )}
           </div>
 
-          {/* New Password */}
           <div>
             <label className="block mb-1 text-[15px] md:text-[16px]">
               New Password <span className="text-red-500">*</span>

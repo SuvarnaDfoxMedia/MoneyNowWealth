@@ -168,33 +168,10 @@ export const createCluster = async (data: Partial<ICluster>) => {
 /* ---------------------------------------------------
    Update existing cluster
 --------------------------------------------------- */
-// export const updateCluster = async (id: string, data: Partial<ICluster>) => {
-//   const updateData: any = { ...data };
-
-//   if ((data as any)?.file) {
-//     updateData.thumbnail = (data as any).file.filename;
-//   }
-
-//   // Update slug if title changes or slug is provided
-//   if (data.title && !data.slug) {
-//     const baseSlug = generateSlug(data.title);
-//     updateData.slug = await generateUniqueSlug(baseSlug, id);
-//   } else if (data.slug) {
-//     const baseSlug = generateSlug(data.slug);
-//     updateData.slug = await generateUniqueSlug(baseSlug, id);
-//   }
-
-//   const cluster = await Cluster.findByIdAndUpdate(id, updateData, {
-//     new: true,
-//   });
-//   if (!cluster) throw new Error("Cluster not found");
-//   return cluster;
-// };
 
 export const updateCluster = async (id: string, data: Partial<ICluster>) => {
   const updateData: any = { ...data };
 
-  // Additional safety: remove any auto-managed fields that might have slipped through
   const disallowedFields = [
     "created_at",
     "updated_at",

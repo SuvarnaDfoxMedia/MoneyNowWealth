@@ -26,8 +26,7 @@ const HomePortfolio: React.FC<HomePortfolioProps> = ({ title, subtitle, cards })
   {title}
 </h2>
 
-
-        <p className="text-center text-[15px] text-[#6A6A6A] mb-8 max-w-2xl mx-auto">
+<p className="text-center text-[15px] text-[#6A6A6A] mb-8 max-w-2xl mx-auto">
           {subtitle}
         </p>
 

@@ -3,7 +3,6 @@ import { Dropdown } from "../ui/dropdown/Dropdown";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { MoreDotIcon } from "../../icons";
 
-
 export default function DemographicCard() {
   const [isOpen, setIsOpen] = useState(false);
 

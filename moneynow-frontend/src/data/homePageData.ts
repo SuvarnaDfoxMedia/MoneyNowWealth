@@ -104,7 +104,6 @@ export const homeInvestTrackData = {
   playStoreImg: "/images/play_icon.png",
 };
 
-
 // /src/data/homeCalculatorsData.ts
 
 export const homeCalculatorsData = {
@@ -166,7 +165,6 @@ export const homeCalculatorsData = {
     "Most investors are only ₹5,000/month away from a ₹50 lakh future",
 };
 
-
 export const homeBlogData = {
   title: "From Our Insights Desk",
   subtitle: "Stay informed with curated insights and smart investing stories.",
@@ -188,7 +186,6 @@ export const homeBlogData = {
     },
   ],
 };
-
 
 // =============================
 // Stay Connected Section (Dynamic)

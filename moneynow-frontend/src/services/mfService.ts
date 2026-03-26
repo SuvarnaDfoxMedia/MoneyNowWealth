@@ -9,32 +9,38 @@ export interface MfListResponse<T> {
   limit: number;
 }
 
+type MfQueryParams = Record<string, unknown>;
+
 export const mfService = {
-  getMainCategories: async (params?: Record<string, any>) => {
+  getMainCategories: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/main-categories", { params });
     return data;
   },
-  getCategories: async (params?: Record<string, any>) => {
+  getCategories: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/categories", { params });
     return data;
   },
-  getFunds: async (params?: Record<string, any>) => {
+  getFunds: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/funds", { params });
     return data;
   },
-  getPopularFunds: async (params?: Record<string, any>) => {
+  getFundById: async (id: string) => {
+    const { data } = await API.get(`/api/mf/funds/${id}`);
+    return data;
+  },
+  getPopularFunds: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/popular-funds", { params });
     return data;
   },
-  getNfos: async (params?: Record<string, any>) => {
+  getNfos: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/nfo", { params });
     return data;
   },
-  getIndexSnapshots: async (params?: Record<string, any>) => {
+  getIndexSnapshots: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/index-snapshots", { params });
     return data;
   },
-  getDiscover: async (params?: Record<string, any>) => {
+  getDiscover: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/discover", { params });
     return data;
   },
@@ -42,13 +48,8 @@ export const mfService = {
     const { data } = await API.get("/api/mf/home");
     return data;
   },
-  getFilters: async (params?: Record<string, any>) => {
+  getFilters: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/filters", { params });
     return data;
   },
-  // Legacy slug route (deprecated)
-  // getFundBySlug: async (slug: string) => {
-  //   const { data } = await API.get(`/api/mf/funds/slug/${slug}`);
-  //   return data;
-  // },
 };

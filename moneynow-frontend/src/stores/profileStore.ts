@@ -1,31 +1,4 @@
-// import { create } from "zustand";
-// import { devtools } from "zustand/middleware";
 
-// interface UserProfile {
-//   firstname?: string;
-//   lastname?: string;
-//   email?: string;
-//   phone?: string;
-//   countryCode?: string;
-//   address?: string;
-//   profileImage?: string;
-// }
-
-// interface ProfileStore {
-//   profile: UserProfile | null;
-//   profileImageUrl: string | null;
-//   setProfile: (profile: UserProfile | null) => void;
-//   setProfileImageUrl: (url: string | null) => void;
-// }
-
-// export const useProfileStore = create<ProfileStore>()(
-//   devtools((set) => ({
-//     profile: null,
-//     profileImageUrl: null,
-//     setProfile: (profile) => set({ profile }),
-//     setProfileImageUrl: (url) => set({ profileImageUrl: url }),
-//   }))
-// );
 
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";

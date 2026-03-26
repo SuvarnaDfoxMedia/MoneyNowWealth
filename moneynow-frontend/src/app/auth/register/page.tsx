@@ -1,8 +1,8 @@
-
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import intlTelInput from "intl-tel-input";
+import type { IntlTelInputInstance } from "intl-tel-input";
 import "intl-tel-input/build/css/intlTelInput.css";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { FaCheckSquare } from "react-icons/fa";
@@ -10,8 +10,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { executeRecaptcha, mountRecaptcha, unmountRecaptcha } from "@/lib/recaptcha";
 
-type IntlTelInputInstance = ReturnType<typeof intlTelInput>;
+const SIGNUP_RECAPTCHA_ACTION = "signup";
 
 const Register = () => {
   const router = useRouter();
@@ -36,25 +37,94 @@ const Register = () => {
   }>({});
 
   useEffect(() => {
-    if (phoneRef.current) {
-      const iti = intlTelInput(phoneRef.current, {
-        initialCountry: "in",
-        separateDialCode: true,
-        autoPlaceholder: "polite",
-        utilsScript:
-          "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.0/build/js/utils.js",
-      });
+    let isMounted = true;
 
-      itiInstanceRef.current = iti;
+    mountRecaptcha().catch((error) => {
+      if (!isMounted) return;
+      console.error("Failed to initialize reCAPTCHA:", error);
+    });
 
-      return () => {
-        iti.destroy();
-      };
-    }
+    return () => {
+      isMounted = false;
+      unmountRecaptcha();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!phoneRef.current) return;
+
+    const iti = intlTelInput(phoneRef.current, {
+      initialCountry: "in",
+      separateDialCode: true,
+      autoPlaceholder: "off",
+      utilsScript:
+        "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.0/build/js/utils.js",
+    });
+
+    itiInstanceRef.current = iti;
+
+    return () => {
+      iti.destroy();
+      itiInstanceRef.current = null;
+    };
+  }, []);
+
+  const getMobileValue = () => phoneRef.current?.value?.trim() || "";
+
+  const getMobileDigits = () => getMobileValue().replace(/\D/g, "");
+
+  const getDialCode = (): string => {
+    const iti = itiInstanceRef.current;
+    if (!iti) return "+91";
+
+    try {
+      const countryData = iti.getSelectedCountryData();
+      return `+${countryData.dialCode}`;
+    } catch (error) {
+      console.error("Error getting dial code:", error);
+      return "+91";
+    }
+  };
+
+  const validateMobileNumber = () => {
+    const mobileValue = getMobileValue();
+    const mobileDigits = getMobileDigits();
+    const selectedCountry =
+      itiInstanceRef.current?.getSelectedCountryData()?.iso2 || "in";
+
+    if (!mobileValue) {
+      return "Mobile number is required";
+    }
+
+    if (/[A-Za-z]/.test(mobileValue)) {
+      return "Mobile number must contain digits only";
+    }
+
+    if (!/^[\d\s\-().]+$/.test(mobileValue)) {
+      return "Please enter a valid mobile number";
+    }
+
+    if (selectedCountry === "in") {
+      if (mobileDigits.length !== 10) {
+        return "Mobile number must be exactly 10 digits";
+      }
+
+      if (!/^[6-9]/.test(mobileDigits)) {
+        return "Indian mobile number must start with 6, 7, 8, or 9";
+      }
+
+      return "";
+    }
+
+    if (mobileDigits.length < 6) return "Mobile number is too short";
+    if (mobileDigits.length > 15) return "Mobile number is too long";
+
+    return "";
+  };
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
+    const mobileError = validateMobileNumber();
 
     if (!firstname.trim()) {
       newErrors.firstname = "Full name is required";
@@ -75,12 +145,8 @@ const Register = () => {
         "Password must be 8+ chars, include uppercase, number & special character";
     }
 
-    const mobile = phoneRef.current?.value.trim();
-
-    if (!mobile) {
-      newErrors.mobile = "Mobile number is required";
-    } else if (!itiInstanceRef.current?.isValidNumber()) {
-      newErrors.mobile = "Invalid mobile number";
+    if (mobileError) {
+      newErrors.mobile = mobileError;
     }
 
     if (!termsAccepted) {
@@ -88,7 +154,6 @@ const Register = () => {
     }
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -97,27 +162,26 @@ const Register = () => {
 
     if (!validateForm()) return;
 
-    const countryData = itiInstanceRef.current?.getSelectedCountryData();
-
-    const countryCode = "+" + (countryData?.dialCode || "91");
-
-    const mobile = phoneRef.current?.value.trim();
+    const mobile = getMobileDigits();
+    const countryCode = getDialCode();
 
     setLoading(true);
 
     try {
+      const recaptchaToken = await executeRecaptcha(SIGNUP_RECAPTCHA_ACTION);
       const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fullname: firstname,
-          email,
+          fullname: firstname.trim(),
+          email: email.trim(),
           password,
-          mobile,
+          mobile: mobile, // Send the cleaned number without spaces
           countryCode,
           termsAccepted,
+          recaptcha_token: recaptchaToken,
         }),
       });
 
@@ -131,30 +195,69 @@ const Register = () => {
         setPassword("");
         setTermsAccepted(false);
 
-        if (phoneRef.current) phoneRef.current.value = "";
+        if (phoneRef.current) {
+          phoneRef.current.value = "";
+          const iti = itiInstanceRef.current;
+          if (iti) {
+            iti.setNumber("");
+          }
+        }
 
         router.push("/auth/login");
-      } else {
-        toast.error(data.message || "Registration failed");
+        return;
+      }
 
-        if (data.message?.includes("Email")) {
-          setErrors((prev) => ({
-            ...prev,
-            email: data.message,
-          }));
-        }
+      toast.error(data.message || "Registration failed");
+
+      if (data.message?.includes("Email")) {
+        setErrors((prev) => ({
+          ...prev,
+          email: data.message,
+        }));
+      }
+
+      if (data.message?.includes("phone") || data.message?.includes("mobile")) {
+        setErrors((prev) => ({
+          ...prev,
+          mobile: data.message,
+        }));
       }
     } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+      console.error("Registration error:", error);
+      if (
+        error instanceof Error &&
+        error.message.includes("RECAPTCHA_SITE_KEY")
+      ) {
+        toast.error("Captcha is not configured. Please contact support.");
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleMobileChange = () => {
+    if (errors.mobile) {
+      setErrors((prev) => ({ ...prev, mobile: undefined }));
+    }
+  };
+
+  const handleMobileBlur = () => {
+    const mobileValue = getMobileValue();
+
+    if (!mobileValue) {
+      setErrors((prev) => ({ ...prev, mobile: undefined }));
+      return;
+    }
+
+    const mobileError = validateMobileNumber();
+    setErrors((prev) => ({ ...prev, mobile: mobileError || undefined }));
+  };
+
   return (
     <section className="w-full min-h-screen bg-[url('/images/reg-bg-image.png')] bg-cover bg-center bg-no-repeat font-poppins bg-fixed">
       <div className="min-h-screen max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-        {/* LEFT SIDE */}
         <div className="hidden lg:flex lg:w-7/12 flex-col justify-center p-8">
           <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-[32px] font-bold text-[#0B172A] leading-tight">
             <span>Join</span>
@@ -189,7 +292,6 @@ const Register = () => {
           </ul>
         </div>
 
-        {/* RIGHT SIDE */}
         <div className="w-full lg:w-5/12 flex justify-center lg:justify-end">
           <div className="w-full max-w-[480px] rounded-[14px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-8 md:p-10 border border-white/50">
             <h2 className="text-center text-[32px] font-semibold">
@@ -201,7 +303,6 @@ const Register = () => {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* NAME */}
               <div>
                 <label className="block mb-1 text-[16px]">Full Name</label>
                 <input
@@ -217,7 +318,6 @@ const Register = () => {
                 )}
               </div>
 
-              {/* EMAIL */}
               <div>
                 <label className="block mb-1 text-[16px]">Email</label>
                 <input
@@ -233,12 +333,13 @@ const Register = () => {
                 )}
               </div>
 
-              {/* MOBILE */}
               <div>
                 <label className="block mb-1 text-[16px]">Contact Number</label>
                 <input
                   ref={phoneRef}
                   type="tel"
+                  onChange={handleMobileChange}
+                  onBlur={handleMobileBlur}
                   className="w-full h-[50px] rounded-[4px] border border-[#D8DEE8] bg-gray-50/30 px-4 text-[14px]"
                 />
                 {errors.mobile && (
@@ -248,7 +349,6 @@ const Register = () => {
                 )}
               </div>
 
-              {/* PASSWORD */}
               <div>
                 <label className="block mb-1 text-[16px]">Password</label>
 
@@ -279,7 +379,6 @@ const Register = () => {
                 )}
               </div>
 
-              {/* TERMS */}
               <div>
                 <label className="flex items-start gap-3 text-[12px] cursor-pointer">
                   <input
@@ -289,7 +388,7 @@ const Register = () => {
                     className="mt-1 h-4 w-4 accent-[#0A4A86]"
                   />
                   <span>
-                    By clicking “Create account” I accept the{" "}
+                    By clicking &quot;Create account&quot; I accept the{" "}
                     <span className="text-[#0A4A86] underline font-medium">
                       Terms of Service
                     </span>
@@ -303,16 +402,15 @@ const Register = () => {
                 )}
               </div>
 
-           <div className="text-center">
-               {/* BUTTON */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-[30px] py-[10px] bg-[#0A4A86] hover:bg-[#083c6d] text-white rounded-[4px] text-[16px] font-medium"
-              >
-                {loading ? "Registering..." : "Register for free"}
-              </button>
-           </div>
+              <div className="text-center">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-[30px] py-[10px] bg-[#0A4A86] hover:bg-[#083c6d] text-white rounded-[4px] text-[16px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Registering..." : "Register for free"}
+                </button>
+              </div>
 
               <p className="text-center text-[14px] mt-2">
                 Already have an account?{" "}

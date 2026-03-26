@@ -68,8 +68,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
     fetchArticles();
   }, []);
 
-
-  if (loading) return <p>Loading...</p>;
+if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
@@ -79,8 +78,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
   Most Popular
 </h2>
 
-
-        <div className="space-y-5">
+<div className="space-y-5">
           {articles.slice(0, 3).map((article) => {
             // Build image URL with IMAGE_BASE + folder + hero_image
             const imageSrc =
@@ -112,8 +110,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
   </p>
 </div>
 
-
-                {/* Image */}
+{/* Image */}
                 <div className="relative w-[124px] h-[104px] shrink-0">
                   <Image
                     src={imageSrc}
@@ -134,4 +131,3 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 };
 
 export default MostPopularBlogs;
-
