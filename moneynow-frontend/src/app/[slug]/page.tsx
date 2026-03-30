@@ -83,6 +83,6 @@ export default function CMSPage() {
     case "disclaimer":
       return <GeneralDisclaimerPage data={page} />;
     default:
-      return <DefaultPage data={page} />;
+      return <DefaultPage />;
   }
 }

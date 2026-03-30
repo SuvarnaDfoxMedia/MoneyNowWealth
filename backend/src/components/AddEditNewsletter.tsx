@@ -59,6 +59,7 @@ import { RichTextField } from "./PagesComponent/RichTextField";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { getTodayAtMidnight, isPastDate } from "../utils/dateValidation";
+import { useScrollToFirstError } from "../hooks/useScrollToFirstError";
 
 type NewsletterType = "daily" | "weekly" | "monthly";
 
@@ -94,6 +95,7 @@ export default function AddEditNewsletter() {
   const [existingFile, setExistingFile] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   // Extract newsletter data from API response
   const extractNewsletter = (res: any) => {
@@ -253,6 +255,7 @@ export default function AddEditNewsletter() {
     }
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) scrollToFirstError(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -344,7 +347,7 @@ export default function AddEditNewsletter() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Title */}
           <div>

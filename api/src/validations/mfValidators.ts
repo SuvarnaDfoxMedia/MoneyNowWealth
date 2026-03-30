@@ -115,12 +115,21 @@ export const createCategoryValidators = [
   requiredMongoId("main_category_id", "Main category"),
   optionalString("description", "Description", 5000),
   optionalString("benchmark_index_name", "Benchmark index name", 200),
+  body("benchmark_return_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Annual", "Trailing"])
+    .withMessage("Benchmark return type must be Annual or Trailing"),
   optionalNumber("benchmark_returns.y1", "Benchmark 1Y return"),
   optionalNumber("benchmark_returns.y3", "Benchmark 3Y return"),
   optionalNumber("benchmark_returns.y5", "Benchmark 5Y return"),
   optionalNumber("benchmark_returns.y10", "Benchmark 10Y return"),
+  optionalNumber("category_average_returns.y1", "Category average 1Y return"),
+  optionalNumber("category_average_returns.y3", "Category average 3Y return"),
+  optionalNumber("category_average_returns.y5", "Category average 5Y return"),
+  optionalNumber("category_average_returns.y10", "Category average 10Y return"),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
+  optionalString("suggested_use_case_note", "Suggested use case note", 5000),
   optionalIsActive(),
 ];
 
@@ -129,12 +138,21 @@ export const updateCategoryValidators = [
   optionalMongoId("main_category_id", "Main category"),
   optionalString("description", "Description", 5000),
   optionalString("benchmark_index_name", "Benchmark index name", 200),
+  body("benchmark_return_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Annual", "Trailing"])
+    .withMessage("Benchmark return type must be Annual or Trailing"),
   optionalNumber("benchmark_returns.y1", "Benchmark 1Y return"),
   optionalNumber("benchmark_returns.y3", "Benchmark 3Y return"),
   optionalNumber("benchmark_returns.y5", "Benchmark 5Y return"),
   optionalNumber("benchmark_returns.y10", "Benchmark 10Y return"),
+  optionalNumber("category_average_returns.y1", "Category average 1Y return"),
+  optionalNumber("category_average_returns.y3", "Category average 3Y return"),
+  optionalNumber("category_average_returns.y5", "Category average 5Y return"),
+  optionalNumber("category_average_returns.y10", "Category average 10Y return"),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
+  optionalString("suggested_use_case_note", "Suggested use case note", 5000),
   optionalIsActive(),
 ];
 
@@ -149,6 +167,7 @@ export const updateAmcValidators = [
 ];
 
 export const createFundValidators = [
+  requiredString("scheme_code", "Scheme code", 2, 80),
   requiredString("fund_name", "Fund name", 2, 200),
   requireAmcReference(),
   optionalMongoId("amc_id", "AMC"),
@@ -164,6 +183,10 @@ export const createFundValidators = [
     .withMessage("option_type must be Growth or IDCW"),
   optionalNonNegativeNumber("aum_cr", "AUM (Cr)"),
   optionalNumber("expense_ratio", "Expense ratio", 0, 100),
+  optionalNumber("returns.d1", "1D return"),
+  optionalNumber("returns.m1", "1M return"),
+  optionalNumber("returns.m3", "3M return"),
+  optionalNumber("returns.m6", "6M return"),
   optionalNumber("returns.y1", "1Y return"),
   optionalNumber("returns.y3_cagr", "3Y CAGR return"),
   optionalNumber("returns.y5_cagr", "5Y CAGR return"),
@@ -176,7 +199,24 @@ export const createFundValidators = [
   optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Launch date"),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  optionalNumber("benchmark_returns_trailing.d1", "Benchmark trailing 1D return"),
+  optionalNumber("benchmark_returns_trailing.m1", "Benchmark trailing 1M return"),
+  optionalNumber("benchmark_returns_trailing.m3", "Benchmark trailing 3M return"),
+  optionalNumber("benchmark_returns_trailing.m6", "Benchmark trailing 6M return"),
+  optionalNumber("benchmark_returns_trailing.y1", "Benchmark trailing 1Y return"),
+  optionalNumber("benchmark_returns_trailing.y3", "Benchmark trailing 3Y return"),
+  optionalNumber("benchmark_returns_trailing.y5", "Benchmark trailing 5Y return"),
+  optionalNumber("benchmark_returns_trailing.y10", "Benchmark trailing 10Y return"),
+  optionalNumber("benchmark_returns_annual.y1", "Benchmark annual 1Y return"),
+  optionalNumber("benchmark_returns_annual.y3", "Benchmark annual 3Y return"),
+  optionalNumber("benchmark_returns_annual.y5", "Benchmark annual 5Y return"),
+  optionalNumber("benchmark_returns_annual.y10", "Benchmark annual 10Y return"),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
+  optionalBoolean("sip_allowed", "sip_allowed"),
+  optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
+  optionalBoolean("lumpsum_allowed", "lumpsum_allowed"),
+  optionalNonNegativeNumber("min_lumpsum_investment", "Minimum lumpsum investment"),
   optionalString("exit_load", "Exit load", 500),
   optionalBoolean("is_featured", "is_featured"),
   optionalBoolean("is_popular", "is_popular"),
@@ -196,6 +236,7 @@ export const createFundValidators = [
 ];
 
 export const updateFundValidators = [
+  optionalString("scheme_code", "Scheme code", 80),
   optionalString("fund_name", "Fund name", 200),
   optionalMongoId("amc_id", "AMC"),
   optionalString("amc_name", "AMC name", 120),
@@ -210,6 +251,10 @@ export const updateFundValidators = [
     .withMessage("option_type must be Growth or IDCW"),
   optionalNonNegativeNumber("aum_cr", "AUM (Cr)"),
   optionalNumber("expense_ratio", "Expense ratio", 0, 100),
+  optionalNumber("returns.d1", "1D return"),
+  optionalNumber("returns.m1", "1M return"),
+  optionalNumber("returns.m3", "3M return"),
+  optionalNumber("returns.m6", "6M return"),
   optionalNumber("returns.y1", "1Y return"),
   optionalNumber("returns.y3_cagr", "3Y CAGR return"),
   optionalNumber("returns.y5_cagr", "5Y CAGR return"),
@@ -222,7 +267,24 @@ export const updateFundValidators = [
   optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Launch date"),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  optionalNumber("benchmark_returns_trailing.d1", "Benchmark trailing 1D return"),
+  optionalNumber("benchmark_returns_trailing.m1", "Benchmark trailing 1M return"),
+  optionalNumber("benchmark_returns_trailing.m3", "Benchmark trailing 3M return"),
+  optionalNumber("benchmark_returns_trailing.m6", "Benchmark trailing 6M return"),
+  optionalNumber("benchmark_returns_trailing.y1", "Benchmark trailing 1Y return"),
+  optionalNumber("benchmark_returns_trailing.y3", "Benchmark trailing 3Y return"),
+  optionalNumber("benchmark_returns_trailing.y5", "Benchmark trailing 5Y return"),
+  optionalNumber("benchmark_returns_trailing.y10", "Benchmark trailing 10Y return"),
+  optionalNumber("benchmark_returns_annual.y1", "Benchmark annual 1Y return"),
+  optionalNumber("benchmark_returns_annual.y3", "Benchmark annual 3Y return"),
+  optionalNumber("benchmark_returns_annual.y5", "Benchmark annual 5Y return"),
+  optionalNumber("benchmark_returns_annual.y10", "Benchmark annual 10Y return"),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
+  optionalBoolean("sip_allowed", "sip_allowed"),
+  optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
+  optionalBoolean("lumpsum_allowed", "lumpsum_allowed"),
+  optionalNonNegativeNumber("min_lumpsum_investment", "Minimum lumpsum investment"),
   optionalString("exit_load", "Exit load", 500),
   optionalBoolean("is_featured", "is_featured"),
   optionalBoolean("is_popular", "is_popular"),
@@ -242,6 +304,7 @@ export const updateFundValidators = [
 ];
 
 export const createNfoValidators = [
+  requiredString("nfo_id", "NFO ID", 1, 80),
   requiredString("fund_name", "Fund name", 2, 200),
   requireAmcReference(),
   optionalMongoId("amc_id", "AMC"),
@@ -259,6 +322,7 @@ export const createNfoValidators = [
 ];
 
 export const updateNfoValidators = [
+  optionalString("nfo_id", "NFO ID", 80),
   optionalString("fund_name", "Fund name", 200),
   optionalMongoId("amc_id", "AMC"),
   optionalString("amc_name", "AMC name", 120),

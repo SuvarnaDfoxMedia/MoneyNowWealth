@@ -29,6 +29,7 @@ import {
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../hooks/useScrollToFirstError";
 import { axiosApi } from "../api/axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -159,6 +160,7 @@ const [values, setValues] = useState<TopicForm>({
     useState<boolean>(false);
   const [clusterSearch, setClusterSearch] = useState<string>("");
   const clusterWrapperRef = useRef<HTMLDivElement>(null);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const inputClass =
     "w-full h-11 border border-gray-300 rounded-md px-3 focus:outline-none focus:ring-2 focus:ring-blue-200";
@@ -254,6 +256,7 @@ const validate = () => {
     }
 
     setErrors(e);
+    if (Object.keys(e).length > 0) scrollToFirstError(e);
     return Object.keys(e).length === 0;
   };
 
@@ -342,7 +345,7 @@ return (
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
         {/* Cluster & Title */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Cluster Dropdown with Search */}

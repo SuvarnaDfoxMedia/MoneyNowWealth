@@ -5,6 +5,8 @@ import { usePopularFunds } from "@/hooks/usePopularFunds";
 
 const formatReturn = (value?: number | null) =>
   value === null || value === undefined ? "-" : `${value}`;
+const formatAmount = (value?: number | null) =>
+  value === null || value === undefined ? "-" : `Rs ${Number(value).toLocaleString("en-IN")}`;
 
 export default function PopularFundsPage() {
   const { popularFunds, loading, error } = usePopularFunds({ limit: 20 });
@@ -22,9 +24,11 @@ export default function PopularFundsPage() {
         <table className="w-full text-left border-collapse min-w-[950px] table-fixed">
           <thead>
             <tr className="bg-[#F1F3F5] text-[#495057] text-[13px] font-bold">
+              <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[130px]">Scheme Code</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] w-auto">Fund Name</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[120px]">AMC</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[150px]">Category</th>
+              <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[150px]">Min SIP</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[120px]">3Y CAGR</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[120px]">5Y CAGR</th>
               <th className="px-5 py-2 text-center w-[120px]">10Y CAGR</th>
@@ -33,13 +37,16 @@ export default function PopularFundsPage() {
           <tbody className="divide-y divide-[#E4E4E4]">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-20 text-center text-gray-400 animate-pulse">
+                <td colSpan={8} className="py-20 text-center text-gray-400 animate-pulse">
                   Loading popular funds...
                 </td>
               </tr>
             ) : popularFunds.length > 0 ? (
               popularFunds.map((fund, idx) => (
                 <tr key={`${fund._id}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
+                    {fund.scheme_code || "-"}
+                  </td>
                   <td className="px-5 py-2 text-[13px] text-[#495057] border-r border-[#E4E4E4] font-medium truncate">
                     {fund.fund_name}
                   </td>
@@ -48,6 +55,9 @@ export default function PopularFundsPage() {
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
                     {fund.category_id?.name || "-"}
+                  </td>
+                  <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
+                    {formatAmount(fund.min_sip_investment ?? fund.min_investment)}
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
                     {formatReturn(fund.returns?.y3_cagr)}
@@ -62,7 +72,7 @@ export default function PopularFundsPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="py-16 text-center text-gray-400 font-medium">
+                <td colSpan={8} className="py-16 text-center text-gray-400 font-medium">
                   {error ? error : "No popular funds available"}
                 </td>
               </tr>

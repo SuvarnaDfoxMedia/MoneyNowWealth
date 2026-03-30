@@ -5,10 +5,37 @@ import { useParams } from "next/navigation";
 import { mfService } from "@/services/mfService";
 
 interface FundDetail {
+  scheme_code?: string;
   fund_name: string;
   amc_id?: { name?: string };
   category_id?: { name?: string };
+  min_sip_investment?: number | null;
+  min_lumpsum_investment?: number | null;
+  sip_allowed?: boolean;
+  lumpsum_allowed?: boolean;
+  riskometer_label?: string;
+  benchmark_index_name?: string;
+  benchmark_returns_trailing?: {
+    d1?: number | null;
+    m1?: number | null;
+    m3?: number | null;
+    m6?: number | null;
+    y1?: number | null;
+    y3?: number | null;
+    y5?: number | null;
+    y10?: number | null;
+  };
+  benchmark_returns_annual?: {
+    y1?: number | null;
+    y3?: number | null;
+    y5?: number | null;
+    y10?: number | null;
+  };
   returns?: {
+    d1?: number | null;
+    m1?: number | null;
+    m3?: number | null;
+    m6?: number | null;
     y1?: number | null;
     y3_cagr?: number | null;
     y5_cagr?: number | null;
@@ -49,17 +76,72 @@ export default function FundDetailPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2">{fund.fund_name}</h1>
             <p className="text-gray-500 text-[14px]">
-              {[fund.amc_id?.name || "AMC", fund.category_id?.name || "Category"].join(" • ")}
+              {[fund.amc_id?.name || "AMC", fund.category_id?.name || "Category"].join(" | ")}
+            </p>
+            <p className="text-gray-500 text-[14px] mt-1">
+              {[
+                fund.scheme_code ? `Scheme Code: ${fund.scheme_code}` : null,
+                fund.riskometer_label ? `Riskometer: ${fund.riskometer_label}` : null,
+              ]
+                .filter(Boolean)
+                .join(" | ")}
             </p>
           </div>
 
           <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
             <h2 className="text-[16px] font-semibold mb-3">Performance</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-[13px] text-[#495057]">
+            <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-8 gap-4 text-[13px] text-[#495057]">
+              <div>1D Return: {fund.returns?.d1 ?? 0}</div>
+              <div>1M Return: {fund.returns?.m1 ?? 0}</div>
+              <div>3M Return: {fund.returns?.m3 ?? 0}</div>
+              <div>6M Return: {fund.returns?.m6 ?? 0}</div>
               <div>1Y Return: {fund.returns?.y1 ?? "-"}</div>
               <div>3Y CAGR: {fund.returns?.y3_cagr ?? "-"}</div>
               <div>5Y CAGR: {fund.returns?.y5_cagr ?? "-"}</div>
               <div>10Y CAGR: {fund.returns?.y10_cagr ?? "-"}</div>
+            </div>
+          </div>
+
+          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
+            <h2 className="text-[16px] font-semibold mb-3">Minimum Investment</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px] text-[#495057]">
+              <div>
+                Minimum SIP: {fund.sip_allowed ? fund.min_sip_investment ?? "-" : "Not Available"}
+              </div>
+              <div>
+                Minimum Lumpsum: {fund.lumpsum_allowed ? fund.min_lumpsum_investment ?? "-" : "Not Available"}
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
+            <h2 className="text-[16px] font-semibold mb-3">Benchmark Returns</h2>
+            <div className="mb-4 text-[13px] text-[#495057]">
+              Benchmark Index: {fund.benchmark_index_name || "-"}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[13px] text-[#495057]">
+              <div>
+                <div className="font-semibold mb-2">Trailing</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>1D: {fund.benchmark_returns_trailing?.d1 ?? 0}</div>
+                  <div>1M: {fund.benchmark_returns_trailing?.m1 ?? 0}</div>
+                  <div>3M: {fund.benchmark_returns_trailing?.m3 ?? 0}</div>
+                  <div>6M: {fund.benchmark_returns_trailing?.m6 ?? 0}</div>
+                  <div>1Y: {fund.benchmark_returns_trailing?.y1 ?? "-"}</div>
+                  <div>3Y: {fund.benchmark_returns_trailing?.y3 ?? "-"}</div>
+                  <div>5Y: {fund.benchmark_returns_trailing?.y5 ?? "-"}</div>
+                  <div>10Y: {fund.benchmark_returns_trailing?.y10 ?? "-"}</div>
+                </div>
+              </div>
+              <div>
+                <div className="font-semibold mb-2">Annual</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>1Y: {fund.benchmark_returns_annual?.y1 ?? "-"}</div>
+                  <div>3Y: {fund.benchmark_returns_annual?.y3 ?? "-"}</div>
+                  <div>5Y: {fund.benchmark_returns_annual?.y5 ?? "-"}</div>
+                  <div>10Y: {fund.benchmark_returns_annual?.y10 ?? "-"}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

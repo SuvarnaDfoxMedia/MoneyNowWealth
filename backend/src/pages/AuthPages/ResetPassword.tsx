@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 
 // API base from .env (Vite)
 const API_BASE = import.meta.env.VITE_API_BASE;
@@ -21,6 +22,7 @@ export default function ResetPassword() {
     confirmPassword?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const validatePasswordStrength = (pwd: string) => {
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
@@ -48,6 +50,7 @@ export default function ResetPassword() {
     }
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) scrollToFirstError(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -88,7 +91,7 @@ export default function ResetPassword() {
         </h2>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
           <div>
             <label className="block text-gray-700 dark:text-gray-300 mb-1">

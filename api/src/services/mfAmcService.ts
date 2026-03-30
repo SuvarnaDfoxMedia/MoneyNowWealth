@@ -1,6 +1,14 @@
 import MFAmc, { IMFAmc } from "../models/mfAmcModel";
 import { buildSort, parsePagination } from "./mfUtils";
 
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const exactCaseInsensitive = (value: string) => ({
+  $regex: `^${escapeRegex(value.trim())}$`,
+  $options: "i",
+});
+
 export const getAmcs = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
   const filter: any = { is_deleted: false };
@@ -28,11 +36,16 @@ export const getAmcById = async (id: string) => {
 
 export const createAmc = async (payload: Partial<IMFAmc>) => {
   if (!payload.name) throw new Error("name is required");
-  const exists = await MFAmc.findOne({ name: payload.name, is_deleted: false });
+  const normalizedName = String(payload.name).trim();
+  const exists = await MFAmc.findOne({
+    name: exactCaseInsensitive(normalizedName),
+    is_deleted: false,
+  });
   if (exists) throw new Error("AMC already exists");
 
   const doc = new MFAmc({
     ...payload,
+    name: normalizedName,
     is_active: payload.is_active ?? 1,
     is_deleted: false,
   });
@@ -43,6 +56,17 @@ export const createAmc = async (payload: Partial<IMFAmc>) => {
 export const updateAmc = async (id: string, payload: Partial<IMFAmc>) => {
   const updateData: any = { ...payload };
   ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
+
+  if (payload.name !== undefined) {
+    updateData.name = String(payload.name || "").trim();
+    const exists = await MFAmc.findOne({
+      _id: { $ne: id },
+      name: exactCaseInsensitive(updateData.name),
+      is_deleted: false,
+    }).select("_id");
+    if (exists) throw new Error("AMC already exists");
+  }
+
   const doc = await MFAmc.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   if (!doc) throw new Error("AMC not found");
   return doc;

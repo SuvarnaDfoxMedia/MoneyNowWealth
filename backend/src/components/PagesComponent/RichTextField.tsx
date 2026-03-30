@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useCallback } from "react";
+import React, { useRef, useMemo, useCallback, useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import JoditEditor from "jodit-react";
 import { Jodit } from "jodit";
@@ -18,6 +18,8 @@ export const RichTextField: React.FC<RichTextFieldProps> = ({
   readOnly = false,
 }) => {
   const editorRef = useRef<IJodit | null>(null);
+  const isEditingRef = useRef(false);
+  const [draftValue, setDraftValue] = useState(value ?? "");
 
   const config = useMemo(
     () => ({
@@ -155,24 +157,46 @@ const cleanHtml = useCallback((html: string) => {
 
   const handleChange = useCallback(
     (content: string) => {
-      onChange(cleanHtml(content || ""));
+      isEditingRef.current = true;
+      if (editorRef.current && content !== editorRef.current.value) {
+        editorRef.current.value = content || "";
+      }
     },
-    [cleanHtml, onChange],
+    [],
   );
 
   const handleBlur = useCallback(
     (content: string) => {
+      isEditingRef.current = false;
       const cleaned = cleanHtml(content || "");
+      setDraftValue(cleaned);
       onChange(cleaned);
     },
     [cleanHtml, onChange],
   );
 
+  useEffect(() => {
+    const nextValue = value ?? "";
+    if (!isEditingRef.current && nextValue !== draftValue) {
+      setDraftValue(nextValue);
+    }
+  }, [draftValue, value]);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (isEditingRef.current) return;
+
+    const nextValue = value ?? "";
+    if (editorRef.current.value !== nextValue) {
+      editorRef.current.value = nextValue;
+    }
+  }, [value]);
+
   return (
     <JoditEditor
       ref={editorRef}
       className="rich-text-field"
-      value={value ?? ""}
+      value={draftValue}
       config={config}
       onChange={handleChange}
       onBlur={handleBlur}

@@ -8,11 +8,12 @@ import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface MFFund {
   _id: string;
+  scheme_code?: string;
   fund_name: string;
   amc_id?: { name?: string };
   category_id?: { name?: string };
   expense_ratio?: number;
-  returns?: { y1?: number; y3_cagr?: number };
+  returns?: { d1?: number; m1?: number; y1?: number; y3_cagr?: number };
   is_featured?: boolean;
   is_popular?: boolean;
   is_active: number;
@@ -94,25 +95,47 @@ export default function MFFundListing() {
       searchValue,
       sortField,
       sortOrder,
-      liveIntervalMs: 10000,
       enabled: isMounted,
     });
 
   const rows = extractList as MFFund[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
+  );
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!deleteModalId) return;
+    await deleteRecord(deleteModalId);
+    setDeleteModalId(null);
+  };
 
   const columns: TableColumn<MFFund>[] = [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
+    // { key: "scheme_code", label: "Scheme Code", sortable: true, render: (r) => r.scheme_code || "-" },
     { key: "fund_name", label: "Fund Name", sortable: true },
     { key: "amc", label: "AMC", render: (r) => r.amc_id?.name || "-" },
-    { key: "category", label: "Category", render: (r) => r.category_id?.name || "-" },
-    { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
+    {
+      key: "category",
+      label: "Category",
+      render: (r) => r.category_id?.name || "-",
+    },
+    // { key: "d1", label: "1D", render: (r) => (r.returns?.d1 ?? 0) as any },
+    // { key: "m1", label: "1M", render: (r) => (r.returns?.m1 ?? 0) as any },
+    // { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
     {
       key: "is_featured",
       label: "Featured",
       render: (r) => (
-        <span className={`px-2 py-1 rounded text-xs ${r.is_featured ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs ${r.is_featured ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}
+        >
           {r.is_featured ? "Yes" : "No"}
         </span>
       ),
@@ -121,7 +144,9 @@ export default function MFFundListing() {
       key: "is_popular",
       label: "Popular",
       render: (r) => (
-        <span className={`px-2 py-1 rounded text-xs ${r.is_popular ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs ${r.is_popular ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}
+        >
           {r.is_popular ? "Yes" : "No"}
         </span>
       ),
@@ -148,10 +173,7 @@ export default function MFFundListing() {
             cacheModuleState(MODULE_KEY);
             navigate(`/${role}/mf/funds/edit/${row._id}`);
           }}
-          onDelete={async () => {
-            if (!window.confirm("Delete this fund?")) return;
-            await deleteRecord(row._id);
-          }}
+          onDelete={() => setDeleteModalId(row._id)}
         />
       ),
     },
@@ -185,6 +207,31 @@ export default function MFFundListing() {
           setSort(field, order);
         }}
       />
+
+      {deleteModalId && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Delete Fund?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this fund?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModalId(null)}
+                className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

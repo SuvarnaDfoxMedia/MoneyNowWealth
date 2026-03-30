@@ -5,7 +5,14 @@ export interface IMFCategory extends Document {
   main_category_id: mongoose.Types.ObjectId;
   description?: string;
   benchmark_index_name?: string;
+  benchmark_return_type?: "Annual" | "Trailing" | "";
   benchmark_returns?: {
+    y1?: number | null;
+    y3?: number | null;
+    y5?: number | null;
+    y10?: number | null;
+  };
+  category_average_returns?: {
     y1?: number | null;
     y3?: number | null;
     y5?: number | null;
@@ -13,6 +20,7 @@ export interface IMFCategory extends Document {
   };
   risk_level?: string;
   suggested_use_case?: string;
+  suggested_use_case_note?: string;
   is_active: number;
   is_deleted: boolean;
   deleted_at?: Date | null;
@@ -31,7 +39,18 @@ const mfCategorySchema = new Schema<IMFCategory>(
     },
     description: { type: String, trim: true, default: "" },
     benchmark_index_name: { type: String, trim: true, default: "" },
+    benchmark_return_type: {
+      type: String,
+      enum: ["Annual", "Trailing", ""],
+      default: "Trailing",
+    },
     benchmark_returns: {
+      y1: { type: Number, default: null },
+      y3: { type: Number, default: null },
+      y5: { type: Number, default: null },
+      y10: { type: Number, default: null },
+    },
+    category_average_returns: {
       y1: { type: Number, default: null },
       y3: { type: Number, default: null },
       y5: { type: Number, default: null },
@@ -39,6 +58,7 @@ const mfCategorySchema = new Schema<IMFCategory>(
     },
     risk_level: { type: String, trim: true, default: "" },
     suggested_use_case: { type: String, trim: true, default: "" },
+    suggested_use_case_note: { type: String, trim: true, default: "" },
     is_active: { type: Number, default: 1, index: true },
     is_deleted: { type: Boolean, default: false, index: true },
     deleted_at: { type: Date, default: null },

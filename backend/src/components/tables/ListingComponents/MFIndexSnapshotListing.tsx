@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
@@ -18,7 +18,6 @@ interface MFIndexSnapshot {
 export default function MFIndexSnapshotListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const MODULE_KEY = `${role}-mf-index-snapshots`;
   const [isMounted, setIsMounted] = useState(false);
@@ -37,7 +36,6 @@ export default function MFIndexSnapshotListing() {
     cacheModuleState,
     restoreModuleState,
     markEditNavigation,
-    markTabSwitch,
     lastAction,
   } = useDataTableStore();
 
@@ -81,6 +79,13 @@ export default function MFIndexSnapshotListing() {
   const rows = extractList as MFIndexSnapshot[];
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!deleteModalId) return;
+    await deleteRecord(deleteModalId);
+    setDeleteModalId(null);
+  };
 
   const columns: TableColumn<MFIndexSnapshot>[] = useMemo(() => [
     { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
@@ -117,14 +122,11 @@ export default function MFIndexSnapshotListing() {
             navigate(`/${role}/mf/index-snapshots/edit/${row._id}`);
           }}
           deleteLabel="Delete"
-          onDelete={async () => {
-            if (!window.confirm("Delete this index snapshot?")) return;
-            await deleteRecord(row._id);
-          }}
+          onDelete={() => setDeleteModalId(row._id)}
         />
       ),
     },
-  ], [page, recordsPerPage, role, cacheModuleState, MODULE_KEY, deleteRecord, markEditNavigation, navigate, toggleStatus]);
+  ], [page, recordsPerPage, role, cacheModuleState, MODULE_KEY, markEditNavigation, navigate, toggleStatus]);
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
@@ -155,6 +157,33 @@ export default function MFIndexSnapshotListing() {
           setSort(field, order);
         }}
       />
+
+      {deleteModalId && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Delete Index Snapshot?
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this index snapshot?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModalId(null)}
+                className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

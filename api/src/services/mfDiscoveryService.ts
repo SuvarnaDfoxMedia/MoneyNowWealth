@@ -7,14 +7,28 @@ import MFAmc from "../models/mfAmcModel";
 import { toNumberOrNull } from "./mfUtils";
 
 const buildActiveFilter = () => ({ is_active: 1, is_deleted: false });
+const getNfoCloseCutoff = (endDate: Date | null) => {
+  if (!endDate) return null;
+  const cutoff = new Date(endDate);
+  cutoff.setHours(18, 0, 0, 0);
+  return cutoff;
+};
+
+const computeNfoOpenState = (startDate: Date | null, endDate: Date | null) => {
+  const now = new Date();
+  const start = startDate ? new Date(startDate) : null;
+  const closeCutoff = getNfoCloseCutoff(endDate);
+
+  if (start && now < start) return false;
+  if (closeCutoff && now >= closeCutoff) return false;
+  return true;
+};
 
 export const getMfHomeData = async (query: any) => {
   const featuredLimit = Math.max(toNumberOrNull(query?.featuredLimit) || 8, 1);
   const nfoLimit = Math.max(toNumberOrNull(query?.nfoLimit) || 8, 1);
   const categoryLimit = Math.max(toNumberOrNull(query?.categoryLimit) || 10, 1);
   const indexLimit = Math.max(toNumberOrNull(query?.indexLimit) || 10, 1);
-  const now = new Date();
-
   const [mainCategories, featuredFunds, openNfos, topCategoriesByReturn, indexHighlights] =
     await Promise.all([
       MFMainCategory.find(buildActiveFilter())
@@ -42,7 +56,6 @@ export const getMfHomeData = async (query: any) => {
       MFNfo.find({
         ...buildActiveFilter(),
         is_open: true,
-        $or: [{ subscription_end_date: null }, { subscription_end_date: { $gte: now } }],
       })
         .select(
           "fund_name subscription_start_date subscription_end_date min_investment benchmark risk_level amc_id category_id",
@@ -55,7 +68,15 @@ export const getMfHomeData = async (query: any) => {
           select: "name main_category_id",
           populate: { path: "main_category_id", select: "name" },
         })
-        .lean(),
+        .lean()
+        .then((items) =>
+          items.filter((item: any) =>
+            computeNfoOpenState(
+              item.subscription_start_date ? new Date(item.subscription_start_date) : null,
+              item.subscription_end_date ? new Date(item.subscription_end_date) : null,
+            ),
+          ),
+        ),
 
       MFCategory.find(buildActiveFilter())
         .select("name benchmark_returns main_category_id risk_level")

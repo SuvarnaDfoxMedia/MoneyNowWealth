@@ -5,6 +5,7 @@ import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
 import { useAuth } from "../../context/useAuth";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 
 interface Errors {
   email?: string;
@@ -17,6 +18,7 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const navigate = useNavigate();
   const { login, user } = useAuth();
@@ -32,6 +34,7 @@ export default function SignInForm() {
       newErrors.password = "Password must be at least 8 characters long.";
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) scrollToFirstError(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -44,7 +47,9 @@ export default function SignInForm() {
     try {
       await login(email, password);
     } catch (err: any) {
-      setErrors({ password: err.message || "Login failed" });
+      const nextErrors = { password: err.message || "Login failed" };
+      setErrors(nextErrors);
+      scrollToFirstError(nextErrors);
     } finally {
       setLoading(false);
     }
@@ -96,7 +101,7 @@ export default function SignInForm() {
               </p>
             </div>
 
-            <form onSubmit={handleLogin} noValidate>
+            <form ref={formRef} onSubmit={handleLogin} noValidate>
               <div className="space-y-6">
                 <div>
                   <Label>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 import {
   MFFormActions,
   MFFormContainer,
@@ -9,6 +11,7 @@ import {
   mfInputClass,
 } from "./MFFormShared";
 import { RichTextField } from "../PagesComponent/RichTextField";
+import { getApiMessage, isDuplicateEntryMessage, toDuplicateFieldMessage } from "./mfValidation";
 
 export default function AddMFMainCategory() {
   const { id, role = "admin" } = useParams();
@@ -27,6 +30,7 @@ export default function AddMFMainCategory() {
   });
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
   const [saving, setSaving] = useState(false);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   useEffect(() => {
     if (!id) return;
@@ -40,7 +44,7 @@ export default function AddMFMainCategory() {
         is_active: d.is_active ?? 1,
       });
     })();
-  }, [id]);
+  }, [getOne, id]);
 
   const validate = () => {
     const next: { name?: string; description?: string } = {};
@@ -50,20 +54,31 @@ export default function AddMFMainCategory() {
     if (form.description && form.description.length > 5000)
       next.description = "Description must be under 5000 characters";
     setErrors(next);
+    if (Object.keys(next).length > 0) scrollToFirstError(next);
     return Object.keys(next).length === 0;
   };
 
   const applyApiErrors = (err: any) => {
     const apiErrors = err?.response?.data?.errors;
-    if (!Array.isArray(apiErrors)) return false;
     const next: { name?: string; description?: string } = {};
-    apiErrors.forEach((e: any) => {
-      const field = e?.path || e?.param;
-      if (field === "name") next.name = e?.msg || "Name is invalid";
-      if (field === "description")
-        next.description = e?.msg || "Description is invalid";
-    });
+
+    if (Array.isArray(apiErrors)) {
+      apiErrors.forEach((e: any) => {
+        const field = e?.path || e?.param;
+        if (field === "name") next.name = e?.msg || "Name is invalid";
+        if (field === "description")
+          next.description = e?.msg || "Description is invalid";
+      });
+    }
+
+    const message = getApiMessage(err);
+    if (!next.name && isDuplicateEntryMessage(message)) {
+      next.name = toDuplicateFieldMessage(message, "Main category name");
+    }
+
+    if (Object.keys(next).length === 0) return false;
     setErrors(next);
+    scrollToFirstError(next);
     return true;
   };
 
@@ -72,11 +87,17 @@ export default function AddMFMainCategory() {
     if (!validate()) return;
     setSaving(true);
     try {
-      if (id) await updateRecord(id, form);
-      else await createRecord(form);
+      const payload = {
+        ...form,
+        name: form.name.trim(),
+        description: form.description.trim(),
+      };
+      if (id) await updateRecord(id, payload);
+      else await createRecord(payload);
       navigate(`/${role}/mf/main-categories`);
     } catch (err: any) {
       if (applyApiErrors(err)) return;
+      toast.error(getApiMessage(err) || "Failed to save main category");
     } finally {
       setSaving(false);
     }
@@ -101,13 +122,13 @@ export default function AddMFMainCategory() {
         title={`${id ? "Edit" : "Add"} MF Main Category`}
         onBack={() => navigate(`/${role}/mf/main-categories`)}
       />
-      <form onSubmit={onSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="main_category_name" className="block mb-2 text-gray-700 font-medium">Name</label>
             <input
               id="main_category_name"
-              className={mfInputClass}
+              className={`${mfInputClass} ${errors.name ? "!border-red-500 focus:!border-red-500" : ""}`}
               placeholder="Main category name"
               value={form.name}
               onChange={(e) => {

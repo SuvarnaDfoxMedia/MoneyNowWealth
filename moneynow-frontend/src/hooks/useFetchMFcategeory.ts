@@ -12,6 +12,7 @@ export interface FundData {
   y3: string;
   y5: string;
   y10: string;
+  is_featured?: boolean;
 }
 
 interface ApiMainCategory {
@@ -28,6 +29,7 @@ interface ApiCategory {
 
 interface ApiFund {
   fund_name: string;
+  is_featured?: boolean;
   returns?: {
     y3_cagr?: number | null;
     y5_cagr?: number | null;
@@ -180,6 +182,7 @@ export const useFetchMFData = (
           y3: s.returns?.y3_cagr?.toString?.() || "-",
           y5: s.returns?.y5_cagr?.toString?.() || "-",
           y10: s.returns?.y10_cagr?.toString?.() || "-",
+          is_featured: !!s.is_featured,
         }));
 
         setFundData(mappedFunds);

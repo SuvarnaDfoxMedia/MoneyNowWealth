@@ -8,6 +8,7 @@ import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface MFNfo {
   _id: string;
+  nfo_id?: string;
   fund_name: string;
   amc_id?: { name?: string };
   category_id?: { name?: string };
@@ -92,24 +93,44 @@ export default function MFNfoListing() {
       searchValue,
       sortField,
       sortOrder,
-      liveIntervalMs: 10000,
       enabled: isMounted,
     });
 
   const rows = extractList as MFNfo[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
+  );
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!deleteModalId) return;
+    await deleteRecord(deleteModalId);
+    setDeleteModalId(null);
+  };
 
   const columns: TableColumn<MFNfo>[] = [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
+    // { key: "nfo_id", label: "NFO ID", sortable: true, render: (r) => r.nfo_id || "-" },
     { key: "fund_name", label: "Fund Name", sortable: true },
     { key: "amc", label: "AMC", render: (r) => r.amc_id?.name || "-" },
-    { key: "category", label: "Category", render: (r) => r.category_id?.name || "-" },
+    {
+      key: "category",
+      label: "Category",
+      render: (r) => r.category_id?.name || "-",
+    },
     {
       key: "is_open",
       label: "Open",
       render: (r) => (
-        <span className={`px-2 py-1 rounded text-xs ${r.is_open ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs ${r.is_open ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+        >
           {r.is_open ? "Yes" : "No"}
         </span>
       ),
@@ -136,10 +157,7 @@ export default function MFNfoListing() {
             cacheModuleState(MODULE_KEY);
             navigate(`/${role}/mf/nfo/edit/${row._id}`);
           }}
-          onDelete={async () => {
-            if (!window.confirm("Delete this NFO?")) return;
-            await deleteRecord(row._id);
-          }}
+          onDelete={() => setDeleteModalId(row._id)}
         />
       ),
     },
@@ -173,6 +191,31 @@ export default function MFNfoListing() {
           setSort(field, order);
         }}
       />
+
+      {deleteModalId && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Delete NFO?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this NFO?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModalId(null)}
+                className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

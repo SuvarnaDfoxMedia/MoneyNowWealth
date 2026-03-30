@@ -3,7 +3,11 @@ import { mfService } from "@/services/mfService";
 
 export interface PopularFundRow {
   _id: string;
+  scheme_code?: string;
   fund_name: string;
+  min_investment?: number | null;
+  min_sip_investment?: number | null;
+  min_lumpsum_investment?: number | null;
   returns?: {
     y3_cagr?: number | null;
     y5_cagr?: number | null;

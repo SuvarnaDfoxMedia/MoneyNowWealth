@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
 export interface IMFNfo extends Document {
+  nfo_id?: string;
   fund_name: string;
   amc_id: mongoose.Types.ObjectId;
   category_id: mongoose.Types.ObjectId;
@@ -20,6 +21,7 @@ export interface IMFNfo extends Document {
 
 const mfNfoSchema = new Schema<IMFNfo>(
   {
+    nfo_id: { type: String, trim: true, default: "", index: true },
     fund_name: { type: String, required: true, trim: true, index: true },
     amc_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFAmc", required: true, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", required: true, index: true },
@@ -41,6 +43,7 @@ const mfNfoSchema = new Schema<IMFNfo>(
 );
 
 mfNfoSchema.index({ is_open: 1, subscription_end_date: 1 });
+mfNfoSchema.index({ nfo_id: 1, is_deleted: 1 });
 
 const MFNfo: Model<IMFNfo> =
   mongoose.models.MFNfo || mongoose.model<IMFNfo>("MFNfo", mfNfoSchema);

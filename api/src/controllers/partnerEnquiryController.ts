@@ -2,6 +2,10 @@ import type { Request, Response } from "express";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import { recaptchaService } from "../services/recaptchaService";
 import { partnerEnquiryService } from "../services/partnerEnquiryService";
+import {
+  PARTNER_CURRENT_STATUS,
+  type PartnerCurrentStatus,
+} from "../models/partnerEnquiryModel";
 
 const PARTNER_RECAPTCHA_ACTION = "partner_with_us_submit";
 const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -83,6 +87,15 @@ export const addPartnerEnquiry = async (
       return sendError(res, "Please enter a valid ARN number", 400);
     }
 
+    const normalizedCurrentStatusValue =
+      PARTNER_CURRENT_STATUS.find(
+        (status) => status.toLowerCase() === normalizedCurrentStatus.toLowerCase(),
+      ) || null;
+
+    if (!normalizedCurrentStatusValue) {
+      return sendError(res, "Please select a valid current status", 400);
+    }
+
     const recaptchaResult = await recaptchaService.verify({
       token: recaptcha_token,
       expectedAction: PARTNER_RECAPTCHA_ACTION,
@@ -107,7 +120,7 @@ export const addPartnerEnquiry = async (
       country_code: normalizedCountryCode,
       city: normalizedCity,
       organisation_name: normalizedOrganisationName,
-      current_status: normalizedCurrentStatus,
+      current_status: normalizedCurrentStatusValue as PartnerCurrentStatus,
       arn_number: normalizedArnNumber,
       terms_accepted: Boolean(terms_accepted),
     });

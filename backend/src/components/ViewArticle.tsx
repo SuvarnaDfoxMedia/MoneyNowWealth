@@ -1,17 +1,32 @@
-
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
-import { FaFacebookF, FaTwitter, FaLinkedinIn, FaWhatsapp } from "react-icons/fa";
+import {
+  FaFacebookF,
+  FaTwitter,
+  FaLinkedinIn,
+  FaWhatsapp,
+} from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
 import DOMPurify from "dompurify";
 
-interface Section { title?: string; content?: string; }
-interface Faq { question: string; answer?: string; }
-interface Tool { title?: string; content?: string; }
-interface RelatedRead { title?: string; content?: string; }
+interface Section {
+  title?: string;
+  content?: string;
+}
+interface Faq {
+  question: string;
+  answer?: string;
+}
+interface Tool {
+  title?: string;
+  content?: string;
+}
+interface RelatedRead {
+  title?: string;
+  content?: string;
+}
 
 interface Article {
   _id: string;
@@ -45,11 +60,10 @@ export default function ViewArticle() {
   });
 
   const [article, setArticle] = useState<Article | null>(null);
-  const [topicTitle, setTopicTitle] = useState(""); 
+  const [topicTitle, setTopicTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const pageUrl =
-    typeof window !== "undefined" ? window.location.href : "";
+  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const getImageUrl = (filename?: string) => {
     if (!filename) return "/images/blog-details-page-img.png";
@@ -57,7 +71,9 @@ export default function ViewArticle() {
     return `${base}/uploads/hero/${filename}`;
   };
 
-  const extractArticle = (res: Article | ApiResponse<Article>): Article | null => {
+  const extractArticle = (
+    res: Article | ApiResponse<Article>,
+  ): Article | null => {
     if (!res) return null;
     if ("data" in res && res.data) return res.data;
     if ("_id" in res) return res;
@@ -84,7 +100,7 @@ export default function ViewArticle() {
           related_reads: data.related_reads ?? [],
         });
 
-        setTopicTitle("Topic Name"); 
+        setTopicTitle("Topic Name");
       } catch (err: any) {
         toast.error(err?.message || "Failed to load article");
       } finally {
@@ -116,8 +132,18 @@ export default function ViewArticle() {
     return {
       __html: DOMPurify.sanitize(tempDiv.innerHTML, {
         USE_PROFILES: { html: true },
-        ADD_TAGS: ["table","thead","tbody","tfoot","tr","td","th","colgroup","col"],
-        ADD_ATTR: ["target","rel","style","class"],
+        ADD_TAGS: [
+          "table",
+          "thead",
+          "tbody",
+          "tfoot",
+          "tr",
+          "td",
+          "th",
+          "colgroup",
+          "col",
+        ],
+        ADD_ATTR: ["target", "rel", "style", "class"],
         KEEP_CONTENT: true,
       }),
     };
@@ -172,11 +198,13 @@ export default function ViewArticle() {
                 <div
                   className="
                     text-gray-600 mb-6 font-inter
-                    [&_p]:!text-[20px]
+                    [&_p]:!text-[16px]
                     [&_p]:!leading-[32px]
                     [&_p]:mb-4
                   "
-                  dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(article.introduction)}
+                  dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                    article.introduction,
+                  )}
                 />
               )}
 
@@ -215,7 +243,8 @@ export default function ViewArticle() {
 
               <p className="text-[16px] font-inter font-medium">
                 {article.author || "Team Money Now"} |{" "}
-                {article.created_at && new Date(article.created_at).toLocaleDateString("en-GB")}
+                {article.created_at &&
+                  new Date(article.created_at).toLocaleDateString("en-GB")}
               </p>
             </div>
 
@@ -225,7 +254,9 @@ export default function ViewArticle() {
                 src={getImageUrl(article.hero_image)}
                 alt={article.title}
                 className="w-full h-full object-cover"
-                onError={(e) => (e.currentTarget.src = "/images/blog-details-page-img.png")}
+                onError={(e) =>
+                  (e.currentTarget.src = "/images/blog-details-page-img.png")
+                }
               />
             </div>
           </div>
@@ -245,13 +276,39 @@ export default function ViewArticle() {
                   {article.sections.map((sec, i) =>
                     sec.title?.trim() ? (
                       <li key={i} className="py-3 last:border-b-0">
-                        <a href={`#section-${i}`} className="block hover:text-[#043F79]">{sec.title}</a>
+                        <a
+                          href={`#section-${i}`}
+                          className="block hover:text-[#043F79]"
+                        >
+                          {sec.title}
+                        </a>
                       </li>
-                    ) : null
+                    ) : null,
                   )}
-                  {article.faqs.length > 0 && <li className="py-3"><a href="#faqs" className="block hover:text-[#043F79]">FAQs</a></li>}
-                  {article.tools.length > 0 && <li className="py-3"><a href="#tools" className="block hover:text-[#043F79]">Tools</a></li>}
-                  {article.related_reads.length > 0 && <li className="py-3"><a href="#related-reads" className="block hover:text-[#043F79]">Related Reads</a></li>}
+                  {article.faqs.length > 0 && (
+                    <li className="py-3">
+                      <a href="#faqs" className="block hover:text-[#043F79]">
+                        FAQs
+                      </a>
+                    </li>
+                  )}
+                  {article.tools.length > 0 && (
+                    <li className="py-3">
+                      <a href="#tools" className="block hover:text-[#043F79]">
+                        Tools
+                      </a>
+                    </li>
+                  )}
+                  {article.related_reads.length > 0 && (
+                    <li className="py-3">
+                      <a
+                        href="#related-reads"
+                        className="block hover:text-[#043F79]"
+                      >
+                        Related Reads
+                      </a>
+                    </li>
+                  )}
                 </ul>
               </div>
             </aside>
@@ -261,12 +318,21 @@ export default function ViewArticle() {
               {article.sections.map((sec, i) =>
                 sec.content?.trim() ? (
                   <section id={`section-${i}`} key={i} className="space-y-4">
-                    {sec.title && <h2 className="text-[22px] leading-[32px] font-poppins font-semibold">{sec.title}</h2>}
+                    {sec.title && (
+                      <h2 className="text-[22px] leading-[32px] font-poppins font-semibold">
+                        {sec.title}
+                      </h2>
+                    )}
                     <div className="overflow-x-auto sm:overflow-x-auto">
-                      <div className={proseClass} dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(sec.content)} />
+                      <div
+                        className={proseClass}
+                        dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                          sec.content,
+                        )}
+                      />
                     </div>
                   </section>
-                ) : null
+                ) : null,
               )}
 
               {/* FAQs */}
@@ -275,10 +341,17 @@ export default function ViewArticle() {
                   <h2 className="text-[22px] font-semibold">FAQs</h2>
                   {article.faqs.map((faq, i) => (
                     <div key={i} className="space-y-2">
-                      <p className="font-semibold text-[18px]">{faq.question}</p>
+                      <p className="font-semibold text-[18px]">
+                        {faq.question}
+                      </p>
                       {faq.answer?.trim() && (
                         <div className="overflow-x-auto sm:overflow-x-auto">
-                          <div className={proseClass} dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(faq.answer)} />
+                          <div
+                            className={proseClass}
+                            dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                              faq.answer,
+                            )}
+                          />
                         </div>
                       )}
                     </div>
@@ -295,7 +368,12 @@ export default function ViewArticle() {
                       <p className="font-semibold text-[18px]">{tool.title}</p>
                       {tool.content?.trim() && (
                         <div className="overflow-x-auto sm:overflow-x-auto">
-                          <div className={proseClass} dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(tool.content)} />
+                          <div
+                            className={proseClass}
+                            dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                              tool.content,
+                            )}
+                          />
                         </div>
                       )}
                     </div>
@@ -312,7 +390,12 @@ export default function ViewArticle() {
                       <p className="font-semibold text-[18px]">{read.title}</p>
                       {read.content?.trim() && (
                         <div className="overflow-x-auto sm:overflow-x-auto">
-                          <div className={proseClass} dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(read.content)} />
+                          <div
+                            className={proseClass}
+                            dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                              read.content,
+                            )}
+                          />
                         </div>
                       )}
                     </div>

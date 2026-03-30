@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../../context/useAuth";
 import intlTelInput from "intl-tel-input";
 import "intl-tel-input/build/css/intlTelInput.css";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 
 interface FormData {
   firstname: string;
@@ -39,6 +40,7 @@ export default function UserMetaCard() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const backendUrl = import.meta.env.VITE_API_BASE;
   const imageUrl = backendUrl.replace("/api", "");
@@ -227,9 +229,7 @@ itiRef.current = intlTelInput(phoneRef.current, {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      const firstKey = Object.keys(newErrors)[0];
-      const field = document.getElementById(firstKey);
-      field?.focus();
+      scrollToFirstError(newErrors);
       setLoading(false);
       return;
     }
@@ -304,6 +304,7 @@ itiRef.current = intlTelInput(phoneRef.current, {
           if (e.param === "address") fieldErrors.address = e.msg;
         });
         setErrors(fieldErrors);
+        scrollToFirstError(fieldErrors);
       } else if (err.response?.data?.message) {
         // Map backend errors to fields (NO TOAST for validation errors)
         const errorMsg = err.response.data.message.toLowerCase();
@@ -313,14 +314,22 @@ itiRef.current = intlTelInput(phoneRef.current, {
           errorMsg.includes("firstname") ||
           errorMsg.includes("lastname")
         ) {
-          setErrors({ firstname: err.response.data.message });
+          const nextErrors = { firstname: err.response.data.message };
+          setErrors(nextErrors);
+          scrollToFirstError(nextErrors);
         } else if (errorMsg.includes("phone")) {
-          setErrors({ phone: err.response.data.message });
+          const nextErrors = { phone: err.response.data.message };
+          setErrors(nextErrors);
+          scrollToFirstError(nextErrors);
         } else if (errorMsg.includes("address")) {
-          setErrors({ address: err.response.data.message });
+          const nextErrors = { address: err.response.data.message };
+          setErrors(nextErrors);
+          scrollToFirstError(nextErrors);
         } else {
           // For any other validation-related errors, don't show toast
-          setErrors({ address: err.response.data.message });
+          const nextErrors = { address: err.response.data.message };
+          setErrors(nextErrors);
+          scrollToFirstError(nextErrors);
         }
 
         // Only show toast for genuine server/network errors (not validation)
@@ -408,7 +417,7 @@ itiRef.current = intlTelInput(phoneRef.current, {
             </p>
           </div>
 
-          <form onSubmit={handleSave} className="flex flex-col">
+          <form ref={formRef} onSubmit={handleSave} className="flex flex-col">
             <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
               {/* Profile Image */}
               <div className="mt-4">

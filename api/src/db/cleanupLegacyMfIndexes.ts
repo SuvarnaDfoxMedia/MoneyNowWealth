@@ -3,8 +3,9 @@ import mongoose from "mongoose";
 const legacyIndexMap: Record<string, string[]> = {
   mfschemes: ["scheme_code_1", "slug_1", "code_1"],
   mfnfos: ["nfo_id_1", "slug_1", "code_1"],
-  mfmaincategories: ["code_1"],
-  mfcategories: ["code_1"],
+  mfmaincategories: ["code_1", "slug_1"],
+  mfamcs: ["code_1", "slug_1"],
+  mfcategories: ["code_1", "category_id_1", "slug_1"],
   users: ["countryCode_1_mobile_1"],
 };
 

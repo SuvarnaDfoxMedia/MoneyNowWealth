@@ -197,14 +197,29 @@ const upsertCategoryMaster = async (
       main_category_id: mainCategory._id,
       description: String(valueByAliases(row, ["short_description", "description"]) || "").trim(),
       benchmark_index_name: String(valueByAliases(row, ["benchmark_index_name", "benchmark"]) || "").trim(),
+      benchmark_return_type:
+        String(valueByAliases(row, ["benchmark_return_type", "benchmark_type", "return_type"]) || "Trailing")
+          .trim()
+          .toLowerCase() === "annual"
+          ? "Annual"
+          : "Trailing",
       benchmark_returns: {
         y1: parseNumber(row, ["benchmark_y1", "benchmark_1y", "benchmark_1y_return", "y1"]),
         y3: parseNumber(row, ["benchmark_y3", "benchmark_3y", "benchmark_3y_return", "y3"]),
         y5: parseNumber(row, ["benchmark_y5", "benchmark_5y", "benchmark_5y_return", "y5"]),
         y10: parseNumber(row, ["benchmark_y10", "benchmark_10y", "benchmark_10y_return", "y10"]),
       },
+      category_average_returns: {
+        y1: parseNumber(row, ["category_average_y1", "category_avg_1y", "category_average_1y"]),
+        y3: parseNumber(row, ["category_average_y3", "category_avg_3y", "category_average_3y"]),
+        y5: parseNumber(row, ["category_average_y5", "category_avg_5y", "category_average_5y"]),
+        y10: parseNumber(row, ["category_average_y10", "category_avg_10y", "category_average_10y"]),
+      },
       risk_level: String(valueByAliases(row, ["risk_level", "risk_level_low_moderate_high", "risk"]) || "").trim(),
       suggested_use_case: String(valueByAliases(row, ["suggested_use_case", "use_case"]) || "").trim(),
+      suggested_use_case_note: String(
+        valueByAliases(row, ["suggested_use_case_note", "use_case_note", "use_case_description"]) || "",
+      ).trim(),
       is_active: toBoolean(valueByAliases(row, ["is_active", "is_active_yes_no"]), true) ? 1 : 0,
       is_deleted: false,
     };
@@ -248,6 +263,7 @@ const upsertFund = async (
   dryRun: boolean,
 ) => {
   const fundName = String(valueByAliases(row, ["fund_name", "scheme_name", "fund"]) || "").trim();
+  const schemeCode = String(valueByAliases(row, ["scheme_code", "schemecode", "code"]) || "").trim();
 
   if (!fundName) {
     summary.funds.skipped += 1;
@@ -289,15 +305,23 @@ const upsertFund = async (
     const plan_type = ["Regular", "Direct"].includes(planTypeRaw) ? planTypeRaw : "";
     const option_type = ["Growth", "IDCW"].includes(optionTypeRaw) ? optionTypeRaw : "";
 
-    const existing = await MFFund.findOne({
-      fund_name: fundName,
-      amc_id: resolvedAmcId,
-      category_id: category._id,
-      plan_type,
-      option_type,
-    }).select("_id");
+    const existing =
+      (schemeCode
+        ? await MFFund.findOne({
+            scheme_code: schemeCode,
+            is_deleted: false,
+          }).select("_id")
+        : null) ||
+      (await MFFund.findOne({
+        fund_name: fundName,
+        amc_id: resolvedAmcId,
+        category_id: category._id,
+        plan_type,
+        option_type,
+      }).select("_id"));
 
     const nextData: Record<string, unknown> = {
+      scheme_code: schemeCode,
       fund_name: fundName,
       amc_id: resolvedAmcId,
       category_id: category._id,
@@ -306,6 +330,10 @@ const upsertFund = async (
       aum_cr: parseNumber(row, ["aum_cr", "aum"]),
       expense_ratio: parseNumber(row, ["expense_ratio", "expense"]),
       returns: {
+        d1: parseNumber(row, ["return_1d", "1d_return", "d1", "returns_1d"]) ?? 0,
+        m1: parseNumber(row, ["return_1m", "1m_return", "m1", "returns_1m"]) ?? 0,
+        m3: parseNumber(row, ["return_3m", "3m_return", "m3", "returns_3m"]) ?? 0,
+        m6: parseNumber(row, ["return_6m", "6m_return", "m6", "returns_6m"]) ?? 0,
         y1: parseNumber(row, ["return_1y", "1y_return", "y1", "returns_y1"]),
         y3_cagr: parseNumber(row, ["return_3y_cagr", "3y_cagr", "y3_cagr", "returns_y3_cagr"]),
         y5_cagr: parseNumber(row, ["return_5y_cagr", "5y_cagr", "y5_cagr", "returns_y5_cagr"]),
@@ -321,7 +349,42 @@ const upsertFund = async (
       },
       fund_manager: String(valueByAliases(row, ["fund_manager", "manager"]) || "").trim(),
       launch_date: parseDate(row, ["launch_date", "inception_date"]),
+      benchmark_index_name: String(
+        valueByAliases(row, ["benchmark_index_name", "benchmark"]) || "",
+      ).trim(),
+      benchmark_returns_trailing: {
+        d1: parseNumber(row, ["benchmark_trailing_1d", "benchmark_1d", "benchmark_return_1d"]) ?? 0,
+        m1: parseNumber(row, ["benchmark_trailing_1m", "benchmark_1m", "benchmark_return_1m"]) ?? 0,
+        m3: parseNumber(row, ["benchmark_trailing_3m", "benchmark_3m", "benchmark_return_3m"]) ?? 0,
+        m6: parseNumber(row, ["benchmark_trailing_6m", "benchmark_6m", "benchmark_return_6m"]) ?? 0,
+        y1: parseNumber(row, ["benchmark_trailing_1y", "benchmark_1y", "benchmark_return_1y"]),
+        y3: parseNumber(row, ["benchmark_trailing_3y", "benchmark_3y", "benchmark_return_3y"]),
+        y5: parseNumber(row, ["benchmark_trailing_5y", "benchmark_5y", "benchmark_return_5y"]),
+        y10: parseNumber(row, ["benchmark_trailing_10y", "benchmark_10y", "benchmark_return_10y"]),
+      },
+      benchmark_returns_annual: {
+        y1: parseNumber(row, ["benchmark_annual_1y", "benchmark_annual_return_1y"]),
+        y3: parseNumber(row, ["benchmark_annual_3y", "benchmark_annual_return_3y"]),
+        y5: parseNumber(row, ["benchmark_annual_5y", "benchmark_annual_return_5y"]),
+        y10: parseNumber(row, ["benchmark_annual_10y", "benchmark_annual_return_10y"]),
+      },
       min_investment: parseNumber(row, ["min_investment", "minimum_investment"]),
+      sip_allowed: toBoolean(valueByAliases(row, ["sip_allowed", "sip_enabled", "sip_active"]), true),
+      min_sip_investment: parseNumber(row, [
+        "min_sip_investment",
+        "minimum_sip_investment",
+        "sip_min_investment",
+      ]),
+      lumpsum_allowed: toBoolean(
+        valueByAliases(row, ["lumpsum_allowed", "lumpsum_enabled", "lumpsum_active"]),
+        true,
+      ),
+      min_lumpsum_investment: parseNumber(row, [
+        "min_lumpsum_investment",
+        "minimum_lumpsum_investment",
+        "lumpsum_min_investment",
+        "lump_sum_min_investment",
+      ]),
       exit_load: String(valueByAliases(row, ["exit_load", "exit_load_details"]) || "").trim(),
       is_featured: toBoolean(valueByAliases(row, ["is_featured", "is_featured_yes_no", "featured"]), false),
       fund_objective: String(valueByAliases(row, ["fund_objective", "objective"]) || "").trim(),
@@ -372,6 +435,7 @@ const upsertNfo = async (
   categoryMap: Map<string, string>,
   dryRun: boolean,
 ) => {
+  const nfoId = String(valueByAliases(row, ["nfo_id", "nfoid", "code"]) || "").trim();
   const fundName = String(valueByAliases(row, ["fund_name", "scheme_name", "nfo_name"]) || "").trim();
   if (!fundName) {
     summary.nfos.skipped += 1;
@@ -407,15 +471,23 @@ const upsertNfo = async (
       return;
     }
 
-    const existing = await MFNfo.findOne({
-      fund_name: fundName,
-      amc_id: resolvedAmcId,
-      category_id: category._id,
-      subscription_start_date: startDate || null,
-      subscription_end_date: endDate || null,
-    }).select("_id");
+    const existing =
+      (nfoId
+        ? await MFNfo.findOne({
+            nfo_id: nfoId,
+            is_deleted: false,
+          }).select("_id")
+        : null) ||
+      (await MFNfo.findOne({
+        fund_name: fundName,
+        amc_id: resolvedAmcId,
+        category_id: category._id,
+        subscription_start_date: startDate || null,
+        subscription_end_date: endDate || null,
+      }).select("_id"));
 
     const nextData: Record<string, unknown> = {
+      nfo_id: nfoId,
       fund_name: fundName,
       amc_id: resolvedAmcId,
       category_id: category._id,

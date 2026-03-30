@@ -7,6 +7,7 @@ import Button from "../ui/button/Button";
 import toast from "react-hot-toast";
 import { axiosApi } from "../../api/axios"; // centralized axios instance
 import { useAuth } from "../../context/useAuth";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 
 export default function ChangePasswordForm() {
   const [oldPassword, setOldPassword] = useState("");
@@ -22,6 +23,7 @@ export default function ChangePasswordForm() {
   }>({});
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const navigate = useNavigate();
   const { refreshUser } = useAuth(); // refresh user after password change
@@ -69,6 +71,7 @@ export default function ChangePasswordForm() {
       newErrors.confirmPassword = "Passwords do not match.";
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) scrollToFirstError(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -166,17 +169,25 @@ try {
       const errorMsg = backendMsg.toLowerCase();
 
       if (errorMsg.includes("old password") || errorMsg.includes("incorrect")) {
-        setErrors({ oldPassword: backendMsg });
+        const nextErrors = { oldPassword: backendMsg };
+        setErrors(nextErrors);
+        scrollToFirstError(nextErrors);
       } else if (
         errorMsg.includes("new password") ||
         errorMsg.includes("weak")
       ) {
-        setErrors({ newPassword: backendMsg });
+        const nextErrors = { newPassword: backendMsg };
+        setErrors(nextErrors);
+        scrollToFirstError(nextErrors);
       } else if (errorMsg.includes("confirm") || errorMsg.includes("match")) {
-        setErrors({ confirmPassword: backendMsg });
+        const nextErrors = { confirmPassword: backendMsg };
+        setErrors(nextErrors);
+        scrollToFirstError(nextErrors);
       } else {
         // For any other validation-related errors, don't show toast
-        setErrors({ confirmPassword: backendMsg });
+        const nextErrors = { confirmPassword: backendMsg };
+        setErrors(nextErrors);
+        scrollToFirstError(nextErrors);
       }
 
       // Only show toast for genuine server/network errors (not validation)
@@ -227,7 +238,7 @@ try {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate>
+          <form ref={formRef} onSubmit={handleSubmit} noValidate>
             <div className="space-y-6">
               {/* Old Password */}
               <div>

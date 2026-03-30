@@ -5,6 +5,11 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import { axiosApi } from "../../../api/axios";
+import { toast } from "react-hot-toast";
+import MFDeleteImpactModal, {
+  MFDeleteImpactSummary,
+} from "./MFDeleteImpactModal";
 
 interface MFAmcRow {
   _id: string;
@@ -88,13 +93,45 @@ export default function MFAmcListing() {
       searchValue,
       sortField,
       sortOrder,
-      liveIntervalMs: 10000,
       enabled: isMounted,
     });
 
   const rows = extractList as MFAmcRow[];
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleteImpact, setDeleteImpact] = useState<MFDeleteImpactSummary | null>(
+    null,
+  );
+  const [isDeleteImpactLoading, setIsDeleteImpactLoading] = useState(false);
+
+  const openDeleteModal = async (row: MFAmcRow) => {
+    setDeleteModalId(row._id);
+    setDeleteImpact(null);
+    setIsDeleteImpactLoading(true);
+
+    try {
+      const response = await axiosApi.getOne<MFDeleteImpactSummary>(
+        `/${role}/mf/amcs/delete-impact/${row._id}`,
+      );
+      setDeleteImpact(response.data ?? null);
+    } catch (error) {
+      console.error("Failed to load AMC delete impact", error);
+      toast.error(
+        "Couldn't load related record counts. You can still continue if needed.",
+      );
+    } finally {
+      setIsDeleteImpactLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteModalId) return;
+    await deleteRecord(deleteModalId);
+    setDeleteModalId(null);
+    setDeleteImpact(null);
+    setIsDeleteImpactLoading(false);
+  };
 
   const columns: TableColumn<MFAmcRow>[] = [
     { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
@@ -121,10 +158,7 @@ export default function MFAmcListing() {
             cacheModuleState(MODULE_KEY);
             navigate(`/${role}/mf/amcs/edit/${row._id}`);
           }}
-          onDelete={async () => {
-            if (!window.confirm("Delete this AMC?")) return;
-            await deleteRecord(row._id);
-          }}
+          onDelete={() => void openDeleteModal(row)}
         />
       ),
     },
@@ -158,6 +192,21 @@ export default function MFAmcListing() {
           setSort(field, order);
         }}
       />
+
+      {deleteModalId && (
+        <MFDeleteImpactModal
+          title="Delete AMC?"
+          fallbackMessage="Are you sure you want to delete this AMC?"
+          impact={deleteImpact}
+          loading={isDeleteImpactLoading}
+          onClose={() => {
+            setDeleteModalId(null);
+            setDeleteImpact(null);
+            setIsDeleteImpactLoading(false);
+          }}
+          onConfirm={() => void handleDelete()}
+        />
+      )}
     </div>
   );
 }

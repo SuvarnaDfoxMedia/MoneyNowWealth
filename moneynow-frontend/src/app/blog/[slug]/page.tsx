@@ -181,7 +181,7 @@ const BlogDetails = () => {
                   className="
                     font-inter
                     line-clamp-5
-                    [&_p]:!text-[19px]
+                    [&_p]:!text-[16px]
                     [&_p]:!leading-[30px]
                     [&_p]:mb-3
                   "
@@ -348,7 +348,7 @@ const BlogDetails = () => {
                     Introduction
                   </h2>
                   <div
-                    className="font-inter w-full max-w-none [&_p]:!text-[19px] [&_p]:!leading-[28px]"
+                    className="font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
                     dangerouslySetInnerHTML={sanitize(article.introduction)}
                   />
                 </section>
@@ -375,7 +375,7 @@ const BlogDetails = () => {
                         </h2>
                       )}
                       <div
-                        className="font-inter w-full max-w-none [&_p]:!text-[19px] [&_p]:!leading-[28px]"
+                        className="font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
                         dangerouslySetInnerHTML={sanitize(sec.content)}
                       />
                     </section>
