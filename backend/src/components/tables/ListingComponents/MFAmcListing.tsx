@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
 } from "./MFDeleteImpactModal";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFAmcRow {
   _id: string;
@@ -83,7 +84,7 @@ export default function MFAmcListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFAmcRow>({
       role,
       module: "mf/amcs",
@@ -178,6 +179,15 @@ export default function MFAmcListing() {
         columns={columns}
         data={rows}
         loading={isLoading}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[{ value: "amcs", label: "AMCs" }]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}

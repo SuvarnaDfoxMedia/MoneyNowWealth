@@ -20,7 +20,7 @@ export const checkPurchaseEligibility = async (
     const planId = req.body.plan_id;
     if (planId) {
       const plan = await SubscriptionPlan.findById(planId);
-      if (plan && plan.name.toLowerCase() === "premium") {
+      if (plan && plan.plan_type === "Premium") {
         const eligibility =
           await userSubscriptionService.checkPurchaseEligibility(userId);
 

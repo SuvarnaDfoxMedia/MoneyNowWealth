@@ -12,8 +12,8 @@ export default function NfoPage() {
   const { nfos, loading, error } = useNfoFunds({
     isOpen: true,
     limit: 100,
-    sortBy: "created_at",
-    sortOrder: "desc",
+    sortBy: "subscription_end_date",
+    sortOrder: "asc",
   });
 
   return (

@@ -17,25 +17,27 @@ import {
 } from "../controllers/topicController";
 
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
+import { optionalUserProtect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 const upload = multer(); // parses multipart/form-data
 
 /* -------------------- PUBLIC ROUTES -------------------- */
 // List all topics
-router.get("/topic", getTopics);
+router.get("/topic", optionalUserProtect, getTopics);
 router.get("/topic-list", getTopicList);
 
 // Get clusters -> topics -> articles
-router.get("/topic/published", getPublishedClustersTopicsArticles);
+router.get("/topic/published", optionalUserProtect, getPublishedClustersTopicsArticles);
 
 // Get a published topic with its articles by ID (aggregation)
-router.get("/topic/published/:id", getPublishedTopicWithArticlesByIdAgg);
+router.get("/topic/published/:id", optionalUserProtect, getPublishedTopicWithArticlesByIdAgg);
 
-router.get("/topic/published/slug/:slug", getPublishedTopicBySlug);
+router.get("/topic/published/slug/:slug", optionalUserProtect, getPublishedTopicBySlug);
 
 router.get(
   "/topic/published/cluster/:clusterSlug/slug/:slug",
+  optionalUserProtect,
   getPublishedTopicByClusterAndSlug,
 );
 

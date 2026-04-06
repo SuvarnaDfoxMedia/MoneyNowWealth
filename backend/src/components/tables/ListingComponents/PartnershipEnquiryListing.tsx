@@ -652,6 +652,7 @@ import { FiTrash2, FiMoreVertical } from "react-icons/fi";
 import { createPortal } from "react-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
+import { useEnquiryUnread } from "../../../hooks/useEnquiryUnread";
 import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface PartnershipEnquiry {
@@ -692,6 +693,7 @@ export default function PartnershipEnquiryListing() {
 
   const MODULE_KEY = "admin-partnership-enquiries";
   const [isMounted, setIsMounted] = useState(false);
+  const { markModulesAsRead } = useEnquiryUnread();
 
   const {
     page,
@@ -747,6 +749,11 @@ export default function PartnershipEnquiryListing() {
     setCurrentModule,
     setPage,
   ]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    void markModulesAsRead(["partner-enquiries"]);
+  }, [isMounted, markModulesAsRead]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);

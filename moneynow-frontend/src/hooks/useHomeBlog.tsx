@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API } from "@/app/api/axios";
+import { useRefreshSignal } from "./useRefreshSignal";
+import { useContentAccess } from "./useContentAccess";
 
 export interface CardData {
   slug: string;
@@ -21,10 +23,16 @@ export const useFetchCards = (
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
+  const { refreshTick, refresh } = useRefreshSignal();
+  const { accessLevel } = useContentAccess();
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      const isInitialLoad = !hasLoadedRef.current;
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
 
       try {
@@ -44,6 +52,7 @@ export const useFetchCards = (
 
         if (!articles.length) {
           setCards([]);
+          hasLoadedRef.current = true;
           return;
         }
 
@@ -84,16 +93,21 @@ export const useFetchCards = (
         });
 
         setCards(formattedCards);
+        hasLoadedRef.current = true;
       } catch (err: any) {
         setError(err?.message || "Something went wrong");
-        setCards([]);
+        if (!hasLoadedRef.current) {
+          setCards([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
-  }, [endpoint, limit]);
+  }, [endpoint, limit, refreshTick, accessLevel]);
 
-  return { cards, loading, error };
+  return { cards, loading, error, refetch: refresh };
 };

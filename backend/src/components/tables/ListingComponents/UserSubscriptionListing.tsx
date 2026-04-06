@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-hot-toast";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FiTrash2, FiMoreVertical, FiEye } from "react-icons/fi";
 import { createPortal } from "react-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
@@ -30,8 +29,11 @@ interface UserSubscription {
 
 export default function UserSubscriptionListing() {
   const { role = "admin" } = useParams<{ role: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const MODULE_KEY = `${role}-user-subscriptions`;
+  const [isMounted, setIsMounted] = useState(false);
 
   const {
     page,
@@ -43,7 +45,70 @@ export default function UserSubscriptionListing() {
     setRecordsPerPage,
     setSearchValue,
     setSort,
+    setCurrentModule,
+    cacheModuleState,
+    restoreModuleState,
+    markTabSwitch,
+    lastAction,
   } = useDataTableStore();
+
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const storedPath = sessionStorage.getItem("lastPath");
+
+    if (
+      storedPath &&
+      !storedPath.includes("/user-subscription") &&
+      currentPath.includes("/user-subscription")
+    ) {
+      markTabSwitch();
+    }
+
+    sessionStorage.setItem("lastPath", currentPath);
+  }, [location.pathname, markTabSwitch]);
+
+  useEffect(() => {
+    setCurrentModule(MODULE_KEY);
+
+    if (lastAction === "edit") {
+      restoreModuleState(MODULE_KEY);
+    } else if (lastAction === "tab-switch") {
+      setPage(1);
+    }
+
+    if (!sortField) {
+      setSort("start_date", "desc");
+    }
+
+    setIsMounted(true);
+
+    return () => {
+      cacheModuleState(MODULE_KEY);
+    };
+  }, [
+    MODULE_KEY,
+    cacheModuleState,
+    lastAction,
+    restoreModuleState,
+    setCurrentModule,
+    setPage,
+    setSort,
+    sortField,
+  ]);
+
+  useEffect(() => {
+    const handleNavClick = () => {
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes("/user-subscription")) {
+          markTabSwitch();
+        }
+      }, 100);
+    };
+
+    document.addEventListener("click", handleNavClick);
+    return () => document.removeEventListener("click", handleNavClick);
+  }, [markTabSwitch]);
 
   const {
     data: rawData,
@@ -58,6 +123,7 @@ export default function UserSubscriptionListing() {
     searchValue,
     sortField,
     sortOrder,
+    enabled: isMounted,
   });
 
   const data = rawData || { data: [], total: 0 };
@@ -113,9 +179,11 @@ export default function UserSubscriptionListing() {
 
   //  Debounced refetch
   useEffect(() => {
+    if (!isMounted) return;
+
     const timer = setTimeout(() => refetch(), 400);
     return () => clearTimeout(timer);
-  }, [searchValue, sortField, sortOrder, page, recordsPerPage]);
+  }, [searchValue, sortField, sortOrder, page, recordsPerPage, isMounted, refetch]);
 
   //  Delete
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
@@ -124,18 +192,10 @@ export default function UserSubscriptionListing() {
     if (!deleteModalId) return;
 
     try {
-      const response = await deleteRecord(deleteModalId);
-
-      if (response?.success) {
-        toast.success(response?.message || "Subscription deleted successfully");
-        refetch();
-      } else {
-        toast.error(response?.message || "Delete failed");
-      }
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Delete failed";
-      toast.error(message);
+      await deleteRecord(deleteModalId);
+      refetch();
+    } catch {
+      // Mutation-level toast already handles the error feedback.
     } finally {
       setDeleteModalId(null);
     }
@@ -233,7 +293,9 @@ export default function UserSubscriptionListing() {
       new: "bg-blue-100 text-blue-700",
       upgrade: "bg-green-100 text-green-700",
       downgrade: "bg-red-100 text-red-700",
+      renewal: "bg-purple-100 text-purple-700",
       active: "bg-green-100 text-green-700",
+      expired: "bg-amber-100 text-amber-700",
       inactive: "bg-gray-100 text-gray-700",
       none: "bg-gray-100 text-gray-700",
     };
@@ -328,6 +390,14 @@ export default function UserSubscriptionListing() {
       ),
     },
   ];
+
+  if (!isMounted) {
+    return (
+      <div className="bg-gray-50 min-h-screen p-4 flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 relative">

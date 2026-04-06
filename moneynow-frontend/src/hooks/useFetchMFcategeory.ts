@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { mfService } from "@/services/mfService";
+import { useRefreshSignal } from "./useRefreshSignal";
 
 export interface MasterCategory {
   id: string;
@@ -83,6 +84,8 @@ export const useFetchMFData = (
   const [subTabDescriptions, setSubTabDescriptions] = useState<
     Record<string, string>
   >({});
+  const hasLoadedFundsRef = useRef(false);
+  const { refreshTick, refresh } = useRefreshSignal();
 
   useEffect(() => {
     const fetchMaster = async () => {
@@ -111,7 +114,7 @@ export const useFetchMFData = (
     };
 
     fetchMaster();
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     const fetchFunds = async () => {
@@ -120,14 +123,18 @@ export const useFetchMFData = (
         setAvailableSubTabs([]);
         setCategoryMap({});
         setLoading(false);
+        hasLoadedFundsRef.current = false;
         return;
       }
 
-      setLoading(true);
-      setFundData([]);
-      setAvailableSubTabs([]);
-      setCategoryMap({});
-      setSubTabDescriptions({});
+      const isInitialLoad = !hasLoadedFundsRef.current;
+      if (isInitialLoad) {
+        setLoading(true);
+        setFundData([]);
+        setAvailableSubTabs([]);
+        setCategoryMap({});
+        setSubTabDescriptions({});
+      }
 
       try {
         const mainCategory = masterCategories.find(
@@ -135,9 +142,11 @@ export const useFetchMFData = (
         );
 
         if (!mainCategory) {
-          setFundData([]);
-          setAvailableSubTabs([]);
-          setLoading(false);
+          if (isInitialLoad) {
+            setFundData([]);
+            setAvailableSubTabs([]);
+            setLoading(false);
+          }
           return;
         }
 
@@ -164,8 +173,10 @@ export const useFetchMFData = (
         const selectedCategoryId = nextMap[activeSubTab] || Object.values(nextMap)[0] || "";
 
         if (!selectedCategoryId) {
-          setFundData([]);
-          setLoading(false);
+          if (isInitialLoad) {
+            setFundData([]);
+            setLoading(false);
+          }
           return;
         }
 
@@ -186,17 +197,22 @@ export const useFetchMFData = (
         }));
 
         setFundData(mappedFunds);
+        hasLoadedFundsRef.current = true;
       } catch {
         setError("Failed to load funds");
-        setFundData([]);
-        setAvailableSubTabs([]);
+        if (!hasLoadedFundsRef.current) {
+          setFundData([]);
+          setAvailableSubTabs([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchFunds();
-  }, [activeCategoryName, activeSubTab, masterCategories]);
+  }, [activeCategoryName, activeSubTab, masterCategories, refreshTick]);
 
   return {
     masterCategories,
@@ -206,5 +222,6 @@ export const useFetchMFData = (
     categoryMap,
     availableSubTabs,
     subTabDescriptions,
+    refetch: refresh,
   };
 };

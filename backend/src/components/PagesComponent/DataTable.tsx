@@ -13,6 +13,7 @@ interface DataTableProps<T> {
   data: T[];
   loading?: boolean;
   isFetching?: boolean;
+  toolbarActions?: React.ReactNode;
   customFilters?: {
     key: keyof T | string;
     label: string;
@@ -40,6 +41,7 @@ function DataTableComponent<T = Record<string, unknown>>({
   data,
   loading = false,
   isFetching = false,
+  toolbarActions,
   page,
   totalPages,
   totalRecords = 0, // default value
@@ -105,6 +107,7 @@ function DataTableComponent<T = Record<string, unknown>>({
         {/* Search */}
         {onSearchChange && (
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
+            {toolbarActions}
             <label className="whitespace-nowrap text-sm font-medium text-gray-700">
               Search:
             </label>

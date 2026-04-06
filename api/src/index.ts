@@ -23,23 +23,27 @@ import articleRoutes from "./routes/articleRoutes";
 import subscriptionPlanRoutes from "./routes/subscriptionPlanRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
 import { protect, authorizeRoles } from "./middlewares/authMiddleware";
-import { startTopicScheduler } from "./cron/topicScheduler";
-import { startSubscriptionScheduler } from "./cron/subscriptionCron";
+import "./cron/subscriptionCron";
 import userSubscriptionRoutes from "./routes/userSubscriptionRoutes";
 import subscriptionPaymentRoutes from "./routes/userSubscriptionPaymentRoutes";
 import newsletterRoutes from "./routes/newsletterRoutes";
 import { startNewsletterPublishScheduler } from "./cron/newsletterPublishCron";
+import { startMfNfoScheduler } from "./cron/mfNfoCron";
 import newsletterPublishRoutes from "./routes/newsletterPublishRoutes";
 import mfRoutes from "./routes/mfRoutes";
 import financialAssessmentRoutes from "./routes/financialAssessmentRoutes";
 import partnerEnquiryRoutes from "./routes/partnerEnquiryRoutes";
+import oneCroreJourneyEnquiryRoutes from "./routes/oneCroreJourneyEnquiryRoutes";
+import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
+import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
+import { validateEmailEnvironment } from "./config/emailEnv";
 
 dotenv.config();
+validateEmailEnvironment();
 await connectDatabase();
 await cleanupLegacyMfIndexes();
-startTopicScheduler();
-startSubscriptionScheduler();
 startNewsletterPublishScheduler();
+startMfNfoScheduler();
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -99,7 +103,9 @@ app.use((req, res, next) => {
     path.startsWith("/api/auth") ||
     path === "/api/newsletter" ||
     path === "/api/contact-enquiries" ||
-    path === "/api/partner-enquiries";
+    path === "/api/partner-enquiries" ||
+    path === "/api/one-crore-journey-enquiries" ||
+    path === "/api/who-we-work-with-enquiries";
 
   if (!shouldRateLimit) {
     return next();
@@ -172,6 +178,9 @@ app.use("/api", newsletterPublishRoutes);
 app.use("/api", mfRoutes);
 app.use("/api", financialAssessmentRoutes);
 app.use("/api", partnerEnquiryRoutes);
+app.use("/api", oneCroreJourneyEnquiryRoutes);
+app.use("/api", whoWeWorkWithEnquiryRoutes);
+app.use("/api", enquiryUnreadRoutes);
 
 // Admin route example
 app.get(

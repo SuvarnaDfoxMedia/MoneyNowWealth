@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRefreshSignal } from "@/hooks/useRefreshSignal";
+import { API } from "@/app/api/axios";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 /* ---------------- Types ---------------- */
 interface Cluster {
@@ -21,6 +24,9 @@ const GetAllCluster = () => {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
+  const { refreshTick } = useRefreshSignal();
+  const { accessLevel } = useContentAccess();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCards, setVisibleCards] = useState(2);
@@ -28,26 +34,33 @@ const GetAllCluster = () => {
   /* ---------------- Fetch Clusters ---------------- */
   useEffect(() => {
     const fetchClusters = async () => {
+      const isInitialLoad = !hasLoadedRef.current;
       try {
-        const res = await fetch(`${API_BASE}/api/cluster`);
-        if (!res.ok) throw new Error("Failed to fetch clusters");
-
-        const result = await res.json();
+        if (isInitialLoad) {
+          setLoading(true);
+        }
+        const { data: result } = await API.get("/api/cluster");
 
         if (!result.success || !Array.isArray(result.clusters)) {
           throw new Error("Invalid API response");
         }
 
         setClusters(result.clusters);
+        hasLoadedRef.current = true;
       } catch (err: any) {
         setError(err.message || "Something went wrong");
+        if (!hasLoadedRef.current) {
+          setClusters([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchClusters();
-  }, [API_BASE]);
+  }, [API_BASE, refreshTick, accessLevel]);
 
   /* ---------------- Responsive visible cards ---------------- */
   useEffect(() => {

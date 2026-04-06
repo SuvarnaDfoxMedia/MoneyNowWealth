@@ -14,6 +14,7 @@ export interface CommonCrudProps {
   listKey?: string;
   enabled?: boolean;
   liveIntervalMs?: number;
+  extraParams?: Record<string, string | number | boolean | undefined | null>;
 }
 
 export interface ApiMessage {
@@ -43,6 +44,7 @@ export const useCommonCrud = <T>({
   listKey,
   enabled = true,
   liveIntervalMs = 0,
+  extraParams,
 }: CommonCrudProps) => {
   const queryClient = useQueryClient();
   const defaultListKey = listKey ?? `${module}s`;
@@ -50,7 +52,7 @@ export const useCommonCrud = <T>({
     role || "public",
     module,
     "list",
-    { page, limit, searchValue, sortField, sortOrder },
+    { page, limit, searchValue, sortField, sortOrder, ...(extraParams || {}) },
   ];
 
   /* ------------------ FETCH LIST ------------------ */
@@ -64,6 +66,7 @@ export const useCommonCrud = <T>({
         searchValue,
         sortField,
         sortOrder,
+        ...(extraParams || {}),
       });
       return res ?? { total: 0, limit, currentPage: page, totalPages: 1, [defaultListKey]: [] };
     },

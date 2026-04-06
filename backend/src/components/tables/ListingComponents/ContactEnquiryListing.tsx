@@ -5,6 +5,7 @@ import { FiTrash2, FiMoreVertical } from "react-icons/fi";
 import { createPortal } from "react-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
+import { useEnquiryUnread } from "../../../hooks/useEnquiryUnread";
 import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface ContactEnquiry {
@@ -36,6 +37,7 @@ export default function ContactEnquiryListing() {
 
   const MODULE_KEY = "admin-contact-enquiries";
   const [isMounted, setIsMounted] = useState(false);
+  const { markModulesAsRead } = useEnquiryUnread();
 
   const {
     page,
@@ -93,6 +95,11 @@ export default function ContactEnquiryListing() {
     setCurrentModule,
     setPage,
   ]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    void markModulesAsRead(["contact-enquiries"]);
+  }, [isMounted, markModulesAsRead]);
 
   /* ------------------- Handlers ------------------- */
   const handlePageChange = (newPage: number) => {

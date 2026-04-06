@@ -12,18 +12,20 @@ import {
 } from "../controllers/clusterController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 import { uploadClusterThumbnail } from "../middlewares/uploadMiddleware";
+import { optionalUserProtect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
 /* -------------------- PUBLIC ROUTES -------------------- */
-router.get("/cluster", getClusters);
+router.get("/cluster", optionalUserProtect, getClusters);
 
-router.get("/clusters/active", getActiveClusters);
+router.get("/clusters/active", optionalUserProtect, getActiveClusters);
 
 router.get("/cluster/:id", getClusterById);
 router.get("/clusters/slug/:slug", getClusterBySlug);
 router.get(
   "/cluster/first-topic-article/all",
+  optionalUserProtect,
   getAllClustersFirstTopicWithArticle,
 );
 

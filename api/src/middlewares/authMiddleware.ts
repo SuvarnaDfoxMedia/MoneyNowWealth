@@ -170,6 +170,57 @@ export const userProtect = async (
   });
 };
 
+export const optionalUserProtect = async (
+  req: AuthenticatedRequest,
+  _res: express.Response,
+  next: express.NextFunction,
+) => {
+  try {
+    const jwtKey = process.env.JWT_KEY;
+    if (!jwtKey) {
+      return next();
+    }
+
+    const tokensInOrder = getTokenCandidates(req, {
+      expectedApp: "public",
+      allowLegacyToken: true,
+    });
+
+    const tokenSource = tokensInOrder.find((item) => !!item.token);
+    const token = tokenSource?.token;
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, jwtKey) as AuthTokenPayload;
+    const existingUser = await User.findOne({
+      _id: decoded.id,
+      is_deleted: false,
+    }).select("role");
+
+    if (!existingUser) {
+      return next();
+    }
+
+    const tokenApp = decoded.app;
+    const isLegacyTokenWithoutApp = !tokenApp && tokenSource?.cookie === "token";
+
+    if (!isLegacyTokenWithoutApp && tokenApp !== "public") {
+      return next();
+    }
+
+    if (existingUser.role !== "user") {
+      return next();
+    }
+
+    req.user = { id: decoded.id, role: existingUser.role };
+    return next();
+  } catch {
+    return next();
+  }
+};
+
 export const authorizeRoles = (...roles: string[]) => {
   return (
     req: AuthenticatedRequest,

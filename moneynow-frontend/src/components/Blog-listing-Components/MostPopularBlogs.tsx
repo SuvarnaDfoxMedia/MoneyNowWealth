@@ -1,10 +1,12 @@
 
-
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRefreshSignal } from "@/hooks/useRefreshSignal";
+import { API } from "@/app/api/axios";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 interface Article {
   _id: string;
@@ -22,7 +24,6 @@ interface Props {
   folder?: string; 
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
 const FALLBACK_IMAGE = "/images/most-popular-blog-img-1.png";
 
@@ -30,19 +31,21 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const hasLoadedRef = useRef(false);
+  const { refreshTick } = useRefreshSignal();
+  const { accessLevel } = useContentAccess();
 
   useEffect(() => {
     const fetchArticles = async () => {
+      const isInitialLoad = !hasLoadedRef.current;
       try {
-        if (!API_BASE) throw new Error("API base URL missing");
-
-        const res = await fetch(`${API_BASE}/api/cluster/first-topic-article/all`);
-        if (!res.ok) throw new Error("API request failed");
-
-        const data = await res.json();
+        if (isInitialLoad) {
+          setLoading(true);
+        }
+        const { data } = await API.get("/api/cluster/first-topic-article/all");
 
         const formatted: Article[] =
-          data?.clusters
+          (data?.clusters || data?.data?.clusters || [])
             ?.filter((c: any) => c?.topic?.article)
             .map((cluster: any) => ({
               _id: cluster.topic.article._id,
@@ -57,18 +60,24 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
             })) || [];
 
         setArticles(formatted);
+        hasLoadedRef.current = true;
       } catch (err) {
         console.error(err);
         setError("Failed to fetch articles");
+        if (!hasLoadedRef.current) {
+          setArticles([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchArticles();
-  }, []);
+  }, [refreshTick, accessLevel]);
 
-if (loading) return <p>Loading...</p>;
+  if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (

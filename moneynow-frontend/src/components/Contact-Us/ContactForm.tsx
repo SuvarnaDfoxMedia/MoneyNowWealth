@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import intlTelInput from "intl-tel-input";
 import "intl-tel-input/build/css/intlTelInput.css";
 import { ChevronRight } from "lucide-react";
 import {
@@ -17,13 +16,9 @@ import {
 import { IoMail } from "react-icons/io5";
 import { RiWhatsappFill } from "react-icons/ri";
 import CMSBanner from "../../components/cms/CmsBanner";
-import {
-  executeRecaptcha,
-  mountRecaptcha,
-  unmountRecaptcha,
-} from "@/lib/recaptcha";
-
-type IntlTelInputInstance = ReturnType<typeof intlTelInput>;
+import { executeRecaptcha } from "@/lib/recaptcha";
+import useRecaptchaLifecycle from "@/hooks/useRecaptchaLifecycle";
+import useIntlPhoneField from "@/hooks/useIntlPhoneField";
 
 interface FormState {
   full_name: string;
@@ -71,12 +66,10 @@ const splitFullName = (fullName: string) => {
   };
 };
 
-const hasAlphabet = (value: string) => /[A-Za-z]/.test(value);
-
 const ContactForm = () => {
   const router = useRouter();
-  const phoneRef = useRef<HTMLInputElement | null>(null);
-  const itiRef = useRef<IntlTelInputInstance | null>(null);
+  const { phoneRef, getMobileValue, getCountryCode, clearPhoneValue, validateMobileNumber } =
+    useIntlPhoneField();
 
   const [form, setForm] = useState<FormState>({
     full_name: "",
@@ -90,49 +83,7 @@ const ContactForm = () => {
   const [errors, setErrors] = useState<ErrorsState>({});
   const [loading, setLoading] = useState(false);
   const [, setMobileTouched] = useState(false);
-
-  useEffect(() => {
-    if (phoneRef.current && !itiRef.current) {
-      try {
-        itiRef.current = intlTelInput(phoneRef.current, {
-          initialCountry: "in",
-          separateDialCode: true,
-          utilsScript:
-            "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.0/build/js/utils.js",
-        });
-        // Ensure the iti container takes full width
-        const container = phoneRef.current.closest(".iti");
-        if (container) container.classList.add("w-full");
-      } catch (error) {
-        console.error("Error initializing intl-tel-input:", error);
-      }
-    }
-
-    return () => {
-      if (itiRef.current) {
-        try {
-          itiRef.current.destroy();
-        } catch (error) {
-          console.error("Error destroying intl-tel-input:", error);
-        }
-        itiRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    mountRecaptcha().catch((error) => {
-      if (!isMounted) return;
-      console.error("Failed to initialize reCAPTCHA:", error);
-    });
-
-    return () => {
-      isMounted = false;
-      unmountRecaptcha();
-    };
-  }, []);
+  useRecaptchaLifecycle();
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -148,41 +99,6 @@ const ContactForm = () => {
     if (errors[name as keyof ErrorsState]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
-  };
-
-  const validateMobileNumber = () => {
-    const mobileValue = phoneRef.current?.value?.trim() || "";
-    const normalizedMobile = mobileValue.replace(/[\s\-().]/g, "");
-    const mobileDigits = normalizedMobile.replace(/\D/g, "");
-    const selectedCountry =
-      itiRef.current?.getSelectedCountryData()?.iso2 || "in";
-
-    if (!mobileValue) return "Mobile number is required";
-
-    if (hasAlphabet(normalizedMobile)) {
-      return "Mobile number must contain digits only";
-    }
-
-    if (!/^\+?\d+$/.test(normalizedMobile)) {
-      return "Please enter a valid mobile number";
-    }
-
-    if (selectedCountry === "in") {
-      if (mobileDigits.length !== 10) {
-        return "Mobile number must be exactly 10 digits";
-      }
-
-      if (!/^[6-9]/.test(mobileDigits)) {
-        return "Indian mobile number must start with 6, 7, 8, or 9";
-      }
-
-      return "";
-    }
-
-    if (mobileDigits.length < 6) return "Mobile number is too short";
-    if (mobileDigits.length > 15) return "Mobile number is too long";
-
-    return "";
   };
 
   const handleMobileChange = () => {
@@ -232,13 +148,8 @@ const ContactForm = () => {
     try {
       const recaptchaToken = await executeRecaptcha(CONTACT_RECAPTCHA_ACTION);
       const { first_name, last_name } = splitFullName(form.full_name);
-      const mobile = phoneRef.current?.value?.trim() || "";
-      let countryCode = "+91";
-
-      if (itiRef.current) {
-        const countryData = itiRef.current.getSelectedCountryData();
-        countryCode = countryData.dialCode ? `+${countryData.dialCode}` : "+91";
-      }
+      const mobile = getMobileValue();
+      const countryCode = getCountryCode();
 
       const payload = {
         first_name,
@@ -269,7 +180,7 @@ const ContactForm = () => {
         message: "",
         terms_accepted: false,
       });
-      if (phoneRef.current) phoneRef.current.value = "";
+      clearPhoneValue();
       setMobileTouched(false);
       router.push("/thank-You");
     } catch (error) {
@@ -395,6 +306,8 @@ const ContactForm = () => {
                     id="contact_mobile"
                     ref={phoneRef}
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     onChange={handleMobileChange}
                     onBlur={handleMobileBlur}
                     className={`${inputClassName} ${errors.mobile ? "border-red-500" : ""}`}

@@ -17,6 +17,7 @@
 import { useState, useEffect } from "react";
 import { API } from "@/app/api/axios";
 import { useUserId } from "./useUserId";
+import { useRefreshSignal } from "./useRefreshSignal";
 
 export interface SubscriptionPayment {
   _id: string;
@@ -40,12 +41,14 @@ export interface SubscriptionPayment {
 
 export interface CurrentSubscription {
   planName: string;
+  planType: string;
   amount: number;
   paymentDate: string;
   endDate: string;
   startDate: string;
   status: string;
   isPromotional?: boolean;
+  daysRemaining?: number;
 }
 
 const normalizePaymentDates = (payment: any) => {
@@ -66,6 +69,7 @@ const normalizePaymentDates = (payment: any) => {
 
 export const useSubscription = (page = 1, limit = 10) => {
   const { userId, loading: userIdLoading, error: userIdError } = useUserId();
+  const { refreshTick, refresh } = useRefreshSignal();
 
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [latestSubscription, setLatestSubscription] =
@@ -167,6 +171,10 @@ export const useSubscription = (page = 1, limit = 10) => {
                 subscription?.plan_type ||
                 latestCurrentPayment?.plan_id?.name ||
                 "Unknown",
+              planType:
+                subscription?.plan_type ||
+                subscription?.plan_id?.plan_type ||
+                "Free",
               amount: Number(latestCurrentPayment?.amount || 0),
               paymentDate:
                 latestCurrentPayment?.payment_date || subscription.start_date,
@@ -174,6 +182,7 @@ export const useSubscription = (page = 1, limit = 10) => {
               endDate: subscription.end_date,
               status: subscription.status || "active",
               isPromotional: subscription.is_promotional || false,
+              daysRemaining: Number(subscription.daysRemaining || 0),
             });
           } else {
             setCurrentSubscription(null);
@@ -194,7 +203,7 @@ export const useSubscription = (page = 1, limit = 10) => {
     };
 
     fetchSubscriptionData();
-  }, [userId, page, limit]);
+  }, [userId, page, limit, refreshTick]);
 
   const isActive = (endDate: string) => {
     return new Date(endDate).getTime() > new Date().getTime();
@@ -212,5 +221,6 @@ export const useSubscription = (page = 1, limit = 10) => {
     error: error || userIdError || "",
     userId,
     isActive,
+    refresh,
   };
 };

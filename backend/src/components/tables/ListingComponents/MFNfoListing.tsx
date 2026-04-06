@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFNfo {
   _id: string;
@@ -83,7 +84,7 @@ export default function MFNfoListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFNfo>({
       role,
       module: "mf/nfo",
@@ -94,6 +95,9 @@ export default function MFNfoListing() {
       sortField,
       sortOrder,
       enabled: isMounted,
+      extraParams: {
+        prioritizeOpenActive: true,
+      },
     });
 
   const rows = extractList as MFNfo[];
@@ -103,6 +107,29 @@ export default function MFNfoListing() {
     1,
   );
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+
+  const parseDateValue = (value?: string) => {
+    if (!value) return Number.POSITIVE_INFINITY;
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+  };
+
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const activeDiff = (b.is_active === 1 ? 1 : 0) - (a.is_active === 1 ? 1 : 0);
+      if (activeDiff !== 0) return activeDiff;
+
+      const openDiff = (b.is_open ? 1 : 0) - (a.is_open ? 1 : 0);
+      if (openDiff !== 0) return openDiff;
+
+      const endDateDiff =
+        parseDateValue(a.subscription_end_date) -
+        parseDateValue(b.subscription_end_date);
+      if (endDateDiff !== 0) return endDateDiff;
+
+      return a.fund_name.localeCompare(b.fund_name);
+    });
+  }, [rows]);
 
   const handleDelete = async () => {
     if (!deleteModalId) return;
@@ -175,8 +202,17 @@ export default function MFNfoListing() {
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={sortedRows}
         loading={isLoading}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[{ value: "nfo", label: "NFOs" }]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}

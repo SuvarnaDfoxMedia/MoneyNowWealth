@@ -11,8 +11,10 @@
 //   };
 // }
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API } from "@/app/api/axios";
+import { useRefreshSignal } from "./useRefreshSignal";
+import { useContentAccess } from "./useContentAccess";
 
 interface Article {
   id: string;
@@ -39,26 +41,37 @@ export function useArticles(params?: {
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const hasLoadedRef = useRef(false);
+  const { refreshTick, refresh } = useRefreshSignal();
+  const { accessLevel } = useContentAccess();
 
   useEffect(() => {
     fetchArticles();
-  }, [params?.page, params?.limit, params?.status]);
+  }, [params?.page, params?.limit, params?.status, refreshTick, accessLevel]);
 
   const fetchArticles = async () => {
+    const isInitialLoad = !hasLoadedRef.current;
     try {
-      setLoading(true);
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       const { data: response } = await API.get("/api/articles", { params });
 
       if (response.success) {
         setArticles(response.articles || []);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 0);
+        hasLoadedRef.current = true;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch articles");
-      setArticles([]);
+      if (!hasLoadedRef.current) {
+        setArticles([]);
+      }
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      }
     }
   };
 
@@ -77,6 +90,6 @@ export function useArticles(params?: {
     total,
     totalPages,
     getImageUrl,
-    refetch: fetchArticles,
+    refetch: refresh,
   };
 }

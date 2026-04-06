@@ -83,7 +83,7 @@ export const useSubscriptionCrud = ({
   limit = 10,
   searchValue = "",
   sortField = "",
-  sortOrder = "asc",
+  sortOrder = "desc",
   enabled = true,
 }: SubscriptionParams = {}) => {
   const queryClient = useQueryClient();
@@ -225,7 +225,7 @@ export const useSubscriptionCrud = ({
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: boolean }) => {
       return await axiosApi.patch<ApiMessage>(
-        `/${role}/subscriptions/toggle-status/${id}`,
+        `/${role}/subscriptions/change/${id}/status`,
         {
           is_active: status ? 1 : 0,
         },

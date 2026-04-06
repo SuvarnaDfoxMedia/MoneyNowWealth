@@ -5,6 +5,7 @@ import Topic from "../models/topicModel";
 import Cluster from "../models/clusterModel";
 import { nanoid } from "nanoid";
 import { sendError, sendSuccess } from "../utils/apiResponse";
+import { contentAccessService } from "@/services/contentAccessService";
 
 type Request = express.Request;
 type Response = express.Response;
@@ -16,6 +17,9 @@ export const getPublishedClustersTopicsArticles = async (
 ) => {
   try {
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const clusters = await Cluster.aggregate([
       { $match: { status: "published", is_active: 1, is_deleted: false } },
@@ -34,7 +38,7 @@ export const getPublishedClustersTopicsArticles = async (
                     { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
                     { $lte: ["$publish_date", now] },
-                    { $in: ["$access_type", ["free", "premium"]] }, // include Premium + Free
+                    { $in: ["$access_type", allowedAccessTypes] },
                   ],
                 },
               },
@@ -105,6 +109,9 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
   try {
     const { id } = req.params;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const result = await Topic.aggregate([
       {
@@ -114,7 +121,7 @@ export const getPublishedTopicWithArticlesByIdAgg = async (
           is_active: 1,
           status: "published",
           publish_date: { $lte: now },
-          access_type: "free",
+          access_type: { $in: allowedAccessTypes },
         },
       },
       {
@@ -209,13 +216,23 @@ export const getTopics = async (req: Request, res: Response) => {
       includeDeleted,
       access_type,
     } = req.query;
+    const isPublicRequest = !req.params.role;
+    const allowedAccessTypes = isPublicRequest
+      ? await contentAccessService.getAllowedTopicAccessTypes(req.user?.id)
+      : [];
 
     const filter: Record<string, any> = {};
 
     if (status) filter.status = status;
+    else if (isPublicRequest) filter.status = "published";
     if (cluster_id) filter.cluster_id = cluster_id;
     if (includeDeleted !== "true") filter.is_deleted = false;
     if (access_type) filter.access_type = access_type;
+    else if (isPublicRequest) filter.access_type = { $in: allowedAccessTypes };
+    if (isPublicRequest) {
+      filter.is_active = 1;
+      filter.publish_date = { $lte: new Date() };
+    }
 
     if (search) {
       filter.$or = [
@@ -265,6 +282,9 @@ export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const result = await Topic.aggregate([
       {
@@ -274,6 +294,7 @@ export const getPublishedTopicBySlug = async (req: Request, res: Response) => {
           is_active: 1,
           status: "published",
           publish_date: { $lte: now },
+          access_type: { $in: allowedAccessTypes },
         },
       },
       {
@@ -325,6 +346,9 @@ export const getPublishedTopicByClusterAndSlug = async (
   try {
     const { clusterSlug, slug } = req.params;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const result = await Topic.aggregate([
       {
@@ -335,6 +359,7 @@ export const getPublishedTopicByClusterAndSlug = async (
           is_active: 1,
           status: "published",
           publish_date: { $lte: now },
+          access_type: { $in: allowedAccessTypes },
         },
       },
       {
@@ -418,7 +443,6 @@ export const addTopic = async (req: Request, res: Response) => {
         ? status
         : "draft",
       is_active: typeof is_active === "number" ? is_active : 0,
-      is_email_sent: false, // important for cron
     };
 
     // Handle publish date
@@ -456,11 +480,6 @@ export const updateTopic = async (req: Request, res: Response) => {
     if (status && ["draft", "published", "archived"].includes(status))
       updateData.status = status;
     if (typeof is_active === "number") updateData.is_active = is_active;
-
-    // Reset email flag if topic is (re)published
-    if (status === "published") {
-      updateData.is_email_sent = false; // email will be sent via cron
-    }
 
     const topic = await topicService.update(id, updateData);
 
@@ -566,7 +585,7 @@ export const publishTopic = async (req: Request, res: Response) => {
 
     return sendSuccess(
       res,
-      "Topic published successfully. Email notifications will be sent via scheduler.",
+      "Topic published successfully. Marketing distribution is now handled in GetResponse.",
       topic,
       200,
       { topic },

@@ -1,108 +1,20 @@
-
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       freePlan._id.toString(),
-//       freePlan.duration.value,
-//       freePlan.duration.unit as DurationUnit,
-//       "free_sample",
-//       false,
-//     );
-//   },
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       premiumPlan._id.toString(),
-//       premiumPlan.duration.value,
-//       premiumPlan.duration.unit as DurationUnit,
-//       "premium_sample",
-//       true,
-//     );
-//   },
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       freePlan._id.toString(),
-//       freePlan.duration.value,
-//       freePlan.duration.unit as DurationUnit,
-//       "free_sample",
-//       false,
-//     );
-//   },
-
-//     const users = await User.find(searchQuery)
-//       .skip(skip)
-//       .limit(perPage)
-//       .select("-password -resetPasswordToken -resetPasswordExpires")
-//       .lean();
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       freePlan._id.toString(),
-//       freePlan.duration.value,
-//       freePlan.duration.unit as DurationUnit,
-//       "free_sample",
-//       false,
-//       "system_update",
-//       false,
-//     );
-//   },
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       freePlan._id.toString(),
-//       freePlan.duration.value,
-//       freePlan.duration.unit as DurationUnit,
-//       "free_sample",
-//       false,
-//       "system_update",
-//       false,
-//     );
-//   },
-
-//     const users = await User.find(searchQuery)
-//       .skip(skip)
-//       .limit(perPage)
-//       .select("-password -resetPasswordToken -resetPasswordExpires")
-//       .lean();
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       freePlan._id.toString(),
-//       freePlan.duration.value,
-//       freePlan.duration.unit as DurationUnit,
-//       "free_sample",
-//       false,
-//       "system_update",
-//       false,
-//     );
-//   },
-
-//     return this.createOrUpdateSubscription(
-//       userId,
-//       freePlan._id.toString(),
-//       freePlan.duration.value,
-//       freePlan.duration.unit as DurationUnit,
-//       "free_sample",
-//       false,
-//       "system_update",
-//       false,
-//     );
-//   },
-
-//     const users = await User.find(searchQuery)
-//       .skip(skip)
-//       .limit(perPage)
-//       .select("-password -resetPasswordToken -resetPasswordExpires")
-//       .lean();
-
 import mongoose from "mongoose";
 import UserSubscription from "../models/userSubscriptionModel";
 import User from "../models/userModel";
 import SubscriptionPlanModel from "../models/subscriptionPlan.model";
-import UserSubscriptionPayment from "../models/userSubscriptionPaymentModel";
-import { getResponseEmailService } from "./getResponseEmailService";
-import { addDurationToDate, getMidnight } from "@/utils/dateUtils";
+import UserSubscriptionPayment, {
+  type IUserSubscriptionPayment,
+} from "../models/userSubscriptionPaymentModel";
+import {
+  addDurationToDate,
+  getMidnight,
+  isActiveByDay,
+  isExpiredByDay,
+} from "@/utils/dateUtils";
+import {
+  FREE_SUBSCRIPTION_FALLBACK_YEARS,
+  PREMIUM_TRIAL_DAYS,
+} from "@/config/subscription";
 
 interface PaginationOptions {
   page?: number;
@@ -110,42 +22,182 @@ interface PaginationOptions {
 }
 
 type DurationUnit = "day" | "month" | "year";
+type TrialType = "free_sample" | "premium_sample";
+type SubscriptionReason = "user_purchase" | "system_update" | "manual_assign";
+type PaymentType = "new" | "upgrade" | "downgrade";
+type PaymentMethod = "manual" | "free_plan" | "system";
+
+interface PaymentOverrideOptions {
+  amount?: number;
+  currency?: string;
+  paymentMethod?: PaymentMethod;
+  metadata?: Record<string, unknown>;
+}
+
+interface SubscriptionMutationResult {
+  subscription: any;
+  payment: IUserSubscriptionPayment;
+}
+
+interface PurchaseEligibilityResult {
+  canPurchase: boolean;
+  message: string;
+  code?: string;
+}
 
 const getActiveFreePlan = async () => {
   return SubscriptionPlanModel.findOne({
     plan_type: "Free",
     is_active: true,
     is_deleted: false,
+  }).sort({ updated_at: -1, created_at: -1 });
+};
+
+const getActivePremiumPlan = async () => {
+  return SubscriptionPlanModel.findOne({
+    plan_type: "Premium",
+    is_active: true,
+    is_deleted: false,
+  }).sort({ updated_at: -1, created_at: -1 });
+};
+
+const ensureEligibility = (subscription: any) => {
+  subscription.eligibility = subscription.eligibility || {
+    can_purchase_premium: true,
+    last_premium_expiry_date: null,
+    purchase_required: false,
+  };
+};
+
+const getTrialTypeForPlan = (planType: "Free" | "Premium"): TrialType =>
+  planType === "Free" ? "free_sample" : "premium_sample";
+
+const getFreeSubscriptionEndDate = (startDate: Date) =>
+  addDurationToDate(startDate, FREE_SUBSCRIPTION_FALLBACK_YEARS, "year");
+
+const getPremiumTrialEndDate = (startDate: Date) =>
+  addDurationToDate(startDate, PREMIUM_TRIAL_DAYS, "day");
+
+const getPaymentType = (
+  oldPlanType: string | undefined,
+  newPlanType: "Free" | "Premium",
+): PaymentType => {
+  if (oldPlanType === "Free" && newPlanType === "Premium") return "upgrade";
+  if (oldPlanType === "Premium" && newPlanType === "Free") return "downgrade";
+  return "new";
+};
+
+const formatTransitionLabel = (oldPlanType: string, newPlanType: string) =>
+  `${oldPlanType}->${newPlanType}`;
+
+const resolvePaymentMethod = ({
+  planType,
+  isUserPurchase,
+  override,
+}: {
+  planType: "Free" | "Premium";
+  isUserPurchase: boolean;
+  override?: PaymentMethod;
+}): PaymentMethod => {
+  if (override) return override;
+  if (planType === "Free") return "free_plan";
+  return isUserPurchase ? "manual" : "system";
+};
+
+const buildPlanSnapshot = (plan: any) => ({
+  name: plan.name,
+  price: plan.price,
+  currency: plan.currency,
+  duration: plan.duration,
+  features: plan.features || [],
+});
+
+const createPaymentRecord = async ({
+  userId,
+  plan,
+  subscription,
+  paymentType,
+  now,
+  isUserPurchase,
+  reason,
+  overrides,
+}: {
+  userId: mongoose.Types.ObjectId;
+  plan: any;
+  subscription: any;
+  paymentType: PaymentType;
+  now: Date;
+  isUserPurchase: boolean;
+  reason: string;
+  overrides?: PaymentOverrideOptions;
+}) => {
+  const amount =
+    overrides?.amount ?? (plan.plan_type === "Free" ? 0 : Number(plan.price || 0));
+  const currency = overrides?.currency || plan.currency || "INR";
+  const paymentMethod = resolvePaymentMethod({
+    planType: plan.plan_type,
+    isUserPurchase,
+    override: overrides?.paymentMethod,
   });
+
+  return UserSubscriptionPayment.create({
+    user_id: userId,
+    plan_id: plan._id,
+    user_subscription_id: subscription._id,
+    start_date: subscription.start_date,
+    end_date: subscription.end_date,
+    amount,
+    currency,
+    payment_method: paymentMethod,
+    payment_status: "success",
+    type: paymentType,
+    payment_date: now,
+    plan_snapshot: buildPlanSnapshot(plan),
+    metadata: {
+      is_user_purchase: isUserPurchase,
+      is_promotional: subscription.is_promotional,
+      plan_name: plan.name,
+      plan_type: plan.plan_type,
+      duration: `${plan.duration?.value} ${plan.duration?.unit}(s)`,
+      reason,
+      ...(overrides?.metadata || {}),
+    },
+  });
+};
+
+const requireActiveFreePlan = async () => {
+  const freePlan = await getActiveFreePlan();
+  if (!freePlan) {
+    throw new Error(
+      "No active Free plan is configured. Please create and activate a Free subscription plan first.",
+    );
+  }
+  return freePlan;
 };
 
 const downgradeExpiredPremiumSubscription = async (
   subscription: any,
   now: Date = new Date(),
 ) => {
+  const todayMidnight = getMidnight(now);
+
   if (
     !subscription ||
     subscription.is_deleted ||
     !subscription.is_active ||
+    subscription.status === "expired" ||
     subscription.plan_type !== "Premium" ||
-    subscription.end_date > now
+    !isExpiredByDay(subscription.end_date, todayMidnight)
   ) {
     return subscription;
   }
 
-  const freePlan = await getActiveFreePlan();
-  if (!freePlan?.duration?.value || !freePlan?.duration?.unit) {
-    return subscription;
-  }
+  const freePlan = await requireActiveFreePlan();
 
   const premiumExpiredAt = new Date(subscription.end_date);
   const wasPromotional = subscription.is_promotional === true;
   const freeStartDate = getMidnight(now);
-  const freeEndDate = addDurationToDate(
-    freeStartDate,
-    freePlan.duration.value,
-    freePlan.duration.unit as DurationUnit,
-  );
+  const freeEndDate = getFreeSubscriptionEndDate(freeStartDate);
 
   subscription.plan_type = "Free";
   subscription.plan_id = freePlan._id;
@@ -155,24 +207,16 @@ const downgradeExpiredPremiumSubscription = async (
   subscription.status = "active";
   subscription.is_active = true;
   subscription.is_promotional = false;
+  subscription.updated_at = now;
 
-  subscription.eligibility = subscription.eligibility || {
-    can_purchase_premium: true,
-    last_premium_expiry_date: null,
-    purchase_required: false,
-  };
-
+  ensureEligibility(subscription);
   subscription.eligibility.last_premium_expiry_date = premiumExpiredAt;
-  subscription.eligibility.purchase_required = wasPromotional;
+  subscription.eligibility.purchase_required = false;
   subscription.eligibility.can_purchase_premium = true;
-
-  if (wasPromotional) {
-    subscription.promotional_trial_used = true;
-  }
 
   subscription.history = subscription.history || [];
   subscription.history.push({
-    plan_type: "Premium→Free",
+    plan_type: formatTransitionLabel("Premium", "Free"),
     status: "downgrade",
     changed_at: now,
     reason: wasPromotional ? "promotional_expired" : "paid_premium_expired",
@@ -180,24 +224,23 @@ const downgradeExpiredPremiumSubscription = async (
 
   await subscription.save();
 
-  const payment = await UserSubscriptionPayment.create({
-    user_id: subscription.user_id,
-    plan_id: freePlan._id,
-    user_subscription_id: subscription._id,
-    start_date: freeStartDate,
-    end_date: freeEndDate,
-    amount: 0,
-    currency: freePlan.currency || "INR",
-    payment_method: "system",
-    payment_status: "success",
-    type: "downgrade",
-    payment_date: now,
-    metadata: {
-      reason: "automatic_downgrade_on_expiry",
-      previous_plan: "Premium",
-      new_plan: "Free",
-      was_promotional: wasPromotional,
-      premium_expired_at: premiumExpiredAt,
+  const payment = await createPaymentRecord({
+    userId: subscription.user_id,
+    plan: freePlan,
+    subscription,
+    paymentType: "downgrade",
+    now,
+    isUserPurchase: false,
+    reason: "automatic_downgrade_on_expiry",
+    overrides: {
+      amount: 0,
+      paymentMethod: "system",
+      metadata: {
+        previous_plan: "Premium",
+        new_plan: "Free",
+        was_promotional: wasPromotional,
+        premium_expired_at: premiumExpiredAt,
+      },
     },
   });
 
@@ -208,19 +251,17 @@ const downgradeExpiredPremiumSubscription = async (
 };
 
 export const userSubscriptionService = {
-  async createOrUpdateSubscription(
+  async createOrUpdateSubscriptionWithPayment(
     userId: string,
     planId: string,
     durationValue: number,
     durationUnit: DurationUnit,
-    trialType?: "free_sample" | "premium_sample",
+    trialType?: TrialType,
     isUserPurchase: boolean = false,
-    reason:
-      | "user_purchase"
-      | "system_update"
-      | "manual_assign" = "system_update",
+    reason: SubscriptionReason = "system_update",
     isPromotional: boolean = false,
-  ) {
+    paymentOverrides?: PaymentOverrideOptions,
+  ): Promise<SubscriptionMutationResult> {
     if (
       !mongoose.Types.ObjectId.isValid(userId) ||
       !mongoose.Types.ObjectId.isValid(planId)
@@ -237,18 +278,15 @@ export const userSubscriptionService = {
     const plan = await SubscriptionPlanModel.findById(planObjId);
     if (!plan) throw new Error("Subscription plan not found");
 
-    // Get plan_type - this will always exist now
     const planType: "Free" | "Premium" = plan.plan_type;
-
     const startDate = todayMidnight;
-    const endDate = addDurationToDate(startDate, durationValue, durationUnit);
+    const endDate =
+      planType === "Free"
+        ? getFreeSubscriptionEndDate(startDate)
+        : addDurationToDate(startDate, durationValue, durationUnit);
+    const finalTrialType = trialType || getTrialTypeForPlan(planType);
 
-    const finalTrialType =
-      trialType || (planType === "Free" ? "free_sample" : "premium_sample");
-
-    const user = await User.findById(userObjId).select(
-      "firstname email created_at",
-    );
+    const user = await User.findById(userObjId).select("firstname email created_at");
     if (!user) throw new Error("User not found");
 
     let subscription = await UserSubscription.findOne({
@@ -256,33 +294,33 @@ export const userSubscriptionService = {
       is_deleted: false,
     });
 
-    // Idempotency guard for repeated user purchase calls:
-    // if same plan is already active and valid, reuse current subscription.
     if (
       isUserPurchase &&
       subscription &&
       subscription.is_active &&
-      subscription.end_date > now &&
+      subscription.status !== "expired" &&
+      isActiveByDay(subscription.end_date, now) &&
       subscription.plan_id?.toString() === planObjId.toString()
     ) {
-      return subscription.populateFull();
+      const existingPayment = subscription.last_payment_id
+        ? await UserSubscriptionPayment.findById(subscription.last_payment_id)
+        : null;
+
+      return {
+        subscription: await subscription.populateFull(),
+        payment:
+          existingPayment ||
+          (await UserSubscriptionPayment.findOne({
+            user_subscription_id: subscription._id,
+          }).sort({ payment_date: -1 }))!,
+      };
     }
 
     const oldPlanType = subscription?.plan_type || "none";
-    let paymentType: "new" | "upgrade" | "downgrade" = "new";
+    const paymentType = getPaymentType(subscription?.plan_type, planType);
 
     if (subscription) {
-      if (oldPlanType === "Free" && planType === "Premium")
-        paymentType = "upgrade";
-      else if (oldPlanType === "Premium" && planType === "Free")
-        paymentType = "downgrade";
-      else paymentType = "new";
-
-      subscription.eligibility = subscription.eligibility || {
-        can_purchase_premium: true,
-        last_premium_expiry_date: null,
-        purchase_required: false,
-      };
+      ensureEligibility(subscription);
 
       subscription.plan_id = planObjId;
       subscription.plan_type = planType;
@@ -293,7 +331,6 @@ export const userSubscriptionService = {
       subscription.is_active = true;
       subscription.updated_at = now;
 
-      // promotional logic
       if (planType === "Premium") {
         if (isUserPurchase) {
           subscription.is_promotional = false;
@@ -310,11 +347,13 @@ export const userSubscriptionService = {
 
       if (planType === "Free") {
         subscription.is_promotional = false;
+        subscription.eligibility.purchase_required = false;
+        subscription.eligibility.can_purchase_premium = true;
       }
 
       subscription.history = subscription.history || [];
       subscription.history.push({
-        plan_type: `${oldPlanType}→${planType}`,
+        plan_type: formatTransitionLabel(oldPlanType, planType),
         status: paymentType,
         changed_at: now,
         reason,
@@ -332,16 +371,13 @@ export const userSubscriptionService = {
         status: "active",
         is_active: true,
         auto_renew: false,
-
         promotional_trial_used: isPromotional && planType === "Premium",
         is_promotional: isPromotional && planType === "Premium",
-
         eligibility: {
           can_purchase_premium: true,
           last_premium_expiry_date: null,
           purchase_required: false,
         },
-
         history: [
           {
             plan_type: planType,
@@ -353,120 +389,58 @@ export const userSubscriptionService = {
       });
     }
 
-    // Payment record
-    const payment = await UserSubscriptionPayment.create({
-      user_id: userObjId,
-      plan_id: planObjId,
-      user_subscription_id: subscription._id,
-
-      start_date: startDate,
-      end_date: endDate,
-
-      amount: planType === "Free" ? 0 : plan.price,
-      currency: plan.currency || "INR",
-      payment_method:
-        planType === "Free"
-          ? "free_plan"
-          : isUserPurchase
-            ? "manual"
-            : "system",
-      payment_status: "success",
-      type: paymentType,
-      payment_date: now,
-      metadata: {
-        is_user_purchase: isUserPurchase,
-        is_promotional: subscription.is_promotional,
-        plan_name: plan.name,
-        plan_type: planType,
-        duration: `${durationValue} ${durationUnit}(s)`,
-        reason,
-      },
+    const payment = await createPaymentRecord({
+      userId: userObjId,
+      plan,
+      subscription,
+      paymentType,
+      now,
+      isUserPurchase,
+      reason,
+      overrides: paymentOverrides,
     });
 
     subscription.last_payment_id = payment._id;
     await subscription.save();
 
-    // Email - with 5 minute delay for subscription activation
-    if (user.email) {
-      try {
-        if (paymentType === "upgrade" && subscription.is_promotional) {
-        } else {
-          // Subscription activation email - send after 5 minutes
-          setTimeout(
-            async () => {
-              try {
-                console.log(
-                  ` Delayed subscription email sent to: ${user.email}`,
-                );
-              } catch (emailError) {
-                console.error(
-                  "Failed to send delayed subscription email:",
-                  emailError,
-                );
-              }
-            },
-            5 * 60 * 1000,
-          ); // 5 minutes in milliseconds
-        }
-      } catch (emailError) {
-        console.error(
-          "Failed to send immediate subscription email:",
-          emailError,
-        );
-      }
-    }
+    return {
+      subscription: await subscription.populateFull(),
+      payment,
+    };
+  },
 
-    return subscription.populateFull();
+  async createOrUpdateSubscription(
+    userId: string,
+    planId: string,
+    durationValue: number,
+    durationUnit: DurationUnit,
+    trialType?: TrialType,
+    isUserPurchase: boolean = false,
+    reason: SubscriptionReason = "system_update",
+    isPromotional: boolean = false,
+    paymentOverrides?: PaymentOverrideOptions,
+  ) {
+    const { subscription } = await this.createOrUpdateSubscriptionWithPayment(
+      userId,
+      planId,
+      durationValue,
+      durationUnit,
+      trialType,
+      isUserPurchase,
+      reason,
+      isPromotional,
+      paymentOverrides,
+    );
+
+    return subscription;
   },
 
   async assignFreePlan(userId: string) {
-    if (!mongoose.Types.ObjectId.isValid(userId))
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
       throw new Error("Invalid user ID");
-
-    const freePlan = await getActiveFreePlan();
-
-    // If no Free plan exists, create one
-    if (!freePlan) {
-      console.warn("No Free plan found, creating one...");
-
-      // Create a default Free plan
-      const defaultFreePlan = {
-        name: "Free Plan",
-        plan_type: "Free" as const,
-        description: "Basic free subscription with limited features",
-        price: 0,
-        currency: "INR",
-        duration: {
-          value: 30,
-          unit: "day" as const,
-        },
-        is_promotional_plan: false,
-        features: ["Basic Access", "Limited Storage", "Standard Support"],
-        is_active: true,
-        is_deleted: false,
-      };
-
-      try {
-        const createdPlan = await SubscriptionPlanModel.create(defaultFreePlan);
-        console.log("✅ Created default Free plan:", createdPlan._id);
-
-        return this.createOrUpdateSubscription(
-          userId,
-          createdPlan._id.toString(),
-          createdPlan.duration.value,
-          createdPlan.duration.unit as DurationUnit,
-          "free_sample",
-          false,
-          "system_update",
-          false,
-        );
-      } catch (error: any) {
-        console.error("Failed to create Free plan:", error);
-        throw new Error(
-          `Free plan not found and creation failed: ${error.message}`,
-        );
-      }
     }
+
+    const freePlan = await requireActiveFreePlan();
 
     return this.createOrUpdateSubscription(
       userId,
@@ -480,29 +454,160 @@ export const userSubscriptionService = {
     );
   },
 
+  async applyExpiredPremiumDowngrade(subscriptionId: string, now = new Date()) {
+    if (!mongoose.Types.ObjectId.isValid(subscriptionId)) {
+      throw new Error("Invalid subscription ID");
+    }
+
+    const subscription = await UserSubscription.findById(subscriptionId);
+    if (!subscription) {
+      throw new Error("Subscription not found");
+    }
+
+    return downgradeExpiredPremiumSubscription(subscription, now);
+  },
+
+  async grantPromotionalPremiumTrial(subscriptionId: string, now = new Date()) {
+    if (!mongoose.Types.ObjectId.isValid(subscriptionId)) {
+      throw new Error("Invalid subscription ID");
+    }
+
+    const subscription = await UserSubscription.findById(subscriptionId);
+    if (!subscription) {
+      throw new Error("Subscription not found");
+    }
+
+    if (subscription.is_deleted || !subscription.is_active) {
+      throw new Error("Subscription is not active");
+    }
+
+    if (subscription.plan_type !== "Free") {
+      throw new Error("Only active Free subscriptions are eligible");
+    }
+
+    const premiumPlan = await getActivePremiumPlan();
+    if (!premiumPlan) {
+      throw new Error("Premium plan not available");
+    }
+
+    const promoStartDate = getMidnight(now);
+    const promoEndDate = getPremiumTrialEndDate(promoStartDate);
+
+    ensureEligibility(subscription);
+    subscription.plan_id = premiumPlan._id;
+    subscription.plan_type = "Premium";
+    subscription.trial_type = "premium_sample";
+    subscription.is_promotional = true;
+    subscription.promotional_trial_used = true;
+    subscription.start_date = promoStartDate;
+    subscription.end_date = promoEndDate;
+    subscription.status = "active";
+    subscription.is_active = true;
+    subscription.updated_at = now;
+    subscription.eligibility.purchase_required = false;
+    subscription.eligibility.can_purchase_premium = true;
+
+    subscription.history = subscription.history || [];
+    subscription.history.push({
+      plan_type: formatTransitionLabel("Free", "Premium"),
+      status: "upgrade",
+      changed_at: now,
+      reason: "promotional_trial",
+    });
+
+    await subscription.save();
+
+    const payment = await createPaymentRecord({
+      userId: subscription.user_id,
+      plan: premiumPlan,
+      subscription,
+      paymentType: "upgrade",
+      now,
+      isUserPurchase: false,
+      reason: "promotional_trial",
+      overrides: {
+        amount: 0,
+        paymentMethod: "system",
+        metadata: {
+          is_promotional: true,
+        },
+      },
+    });
+
+    subscription.last_payment_id = payment._id;
+    await subscription.save();
+
+    return subscription.populateFull();
+  },
+
+  async upgradeUserToPremiumTrial(userId: string, now = new Date()) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new Error("Invalid user ID");
+    }
+
+    const userObjId = new mongoose.Types.ObjectId(userId);
+    let subscription = await UserSubscription.findOne({
+      user_id: userObjId,
+      is_deleted: false,
+    });
+
+    if (!subscription) {
+      await this.assignFreePlan(userId);
+      subscription = await UserSubscription.findOne({
+        user_id: userObjId,
+        is_deleted: false,
+      });
+    }
+
+    if (!subscription) {
+      throw new Error("Subscription not found");
+    }
+
+    if (
+      subscription.plan_type === "Premium" &&
+      subscription.status !== "expired" &&
+      subscription.is_active &&
+      isActiveByDay(subscription.end_date, now)
+    ) {
+      return subscription.populateFull();
+    }
+
+    if (
+      subscription.plan_type !== "Free" ||
+      subscription.status === "expired" ||
+      !subscription.is_active
+    ) {
+      await this.downgradeToFree(userId);
+      subscription = await UserSubscription.findOne({
+        user_id: userObjId,
+        is_deleted: false,
+      });
+    }
+
+    if (!subscription) {
+      throw new Error("Free subscription not found");
+    }
+
+    return this.grantPromotionalPremiumTrial(subscription._id.toString(), now);
+  },
+
   async getByUserId(userId: string) {
     if (!mongoose.Types.ObjectId.isValid(userId)) return null;
 
     const userObjId = new mongoose.Types.ObjectId(userId);
-
-    let subscription = await UserSubscription.findOne({
+    const subscription = await UserSubscription.findOne({
       user_id: userObjId,
       is_deleted: false,
       is_active: true,
     });
 
-    if (
-      subscription &&
-      subscription.plan_type === "Premium" &&
-      subscription.end_date <= new Date()
-    ) {
-      subscription = await downgradeExpiredPremiumSubscription(subscription);
-    }
-
     return subscription ? subscription.populateFull() : null;
   },
 
-  async checkPurchaseEligibility(userId: string, planId?: string) {
+  async checkPurchaseEligibility(
+    userId: string,
+    planId?: string,
+  ): Promise<PurchaseEligibilityResult> {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return { canPurchase: true, message: "" };
     }
@@ -513,31 +618,15 @@ export const userSubscriptionService = {
       return { canPurchase: true, message: "" };
     }
 
-    // Block only promotional trial if already used
     if (planId) {
-      const plan = await SubscriptionPlanModel.findById(planId);
-
-      if (plan && plan.plan_type === "Premium") {
-        // If your frontend has a button for "Start free premium trial"
-        // then check this flag:
-        if (plan.price === 0 && subscription?.promotional_trial_used) {
-          return {
-            canPurchase: false,
-            message:
-              "You've already used your promotional trial. Please purchase a Premium subscription.",
-            code: "TRIAL_ALREADY_USED",
-          };
-        }
-      }
+      await SubscriptionPlanModel.findById(planId);
     }
 
     return { canPurchase: true, message: "" };
   },
 
   async downgradeToFree(userId: string) {
-    const freePlan = await getActiveFreePlan();
-
-    if (!freePlan) throw new Error("Free plan not found");
+    const freePlan = await requireActiveFreePlan();
 
     return this.createOrUpdateSubscription(
       userId,
@@ -617,7 +706,7 @@ export const userSubscriptionService = {
     ]);
     const sortField = allowedSortFields.has(filter.sortBy)
       ? filter.sortBy
-      : "created_at";
+      : "start_date";
     const sortDirection = filter.sortOrder === "asc" ? 1 : -1;
 
     const total = await UserSubscription.countDocuments(subscriptionQuery);
@@ -639,13 +728,39 @@ export const userSubscriptionService = {
     const subscriptions = await Promise.all(
       subscriptionDocs.map(async (subscription) => {
         const user = subscription.user_id as any;
-        const paymentHistory = await this.getPaymentHistory(user._id.toString());
+        const userId =
+          user?._id?.toString?.() || subscription.user_id?.toString?.() || null;
+        const paymentHistory = userId
+          ? await this.getPaymentHistory(userId)
+          : [];
+        const lastPayment = subscription.last_payment_id as any;
+        const latestHistoryEntry = Array.isArray(subscription.history)
+          ? subscription.history[subscription.history.length - 1]
+          : null;
+        const currentStatus =
+          lastPayment?.type ||
+          latestHistoryEntry?.status ||
+          subscription.status ||
+          "none";
 
         return {
-          user,
+          user:
+            user ||
+            ({
+              _id: userId || "unknown",
+              title: "",
+              firstname: "Unknown",
+              lastname: "User",
+              email: "",
+              countryCode: "",
+              mobile: "",
+              role: "user",
+              profileImage: "",
+              created_at: subscription.created_at,
+            } as any),
           subscription,
           paymentHistory,
-          currentStatus: subscription.status || "none",
+          currentStatus,
           planType: subscription.plan_type || "none",
           isPromotional: subscription.is_promotional || false,
         };
@@ -710,5 +825,47 @@ export const userSubscriptionService = {
     subscription.deleted_at = null;
     await subscription.save();
     return subscription.populateFull();
+  },
+
+  hasExpiryReminderBeenSent(subscription: any, daysRemaining: number) {
+    const reminderKey = `${getMidnight(subscription.end_date).toISOString()}:${daysRemaining}`;
+    const history = Array.isArray(subscription?.expiry_reminder_history)
+      ? subscription.expiry_reminder_history
+      : [];
+
+    return history.some((entry: any) => entry?.reminder_key === reminderKey);
+  },
+
+  async markExpiryReminderSent(subscriptionId: string, daysRemaining: number) {
+    if (!mongoose.Types.ObjectId.isValid(subscriptionId)) {
+      throw new Error("Invalid subscription ID");
+    }
+
+    const subscription = await UserSubscription.findById(subscriptionId);
+    if (!subscription) {
+      throw new Error("Subscription not found");
+    }
+
+    const reminderKey = `${getMidnight(subscription.end_date).toISOString()}:${daysRemaining}`;
+    subscription.expiry_reminder_history =
+      subscription.expiry_reminder_history || [];
+
+    if (
+      subscription.expiry_reminder_history.some(
+        (entry: any) => entry?.reminder_key === reminderKey,
+      )
+    ) {
+      return subscription;
+    }
+
+    subscription.expiry_reminder_history.push({
+      reminder_key: reminderKey,
+      days_remaining: daysRemaining,
+      cycle_end_date: getMidnight(subscription.end_date),
+      sent_at: new Date(),
+    });
+    await subscription.save();
+
+    return subscription;
   },
 };

@@ -4,6 +4,36 @@ export const getMidnight = (date: Date): Date => {
   return midnight;
 };
 
+export const getEndOfDay = (date: Date): Date => {
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  return endOfDay;
+};
+
+export const isExpiredByDay = (
+  endDate: Date,
+  compareDate: Date = new Date(),
+): boolean => {
+  return getMidnight(endDate).getTime() < getMidnight(compareDate).getTime();
+};
+
+export const isActiveByDay = (
+  endDate: Date,
+  compareDate: Date = new Date(),
+): boolean => {
+  return !isExpiredByDay(endDate, compareDate);
+};
+
+export const getRemainingDaysInclusive = (
+  endDate: Date,
+  compareDate: Date = new Date(),
+): number => {
+  const diffMs =
+    getMidnight(endDate).getTime() - getMidnight(compareDate).getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays + 1);
+};
+
 export const addDurationToDate = (
   date: Date,
   value: number,

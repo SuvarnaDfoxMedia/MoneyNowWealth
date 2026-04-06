@@ -25,7 +25,10 @@ export const toBoolean = (value: any, defaultValue = false): boolean => {
 
 export const parsePagination = (query: any) => {
   const page = Math.max(Number(query?.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(query?.limit) || 10, 1), 100);
+  // Respect caller-provided limits so option/dropdown fetches can request
+  // complete datasets when needed. Paginated tables still control their own
+  // page size by sending smaller limits from the UI.
+  const limit = Math.max(Number(query?.limit) || 10, 1);
   const skip = (page - 1) * limit;
   return { page, limit, skip };
 };

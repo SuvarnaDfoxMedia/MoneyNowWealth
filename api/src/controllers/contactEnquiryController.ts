@@ -1,14 +1,17 @@
 import type { Request, Response } from "express";
-import { ContactEnquiry } from "../models/contactEnquiryModel";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import { recaptchaService } from "../services/recaptchaService";
-import { contactEnquiryService } from "../services/contactEnquiryService";
+import { syncLeadToGetResponse } from "../services/getresponseService";
+import {
+  contactEnquiryService,
+  getContactEnquiryFilter,
+} from "../services/contactEnquiryService";
+import { getAdminListQuery } from "../utils/adminListQuery";
 
 const CONTACT_RECAPTCHA_ACTION = "contact_submit";
 type ContactSubject =
   | "Investment Inquiry"
   | "Support"
-  | "Partner"
   | "Partnership"
   | "Feedback"
   | "Others";
@@ -52,8 +55,8 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
     } = req.body;
 
     const normalizedSubjectMap: Record<string, ContactSubject> = {
-      partnership: "Partner",
-      partner: "Partner",
+      partnership: "Partnership",
+      partner: "Partnership",
       support: "Support",
       feedback: "Feedback",
       others: "Others",
@@ -119,6 +122,19 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
       status: "new",
     });
 
+    try {
+      await syncLeadToGetResponse({
+        email: enquiry.email,
+        name: [enquiry.first_name, enquiry.last_name].filter(Boolean).join(" "),
+        mobile: `${enquiry.country_code}${enquiry.mobile}`,
+        city: enquiry.city,
+        contactPurpose: enquiry.subject,
+        source: "contact_enquiry",
+      });
+    } catch (syncError: any) {
+      console.error("Contact enquiry GetResponse sync failed:", syncError.message);
+    }
+
     return sendSuccess(res, "Contact enquiry submitted successfully", enquiry, 201, {
       enquiry,
     });
@@ -141,41 +157,18 @@ export const addContactEnquiry = async (req: Request, res: Response) => {
 ------------------------- */
 export const getContactEnquiries = async (req: Request, res: Response) => {
   try {
-    const search =
-      typeof req.query.search === "string" ? req.query.search.trim() : "";
-    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-    const limit = Math.max(parseInt(req.query.limit as string) || 10, 1);
-    const skip = (page - 1) * limit;
-
-    const sortField =
-      typeof req.query.sortField === "string"
-        ? req.query.sortField
-        : "created_at";
-    const sortOrder =
-      typeof req.query.sortOrder === "string" ? req.query.sortOrder : "desc";
-
-    const filter: Record<string, unknown> = { is_active: 1 };
-
-    if (search) {
-      const regex = new RegExp(search, "i");
-      filter.$or = [
-        { first_name: regex },
-        { last_name: regex },
-        { email: regex },
-        { mobile: regex },
-        { country_code: regex },
-        { subject: regex },
-      ];
-    }
-
-    const sort: Record<string, 1 | -1> = {};
-    sort[sortField] = sortOrder.toLowerCase() === "asc" ? 1 : -1;
-
-    const total = await ContactEnquiry.countDocuments(filter);
-    const enquiries = await ContactEnquiry.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
+    const { search, page, limit, skip, sort } = getAdminListQuery(
+      req,
+      ["first_name", "last_name", "email", "mobile", "subject", "created_at"],
+      "created_at",
+    );
+    const filter = getContactEnquiryFilter(search);
+    const { enquiries, total } = await contactEnquiryService.getAll({
+      filter,
+      skip,
+      limit,
+      sort,
+    });
 
     return sendSuccess(res, "Contact enquiries fetched successfully", enquiries, 200, {
       enquiries,
@@ -196,11 +189,7 @@ export const getContactEnquiries = async (req: Request, res: Response) => {
 export const softDeleteContactEnquiry = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const enquiry = await ContactEnquiry.findByIdAndUpdate(
-      id,
-      { is_active: 0 },
-      { new: true }
-    );
+    const enquiry = await contactEnquiryService.softDelete(id);
 
     if (!enquiry) {
       return sendError(res, "Contact enquiry not found", 404);
@@ -230,11 +219,7 @@ export const updateContactEnquiryStatus = async (
       return sendError(res, "Invalid status", 400);
     }
 
-    const enquiry = await ContactEnquiry.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+    const enquiry = await contactEnquiryService.updateStatus(id, status);
 
     if (!enquiry) {
       return sendError(res, "Contact enquiry not found", 404);

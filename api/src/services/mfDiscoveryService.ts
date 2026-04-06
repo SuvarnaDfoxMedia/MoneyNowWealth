@@ -5,24 +5,20 @@ import MFNfo from "../models/mfNfoModel";
 import MFIndexSnapshot from "../models/mfIndexSnapshotModel";
 import MFAmc from "../models/mfAmcModel";
 import { toNumberOrNull } from "./mfUtils";
+import { computeNfoOpenState } from "../cron/mfNfoCron";
 
 const buildActiveFilter = () => ({ is_active: 1, is_deleted: false });
-const getNfoCloseCutoff = (endDate: Date | null) => {
-  if (!endDate) return null;
-  const cutoff = new Date(endDate);
-  cutoff.setHours(18, 0, 0, 0);
-  return cutoff;
-};
 
-const computeNfoOpenState = (startDate: Date | null, endDate: Date | null) => {
-  const now = new Date();
-  const start = startDate ? new Date(startDate) : null;
-  const closeCutoff = getNfoCloseCutoff(endDate);
+const sortNfosByCloseDate = <T extends { subscription_end_date?: Date | string | null; fund_name?: string }>(
+  items: T[],
+) =>
+  [...items].sort((a, b) => {
+    const aTime = a.subscription_end_date ? new Date(a.subscription_end_date).getTime() : Number.POSITIVE_INFINITY;
+    const bTime = b.subscription_end_date ? new Date(b.subscription_end_date).getTime() : Number.POSITIVE_INFINITY;
 
-  if (start && now < start) return false;
-  if (closeCutoff && now >= closeCutoff) return false;
-  return true;
-};
+    if (aTime !== bTime) return aTime - bTime;
+    return String(a.fund_name || "").localeCompare(String(b.fund_name || ""));
+  });
 
 export const getMfHomeData = async (query: any) => {
   const featuredLimit = Math.max(toNumberOrNull(query?.featuredLimit) || 8, 1);
@@ -61,7 +57,6 @@ export const getMfHomeData = async (query: any) => {
           "fund_name subscription_start_date subscription_end_date min_investment benchmark risk_level amc_id category_id",
         )
         .sort({ subscription_end_date: 1, created_at: -1 })
-        .limit(nfoLimit)
         .populate("amc_id", "name")
         .populate({
           path: "category_id",
@@ -70,12 +65,14 @@ export const getMfHomeData = async (query: any) => {
         })
         .lean()
         .then((items) =>
-          items.filter((item: any) =>
-            computeNfoOpenState(
-              item.subscription_start_date ? new Date(item.subscription_start_date) : null,
-              item.subscription_end_date ? new Date(item.subscription_end_date) : null,
+          sortNfosByCloseDate(
+            items.filter((item: any) =>
+              computeNfoOpenState(
+                item.subscription_start_date ? new Date(item.subscription_start_date) : null,
+                item.subscription_end_date ? new Date(item.subscription_end_date) : null,
+              ),
             ),
-          ),
+          ).slice(0, nfoLimit),
         ),
 
       MFCategory.find(buildActiveFilter())

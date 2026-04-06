@@ -22,6 +22,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import User, { IUser } from "../models/userModel";
 import { userSubscriptionService } from "@/services/userSubscriptionService";
 import { emailService } from "@/emails/emailService";
+import { syncLeadToGetResponse } from "../services/getresponseService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import { capitalizeWords, splitFullName } from "../utils/nameUtils";
 import { recaptchaService } from "../services/recaptchaService";
@@ -252,6 +253,24 @@ const sanitizeUserForResponse = (user: any) => {
   return userObj;
 };
 
+const syncUserLeadToGetResponse = async (data: {
+  email: string;
+  firstname?: string;
+  lastname?: string;
+  mobile?: string;
+  countryCode?: string;
+}) => {
+  const name = [data.firstname, data.lastname].filter(Boolean).join(" ").trim();
+  const mobile = [data.countryCode, data.mobile].filter(Boolean).join("").trim();
+
+  await syncLeadToGetResponse({
+    email: data.email,
+    name: name || undefined,
+    mobile: mobile || undefined,
+    source: "register",
+  });
+};
+
 const normalizeCountryDialCode = (countryCode: unknown): string => {
   const rawCountryCode = String(countryCode ?? "").trim().replace(/\s+/g, "");
   if (!rawCountryCode) return "+91";
@@ -403,6 +422,18 @@ export const registerUser = async (req: Request, res: Response) => {
       // Don't fail registration if email fails
     }
 
+    try {
+      await syncUserLeadToGetResponse({
+        email: newUser.email,
+        firstname: newUser.firstname,
+        lastname: newUser.lastname,
+        mobile: newUser.mobile,
+        countryCode: newUser.countryCode,
+      });
+    } catch (syncError: any) {
+      console.error("Registration GetResponse sync failed:", syncError.message);
+    }
+
     const token = generateToken(newUser._id.toString(), newUser.role, "public");
 
     setAuthCookies(res, token, "public", false);
@@ -540,6 +571,21 @@ export const googleLogin = async (req, res) => {
         console.error(
           "Failed to send welcome email for Google user:",
           emailError,
+        );
+      }
+
+      try {
+        await syncUserLeadToGetResponse({
+          email: user.email,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          mobile: user.mobile,
+          countryCode: user.countryCode,
+        });
+      } catch (syncError: any) {
+        console.error(
+          "Google user GetResponse sync failed:",
+          syncError.message,
         );
       }
     } else {

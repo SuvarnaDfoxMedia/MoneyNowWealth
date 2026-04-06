@@ -28,7 +28,6 @@ const Sidebar = () => {
   return (
     <aside className="hidden lg:block w-[280px] bg-white rounded-xl p-5 self-start">
       <ul className="space-y-1 text-[15px]">
-
         {/* Dashboard */}
         <li
           onClick={() => goTo("/user/dashboard")}
@@ -42,7 +41,7 @@ const Sidebar = () => {
         <li
           onClick={() => goTo("/user/dashboard/subscription")}
           className={itemClass(
-            pathname.startsWith("/user/dashboard/subscription")
+            pathname.startsWith("/user/dashboard/subscription"),
           )}
         >
           <FiFileText />
@@ -53,7 +52,7 @@ const Sidebar = () => {
         <li
           onClick={() => goTo("/user/dashboard/newsletter")}
           className={itemClass(
-            pathname.startsWith("/user/dashboard/newsletter")
+            pathname.startsWith("/user/dashboard/newsletter"),
           )}
         >
           <FiMail />
@@ -69,16 +68,13 @@ const Sidebar = () => {
             <FaCalculator />
             Premium Calculators
           </div>
-          {openCalc ? <FiChevronUp /> : <FiChevronDown />}
+          {openCalc ? <FiChevronDown /> : <FiChevronUp />}
         </li>
 
-        {openCalc && (
+        {!openCalc && (
           <ul className="ml-10 mt-2 space-y-2 text-[14px] text-gray-600">
-
             <li
-              onClick={() =>
-                goTo("/user/dashboard/calculators/advanced-sip")
-              }
+              onClick={() => goTo("/user/dashboard/calculators/advanced-sip")}
               className={`cursor-pointer transition ${
                 pathname.includes("advanced-sip")
                   ? "text-indigo-600 font-semibold"
@@ -102,9 +98,7 @@ const Sidebar = () => {
             </li>
 
             <li
-              onClick={() =>
-                goTo("/user/dashboard/calculators/advanced-goal")
-              }
+              onClick={() => goTo("/user/dashboard/calculators/advanced-goal")}
               className={`cursor-pointer transition ${
                 pathname.includes("advanced-goal")
                   ? "text-indigo-600 font-semibold"
@@ -126,7 +120,6 @@ const Sidebar = () => {
             >
               Retirement Planner
             </li>
-
           </ul>
         )}
       </ul>

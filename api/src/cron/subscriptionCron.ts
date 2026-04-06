@@ -1,24 +1,9 @@
-
-
-//   console.log(
-//     ` Found ${expiredPremiumSubscriptions.length} expired Premium subscriptions`,
-//   );
-
-//     console.log(
-//       ` Found ${users.length} users created more than 24 hours ago`,
-//     );
-
-//   console.log(
-//     ` Found ${expiringSubscriptions.length} subscriptions expiring soon`,
-//   );
-
 import cron from "node-cron";
+import { emailService } from "@/emails/emailService";
+import { PREMIUM_EXPIRY_REMINDER_DAYS } from "@/config/subscription";
 import UserSubscription from "../models/userSubscriptionModel";
-import SubscriptionPlan from "../models/subscriptionPlan.model";
-import User from "../models/userModel";
-import UserSubscriptionPayment from "@/models/userSubscriptionPaymentModel";
-import { getResponseEmailService } from "../services/getResponseEmailService";
-import { addDurationToDate, getMidnight } from "@/utils/dateUtils";
+import { userSubscriptionService } from "../services/userSubscriptionService";
+import { getMidnight, getRemainingDaysInclusive } from "@/utils/dateUtils";
 
 export const startSubscriptionScheduler = async () => {
   console.log(" Subscription scheduler running:", new Date().toISOString());
@@ -26,283 +11,121 @@ export const startSubscriptionScheduler = async () => {
   const now = new Date();
   const todayMidnight = getMidnight(now);
 
-  //  Load plans once (use name instead of plan_type)
-  const freePlan = await SubscriptionPlan.findOne({
-    name: { $regex: /^free$/i },
-    is_active: true,
-    is_deleted: false,
-  });
+  console.log(" Checking for expired premium subscriptions...");
 
-  const premiumPlan = await SubscriptionPlan.findOne({
-    name: { $regex: /^premium$/i },
-    is_active: true,
-    is_deleted: false,
-  });
-
-  if (!freePlan) {
-    console.log(" Free plan not found. Scheduler stopped.");
-    return;
-  }
-
-  if (!freePlan.duration?.value || !freePlan.duration?.unit) {
-    console.log(" Free plan duration missing. Scheduler stopped.");
-    return;
-  }
-
-  if (
-    premiumPlan &&
-    (!premiumPlan.duration?.value || !premiumPlan.duration?.unit)
-  ) {
-    console.log(" Premium plan duration missing. Promo trial will be skipped.");
-  }
-
-  console.log(" Checking for expired Premium subscriptions...");
-
-  const expiredPremiumSubscriptions = await UserSubscription.find({
+  const expiredSubscriptions = await UserSubscription.find({
     is_deleted: false,
     is_active: true,
+    status: "active",
     plan_type: "Premium",
     end_date: { $lt: todayMidnight },
   }).populate("user_id", "firstname email");
 
   console.log(
-    ` Found ${expiredPremiumSubscriptions.length} expired Premium subscriptions`,
+    ` Found ${expiredSubscriptions.length} expired premium subscriptions`,
   );
 
-  for (const sub of expiredPremiumSubscriptions) {
+  const processedUsers = new Set<string>();
+
+  for (const sub of expiredSubscriptions) {
     try {
       const user = sub.user_id as any;
+      const userId = user?._id?.toString?.() || sub.user_id?.toString();
 
-      //  store premium expiry BEFORE overwriting end_date
-      const premiumExpiredAt = new Date(sub.end_date);
-      const wasPromotional = sub.is_promotional === true;
-
-      // Free plan new end date based on Free plan duration
-      const freeStartDate = todayMidnight;
-      const freeEndDate = addDurationToDate(
-        freeStartDate,
-        freePlan.duration.value,
-        freePlan.duration.unit,
-      );
-
-      // Downgrade to Free
-      sub.plan_type = "Free";
-      sub.plan_id = freePlan._id;
-      sub.trial_type = "free_sample";
-      sub.start_date = freeStartDate;
-      sub.end_date = freeEndDate;
-      sub.status = "active";
-      sub.is_active = true;
-
-      // Reset current promotional status
-      sub.is_promotional = false;
-
-      // eligibility safe init
-      sub.eligibility = sub.eligibility ?? {
-        can_purchase_premium: true,
-        last_premium_expiry_date: null,
-        purchase_required: false,
-      };
-
-      sub.eligibility.last_premium_expiry_date = premiumExpiredAt;
-      sub.eligibility.purchase_required = wasPromotional;
-      sub.eligibility.can_purchase_premium = true;
-
-      if (wasPromotional) {
-        sub.promotional_trial_used = true;
+      if (!userId || processedUsers.has(userId)) {
+        continue;
       }
 
-      sub.history = sub.history || [];
-      sub.history.push({
-        plan_type: "Premium→Free",
-        status: "downgrade",
-        changed_at: now,
-        reason: wasPromotional ? "promotional_expired" : "paid_premium_expired",
-      });
+      processedUsers.add(userId);
 
-      await sub.save();
+      const transitionedSubscription =
+        await userSubscriptionService.applyExpiredPremiumDowngrade(
+          sub._id.toString(),
+          now,
+        );
 
-      //  IMPORTANT: store start/end dates in payment
-      const payment = await UserSubscriptionPayment.create({
-        user_id: sub.user_id,
-        plan_id: freePlan._id,
-        user_subscription_id: sub._id,
-
-        start_date: freeStartDate,
-        end_date: freeEndDate,
-
-        amount: 0,
-        currency: "INR",
-        payment_method: "system",
-        payment_status: "success",
-        type: "downgrade",
-        payment_date: now,
-        metadata: {
-          reason: "automatic_downgrade_on_expiry",
-          previous_plan: "Premium",
-          new_plan: "Free",
-          was_promotional: wasPromotional,
-          premium_expired_at: premiumExpiredAt,
-        },
-      });
-
-      sub.last_payment_id = payment._id;
-      await sub.save();
-
-      // Emails
-      if (user?.email) {
-
+      if (transitionedSubscription) {
+        console.log("CRON TRANSITION", {
+          userId,
+          oldPlan: "Premium",
+          newPlan: "Free",
+          startDate: transitionedSubscription.start_date,
+          endDate: transitionedSubscription.end_date,
+        });
       }
-
-      console.log(
-        ` Downgraded ${user?.email || sub.user_id} to Free (Premium expired: ${premiumExpiredAt.toISOString()})`,
-      );
     } catch (err) {
-      console.error(` Failed to process expired subscription:`, err);
-    }
-  }
-
-  console.log("\n Checking for new users eligible for Premium trial...");
-
-  if (premiumPlan && premiumPlan.is_active && !premiumPlan.is_deleted) {
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    const users = await User.find({
-      created_at: { $lt: twentyFourHoursAgo },
-      role: "user",
-    }).select("firstname email created_at");
-
-    console.log(` Found ${users.length} users created more than 24 hours ago`);
-
-    for (const user of users) {
-      try {
-        const subscription = await UserSubscription.findOne({
-          user_id: user._id,
-          is_deleted: false,
-          is_active: true,
-          plan_type: "Free",
-        });
-
-        if (!subscription) continue;
-
-        subscription.eligibility = subscription.eligibility ?? {
-          can_purchase_premium: true,
-          last_premium_expiry_date: null,
-          purchase_required: false,
-        };
-
-        const promoUsed = subscription.promotional_trial_used === true;
-
-        if (promoUsed) continue;
-
-        if (!premiumPlan.duration?.value || !premiumPlan.duration?.unit)
-          continue;
-
-        const promoStartDate = todayMidnight;
-        const promoEndDate = addDurationToDate(
-          promoStartDate,
-          premiumPlan.duration.value,
-          premiumPlan.duration.unit,
-        );
-
-        subscription.plan_id = premiumPlan._id;
-        subscription.plan_type = "Premium";
-        subscription.trial_type = "premium_sample";
-        subscription.is_promotional = true;
-
-        subscription.promotional_trial_used = true;
-
-        subscription.start_date = promoStartDate;
-        subscription.end_date = promoEndDate;
-        subscription.status = "active";
-
-        subscription.eligibility.purchase_required = false;
-        subscription.eligibility.can_purchase_premium = true;
-
-        subscription.history = subscription.history || [];
-        subscription.history.push({
-          plan_type: "Free→Premium",
-          status: "upgrade",
-          changed_at: now,
-          reason: "promotional_trial",
-        });
-
-        await subscription.save();
-
-        //  IMPORTANT: store start/end dates in payment
-        const payment = await UserSubscriptionPayment.create({
-          user_id: user._id,
-          plan_id: premiumPlan._id,
-          user_subscription_id: subscription._id,
-
-          start_date: promoStartDate,
-          end_date: promoEndDate,
-
-          amount: 0,
-          currency: "INR",
-          payment_method: "system",
-          payment_status: "success",
-          type: "upgrade",
-          payment_date: now,
-          metadata: {
-            reason: "promotional_trial",
-            is_promotional: true,
-            duration: `${premiumPlan.duration.value} ${premiumPlan.duration.unit}(s)`,
-          },
-        });
-
-        subscription.last_payment_id = payment._id;
-        await subscription.save();
-
-        if (user.email) {
-        }
-
-        console.log(
-          ` Promotional trial given to ${user.email} (expires: ${promoEndDate.toISOString()})`,
-        );
-      } catch (err) {
-        console.error(` Failed to give promotional trial to user:`, err);
-      }
+      console.error(" Failed to process expired subscription:", err);
     }
   }
 
   console.log("\n Sending reminder emails...");
 
-  const tomorrowMidnight = addDurationToDate(todayMidnight, 1, "day");
-
   const expiringSubscriptions = await UserSubscription.find({
     is_active: true,
     is_deleted: false,
+    status: "active",
     plan_type: "Premium",
-    end_date: { $gte: todayMidnight, $lt: tomorrowMidnight },
+    end_date: { $gte: todayMidnight },
   }).populate("user_id", "firstname email");
 
   console.log(
-    ` Found ${expiringSubscriptions.length} subscriptions expiring soon`,
+    ` Found ${expiringSubscriptions.length} active premium subscriptions`,
   );
 
   for (const sub of expiringSubscriptions) {
-    const user = sub.user_id as any;
-    if (user?.email) {
-      const hoursRemaining = Math.ceil(
-        (sub.end_date.getTime() - now.getTime()) / (1000 * 60 * 60),
+    try {
+      const user = sub.user_id as any;
+      if (!user?.email) {
+        continue;
+      }
+
+      const daysRemaining = getRemainingDaysInclusive(
+        sub.end_date,
+        todayMidnight,
       );
 
-      try {
-
-        console.log(
-          ` Reminder sent to ${user.email} (${hoursRemaining} hours remaining)`,
-        );
-      } catch (err) {
-        console.error(` Failed to send reminder to ${user.email}:`, err);
+      if (!PREMIUM_EXPIRY_REMINDER_DAYS.includes(daysRemaining as any)) {
+        continue;
       }
+
+      if (userSubscriptionService.hasExpiryReminderBeenSent(sub, daysRemaining)) {
+        continue;
+      }
+
+      const sent = await emailService.sendSubscriptionExpiryReminder(
+        user.email,
+        {
+          userName: user.firstname || "User",
+          planName: sub.plan_type,
+          endDate: sub.end_date,
+          daysRemaining,
+          isPromotional: sub.is_promotional === true,
+        },
+      );
+
+      if (!sent) {
+        console.log(
+          ` Subscription reminder failed for ${user.email} (${daysRemaining} days remaining)`,
+        );
+        continue;
+      }
+
+      await userSubscriptionService.markExpiryReminderSent(
+        sub._id.toString(),
+        daysRemaining,
+      );
+
+      console.log(
+        ` Subscription reminder sent to ${user.email} (${daysRemaining} days remaining)`,
+      );
+    } catch (err) {
+      console.error(" Failed to process subscription reminder:", err);
     }
   }
 
   console.log("\n Subscription scheduler completed");
 };
 
-// Run daily midnight IST
 cron.schedule(
   "0 0 * * *",
   async () => {

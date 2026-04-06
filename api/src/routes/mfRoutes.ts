@@ -52,8 +52,9 @@ import {
   toggleAmcStatus,
   updateAmc,
 } from "../controllers/mfAmcController";
-import { importExcel } from "../controllers/mfImportController";
+import { exportExcel, importExcel } from "../controllers/mfImportController";
 import { getMfDiscover, getMfFilters, getMfHome } from "../controllers/mfDiscoveryController";
+import { uploadMfExcel } from "../middlewares/uploadMiddleware";
 import { handleValidationErrors } from "../middlewares/validationMiddleware";
 import {
   createAmcValidators,
@@ -377,7 +378,16 @@ router.put(
   updateAmc,
 );
 
-// Legacy Excel import route (kept for backward compatibility).
-router.post("/:role/mf/import/excel", ...adminEditorMiddleware, importExcel);
+router.post(
+  "/:role/mf/import/excel",
+  ...adminEditorMiddleware,
+  uploadMfExcel,
+  importExcel,
+);
+router.get(
+  "/:role/mf/export/excel",
+  ...adminEditorMiddleware,
+  exportExcel,
+);
 
 export default router;

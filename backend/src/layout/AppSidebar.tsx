@@ -14,12 +14,22 @@ import {
 import { BsThreeDots } from "react-icons/bs";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/useAuth";
+import {
+  formatUnreadCount,
+  type EnquiryModule,
+  useEnquiryUnread,
+} from "../hooks/useEnquiryUnread";
 
 type NavItem = {
   name: string;
   icon: React.ReactNode;
   path?: string;
-  subItems?: { name: string; path: string; roles?: string[] }[];
+  subItems?: {
+    name: string;
+    path: string;
+    roles?: string[];
+    enquiryModule?: EnquiryModule;
+  }[];
   roles?: string[];
 };
 
@@ -28,6 +38,8 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const role = user?.role || "";
+  const { unread } = useEnquiryUnread();
+  const unreadBadge = formatUnreadCount(unread?.total ?? 0);
 
   // ================================
   // ================================
@@ -136,16 +148,35 @@ const AppSidebar: React.FC = () => {
         ],
       },
       {
-        name: "Contact Enquiry",
+        name: "Enquiries",
         icon: <FiMessageSquare />,
-        path: `/${role}/contact-enquiry`,
         roles: ["admin"],
-      },
-      {
-        name: "Partnership Enquiry",
-        icon: <FiMessageSquare />,
-        path: `/${role}/partnership-enquiry`,
-        roles: ["admin"],
+        subItems: [
+          {
+            name: "Contact Enquiry",
+            path: `/${role}/contact-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "contact-enquiries",
+          },
+          {
+            name: "Partnership Enquiry",
+            path: `/${role}/partnership-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "partner-enquiries",
+          },
+          {
+            name: "One Crore Journey",
+            path: `/${role}/one-crore-journey-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "one-crore-journey-enquiries",
+          },
+          {
+            name: "Who We Work With",
+            path: `/${role}/who-we-work-with-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "who-we-work-with-enquiries",
+          },
+        ],
       },
       {
         name: "Settings",
@@ -245,6 +276,13 @@ const AppSidebar: React.FC = () => {
                 {(isExpanded || isHovered || isMobileOpen) && (
                   <span className="menu-item-text">{nav.name}</span>
                 )}
+                {(isExpanded || isHovered || isMobileOpen) &&
+                  nav.name === "Enquiries" &&
+                  unreadBadge && (
+                    <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#043f79] px-2 py-0.5 text-xs font-semibold text-white">
+                      {unreadBadge}
+                    </span>
+                  )}
                 {(isExpanded || isHovered || isMobileOpen) && (
                   <FiChevronDown
                     className={`ml-auto w-5 h-5 transition-transform duration-200 ${
@@ -270,13 +308,23 @@ const AppSidebar: React.FC = () => {
                     <li key={subItem.name}>
                       <Link
                         to={subItem.path}
-                        className={`menu-dropdown-item ${
+                        className={`menu-dropdown-item flex items-center justify-between gap-3 ${
                           isActive(subItem.path)
                             ? "menu-dropdown-item-active"
                             : "menu-dropdown-item-inactive"
                         }`}
                       >
-                        {subItem.name}
+                        <span>{subItem.name}</span>
+                        {subItem.enquiryModule &&
+                          formatUnreadCount(
+                            unread?.counts?.[subItem.enquiryModule] ?? 0,
+                          ) && (
+                            <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#043f79] px-2 py-0.5 text-xs font-semibold text-white">
+                              {formatUnreadCount(
+                                unread?.counts?.[subItem.enquiryModule] ?? 0,
+                              )}
+                            </span>
+                          )}
                       </Link>
                     </li>
                   ))}

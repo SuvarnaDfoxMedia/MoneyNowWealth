@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
@@ -10,6 +10,9 @@ import StayConnected from "@/components/home/home-newsletters";
 import { homeInvestTrackData } from "@/data/homePageData";
 import GetAllCluster from "@/components/Blog-listing-Components/GetAllCluster";
 import DOMPurify from "dompurify";
+import { useRefreshSignal } from "@/hooks/useRefreshSignal";
+import { API } from "@/app/api/axios";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 interface Article {
   _id: string;
@@ -24,7 +27,6 @@ interface Article {
   };
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
 const FALLBACK_IMAGE = "/images/most-popular-blog-img-1.png";
 
@@ -36,18 +38,18 @@ const FeaturedArticle = () => {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const hasLoadedRef = useRef(false);
+  const { refreshTick } = useRefreshSignal();
+  const { accessLevel } = useContentAccess();
 
   useEffect(() => {
     const fetchFeaturedArticle = async () => {
+      const isInitialLoad = !hasLoadedRef.current;
       try {
-        if (!API_BASE) throw new Error("API base URL missing");
-
-        const res = await fetch(
-          `${API_BASE}/api/cluster/first-topic-article/all`,
-        );
-        if (!res.ok) throw new Error("API request failed");
-
-        const data = await res.json();
+        if (isInitialLoad) {
+          setLoading(true);
+        }
+        const { data } = await API.get("/api/cluster/first-topic-article/all");
         const firstClusterArticle = data?.clusters?.[0]?.topic?.article;
 
         if (firstClusterArticle) {
@@ -61,17 +63,23 @@ const FeaturedArticle = () => {
             introduction: firstClusterArticle.introduction,
             cluster: { title: data?.clusters?.[0]?.title },
           });
+          hasLoadedRef.current = true;
         }
       } catch (err) {
         console.error(err);
         setError("Failed to fetch featured article");
+        if (!hasLoadedRef.current) {
+          setArticle(null);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchFeaturedArticle();
-  }, []);
+  }, [refreshTick, accessLevel]);
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;

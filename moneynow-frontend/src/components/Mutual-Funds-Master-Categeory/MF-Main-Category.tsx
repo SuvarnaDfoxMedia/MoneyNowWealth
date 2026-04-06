@@ -103,8 +103,8 @@ export default function MFMainCategory() {
   const { nfos, loading: nfoLoading, error: nfoError } = useNfoFunds({
     isOpen: true,
     limit: 100,
-    sortBy: "created_at",
-    sortOrder: "desc",
+    sortBy: "subscription_end_date",
+    sortOrder: "asc",
   });
 
   useEffect(() => {

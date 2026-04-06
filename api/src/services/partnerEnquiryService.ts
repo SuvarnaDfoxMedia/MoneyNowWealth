@@ -38,6 +38,27 @@ const isValidEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
+export const getPartnerEnquiryFilter = (search?: string) => {
+  const filter: Record<string, unknown> = { is_active: 1 };
+
+  if (!search) {
+    return filter;
+  }
+
+  const regex = new RegExp(search, "i");
+  filter.$or = [
+    { full_name: regex },
+    { email: regex },
+    { mobile: regex },
+    { city: regex },
+    { organisation_name: regex },
+    { current_status: regex },
+    { arn_number: regex },
+  ];
+
+  return filter;
+};
+
 export const partnerEnquiryService = {
   add: async (data: Partial<IPartnerEnquiry>) => {
     const normalizedCurrentStatus = normalizeCurrentStatus(

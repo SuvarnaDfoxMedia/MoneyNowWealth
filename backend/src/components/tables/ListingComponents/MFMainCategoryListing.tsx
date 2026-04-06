@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
 } from "./MFDeleteImpactModal";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFMainCategory {
   _id: string;
@@ -85,7 +86,7 @@ export default function MFMainCategoryListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFMainCategory>({
       role,
       module: "mf/main-categories",
@@ -100,11 +101,13 @@ export default function MFMainCategoryListing() {
 
   const rows = extractList as MFMainCategory[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
-  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-  const [deleteImpact, setDeleteImpact] = useState<MFDeleteImpactSummary | null>(
-    null,
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
   );
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleteImpact, setDeleteImpact] =
+    useState<MFDeleteImpactSummary | null>(null);
   const [isDeleteImpactLoading, setIsDeleteImpactLoading] = useState(false);
 
   const openDeleteModal = async (row: MFMainCategory) => {
@@ -136,7 +139,11 @@ export default function MFMainCategoryListing() {
   };
 
   const columns: TableColumn<MFMainCategory>[] = [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
     { key: "name", label: "Name", sortable: true },
     {
       key: "is_active",
@@ -180,6 +187,23 @@ export default function MFMainCategoryListing() {
         columns={columns}
         data={rows}
         loading={isLoading}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[
+              { value: "full-workbook", label: "Full Workbook" },
+              { value: "main-categories", label: "Main Categories" },
+              { value: "categories", label: "Sub Categories" },
+              // { value: "amcs", label: "AMCs" },
+              { value: "funds", label: "Funds" },
+              { value: "nfo", label: "NFOs" },
+              { value: "index-snapshots", label: "Index Snapshots" },
+            ]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}

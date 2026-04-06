@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
 } from "./MFDeleteImpactModal";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFCategory {
   _id: string;
@@ -85,7 +86,7 @@ export default function MFCategoryListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFCategory>({
       role,
       module: "mf/categories",
@@ -182,6 +183,15 @@ export default function MFCategoryListing() {
         columns={columns}
         data={rows}
         loading={isLoading}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[{ value: "categories", label: "Categories" }]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}

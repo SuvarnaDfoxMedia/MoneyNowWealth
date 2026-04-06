@@ -70,6 +70,80 @@ interface PaginationResult<T> {
   limit: number;
 }
 
+type JourneyQuestionAnswer = {
+  id: string;
+  pillar: string;
+  question: string;
+  answer: string;
+  score: number;
+};
+
+const JOURNEY_PILLAR_COPY = {
+  habits: {
+    title: "Habits & cash flow",
+    needsAttention:
+      "Your current money routine may need more stability. Building a simple saving habit and giving yourself more breathing room each month could make a meaningful difference.",
+    couldBeStrengthened:
+      "You appear to have some consistency already, but there is still room to make your monthly money flow more intentional and less reactive.",
+    onTrack:
+      "Your answers suggest a reasonably steady approach to spending and saving, which is a strong base for long-term financial decisions.",
+  },
+  protection: {
+    title: "Protection & emergencies",
+    needsAttention:
+      "Your financial safety net may not be strong enough yet. Emergency reserves and insurance cover may need closer attention so that unexpected events do not disrupt your plans.",
+    couldBeStrengthened:
+      "You have likely taken a few protective steps already, but your financial backup plan could still be made more dependable.",
+    onTrack:
+      "You seem to have put several protection basics in place, which can help you stay calmer and more consistent with your long-term plans.",
+  },
+  investing: {
+    title: "Investing behaviour",
+    needsAttention:
+      "You may still be at an early stage of investing or your current investments may not yet be organized around long-term outcomes.",
+    couldBeStrengthened:
+      "You have started investing, but there may still be room to make the approach more consistent and more clearly tied to your goals.",
+    onTrack:
+      "Your investing behaviour appears reasonably structured already, which gives you a stronger base for future wealth-building decisions.",
+  },
+  goals: {
+    title: "Goals & clarity",
+    needsAttention:
+      "Your answers suggest that some of your future goals may still be unclear or not yet translated into a practical financial roadmap.",
+    couldBeStrengthened:
+      "You seem to have some direction, but your goals may benefit from clearer prioritisation, amounts, and timelines.",
+    onTrack:
+      "You appear to have fairly clear goals and a useful sense of direction, which can make financial planning much easier to sustain.",
+  },
+  debt: {
+    title: "Debt & obligations",
+    needsAttention:
+      "Your current debt or EMI commitments may be creating visible pressure on your monthly flexibility and savings capacity.",
+    couldBeStrengthened:
+      "Your debt looks manageable in parts, but there may still be opportunities to reduce strain and improve financial flexibility.",
+    onTrack:
+      "Your debt obligations appear to be under reasonable control, which gives you more room to focus on future goals.",
+  },
+} as const;
+
+const getJourneyStatus = (score: number) => {
+  if (score <= 1) return "Needs attention";
+  if (score === 2) return "Could be strengthened";
+  return "On a reasonable track";
+};
+
+const buildJourneySummary = (category: string) => {
+  if (category === "Needs attention") {
+    return "Your current snapshot suggests there are a few important areas that may need attention first. A guided conversation can help you decide what to prioritise now and what can follow later.";
+  }
+
+  if (category === "Could be strengthened") {
+    return "Your current snapshot suggests that you already have some healthy foundations in place, with a few areas that could be made stronger through better structure and clearer prioritisation.";
+  }
+
+  return "Your current snapshot suggests that several important parts of your money life are on a reasonable track today. The next step is usually to maintain that consistency and refine your longer-term planning.";
+};
+
 /* ============================================
    Service
 ============================================ */
@@ -80,6 +154,98 @@ export const financialAssessmentService = {
   createAssessment: async (
     data: Partial<IFinancialAssessment>,
   ): Promise<IFinancialAssessment> => {
+    if (
+      data.assessment_variant === "money_life_check" ||
+      (Array.isArray(data.question_answers) && data.question_answers.length > 0)
+    ) {
+      const answers = (data.question_answers || []) as JourneyQuestionAnswer[];
+
+      if (!answers.length) {
+        throw new Error("Question answers are required");
+      }
+
+      const grouped = answers.reduce<Record<string, JourneyQuestionAnswer[]>>(
+        (accumulator, answer) => {
+          const key = answer.pillar || "other";
+          if (!accumulator[key]) accumulator[key] = [];
+          accumulator[key].push(answer);
+          return accumulator;
+        },
+        {},
+      );
+
+      const pillarReport = Object.entries(JOURNEY_PILLAR_COPY).map(
+        ([key, config]) => {
+          const scores = (grouped[key] || []).map((item) => Number(item.score) || 0);
+          const average = scores.length
+            ? Math.round(
+                scores.reduce((sum, value) => sum + value, 0) / scores.length,
+              )
+            : 0;
+
+          const status = getJourneyStatus(average);
+          const copy =
+            status === "Needs attention"
+              ? config.needsAttention
+              : status === "Could be strengthened"
+                ? config.couldBeStrengthened
+                : config.onTrack;
+
+          return {
+            key,
+            title: config.title,
+            status,
+            score: average,
+            copy,
+          };
+        },
+      );
+
+      const averageScore = pillarReport.length
+        ? pillarReport.reduce((sum, item) => sum + item.score, 0) /
+          pillarReport.length
+        : 0;
+      const overallStatus =
+        averageScore <= 1
+          ? "Needs attention"
+          : averageScore < 2.5
+            ? "Could be strengthened"
+            : "On a reasonable track";
+      const overallScore = Math.max(
+        0,
+        Math.min(100, Math.round((averageScore / 3) * 100)),
+      );
+
+      const chartData = pillarReport.reduce<Record<string, number>>(
+        (accumulator, item) => {
+          accumulator[`${item.key}_score`] = Math.round((item.score / 3) * 100);
+          return accumulator;
+        },
+        {},
+      );
+
+      const assessment = new FinancialAssessment({
+        ...data,
+        assessment_variant: "money_life_check",
+        category: overallStatus,
+        score: overallScore,
+        summary_text: buildJourneySummary(overallStatus),
+        question_answers: answers,
+        pillar_report: pillarReport,
+        chart_data: chartData,
+        wealth_creation: "",
+        wealth_protection: "",
+        wealth_restructuring: "",
+        wealth_distribution: "",
+        lead_source: data.lead_source || "financial_wellness",
+        pdf_generated: false,
+      });
+
+      await assessment.save();
+
+      return assessment;
+    }
+
     if (!data.email || !data.phone) {
       throw new Error("Email and phone are required");
     }
@@ -166,6 +332,7 @@ export const financialAssessmentService = {
     =============================== */
     const assessment = new FinancialAssessment({
       ...data,
+      assessment_variant: "legacy_financial_wellness",
       savings,
       savings_ratio,
       loan_ratio,
@@ -268,23 +435,44 @@ export const financialAssessmentService = {
       fileName,
     );
 
-    const pdfBuffer = buildPdfBuffer([
-      "Financial Assessment Report",
-      `Name: ${assessment.name || ""}`,
-      `Email: ${assessment.email || ""}`,
-      `Phone: ${assessment.phone || ""}`,
-      `Score: ${assessment.score}`,
-      `Category: ${assessment.category}`,
-      `Savings: ${assessment.savings ?? 0}`,
-      `Savings Ratio: ${assessment.savings_ratio ?? 0}%`,
-      `Loan Ratio: ${assessment.loan_ratio ?? 0}%`,
-      "",
-      "Recommendations",
-      `Wealth Creation: ${assessment.wealth_creation || ""}`,
-      `Wealth Protection: ${assessment.wealth_protection || ""}`,
-      `Wealth Restructuring: ${assessment.wealth_restructuring || ""}`,
-      `Wealth Distribution: ${assessment.wealth_distribution || ""}`,
-    ]);
+    const pdfLines =
+      assessment.assessment_variant === "money_life_check"
+        ? [
+            "Money Life Snapshot Report",
+            `Name: ${assessment.name || ""}`,
+            `Email: ${assessment.email || ""}`,
+            `Phone: ${assessment.phone || ""}`,
+            `Overall Score: ${assessment.score}`,
+            `Current Status: ${assessment.category}`,
+            "",
+            `Summary: ${assessment.summary_text || ""}`,
+            "",
+            "Pillar Summary",
+            ...((assessment.pillar_report || []).flatMap((pillar) => [
+              `${pillar.title}: ${pillar.status} (${pillar.score}/3)`,
+              `${pillar.copy}`,
+              "",
+            ]) as string[]),
+          ]
+        : [
+            "Financial Assessment Report",
+            `Name: ${assessment.name || ""}`,
+            `Email: ${assessment.email || ""}`,
+            `Phone: ${assessment.phone || ""}`,
+            `Score: ${assessment.score}`,
+            `Category: ${assessment.category}`,
+            `Savings: ${assessment.savings ?? 0}`,
+            `Savings Ratio: ${assessment.savings_ratio ?? 0}%`,
+            `Loan Ratio: ${assessment.loan_ratio ?? 0}%`,
+            "",
+            "Recommendations",
+            `Wealth Creation: ${assessment.wealth_creation || ""}`,
+            `Wealth Protection: ${assessment.wealth_protection || ""}`,
+            `Wealth Restructuring: ${assessment.wealth_restructuring || ""}`,
+            `Wealth Distribution: ${assessment.wealth_distribution || ""}`,
+          ];
+
+    const pdfBuffer = buildPdfBuffer(pdfLines);
 
     fs.mkdirSync(uploadDir, { recursive: true });
     fs.writeFileSync(filePath, pdfBuffer);

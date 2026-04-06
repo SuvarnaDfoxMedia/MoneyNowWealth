@@ -2,6 +2,7 @@ import MFNfo, { IMFNfo } from "../models/mfNfoModel";
 import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
 import { buildSort, parsePagination, toBoolean, toDateOrNull, toNumberOrNull } from "./mfUtils";
+import { computeNfoOpenState } from "../cron/mfNfoCron";
 
 const escapeRegex = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -28,33 +29,11 @@ const resolveCategoryId = async (payload: any) => {
   throw new Error("category_id (mongo) is required");
 };
 
-const getNfoCloseCutoff = (endDate: Date | null) => {
-  if (!endDate) return null;
-  const cutoff = new Date(endDate);
-  cutoff.setHours(18, 0, 0, 0);
-  return cutoff;
-};
-
 const normalizeNfoDate = (date: Date | null) => {
   if (!date) return null;
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
   return normalized;
-};
-
-const computeNfoOpenState = (
-  startDate: Date | null,
-  endDate: Date | null,
-  manualFlag = true,
-) => {
-  if (!manualFlag) return false;
-  const now = new Date();
-  const start = startDate ? new Date(startDate) : null;
-  const closeCutoff = getNfoCloseCutoff(endDate);
-
-  if (start && now < start) return false;
-  if (closeCutoff && now >= closeCutoff) return false;
-  return true;
 };
 
 const mapNfoWithComputedState = (item: any) => ({
@@ -65,6 +44,36 @@ const mapNfoWithComputedState = (item: any) => ({
     item.is_open,
   ),
 });
+
+const shouldReturnOnlyOpenNfos = (query: any) =>
+  query?.isOpen !== undefined && toBoolean(query.isOpen);
+
+const shouldPrioritizeOpenActive = (query: any) =>
+  query?.prioritizeOpenActive !== undefined && toBoolean(query.prioritizeOpenActive);
+
+const getNfoPriorityScore = (item: any) => {
+  const isActive = item.is_active === 1 ? 1 : 0;
+  const isCurrentlyOpen = item.is_currently_open ? 1 : 0;
+  const isManuallyOpen = item.is_open ? 1 : 0;
+  return isActive * 100 + isCurrentlyOpen * 10 + isManuallyOpen;
+};
+
+const getNfoEndTime = (item: any) => {
+  if (!item.subscription_end_date) return Number.POSITIVE_INFINITY;
+  const parsed = new Date(item.subscription_end_date).getTime();
+  return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+};
+
+const sortByPriorityOpenActive = (items: any[]) =>
+  [...items].sort((a, b) => {
+    const priorityDiff = getNfoPriorityScore(b) - getNfoPriorityScore(a);
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const endDateDiff = getNfoEndTime(a) - getNfoEndTime(b);
+    if (endDateDiff !== 0) return endDateDiff;
+
+    return String(a.fund_name || "").localeCompare(String(b.fund_name || ""));
+  });
 
 export const getNfos = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
@@ -93,26 +102,41 @@ export const getNfos = async (query: any) => {
   }
 
   const sort = buildSort(query?.sortBy, query?.sortOrder, { subscription_end_date: 1, created_at: -1 });
-  const [rawData, rawTotal] = await Promise.all([
-    MFNfo.find(filter)
-      .populate("amc_id", "name")
-      .populate({ path: "category_id", select: "name main_category_id", populate: { path: "main_category_id", select: "name" } })
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    MFNfo.countDocuments(filter),
-  ]);
+  const openOnly = shouldReturnOnlyOpenNfos(query);
+  const prioritizeOpenActive = shouldPrioritizeOpenActive(query);
+
+  const baseQuery = MFNfo.find(filter)
+    .populate("amc_id", "name")
+    .populate({
+      path: "category_id",
+      select: "name main_category_id",
+      populate: { path: "main_category_id", select: "name" },
+    })
+    .sort(prioritizeOpenActive ? { subscription_end_date: 1, created_at: -1 } : sort);
+
+  const shouldPaginateAfterMapping = openOnly || prioritizeOpenActive;
+
+  const [rawData, rawTotal] = shouldPaginateAfterMapping
+    ? await Promise.all([
+        baseQuery.lean(),
+        MFNfo.countDocuments(filter),
+      ])
+    : await Promise.all([
+        baseQuery.skip(skip).limit(limit).lean(),
+        MFNfo.countDocuments(filter),
+      ]);
 
   const mappedData = rawData.map((item: any) => mapNfoWithComputedState(item));
-  const data =
-    query?.isOpen !== undefined && toBoolean(query.isOpen)
-      ? mappedData.filter((item: any) => item.is_currently_open)
-      : mappedData;
-  const total =
-    query?.isOpen !== undefined && toBoolean(query.isOpen)
-      ? data.length
-      : rawTotal;
+  const filteredOpenData = openOnly
+    ? mappedData.filter((item: any) => item.is_currently_open)
+    : mappedData;
+  const prioritizedData = prioritizeOpenActive
+    ? sortByPriorityOpenActive(filteredOpenData)
+    : filteredOpenData;
+  const data = shouldPaginateAfterMapping
+    ? prioritizedData.slice(skip, skip + limit)
+    : prioritizedData;
+  const total = shouldPaginateAfterMapping ? prioritizedData.length : rawTotal;
 
   return { success: true, data, total, currentPage: page, totalPages: Math.ceil(total / limit), limit };
 };

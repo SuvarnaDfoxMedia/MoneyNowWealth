@@ -22,6 +22,8 @@ import UserDashBoard from "./pages/userPages/UserDashboard";
 import NewsletterLisging from "./components/tables/ListingComponents/NewsletterLisging";
 import ContactEnquiryListing from "./components/tables/ListingComponents/ContactEnquiryListing";
 import PartnershipEnquiryListing from "./components/tables/ListingComponents/PartnershipEnquiryListing";
+import OneCroreJourneyEnquiryListing from "./components/tables/ListingComponents/OneCroreJourneyEnquiryListing";
+import WhoWeWorkWithEnquiryListing from "./components/tables/ListingComponents/WhoWeWorkWithEnquiryListing";
 import CmsPageListing from "./components/tables/ListingComponents/CmsPageListing";
 import TopicListing from "./components/tables/ListingComponents/TopicListing";
 
@@ -205,6 +207,14 @@ function AppRoutes() {
         <Route
           path="/:role/partnership-enquiry"
           element={<PartnershipEnquiryListing />}
+        />
+        <Route
+          path="/:role/one-crore-journey-enquiry"
+          element={<OneCroreJourneyEnquiryListing />}
+        />
+        <Route
+          path="/:role/who-we-work-with-enquiry"
+          element={<WhoWeWorkWithEnquiryListing />}
         />
 
         {/* MF Admin Module */}

@@ -34,12 +34,22 @@ const generateUniqueSlug = async (baseSlug: string, id?: string) => {
    Get paginated clusters with optional filters
 --------------------------------------------------- */
 export const getClusters = async (query: any) => {
-  const { search, status, includeDeleted, page, limit, sort, searchQuery } =
+  const {
+    search,
+    status,
+    includeDeleted,
+    page,
+    limit,
+    sort,
+    searchQuery,
+    isPublicRequest,
+  } =
     query;
 
   const filter: any = {};
 
   if (status) filter.status = status;
+  if (isPublicRequest) filter.is_active = 1;
   if (!includeDeleted || includeDeleted === "false") filter.is_deleted = false;
 
   if (searchQuery && Object.keys(searchQuery).length > 0) {
@@ -76,12 +86,13 @@ export const getClusters = async (query: any) => {
 };
 
 export const getActiveClusters = async (query: any) => {
-  const { page = 1, limit = 10, sort } = query;
+  const { page = 1, limit = 10, sort, status } = query;
 
   /* ------------------ STRICT FILTER ------------------ */
   const filter = {
     is_active: 1,
     is_deleted: false,
+    ...(status ? { status } : {}),
   };
 
   /* ------------------ PAGINATION ------------------ */

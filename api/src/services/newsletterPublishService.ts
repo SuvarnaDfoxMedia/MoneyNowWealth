@@ -1,8 +1,6 @@
 import NewsletterPublish, {
   INewsletterPublish,
 } from "../models/newsletterPublishModel";
-import { Newsletter } from "../models/newsletterModel";
-import { getResponseEmailService } from "./getResponseEmailService";
 import fs from "fs";
 import path from "path";
 
@@ -27,7 +25,37 @@ interface PaginationResult<T> {
 }
 
 const VALID_FREQUENCIES = ["daily", "weekly", "monthly"] as const;
-const VALID_SEND_STATUSES = ["scheduled", "published"] as const;
+const IST_OFFSET_MINUTES = 5.5 * 60;
+
+const normalizeToIstStartOfDay = (value: Date | string) => {
+  const inputDate = new Date(value);
+
+  if (Number.isNaN(inputDate.getTime())) {
+    throw new Error("Invalid publish date");
+  }
+
+  const istTime = new Date(
+    inputDate.getTime() + IST_OFFSET_MINUTES * 60 * 1000,
+  );
+
+  return new Date(
+    Date.UTC(
+      istTime.getUTCFullYear(),
+      istTime.getUTCMonth(),
+      istTime.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ) -
+      IST_OFFSET_MINUTES * 60 * 1000,
+  );
+};
+
+const getIstStartOfNextDay = (value = new Date()) => {
+  const startOfDay = normalizeToIstStartOfDay(value);
+  return new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+};
 
 const isDueForPublishing = (publishDate: Date, now = new Date()) =>
   publishDate <= now;
@@ -42,17 +70,6 @@ const resolveStatusForPublishDate = (
   }
 
   return isDueForPublishing(publishDate, now) ? "published" : "scheduled";
-};
-
-const canSendForStatus = (status: INewsletterPublish["status"]) =>
-  status === "scheduled" || status === "published";
-
-const queueAutoSend = (id: string, source: string) => {
-  setTimeout(() => {
-    newsletterPublishService.sendNewsletterEmails(id).catch((error) => {
-      console.error(`Failed to auto-send newsletter after ${source}:`, error);
-    });
-  }, 1000);
 };
 
 export const newsletterPublishService = {
@@ -141,7 +158,7 @@ export const newsletterPublishService = {
       throw new Error("Invalid frequency");
     }
 
-    const publishDate = new Date(data.publish_date);
+    const publishDate = normalizeToIstStartOfDay(data.publish_date);
     const now = new Date();
 
     data.status = resolveStatusForPublishDate(data.status, publishDate, now);
@@ -154,11 +171,6 @@ export const newsletterPublishService = {
     });
 
     await newsletter.save();
-
-    if (newsletter.status === "published" && !newsletter.is_email_sent) {
-      queueAutoSend(newsletter._id.toString(), "create");
-    }
-
     return newsletter;
   },
 
@@ -178,7 +190,7 @@ export const newsletterPublishService = {
 
     const now = new Date();
     const effectivePublishDate = updateData.publish_date
-      ? new Date(updateData.publish_date)
+      ? normalizeToIstStartOfDay(updateData.publish_date)
       : newsletter.publish_date;
 
     if (updateData.status !== undefined || updateData.publish_date) {
@@ -187,6 +199,10 @@ export const newsletterPublishService = {
         effectivePublishDate,
         now,
       );
+    }
+
+    if (updateData.publish_date) {
+      updateData.publish_date = effectivePublishDate;
     }
 
     let oldFilePath: string | null = null;
@@ -204,10 +220,6 @@ export const newsletterPublishService = {
 
     await newsletter.save();
 
-    if (newsletter.status === "published" && !newsletter.is_email_sent) {
-      queueAutoSend(id, "update");
-    }
-
     if (oldFilePath && fs.existsSync(oldFilePath)) {
       try {
         fs.unlinkSync(oldFilePath);
@@ -219,93 +231,15 @@ export const newsletterPublishService = {
     return newsletter;
   },
 
-  sendNewsletterEmails: async (id: string) => {
-    const newsletter = await NewsletterPublish.findById(id);
-    if (!newsletter) throw new Error("Newsletter not found");
-
-    if (newsletter.is_email_sent) {
-      throw new Error("Emails already sent");
-    }
-
-    const now = new Date();
-    if (newsletter.publish_date > now) {
-      throw new Error("Publish date not reached yet");
-    }
-
-    if (!canSendForStatus(newsletter.status)) {
-      throw new Error("Only scheduled or published newsletters can be sent");
-    }
-
-    if (newsletter.status !== "published") {
-      newsletter.status = "published";
-      newsletter.updated_at = now;
-      await newsletter.save();
-    }
-
-    const subscribers = await Newsletter.find({
-      is_deleted: false,
-      email: { $exists: true, $ne: "" },
-    }).select("email name");
-
-    if (!subscribers.length) {
-      throw new Error("No subscribers found");
-    }
-
-    const filePath = path.join(
-      process.cwd(),
-      "uploads",
-      "newsletters",
-      newsletter.pdf_file,
-    );
-
-    if (!fs.existsSync(filePath)) {
-      throw new Error("File not found");
-    }
-
-    const emails = subscribers
-      .map((subscriber) => subscriber.email)
-      .filter((email): email is string => !!email && email.includes("@"));
-
-    const fileUrl = `${process.env.BASE_URL}/uploads/newsletters/${newsletter.pdf_file}`;
-    const result = await getResponseEmailService.sendNewsletterBulk(
-      emails,
-      newsletter.title,
-      fileUrl,
-    );
-
-    if (result.successful === 0) {
-      throw new Error("Failed to send newsletter emails");
-    }
-
-    newsletter.is_email_sent = true;
-    newsletter.email_sent_at = new Date();
-    newsletter.total_recipients = emails.length;
-    newsletter.status = "published";
-    newsletter.updated_at = new Date();
-
-    await newsletter.save();
-
-    return {
-      success: result.successful > 0,
-      message: `Sent to ${result.successful}`,
-      totalRecipients: emails.length,
-      successful: result.successful,
-      failed: result.failed,
-    };
-  },
-
   publishNow: async (id: string): Promise<INewsletterPublish> => {
     const newsletter = await NewsletterPublish.findById(id);
     if (!newsletter) throw new Error("Not found");
 
     newsletter.status = "published";
     newsletter.publish_date = new Date();
-    newsletter.is_email_sent = false;
     newsletter.updated_at = new Date();
 
     await newsletter.save();
-    queueAutoSend(id, "publishNow");
-
     return newsletter;
   },
 
@@ -316,16 +250,39 @@ export const newsletterPublishService = {
     const newsletter = await NewsletterPublish.findById(id);
     if (!newsletter) throw new Error("Not found");
 
-    if (publishDate <= new Date()) {
-      throw new Error("Future date required");
-    }
+    const normalizedPublishDate = normalizeToIstStartOfDay(publishDate);
+    const nextStatus = resolveStatusForPublishDate(
+      "scheduled",
+      normalizedPublishDate,
+      new Date(),
+    );
 
-    newsletter.status = "scheduled";
-    newsletter.publish_date = publishDate;
-    newsletter.is_email_sent = false;
+    newsletter.status = nextStatus;
+    newsletter.publish_date = normalizedPublishDate;
     newsletter.updated_at = new Date();
 
     return newsletter.save();
+  },
+
+  publishDueNewsletters: async () => {
+    const now = new Date();
+    const publishCutoff = getIstStartOfNextDay(now);
+
+    const result = await NewsletterPublish.updateMany(
+      {
+        is_deleted: false,
+        status: "scheduled",
+        publish_date: { $lt: publishCutoff },
+      },
+      {
+        $set: {
+          status: "published",
+          updated_at: now,
+        },
+      },
+    );
+
+    return result.modifiedCount;
   },
 
   softDelete: async (id: string) => {
@@ -348,17 +305,6 @@ export const newsletterPublishService = {
     newsletter.updated_at = new Date();
 
     return newsletter.save();
-  },
-
-  getNewslettersReadyToSend: async () => {
-    const now = new Date();
-
-    return NewsletterPublish.find({
-      is_deleted: false,
-      is_email_sent: false,
-      status: { $in: VALID_SEND_STATUSES },
-      publish_date: { $lte: now },
-    }).lean();
   },
 
   uploadFile: async (file: Express.Multer.File) => {

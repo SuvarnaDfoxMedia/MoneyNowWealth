@@ -10,6 +10,7 @@ import {
   assignUserSubscription,
   getMySubscription,
   purchaseSubscription,
+  upgradeMySubscriptionToPremiumTrial,
   getMySubscriptionHistory,
 } from "../controllers/userSubscriptionController";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
@@ -22,6 +23,11 @@ const router = express.Router();
 router.get("/subscriptions/me", userProtect, getMySubscription);
 router.get("/subscriptions/me/history", userProtect, getMySubscriptionHistory);
 router.post("/subscriptions/purchase", userProtect, purchaseSubscription);
+router.post(
+  "/subscriptions/upgrade-premium-trial",
+  userProtect,
+  upgradeMySubscriptionToPremiumTrial,
+);
 router.get("/subscriptions/:id", getUserSubscriptionById);
 
 /* -------------------- ADMIN ROUTES -------------------- */

@@ -4,6 +4,7 @@ import Cluster from "../models/clusterModel";
 import Article from "../models/articleModel";
 import mongoose from "mongoose";
 import { sendError, sendSuccess } from "../utils/apiResponse";
+import { contentAccessService } from "@/services/contentAccessService";
 
 declare global {
   namespace Express {
@@ -32,6 +33,10 @@ export const getArticles = async (req: Request, res: Response) => {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.max(Number(req.query.limit) || 10, 1);
     const { status, search, topic_id } = req.query;
+    const isPublicRequest = !req.params.role;
+    const allowedAccessTypes = isPublicRequest
+      ? await contentAccessService.getAllowedTopicAccessTypes(req.user?.id)
+      : undefined;
 
     const sort = { createdAt: -1 }; // latest first
 
@@ -42,6 +47,8 @@ export const getArticles = async (req: Request, res: Response) => {
       page,
       limit,
       sort,
+      publishedOnly: isPublicRequest,
+      allowedAccessTypes,
     });
 
     const articles = result.articles || [];
@@ -98,11 +105,6 @@ export const addArticle = async (req: Request, res: Response) => {
       body.publish_date = new Date();
     }
 
-    // Reset email flag when publishing
-    if (body.status === "published") {
-      body.is_email_sent = false;
-    }
-
     // Remove read_time if not needed
     delete body.read_time;
 
@@ -141,11 +143,6 @@ export const updateArticle = async (req: Request, res: Response) => {
     } else if (body.status === "published") {
       // If publishing now, set publish_date to current date
       body.publish_date = new Date();
-    }
-
-    // Reset email flag when publishing
-    if (body.status === "published") {
-      body.is_email_sent = false;
     }
 
     delete body.read_time;
@@ -213,6 +210,9 @@ export const getPublishedArticleBySlug = async (
   try {
     const { slug } = req.params;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const result = await Article.aggregate([
       {
@@ -239,6 +239,11 @@ export const getPublishedArticleBySlug = async (
           "topic.is_active": 1,
           "topic.status": "published",
           "topic.publish_date": { $lte: now },
+        },
+      },
+      {
+        $addFields: {
+          topic_access_type: "$topic.access_type",
         },
       },
       {
@@ -284,6 +289,7 @@ export const getPublishedArticleBySlug = async (
             title: "$topic.title",
             slug: "$topic.slug",
             publish_date: "$topic.publish_date",
+            access_type: "$topic.access_type",
           },
           cluster: {
             _id: "$cluster._id",
@@ -299,6 +305,15 @@ export const getPublishedArticleBySlug = async (
     }
 
     const article = result[0];
+    if (!allowedAccessTypes.includes(article.topic?.access_type || "free")) {
+      return sendError(
+        res,
+        "This article is available for premium members only",
+        403,
+        { code: "PREMIUM_CONTENT_ONLY" },
+      );
+    }
+
     return sendSuccess(res, "Published article fetched successfully", article, 200, {
       article,
       topic: article.topic,
@@ -317,6 +332,9 @@ export const getLatestPublishedArticles = async (
   try {
     const limit = Math.max(Number(req.query.limit) || 10, 1);
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const articles = await Article.aggregate([
       {
@@ -342,6 +360,7 @@ export const getLatestPublishedArticles = async (
           "topic.is_active": 1,
           "topic.status": "published",
           "topic.publish_date": { $lte: now },
+          "topic.access_type": { $in: allowedAccessTypes },
         },
       },
       {
@@ -409,6 +428,9 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
     const { clusterId } = req.params;
     const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     if (!clusterId) {
       return sendError(res, "Cluster ID is required", 400);
@@ -436,6 +458,7 @@ export const getClusterHierarchy = async (req: Request, res: Response) => {
                 is_active: 1,
                 status: "published",
                 publish_date: { $lte: now },
+                access_type: { $in: allowedAccessTypes },
               },
             },
             {
@@ -525,6 +548,9 @@ export const getClusterHierarchyBySlug = async (
     const { slug } = req.params;
     const { status, sortField = "sort_order", sortOrder = 1 } = req.query;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     if (!slug) {
       return sendError(res, "Cluster slug is required", 400);
@@ -552,6 +578,7 @@ export const getClusterHierarchyBySlug = async (
                 is_active: 1,
                 status: "published",
                 publish_date: { $lte: now },
+                access_type: { $in: allowedAccessTypes },
               },
             },
             {
@@ -645,14 +672,13 @@ export const publishArticle = async (req: Request, res: Response) => {
     // Update article status
     article.status = "published";
     article.publish_date = new Date();
-    article.is_email_sent = false; // Reset for email notifications
     article.updated_at = new Date();
 
     await article.save();
 
     return sendSuccess(
       res,
-      "Article published successfully. Email notifications will be sent via scheduler.",
+      "Article published successfully. Marketing distribution is now handled in GetResponse.",
       article,
     );
   } catch (error: any) {

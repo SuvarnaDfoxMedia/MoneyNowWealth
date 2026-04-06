@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mfService } from "@/services/mfService";
+import { useRefreshSignal } from "./useRefreshSignal";
 
 export interface MFMainCategory {
   _id: string;
@@ -17,6 +18,8 @@ export const useMutualFunds = (mainCategoryId?: string) => {
   const [categories, setCategories] = useState<MFCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedCategoriesRef = useRef(false);
+  const { refreshTick, refresh } = useRefreshSignal();
 
   useEffect(() => {
     const loadMain = async () => {
@@ -30,15 +33,19 @@ export const useMutualFunds = (mainCategoryId?: string) => {
       }
     };
     loadMain();
-  }, []);
+  }, [refreshTick]);
 
   useEffect(() => {
     if (!mainCategoryId) {
       setCategories([]);
+      hasLoadedCategoriesRef.current = false;
       return;
     }
     const loadCategories = async () => {
-      setLoading(true);
+      const isInitialLoad = !hasLoadedCategoriesRef.current;
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       try {
         setError(null);
         const res = await mfService.getCategories({
@@ -48,15 +55,20 @@ export const useMutualFunds = (mainCategoryId?: string) => {
         });
         const items = Array.isArray(res?.data) ? res.data : res?.data || [];
         setCategories(items);
+        hasLoadedCategoriesRef.current = true;
       } catch {
         setError("Failed to load categories");
-        setCategories([]);
+        if (!hasLoadedCategoriesRef.current) {
+          setCategories([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
     loadCategories();
-  }, [mainCategoryId]);
+  }, [mainCategoryId, refreshTick]);
 
-  return { mainCategories, categories, loading, error };
+  return { mainCategories, categories, loading, error, refetch: refresh };
 };

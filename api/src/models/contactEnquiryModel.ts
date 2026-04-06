@@ -7,8 +7,13 @@
 //   mongoose.models.ContactEnquiry ||
 //   mongoose.model<IContactEnquiry>("ContactEnquiry", contactEnquirySchema);
 
-import mongoose, { Document, Schema, Model } from "mongoose";
+import mongoose, { Document, Schema, Model, Types } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
+
+export interface IEnquiryReadEntry {
+  userId: Types.ObjectId;
+  readAt: Date;
+}
 
 /* -------------------------
    Interface
@@ -23,17 +28,29 @@ export interface IContactEnquiry extends Document {
   subject:
     | "Investment Inquiry"
     | "Support"
-    | "Partner"
     | "Partnership"
     | "Feedback"
     | "Others";
   message: string;
   terms_accepted: boolean;
   status: "new" | "in-progress" | "resolved";
+  readBy: IEnquiryReadEntry[];
   is_active: number;
   created_at: Date;
   updated_at: Date;
 }
+
+const enquiryReadSchema = new Schema<IEnquiryReadEntry>(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    readAt: { type: Date, required: true, default: Date.now },
+  },
+  { _id: false },
+);
 
 /* -------------------------
    Schema
@@ -51,7 +68,6 @@ const contactEnquirySchema = new Schema<IContactEnquiry>(
       enum: [
         "Investment Inquiry",
         "Support",
-        "Partner",
         "Partnership",
         "Feedback",
         "Others",
@@ -64,6 +80,10 @@ const contactEnquirySchema = new Schema<IContactEnquiry>(
       type: String,
       enum: ["new", "in-progress", "resolved"],
       default: "new",
+    },
+    readBy: {
+      type: [enquiryReadSchema],
+      default: [],
     },
     is_active: { type: Number, default: 1 },
     created_at: { type: Date, default: Date.now },
@@ -110,6 +130,9 @@ contactEnquirySchema.pre<IContactEnquiry>("save", function (next) {
   this.updated_at = new Date();
   next();
 });
+
+contactEnquirySchema.index({ created_at: -1 });
+contactEnquirySchema.index({ "readBy.userId": 1 });
 
 /* -------------------------
    Model

@@ -5,6 +5,7 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFIndexSnapshot {
   _id: string;
@@ -63,7 +64,7 @@ export default function MFIndexSnapshotListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, isFetching, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, isFetching, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFIndexSnapshot>({
       role,
       module: "mf/index-snapshots",
@@ -143,6 +144,15 @@ export default function MFIndexSnapshotListing() {
         data={rows}
         loading={isLoading}
         isFetching={isFetching}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[{ value: "index-snapshots", label: "Index Snapshots" }]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}

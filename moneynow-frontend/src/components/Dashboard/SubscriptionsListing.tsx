@@ -7,11 +7,26 @@ import { useRouter } from "next/navigation";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePagination } from "@/hooks/usePagination";
 import { Pagination } from "@/components/Pagination";
+import PremiumUpgradeCard from "@/components/subscription/PremiumUpgradeCard";
 
 const safeDate = (value?: string) => {
   if (!value) return "-";
   const d = new Date(value);
   return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-GB");
+};
+
+const isActiveForFullEndDate = (value?: string) => {
+  if (!value) return false;
+
+  const endDate = new Date(value);
+  const today = new Date();
+
+  if (isNaN(endDate.getTime())) return false;
+
+  endDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return endDate.getTime() >= today.getTime();
 };
 
 const SubscriptionsListing = () => {
@@ -30,6 +45,7 @@ const SubscriptionsListing = () => {
     error,
     total,
     totalPages,
+    refresh,
   } = useSubscription(pagination.page, pagination.limit);
 
   useEffect(() => {
@@ -40,6 +56,12 @@ const SubscriptionsListing = () => {
 
   const startingIndex = (pagination.page - 1) * pagination.limit;
   const subscriptionCard = currentSubscription || latestSubscription;
+  const isSubscriptionActive = isActiveForFullEndDate(
+    subscriptionCard?.endDate,
+  );
+  const isPremiumActive =
+    currentSubscription?.planType?.toLowerCase() === "premium" &&
+    isSubscriptionActive;
 
   return (
     <div className="w-full min-h-screen p-2 bg-gray-50">
@@ -123,7 +145,8 @@ const SubscriptionsListing = () => {
                       <span className="text-sm">{safeDate(inv.endDate)}</span>
 
                       <span className="text-sm font-semibold">
-                        {"\u20B9"}{Number(inv.amount || 0).toFixed(2)}
+                        {"\u20B9"}
+                        {Number(inv.amount || 0).toFixed(2)}
                       </span>
 
                       <div className="flex justify-end">
@@ -157,60 +180,67 @@ const SubscriptionsListing = () => {
 
         {subscriptionCard && (
           <div className="lg:col-span-4">
-            <div className="w-full bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center sticky top-4">
-              <div className="mb-4 w-20 h-20 relative">
-                <Image
-                  src="/images/subscribe-right-icon.png"
-                  alt="Premium Plan"
-                  fill
-                  className="object-contain"
-                  priority
-                />
+            <div className="sticky top-4 space-y-4">
+              <div className="w-full bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
+                <div className="mb-4 w-20 h-20 relative">
+                  <Image
+                    src="/images/subscribe-right-icon.png"
+                    alt="Premium Plan"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                <h3 className="font-semibold text-lg mb-4">
+                  Latest Subscription
+                </h3>
+
+                <div className="w-full flex flex-col text-left text-sm bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="mb-2 flex gap-3">
+                    <span className="font-semibold">Plan:</span>
+                    <span className="font-normal">
+                      {subscriptionCard.planName}
+                    </span>
+                  </p>
+
+                  <p className="mb-2 flex gap-3">
+                    <span className="font-semibold">Amount:</span>
+                    <span className="font-normal">
+                      {"\u20B9"}
+                      {Number(subscriptionCard.amount || 0).toFixed(2)}
+                    </span>
+                  </p>
+
+                  <p className="mb-2 flex gap-3">
+                    <span className="font-semibold">Purchase Date:</span>
+                    <span className="font-normal">
+                      {safeDate(subscriptionCard.paymentDate)}
+                    </span>
+                  </p>
+
+                  <p className="flex gap-3">
+                    <span className="font-semibold">Expiry Date:</span>
+                    <span className="font-normal">
+                      {safeDate(subscriptionCard.endDate)}
+                    </span>
+                  </p>
+                </div>
+
+                <button
+                  className={`mt-5 w-20 py-2 rounded-lg font-semibold text-sm tracking-wide ${
+                    isSubscriptionActive
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-gray-400 text-white"
+                  }`}
+                >
+                  {isSubscriptionActive ? "ACTIVE" : "EXPIRED"}
+                </button>
               </div>
 
-              <h3 className="font-semibold text-lg mb-4">
-                Latest Subscription
-              </h3>
-
-              <div className="w-full flex flex-col text-left text-sm bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="mb-2 flex gap-3">
-                  <span className="font-semibold">Plan:</span>
-                  <span className="font-normal">{subscriptionCard.planName}</span>
-                </p>
-
-                <p className="mb-2 flex gap-3">
-                  <span className="font-semibold">Amount:</span>
-                  <span className="font-normal">
-                    {"\u20B9"}{Number(subscriptionCard.amount || 0).toFixed(2)}
-                  </span>
-                </p>
-
-                <p className="mb-2 flex gap-3">
-                  <span className="font-semibold">Purchase Date:</span>
-                  <span className="font-normal">
-                    {safeDate(subscriptionCard.paymentDate)}
-                  </span>
-                </p>
-
-                <p className="flex gap-3">
-                  <span className="font-semibold">Expiry Date:</span>
-                  <span className="font-normal">
-                    {safeDate(subscriptionCard.endDate)}
-                  </span>
-                </p>
-              </div>
-
-              <button
-                className={`mt-5 w-20 py-2 rounded-lg font-semibold text-sm tracking-wide ${
-                  new Date(subscriptionCard.endDate) > new Date()
-                    ? "bg-green-600 text-white hover:bg-green-700"
-                    : "bg-gray-400 text-white"
-                }`}
-              >
-                {new Date(subscriptionCard.endDate) > new Date()
-                  ? "ACTIVE"
-                  : "EXPIRED"}
-              </button>
+              {!isPremiumActive && (
+                <PremiumUpgradeCard variant="compact" onUpgraded={refresh} />
+              )}
             </div>
           </div>
         )}

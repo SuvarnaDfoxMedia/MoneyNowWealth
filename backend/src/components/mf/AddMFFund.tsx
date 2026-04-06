@@ -839,7 +839,7 @@ export default function AddMFFund() {
                 htmlFor="launch_date"
                 className="mb-2 block font-medium text-gray-700"
               >
-                Launch Date
+                Acceptance Date
               </label>
               <div className="relative">
                 <DatePicker

@@ -5,6 +5,7 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFFund {
   _id: string;
@@ -85,7 +86,7 @@ export default function MFFundListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFFund>({
       role,
       module: "mf/funds",
@@ -193,6 +194,15 @@ export default function MFFundListing() {
         columns={columns}
         data={rows}
         loading={isLoading}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[{ value: "funds", label: "Funds" }]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}

@@ -9,6 +9,8 @@ export interface IFinancialAssessment extends Document {
   name: string;
   email: string;
   phone: string;
+  callback_requested?: boolean;
+  assessment_variant?: "legacy_financial_wellness" | "money_life_check";
 
   // User Inputs
   gender?: string;
@@ -26,7 +28,14 @@ export interface IFinancialAssessment extends Document {
 
   // Result
   score: number;
-  category: "Needs Attention" | "Average" | "Good" | "Excellent";
+  category:
+    | "Needs Attention"
+    | "Average"
+    | "Good"
+    | "Excellent"
+    | "Needs attention"
+    | "Could be strengthened"
+    | "On a reasonable track";
 
   // Report (4 Pillars)
   wealth_creation: string;
@@ -34,13 +43,24 @@ export interface IFinancialAssessment extends Document {
   wealth_restructuring: string;
   wealth_distribution: string;
 
+  summary_text?: string;
+  question_answers?: Array<{
+    id: string;
+    pillar: string;
+    question: string;
+    answer: string;
+    score: number;
+  }>;
+  pillar_report?: Array<{
+    key: string;
+    title: string;
+    status: string;
+    score: number;
+    copy: string;
+  }>;
+
   // Chart Data (for graphs)
-  chart_data?: {
-    savings_score: number;
-    investment_score: number;
-    protection_score: number;
-    distribution_score: number;
-  };
+  chart_data?: Record<string, number>;
 
   // PDF
   pdf_file?: string;
@@ -83,6 +103,18 @@ const financialAssessmentSchema = new Schema<IFinancialAssessment>(
       type: String,
       required: true,
       trim: true,
+    },
+
+    callback_requested: {
+      type: Boolean,
+      default: false,
+    },
+
+    assessment_variant: {
+      type: String,
+      enum: ["legacy_financial_wellness", "money_life_check"],
+      default: "legacy_financial_wellness",
+      index: true,
     },
 
     // User Inputs
@@ -145,7 +177,15 @@ const financialAssessmentSchema = new Schema<IFinancialAssessment>(
 
     category: {
       type: String,
-      enum: ["Needs Attention", "Average", "Good", "Excellent"],
+      enum: [
+        "Needs Attention",
+        "Average",
+        "Good",
+        "Excellent",
+        "Needs attention",
+        "Could be strengthened",
+        "On a reasonable track",
+      ],
       required: true,
       index: true,
     },
@@ -171,12 +211,35 @@ const financialAssessmentSchema = new Schema<IFinancialAssessment>(
       default: "",
     },
 
+    summary_text: {
+      type: String,
+      default: "",
+    },
+
+    question_answers: [
+      {
+        id: { type: String, trim: true },
+        pillar: { type: String, trim: true },
+        question: { type: String, trim: true },
+        answer: { type: String, trim: true },
+        score: { type: Number, default: 0 },
+      },
+    ],
+
+    pillar_report: [
+      {
+        key: { type: String, trim: true },
+        title: { type: String, trim: true },
+        status: { type: String, trim: true },
+        score: { type: Number, default: 0 },
+        copy: { type: String, trim: true },
+      },
+    ],
+
     // Chart Data
     chart_data: {
-      savings_score: { type: Number, default: 0 },
-      investment_score: { type: Number, default: 0 },
-      protection_score: { type: Number, default: 0 },
-      distribution_score: { type: Number, default: 0 },
+      type: Schema.Types.Mixed,
+      default: {},
     },
 
     // PDF
@@ -239,6 +302,8 @@ financialAssessmentSchema.plugin(capitalizePlugin, {
   except: [
     "email",
     "phone",
+    "callback_requested",
+    "assessment_variant",
 
     "monthly_income",
     "monthly_expenses",
@@ -251,6 +316,8 @@ financialAssessmentSchema.plugin(capitalizePlugin, {
 
     "score",
     "chart_data",
+    "question_answers",
+    "pillar_report",
 
     "pdf_file",
     "pdf_generated",
@@ -271,6 +338,7 @@ financialAssessmentSchema.plugin(capitalizePlugin, {
     "wealth_protection",
     "wealth_restructuring",
     "wealth_distribution",
+    "summary_text",
   ],
 });
 

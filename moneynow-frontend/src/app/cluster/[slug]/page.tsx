@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import ClusterArticleSlider from "@/components/Blog-listing-Components/ClusterArticlePagination";
@@ -9,6 +9,9 @@ import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBl
 import HomeInvestTrack from "@/components/home/invest-with-confidence";
 import StayConnected from "@/components/home/home-newsletters";
 import { homeInvestTrackData } from "@/data/homePageData";
+import { useRefreshSignal } from "@/hooks/useRefreshSignal";
+import { API } from "@/app/api/axios";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 /* ---------------- Types ---------------- */
 interface Article {
@@ -50,33 +53,44 @@ const ClusterPage: React.FC = () => {
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
+  const { refreshTick } = useRefreshSignal();
+  const { accessLevel, resolved } = useContentAccess();
 
   /* ---------- Fetch Cluster ---------- */
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || !resolved) return;
 
     const fetchCluster = async () => {
+      const isInitialLoad = !hasLoadedRef.current;
       try {
-        const res = await fetch(`${API_BASE}/api/cluster/slug/${slug}/`);
-        if (!res.ok) throw new Error("Cluster not found");
-
-        const result: ClusterHierarchyResponse = await res.json();
+        if (isInitialLoad) {
+          setLoading(true);
+        }
+        const { data: result } = await API.get<ClusterHierarchyResponse>(
+          `/api/cluster/slug/${slug}/`,
+        );
 
         if (result.success && result.data.clusters.length > 0) {
           setCluster(result.data.clusters[0]);
           setTopics(result.data.topics || []);
+          hasLoadedRef.current = true;
         }
       } catch (error) {
         console.error(error);
-        setCluster(null);
-        setTopics([]);
+        if (!hasLoadedRef.current) {
+          setCluster(null);
+          setTopics([]);
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchCluster();
-  }, [slug, API_BASE]);
+  }, [slug, refreshTick, accessLevel, resolved]);
 
   if (loading) return <p className="p-4">Loading...</p>;
   if (!cluster) return <p className="p-4">Cluster not found</p>;
