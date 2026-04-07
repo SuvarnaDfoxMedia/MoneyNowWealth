@@ -227,7 +227,6 @@ export default function NewsletterPublishListing() {
 
     try {
       await toggleStatus(id, next === 1);
-      toast.success("Status updated successfully");
     } catch {
       toast.error("Failed to update status");
     }

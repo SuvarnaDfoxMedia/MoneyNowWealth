@@ -148,13 +148,6 @@ export default function OneCroreJourneyEnquiryListing() {
     setEnquiries(Array.isArray(extractList) ? extractList : []);
   }, [data, extractList]);
 
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const timer = setTimeout(() => refetch(), 300);
-    return () => clearTimeout(timer);
-  }, [searchValue, sortField, sortOrder, page, recordsPerPage, isMounted]);
-
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });

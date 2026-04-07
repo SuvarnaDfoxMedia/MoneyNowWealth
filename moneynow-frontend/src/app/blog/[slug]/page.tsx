@@ -170,9 +170,88 @@ const BlogDetails = () => {
     fetchBlog();
   }, [slug, refreshTick, accessLevel, resolved]);
 
-  const sanitize = (html?: string) => ({
-    __html: DOMPurify.sanitize(html || ""),
-  });
+  const sanitizeAndNormalizeHtml = (html?: string) => {
+    if (!html) return { __html: "" };
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+
+    tempDiv.querySelectorAll("table").forEach((table) => {
+      table.setAttribute(
+        "style",
+        [
+          "width: 100%",
+          "min-width: 640px",
+          "border-collapse: collapse",
+          "border: 1px solid #d8dee8",
+          "margin: 1.5rem 0",
+        ].join("; "),
+      );
+    });
+
+    tempDiv.querySelectorAll("th").forEach((th) => {
+      th.setAttribute(
+        "style",
+        [
+          "border: 1px solid #d8dee8",
+          "padding: 14px 16px",
+          "text-align: left",
+          "vertical-align: top",
+          "background: #f4f7fb",
+          "font-weight: 700",
+        ].join("; "),
+      );
+    });
+
+    tempDiv.querySelectorAll("td").forEach((td) => {
+      td.setAttribute(
+        "style",
+        [
+          "border: 1px solid #d8dee8",
+          "padding: 14px 16px",
+          "text-align: left",
+          "vertical-align: top",
+        ].join("; "),
+      );
+    });
+
+    tempDiv.querySelectorAll("tbody tr:nth-child(even)").forEach((row) => {
+      row.setAttribute("style", "background: #fafcff");
+    });
+
+    tempDiv.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href") || "#";
+      if (
+        !href.startsWith("http://") &&
+        !href.startsWith("https://") &&
+        !href.startsWith("/") &&
+        !href.startsWith("mailto:")
+      ) {
+        a.setAttribute("href", `https://${href}`);
+      }
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+    });
+
+    return {
+      __html: DOMPurify.sanitize(tempDiv.innerHTML, {
+        USE_PROFILES: { html: true },
+        ADD_TAGS: [
+          "table",
+          "thead",
+          "tbody",
+          "tfoot",
+          "tr",
+          "td",
+          "th",
+          "colgroup",
+          "col",
+        ],
+        ADD_ATTR: ["target", "rel", "style", "class"],
+        KEEP_CONTENT: true,
+      }),
+    };
+  };
 
   if (loading) return <p className="py-20 text-center">Loading blog...</p>;
   if (error) {
@@ -211,13 +290,16 @@ const BlogDetails = () => {
               {article.introduction && (
                 <div
                   className="
+                    blog-rich-content
                     font-inter
                     line-clamp-5
                     [&_p]:!text-[16px]
                     [&_p]:!leading-[30px]
                     [&_p]:mb-3
                   "
-                  dangerouslySetInnerHTML={sanitize(article.introduction)}
+                  dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                    article.introduction,
+                  )}
                 />
               )}
 
@@ -345,8 +427,30 @@ const BlogDetails = () => {
                       </a>
                     </li>
                   )}
-
-                  {/* ... other TOC items (Tools, Related Reads) follow same pattern ... */}
+                  {article.tools?.some(
+                    (tool) => tool.title?.trim() || tool.content?.trim(),
+                  ) && (
+                    <li className="py-3">
+                      <a
+                        href="#tools"
+                        className={`block ${activeSection === "tools" ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+                      >
+                        Tools
+                      </a>
+                    </li>
+                  )}
+                  {article.related_reads?.some(
+                    (read) => read.title?.trim() || read.content?.trim(),
+                  ) && (
+                    <li className="py-3">
+                      <a
+                        href="#related-reads"
+                        className={`block ${activeSection === "related-reads" ? "text-[#043F79] font-bold" : "hover:text-[#043F79]"}`}
+                      >
+                        Related Reads
+                      </a>
+                    </li>
+                  )}
                 </ul>
 
                 <div className="relative w-full rounded mt-6 mb-5">
@@ -380,8 +484,10 @@ const BlogDetails = () => {
                     Introduction
                   </h2>
                   <div
-                    className="font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
-                    dangerouslySetInnerHTML={sanitize(article.introduction)}
+                    className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
+                    dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                      article.introduction,
+                    )}
                   />
                 </section>
               )}
@@ -407,8 +513,10 @@ const BlogDetails = () => {
                         </h2>
                       )}
                       <div
-                        className="font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
-                        dangerouslySetInnerHTML={sanitize(sec.content)}
+                        className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
+                        dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                          sec.content,
+                        )}
                       />
                     </section>
                   ),
@@ -429,9 +537,65 @@ const BlogDetails = () => {
                         {faq.question}
                       </p>
                       <div
-                        className="font-inter w-full max-w-none [&_p]:!text-[18px]"
-                        dangerouslySetInnerHTML={sanitize(faq.answer)}
+                        className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[18px]"
+                        dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                          faq.answer,
+                        )}
                       />
+                    </div>
+                  ))}
+                </section>
+              )}
+              {article.tools?.some(
+                (tool) => tool.title?.trim() || tool.content?.trim(),
+              ) && (
+                <section
+                  id="tools"
+                  className="space-y-4 w-full scroll-mt-[90px]"
+                >
+                  <h2 className="text-[22px] font-semibold">Tools</h2>
+                  {article.tools?.map((tool, i) => (
+                    <div key={i} className="mb-4">
+                      {tool.title?.trim() && (
+                        <p className="font-semibold text-[18px]">
+                          {tool.title}
+                        </p>
+                      )}
+                      {tool.content?.trim() && (
+                        <div
+                          className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[18px]"
+                          dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                            tool.content,
+                          )}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </section>
+              )}
+              {article.related_reads?.some(
+                (read) => read.title?.trim() || read.content?.trim(),
+              ) && (
+                <section
+                  id="related-reads"
+                  className="space-y-4 w-full scroll-mt-[90px]"
+                >
+                  <h2 className="text-[22px] font-semibold">Related Reads</h2>
+                  {article.related_reads?.map((read, i) => (
+                    <div key={i} className="mb-4">
+                      {read.title?.trim() && (
+                        <p className="font-semibold text-[18px]">
+                          {read.title}
+                        </p>
+                      )}
+                      {read.content?.trim() && (
+                        <div
+                          className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[18px]"
+                          dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
+                            read.content,
+                          )}
+                        />
+                      )}
                     </div>
                   ))}
                 </section>

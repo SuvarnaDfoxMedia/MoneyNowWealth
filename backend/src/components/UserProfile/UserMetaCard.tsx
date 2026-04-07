@@ -237,8 +237,8 @@ itiRef.current = intlTelInput(phoneRef.current, {
     try {
       const submitData = new FormData();
       submitData.append("name", `${formData.firstname} ${formData.lastname}`);
-      submitData.append("phone", phone);
-      submitData.append("country_code", country_code);
+      submitData.append("mobile", phone);
+      submitData.append("countryCode", country_code);
       submitData.append("address", formData.address);
       if (profileImage) submitData.append("profileImage", profileImage);
 
@@ -300,7 +300,8 @@ itiRef.current = intlTelInput(phoneRef.current, {
             fieldErrors.firstname = e.msg;
             fieldErrors.lastname = e.msg;
           }
-          if (e.param === "phone") fieldErrors.phone = e.msg;
+          if (e.param === "phone" || e.param === "mobile")
+            fieldErrors.phone = e.msg;
           if (e.param === "address") fieldErrors.address = e.msg;
         });
         setErrors(fieldErrors);

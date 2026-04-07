@@ -1,12 +1,12 @@
-import React from 'react'
-import ComingSoon from "@/components/ComminSoon"; 
+import React from "react";
+import ComingSoon from "@/components/CommingSoon";
 
 const page = () => {
   return (
     <div>
-      <ComingSoon/>
+      <ComingSoon />
     </div>
-  )
-}
+  );
+};
 
-export default page
+export default page;

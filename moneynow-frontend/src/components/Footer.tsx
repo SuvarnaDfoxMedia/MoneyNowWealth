@@ -43,7 +43,7 @@ const Footer = () => {
         }}
       >
         {/* CONTENT CONTAINER */}
-        <div className="relative z-10 text-[#FFFFFF]">
+        <div className="relative z-10 text-[#FFFFFF] px-4">
           {/* Top Section */}
           <div className="max-w-7xl mx-auto  py-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12">
             {/* Brand/Left Column */}

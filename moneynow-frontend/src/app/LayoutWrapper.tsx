@@ -1,20 +1,13 @@
-
-
-//   // Auth pages where Header/Footer should not appear
-//   const authRoutes = [
-//     "/auth/login",
-//     "/auth/register",
-//     "/auth/forgot-password",
-//     "/auth/set-new-password",
-//     "/blog-listing",
-//   ];
-
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import BlogNav from "@/components/BlogNav";
-import Footer from "@/components/Footer";
+
+const Footer = dynamic(() => import("@/components/Footer"), {
+  ssr: false,
+});
 
 export default function LayoutWrapper({
   children,

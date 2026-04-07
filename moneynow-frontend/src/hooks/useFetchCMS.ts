@@ -26,19 +26,24 @@ export const useFetchCMS = (slug: string) => {
 
         const res = await fetch(`${API_BASE}/api/cmspages/slug/${slug}`);
 
+        // If the API returns 404, don't throw an error, just set page to null
         if (!res.ok) {
-          throw new Error("Failed to fetch CMS page");
+          setPage(null);
+          return;
         }
 
         const result = await res.json();
-        if (!result.success || !result.data) {
-          throw new Error("Page not found");
-        }
 
-        setPage(result.data);
+        // If success is false or data is missing, treat it as "no page"
+        if (!result.success || !result.data) {
+          setPage(null);
+        } else {
+          setPage(result.data);
+        }
       } catch (err: any) {
-        console.error("CMS Fetch Error:", err);
-        setError(err.message || "Something went wrong");
+        // Only log actual network/system errors here
+        console.error("CMS Network Error:", err);
+        setError("Network error");
         setPage(null);
       } finally {
         setLoading(false);
