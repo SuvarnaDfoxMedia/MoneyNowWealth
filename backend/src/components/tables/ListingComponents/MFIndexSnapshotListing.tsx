@@ -64,6 +64,12 @@ export default function MFIndexSnapshotListing() {
     setPage,
   ]);
 
+  useEffect(() => {
+    if (!sortField) {
+      setSort("last_updated_date", "desc");
+    }
+  }, [setSort, sortField]);
+
   const { data, extractList, isLoading, isFetching, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFIndexSnapshot>({
       role,

@@ -751,6 +751,12 @@ export default function PartnershipEnquiryListing() {
   ]);
 
   useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
+  useEffect(() => {
     if (!isMounted) return;
     void markModulesAsRead(["partner-enquiries"]);
   }, [isMounted, markModulesAsRead]);

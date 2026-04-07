@@ -79,6 +79,12 @@ export default function NewsletterListing() {
     setPage,
   ]);
 
+  useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
   /* ------------------- Handlers ------------------- */
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -216,7 +222,7 @@ export default function NewsletterListing() {
       label: "#",
       render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
     },
-    { key: "name", label: "Name", sortable: true, render: (r) => r.name },
+    // { key: "name", label: "Name", sortable: true, render: (r) => r.name },
     { key: "email", label: "Email", sortable: true, render: (r) => r.email },
     {
       key: "created_at",

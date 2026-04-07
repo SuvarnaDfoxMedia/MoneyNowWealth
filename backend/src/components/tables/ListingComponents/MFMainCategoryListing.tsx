@@ -86,6 +86,12 @@ export default function MFMainCategoryListing() {
     setPage,
   ]);
 
+  useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
   const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFMainCategory>({
       role,

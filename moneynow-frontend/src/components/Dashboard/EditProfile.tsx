@@ -115,6 +115,7 @@ export default function EditProfile({
     itiRef.current = intlTelInput(phoneRef.current, {
       separateDialCode: true,
       initialCountry: "in",
+      preferredCountries: ["in"],
       utilsScript:
         "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js",
       customContainer: "w-full",
