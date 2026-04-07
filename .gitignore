@@ -40,7 +40,7 @@ coverage/
 *.cache/
 
 # Optional upload folder if present
-uploads/
+# uploads/
 
 
 
