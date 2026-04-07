@@ -37,7 +37,7 @@ function ChooseHowYouLikeBeging() {
               </p>
 
               <Link
-                href="/register"
+                href="/auth/register"
                 className="mt-6 inline-flex items-center gap-3 rounded-[4px] bg-[#ffffff] px-4 py-2.5 text-[16px] font-medium leading-none text-[#043F79] transition-colors duration-300 hover:bg-[#F5F8FC] md:mt-8 md:gap-4 md:px-5 md:py-3 md:text-[18px]"
               >
                 <span>Register for free</span>
