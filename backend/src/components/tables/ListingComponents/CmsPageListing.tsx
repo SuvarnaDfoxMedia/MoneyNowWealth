@@ -28,6 +28,7 @@ import { createPortal } from "react-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import { axiosApi } from "../../../api/axios";
 
 interface CmsPage {
   _id: string;
@@ -114,6 +115,9 @@ export default function CmsPageListing() {
     sortField,
     sortOrder,
     enabled: isMounted,
+    extraParams: {
+      includeInactive: true,
+    },
   });
 
   const [pages, setPages] = useState<CmsPage[]>([]);
@@ -214,14 +218,30 @@ export default function CmsPageListing() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  /** Local toggle Active/Inactive */
-  const handleToggleStatus = (id: string) => {
-    setPages((prev) =>
-      prev.map((p) =>
-        p._id === id ? { ...p, is_active: p.is_active === 1 ? 0 : 1 } : p,
-      ),
-    );
-    toast.success("Status updated locally");
+  /** Toggle Active/Inactive */
+  const handleToggleStatus = async (id: string) => {
+    try {
+      const res = await axiosApi.patch<{
+        page?: CmsPage;
+        data?: CmsPage;
+        message?: string;
+      }>(`/admin/cmspages/change/${id}/status`, {});
+
+      const updatedPage = res?.data?.page || res?.data?.data;
+
+      setPages((prev) =>
+        prev.map((page) =>
+          page._id === id
+            ? { ...page, is_active: updatedPage?.is_active ?? page.is_active }
+            : page,
+        ),
+      );
+
+      toast.success(res?.message || "Status updated successfully");
+      refetch();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to update page status");
+    }
   };
 
   /** Delete page */

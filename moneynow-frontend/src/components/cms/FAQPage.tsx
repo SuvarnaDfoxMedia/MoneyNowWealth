@@ -15,13 +15,18 @@ const FAQPage = ({ data }: { data: any }) => {
       .replace(/\s+/g, "-")
       .trim();
 
+  const stripHtml = (value?: string) =>
+    (value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
   const filteredSections = useMemo(() => {
     if (!search) return data?.sections || [];
 
+    const normalizedSearch = search.toLowerCase().trim();
+
     return data?.sections?.filter(
       (section: any) =>
-        section.title.toLowerCase().includes(search.toLowerCase()) ||
-        section.content.toLowerCase().includes(search.toLowerCase()),
+        stripHtml(section.title).toLowerCase().includes(normalizedSearch) ||
+        stripHtml(section.content).toLowerCase().includes(normalizedSearch),
     );
   }, [search, data]);
 

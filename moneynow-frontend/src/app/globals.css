@@ -215,6 +215,35 @@ html {
   line-height: 1.5 !important;
 }
 
+.blog-rich-content {
+  overflow-x: auto;
+}
+
+.blog-rich-content table {
+  width: 100%;
+  min-width: 640px;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  border: 1px solid #d8dee8;
+}
+
+.blog-rich-content th,
+.blog-rich-content td {
+  border: 1px solid #d8dee8;
+  padding: 0.875rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.blog-rich-content th {
+  background: #f4f7fb;
+  font-weight: 600;
+}
+
+.blog-rich-content tbody tr:nth-child(even) {
+  background: #fafcff;
+}
+
 /* ===== PDF COLOR FIX FOR html2canvas ===== */
 .pdf-safe,
 .pdf-safe * {

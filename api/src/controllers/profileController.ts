@@ -68,7 +68,7 @@ export const updateProfile = async (
       return sendError(res, "Validation failed", 400, errors.array());
     }
 
-    const { name, mobile, countryCode, address } = req.body;
+    const { name, mobile, phone, countryCode, country_code, address } = req.body;
 
     /* ---- Split full name ---- */
     let firstname = "";
@@ -87,8 +87,12 @@ export const updateProfile = async (
     if (lastname) updateData.lastname = lastname;
 
     //  FIXED
-    if (mobile !== undefined) updateData.mobile = mobile;
-    if (countryCode !== undefined) updateData.countryCode = countryCode;
+    const resolvedMobile = mobile ?? phone;
+    const resolvedCountryCode = countryCode ?? country_code;
+
+    if (resolvedMobile !== undefined) updateData.mobile = String(resolvedMobile).trim();
+    if (resolvedCountryCode !== undefined)
+      updateData.countryCode = String(resolvedCountryCode).trim();
 
     if (address !== undefined) updateData.address = address;
     if (req.file?.filename) updateData.profileImage = req.file.filename;

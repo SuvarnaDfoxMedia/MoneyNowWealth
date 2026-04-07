@@ -161,14 +161,6 @@ export default function ContactEnquiryListing() {
     setEnquiries(Array.isArray(data?.enquiries) ? data.enquiries : []);
   }, [data]);
 
-  /* ------------------- Debounced refetch ------------------- */
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const timer = setTimeout(() => refetch(), 300);
-    return () => clearTimeout(timer);
-  }, [searchValue, sortField, sortOrder, page, recordsPerPage, isMounted]);
-
   /* ------------------- Delete functionality ------------------- */
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);

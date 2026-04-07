@@ -10,6 +10,7 @@ export interface SubscriptionParams {
   sortField?: string;
   sortOrder?: "asc" | "desc";
   enabled?: boolean;
+  includeInactive?: boolean;
 }
 
 export interface SubscriptionItem {
@@ -85,6 +86,7 @@ export const useSubscriptionCrud = ({
   sortField = "",
   sortOrder = "desc",
   enabled = true,
+  includeInactive = false,
 }: SubscriptionParams = {}) => {
   const queryClient = useQueryClient();
   const queryKey = [
@@ -108,6 +110,7 @@ export const useSubscriptionCrud = ({
           if (searchValue) params.search = searchValue;
           if (sortField) params.sortBy = sortField;
           if (sortOrder) params.sortOrder = sortOrder;
+          if (includeInactive) params.includeInactive = "true";
 
           const response = await axiosApi.get<SubscriptionApiResponse>(
             `/${role}/subscriptions`,

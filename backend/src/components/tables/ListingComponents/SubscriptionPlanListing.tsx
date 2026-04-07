@@ -161,6 +161,9 @@ export default function SubscriptionListing() {
       sortOrder,
       listKey: "plans",
       enabled: isMounted,
+      extraParams: {
+        includeInactive: true,
+      },
     });
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -235,7 +238,6 @@ export default function SubscriptionListing() {
 
     const res = await deleteRecord(deleteModalId);
     if (res?.success) {
-      toast.success("Plan deleted");
       setPlans((prev) => prev.filter((p) => p._id !== deleteModalId));
       refetch();
     } else {
@@ -276,13 +278,12 @@ export default function SubscriptionListing() {
           onClick={async () => {
             try {
               const newStatus = !row.is_active;
-              const res = await toggleStatus(row._id, newStatus);
+              await toggleStatus(row._id, newStatus);
               setPlans((prev) =>
                 prev.map((p) =>
                   p._id === row._id ? { ...p, is_active: newStatus } : p,
                 ),
               );
-              toast.success(res?.message || "Status updated");
             } catch (err: unknown) {
               const message =
                 err instanceof Error ? err.message : "Failed to update status";
