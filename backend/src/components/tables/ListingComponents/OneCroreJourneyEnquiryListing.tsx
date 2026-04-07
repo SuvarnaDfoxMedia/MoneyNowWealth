@@ -99,6 +99,12 @@ export default function OneCroreJourneyEnquiryListing() {
   ]);
 
   useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
+  useEffect(() => {
     if (!isMounted) return;
     void markModulesAsRead(["one-crore-journey-enquiries"]);
   }, [isMounted, markModulesAsRead]);

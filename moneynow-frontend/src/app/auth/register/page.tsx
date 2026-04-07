@@ -56,6 +56,7 @@ const Register = () => {
 
     const iti = intlTelInput(phoneRef.current, {
       initialCountry: "in",
+      preferredCountries: ["in"],
       separateDialCode: true,
       autoPlaceholder: "off",
       utilsScript:
