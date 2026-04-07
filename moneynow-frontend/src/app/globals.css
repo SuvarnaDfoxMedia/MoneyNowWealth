@@ -73,29 +73,99 @@ body {
   border-right: 1px solid #d1d5db !important;
   padding: 6px 12px !important;
   background-color: #ffffff !important;
-  height: 44px !important;
+  height: 52px !important;
+  color: #111111 !important;
 }
 
 .iti__country-list {
   z-index: 9999 !important;
+  background: #ffffff !important;
+  border: 1px solid #d8dee8 !important;
+  color: #111111 !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14) !important;
+  width: auto !important;
+  min-width: 240px !important;
+  max-width: 280px !important;
 }
 
 .iti input {
   width: 100% !important;
   padding-left: 90px !important;
-  height: 50px !important;
-  border-radius: 0 !important;
-  border: 1px solid #d1d5db !important;
+  height: 52px !important;
+  border-radius: 6px !important;
+  border: 1px solid #d8dee8 !important;
+  background: #ffffff !important;
 }
 
 .iti__selected-flag {
-  height: 44px !important;
+  height: 50px !important;
+  color: #111111 !important;
 }
 
 .iti__flag-container {
-  border: 1px solid #F0F0F0 !important;
+  border: 1px solid #d8dee8 !important;
   border-right: none !important;
-  height: 44px !important;
+  height: 50px !important;
+  color: #111111 !important;
+}
+
+.iti__selected-dial-code,
+.iti__country-name,
+.iti__dial-code,
+.iti__arrow,
+.iti__country {
+  color: #111111 !important;
+}
+
+.iti__country.iti__highlight {
+  background-color: #f4f7fb !important;
+}
+
+.one-crore-phone-field .iti {
+  width: 100% !important;
+}
+
+.one-crore-phone-field .iti input {
+  width: 100% !important;
+  height: 52px !important;
+  border-radius: 6px !important;
+  border: 1px solid #d8dee8 !important;
+  background: #ffffff !important;
+  padding-left: 78px !important;
+}
+
+.one-crore-phone-field .iti__flag-container,
+.one-crore-phone-field .iti__selected-flag {
+  height: 50px !important;
+}
+
+.one-crore-phone-field .iti__flag-container {
+  width: 88px !important;
+}
+
+.one-crore-phone-field .iti--separate-dial-code .iti__selected-flag {
+  width: 88px !important;
+  padding: 0 10px !important;
+  justify-content: center !important;
+}
+
+.one-crore-phone-field .iti__selected-dial-code {
+  font-size: 15px !important;
+}
+
+
+.one-crore-phone-field .iti__flag-container {
+  border-color: #d8dee8 !important;
+}
+
+.one-crore-phone-field .iti__country-list {
+  min-width: 220px !important;
+  max-width: 240px !important;
+}
+
+.iti__selected-dial-code,
+.iti__arrow {
+  color: #111111 !important;
 }
 
 

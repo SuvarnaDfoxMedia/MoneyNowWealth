@@ -1,21 +1,7 @@
-
-// import {
-//   chooseJourneyTitle,
-//   chooseJourneySubtitle,
-//   chooseJourneyCards,
-//   homePortfolioTitle,
-//   homePortfolioSubtitle,
-//   homePortfolioCards,
-//   whyMoneyNowTitle,
-//   whyMoneyNowSubtitle,
-//   whyMoneyNowCards,
-//   homeInvestTrackData,
-//   homeBlogData,
-// } from "@/data/homePageData";
-
 import React from "react";
 import Hero from "@/components/home/hero";
 import ChooseJourneyCard from "@/components/home/choose-journey-card";
+import ChooseHowYouLikeBeging from "@/components/home/ChooseHowYouLikeBeging";
 import HomeInvestTrack from "@/components/home/invest-with-confidence";
 import StayConnected from "@/components/home/home-newsletters";
 import HomeBlog from "@/components/home/home-blog";
@@ -28,6 +14,7 @@ const Index = () => {
       <Hero />
 
       <ChooseJourneyCard />
+      <ChooseHowYouLikeBeging />
 
       <HomeInvestTrack data={homeInvestTrackData} />
 

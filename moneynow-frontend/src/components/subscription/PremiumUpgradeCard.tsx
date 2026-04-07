@@ -58,12 +58,15 @@ export default function PremiumUpgradeCard({
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#BFD8F3]">
           Premium Access
         </p>
-        <h3 className={`mt-3 font-semibold ${isCompact ? "text-xl" : "text-2xl"}`}>
+        <h3
+          className={`mt-3 font-semibold ${isCompact ? "text-xl" : "text-2xl"}`}
+        >
           Unlock deeper insights with a free Premium trial
         </h3>
         <p className="mt-3 max-w-lg text-sm leading-6 text-[#E6F0FA]">
-          Get premium blogs, advanced market insights, and exclusive research-led
-          features. Activate your complimentary 7-day Premium access instantly.
+          Get premium blogs, advanced market insights, and exclusive
+          research-led features. Activate your complimentary 7-day Premium
+          access instantly.
         </p>
 
         <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
@@ -88,7 +91,7 @@ export default function PremiumUpgradeCard({
             {loading ? "Activating..." : "Upgrade to Premium"}
           </button>
           <p className="text-xs text-[#D6E7F8]">
-            No card required for testing.
+            No credit card is required.
             {/* PRODUCTION OPTIONS: 1 month / 1 year */}
           </p>
         </div>

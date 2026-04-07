@@ -1,18 +1,17 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import "intl-tel-input/build/css/intlTelInput.css";
 import ComparisonBarChart from "@/components/all charts/ComparisonBarChart";
 import DonutChart from "@/components/all charts/DonutChart";
 import StartSipChartBlock from "@/components/start-sip/charts-sub-components/StartSipChartBlock";
-import StartSipHero from "@/components/start-sip/charts-sub-components/StartSipHero";
-import StartSipMetricsGrid from "@/components/start-sip/charts-sub-components/StartSipMetricsGrid";
-import StartSipPanel from "@/components/start-sip/charts-sub-components/StartSipPanel";
 import { CalculatorTab, useCalculator } from "@/hooks/useCalculator";
 import { executeRecaptcha } from "@/lib/recaptcha";
 import useRecaptchaLifecycle from "@/hooks/useRecaptchaLifecycle";
 import useIntlPhoneField from "@/hooks/useIntlPhoneField";
+import { useFetchCards } from "@/hooks/useHomeBlog";
 
 type OneCroreFormState = {
   wealth_amount: number;
@@ -46,44 +45,38 @@ const DEFAULTS: OneCroreFormState = {
 const RETURN_PRESETS = [
   { label: "Conservative", value: 8 },
   { label: "Balanced", value: 11 },
-  { label: "Growth-oriented", value: 13 },
-];
+  { label: "Growth-Oriented", value: 13 },
+] as const;
 
 const TOOL_LINKS = [
   {
     title: "Plan another goal",
     copy: "Estimate how much SIP you may need for a different goal amount, time frame, or return assumption.",
     href: "/free-calculators",
+    cta: "Open goal calculator",
+    icon: "target",
   },
   {
     title: "See what a lumpsum could do",
     copy: "Check how a one-time investment today could grow alongside your SIPs over the years.",
     href: "/free-calculators",
+    cta: "Open lumpsum calculator",
+    icon: "chart",
   },
   {
     title: "Understand inflation on your goals",
     copy: "See how inflation changes the real value of your future goals and why starting early matters.",
     href: "/free-calculators",
+    cta: "Open inflation calculator",
+    icon: "trend",
   },
-];
-
-const ARTICLE_LINKS = [
-  {
-    title: "Why staying invested matters more than timing the market",
-    copy: "A short read on how discipline and time can work for your money.",
-  },
-  {
-    title: "How to choose a comfortable SIP amount",
-    copy: "Practical ways to decide what you can invest each month without over-stretching yourself.",
-  },
-  {
-    title: "How to choose the right asset allocation",
-    copy: "A simple way to think about growth, stability, and fit for your long-term goals.",
-  },
-];
+] as const;
 
 const inputClassName =
   "mt-3 h-[54px] w-full rounded-[10px] border border-[#D8D8D8] bg-white px-4 text-[16px] text-[#1A1A1A] outline-none transition focus:border-[#0B3B6E]";
+
+const leadInputClassName =
+  "mt-2 h-[52px] w-full rounded-[6px] border border-[#D8DEE8] bg-white px-4 text-[16px] text-[#111111] outline-none transition placeholder:text-[#7A7A7A] focus:border-[#7FAFE5] focus:ring-0";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 const ONE_CRORE_RECAPTCHA_ACTION = "one_crore_journey_submit";
@@ -108,6 +101,52 @@ const calculateCorpusAtYear = (
   );
 };
 
+function ToolGlyph({ icon }: { icon: (typeof TOOL_LINKS)[number]["icon"] }) {
+  if (icon === "target") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <circle cx="12" cy="12" r="7" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2v3M21 12h-3M12 19v3M6 12H3M17 7l3-3" />
+      </svg>
+    );
+  }
+
+  if (icon === "chart") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="h-6 w-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M4 19V5M4 19h16" />
+        <path d="M8 15l3-3 3 2 5-6" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M4 19h16M6 16l4-4 3 2 5-6" />
+      <path d="M17 8h3v3" />
+    </svg>
+  );
+}
+
 function JourneyField({
   label,
   hint,
@@ -130,7 +169,7 @@ function JourneyField({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-[18px] border border-[#E2E2E2] bg-white p-4">
+    <div className="rounded-[18px] border border-[#EAEAEA] bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.05)] md:p-5">
       <label className="block text-[16px] font-medium text-[#1A1A1A]">
         {label}
       </label>
@@ -150,9 +189,9 @@ function JourneyField({
         max={max}
         step={step}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-4 h-2 w-full cursor-pointer accent-[#0B3B6E]"
+        className="mt-4 h-2 w-full cursor-pointer accent-[#0B4B88]"
       />
-      <div className="mt-2 flex items-center justify-between text-[12px] text-slate-500">
+      <div className="mt-2 flex items-center justify-between text-[12px] text-slate-700">
         <span>
           {prefix}
           {Number(min).toLocaleString("en-IN")}
@@ -164,14 +203,19 @@ function JourneyField({
           {suffix}
         </span>
       </div>
-      <p className="mt-3 text-[13px] leading-6 text-slate-600">{hint}</p>
+      <p className="mt-3 text-[14px] leading-7 text-[#2D2D2D]">{hint}</p>
     </div>
   );
 }
 
 export default function OneCroreJourneyPage() {
-  const { phoneRef, getMobileValue, getCountryCode, clearPhoneValue, validateMobileNumber } =
-    useIntlPhoneField();
+  const {
+    phoneRef,
+    getMobileValue,
+    getCountryCode,
+    clearPhoneValue,
+    validateMobileNumber,
+  } = useIntlPhoneField();
   const [form, setForm] = useState<OneCroreFormState>(DEFAULTS);
   const [lead, setLead] = useState<LeadState>({
     name: "",
@@ -182,6 +226,11 @@ export default function OneCroreJourneyPage() {
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const { calculate, result, loading, error } = useCalculator();
+  const {
+    cards: blogCards,
+    loading: blogLoading,
+    error: blogError,
+  } = useFetchCards("/api/article/published/latest");
 
   const typedResult = result as {
     target_wealth?: number;
@@ -190,30 +239,18 @@ export default function OneCroreJourneyPage() {
     growth_amount?: number;
   } | null;
 
-  const heroMetrics = useMemo(
-    () => [
-      {
-        label: "Target amount",
-        value: formatCurrency(form.wealth_amount),
-      },
-      {
-        label: "User SIP comfort",
-        value: formatCurrency(form.user_sip_capacity),
-      },
-      {
-        label: "Time horizon",
-        value: `${form.years} years`,
-      },
-      {
-        label: "Expected return",
-        value: `${form.expected_return}%`,
-      },
-    ],
-    [form],
-  );
-
   const metricItems = useMemo(() => {
-    if (!typedResult) return heroMetrics;
+    if (!typedResult) {
+      return [
+        { label: "Target amount", value: formatCurrency(form.wealth_amount) },
+        {
+          label: "Monthly comfort",
+          value: formatCurrency(form.user_sip_capacity),
+        },
+        { label: "Time horizon", value: `${form.years} years` },
+        { label: "Expected return", value: `${form.expected_return}%` },
+      ];
+    }
 
     return [
       {
@@ -233,7 +270,13 @@ export default function OneCroreJourneyPage() {
         value: formatCurrency(typedResult.target_wealth || form.wealth_amount),
       },
     ];
-  }, [form.wealth_amount, heroMetrics, typedResult]);
+  }, [
+    form.expected_return,
+    form.user_sip_capacity,
+    form.wealth_amount,
+    form.years,
+    typedResult,
+  ]);
 
   const comparisonData = useMemo(() => {
     const sipAmount = Number(typedResult?.sip_amount || 0);
@@ -421,24 +464,47 @@ export default function OneCroreJourneyPage() {
   };
 
   return (
-    <div className="bg-[#F5F7FB] text-[#111111]">
-      <StartSipHero
-        title="See how your SIP can grow towards Rs 1 Crore and beyond"
-        subtitle="Start with an amount you are comfortable investing each month and see how disciplined SIPs can grow over time towards milestones like Rs 25L, Rs 50L, and Rs 1 Crore, without chasing the markets."
-        metrics={heroMetrics}
-      />
+    <div className="bg-white font-poppins text-[#111111]">
+      <section className="px-3 pt-4 md:px-6 md:pt-6">
+        <div className="mx-auto max-w-[1440px] overflow-hidden rounded-[16px] bg-[#0F5F69] text-white shadow-[0_18px_40px_rgba(5,37,66,0.16)]">
+          <div className="relative grid items-center gap-8 px-8 py-8 md:px-10 md:py-10 lg:grid-cols-[1fr_1.2fr] lg:px-12 xl:min-h-[300px]">
+            <div className="relative z-10 max-w-[640px]">
+              <h1 className="text-[34px] font-semibold leading-[1.18] tracking-[-0.03em] md:text-[48px]">
+                See how your SIP can grow towards &#8377;1 Crore and beyond
+              </h1>
+              <p className="mt-4 max-w-[560px] text-[17px] leading-[1.7] text-white/90 md:text-[19px]">
+                Start with an amount you&apos;re comfortable investing each
+                month and see how disciplined SIPs can grow over time towards
+                your milestone without chasing the markets.
+              </p>
+            </div>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 lg:px-10">
-        <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
-          <StartSipPanel
-            eyebrow="Tell us what you are aiming for"
-            title="Build your SIP journey"
-            subtitle="Start with a few simple assumptions and see what kind of monthly SIP may help you work towards your goal."
-          >
-            <div className="space-y-5">
+            <div className="absolute inset-0">
+              <Image
+                src="/images/one-cr-journey.png"
+                alt="One crore journey hero"
+                fill
+                className="object-cover"
+                priority
+                sizes="100vw"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,36,41,0.80)_0%,rgba(8,36,41,0.58)_32%,rgba(8,36,41,0.20)_64%,rgba(8,36,41,0.03)_100%)]" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1380px] px-4 py-10 md:px-6 md:py-12">
+        <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+          <section className="rounded-[18px] border border-[#E7E7E7] bg-white p-5 shadow-[0_10px_30px_rgba(16,24,40,0.08)] md:p-7">
+            <h2 className="text-[28px] font-semibold tracking-[-0.03em] text-[#111111] md:text-[30px]">
+              Tell us what you&apos;re aiming for
+            </h2>
+
+            <div className="mt-6 space-y-5">
               <JourneyField
                 label="What amount are you aiming for?"
-                hint="You can adjust this to any goal amount - your first Rs 50L, Rs 1 Crore, Rs 2 Crore, or more."
+                hint="You can adjust this to any goal amount - your first Rs 50L, Rs 1 Crore, Rs 2 Crore or more."
                 value={form.wealth_amount}
                 min={2500000}
                 max={100000000}
@@ -475,7 +541,7 @@ export default function OneCroreJourneyPage() {
                 }
               />
 
-              <div className="rounded-[18px] border border-[#E2E2E2] bg-white p-4">
+              <div className="rounded-[18px] border border-[#EAEAEA] bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.05)] md:p-5">
                 <label className="block text-[16px] font-medium text-[#1A1A1A]">
                   What long-term return do you want to assume?
                 </label>
@@ -490,13 +556,13 @@ export default function OneCroreJourneyPage() {
                           expected_return: preset.value,
                         }))
                       }
-                      className={`rounded-full px-4 py-2 text-[13px] font-medium transition ${
+                      className={`rounded-[8px] border px-4 py-2.5 text-[14px] font-medium transition ${
                         form.expected_return === preset.value
-                          ? "bg-[#0B3B6E] text-white"
-                          : "border border-[#D8D8D8] bg-white text-[#1A1A1A]"
+                          ? "border-[#0B4B88] bg-[#0B4B88] text-white shadow-[0_8px_18px_rgba(11,75,136,0.22)]"
+                          : "border-[#D7DFEA] bg-white text-[#0B4B88] hover:border-[#AFC3DB] hover:bg-[#F6F9FD]"
                       }`}
                     >
-                      {preset.label} @{preset.value}%
+                      {preset.label} (@{preset.value}%)
                     </button>
                   ))}
                 </div>
@@ -512,16 +578,16 @@ export default function OneCroreJourneyPage() {
                       expected_return: Number(event.target.value),
                     }))
                   }
-                  className="mt-5 h-2 w-full cursor-pointer accent-[#0B3B6E]"
+                  className="mt-5 h-2 w-full cursor-pointer accent-[#0B4B88]"
                 />
-                <div className="mt-3 flex items-center justify-between text-[13px] text-slate-500">
+                <div className="mt-3 flex items-center justify-between text-[13px] text-[#1F2937]">
                   <span>6%</span>
-                  <span className="font-semibold text-[#0B3B6E]">
+                  <span className="text-[14px] font-semibold text-[#0B4B88]">
                     {form.expected_return}%
                   </span>
                   <span>15%</span>
                 </div>
-                <p className="mt-3 text-[13px] leading-6 text-slate-600">
+                <p className="mt-4 text-[14px] leading-7 text-[#2D2D2D]">
                   These percentages are long-term return assumptions for
                   illustration, based broadly on historical market data - not
                   predictions or guarantees.
@@ -530,7 +596,7 @@ export default function OneCroreJourneyPage() {
 
               <JourneyField
                 label="Inflation assumption (per year)"
-                hint="We use this to estimate the future value of your goal in today's terms."
+                hint="Pick an amount that feels realistic and comfortable for you."
                 value={form.inflation_rate}
                 min={3}
                 max={7}
@@ -541,23 +607,15 @@ export default function OneCroreJourneyPage() {
                 }
               />
 
-              <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={handleCalculate}
                   disabled={loading}
-                  className="rounded-md bg-[#0B3B6E] px-6 py-3 text-[15px] font-medium text-white transition hover:bg-[#082D54] disabled:opacity-60"
+                  className="rounded-[6px] bg-[#0E4A89] px-8 py-4 text-[16px] font-medium text-white transition hover:bg-[#0A3C6F] disabled:opacity-60"
                 >
-                  {loading ? "Calculating..." : "Calculate my SIP journey"}
+                  {loading ? "Calculating..." : "Calculate My SIP Journey"}
                 </button>
-                {/* {typedResult?.sip_amount ? (
-                  <p className="text-[14px] text-slate-600">
-                    Your comfort SIP:{" "}
-                    <span className="font-semibold text-[#0B3B6E]">
-                      {formatCurrency(form.user_sip_capacity)}
-                    </span>
-                  </p>
-                ) : null} */}
               </div>
 
               {error ? (
@@ -566,132 +624,196 @@ export default function OneCroreJourneyPage() {
                 </div>
               ) : null}
             </div>
-          </StartSipPanel>
+          </section>
 
           <div className="space-y-8">
-            <StartSipPanel
-              eyebrow="Your SIP journey, in simple numbers"
-              title="Result summary"
-              subtitle="A simple summary of what your selected assumptions may mean over time."
-            >
+            <section className="rounded-[18px] border border-[#E7E7E7] bg-white p-5 shadow-[0_10px_30px_rgba(16,24,40,0.08)] md:p-6">
+              <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-[#111111] md:text-[24px]">
+                Your SIP journey, in simple numbers
+              </h2>
+              <p className="mt-3 text-[15px] leading-7 text-[#222222] md:text-[16px]">
+                Enter your assumptions and calculate the journey to see the
+                required SIP, invested amount, growth, and future value.
+              </p>
+
               {typedResult?.sip_amount ? (
-                <>
+                <div className="mt-6">
                   <p className="text-[18px] leading-8 text-slate-800">
                     {summarySentence}
                   </p>
                   <p className="mt-4 text-[15px] leading-7 text-slate-600">
                     {detailSentence}
                   </p>
-                  <div className="mt-6">
-                    <StartSipMetricsGrid items={metricItems} />
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    {metricItems.map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-[14px] border border-[#E7E7E7] bg-[#FAFBFD] p-4"
+                      >
+                        <p className="text-[12px] font-medium uppercase tracking-[0.16em] text-[#6B7280]">
+                          {item.label}
+                        </p>
+                        <p className="mt-2 text-[22px] font-semibold text-[#111111]">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                </>
+                </div>
               ) : (
-                <p className="text-[15px] leading-7 text-slate-600">
-                  Enter your assumptions and calculate the journey to see the
-                  required SIP, total invested amount, potential growth, and
-                  target wealth.
-                </p>
+                <div className="mt-2">
+                  <p className="text-[15px] leading-7 text-slate-600">
+                    Enter your assumptions and calculate the journey to see the
+                    required SIP, total invested amount, growth, and future
+                    value.
+                  </p>
+                </div>
               )}
-            </StartSipPanel>
+            </section>
 
             {typedResult?.sip_amount && comparisonData.length > 0 ? (
-              <StartSipPanel
-                eyebrow="Growth view"
-                title="How the journey may build over time"
-              >
-                <StartSipChartBlock
-                  title="Projected progress vs target"
-                  copy="A simple year-by-year view showing the milestone target versus projected accumulation using the required SIP."
-                >
-                  <ComparisonBarChart data={comparisonData} height={360} />
-                </StartSipChartBlock>
+              <section className="rounded-[18px] border border-[#E7E7E7] bg-white p-5 shadow-[0_10px_30px_rgba(16,24,40,0.08)] md:p-6">
+                <div>
+                  <p className="text-[13px] font-medium uppercase tracking-[0.18em] text-[#0E4A89]">
+                    Growth view
+                  </p>
+                  <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.02em] text-[#111111]">
+                    How the journey may build over time
+                  </h2>
+                </div>
 
-                <div className="mt-8">
+                <div className="mt-6 rounded-[16px] border border-[#E6EAF0] bg-[#FBFCFE] p-4 md:p-5">
+                  <StartSipChartBlock
+                    title="Projected progress vs target"
+                    copy="A simple year-by-year view showing the milestone target versus projected accumulation using the required SIP."
+                  >
+                    <ComparisonBarChart data={comparisonData} height={340} />
+                  </StartSipChartBlock>
+                </div>
+
+                <div className="mt-6 rounded-[16px] border border-[#E6EAF0] bg-[#FBFCFE] p-4 md:p-5">
                   <StartSipChartBlock
                     title="Invested amount vs growth"
                     copy="A simple breakdown of how much comes from your contribution versus potential growth."
                   >
-                    <DonutChart data={allocationData} height={360} />
+                    <DonutChart data={allocationData} height={320} />
                   </StartSipChartBlock>
                 </div>
-              </StartSipPanel>
+              </section>
             ) : null}
 
-            <StartSipPanel
-              eyebrow="Want this plan in your inbox?"
-              title="We'll send a simple summary of your SIP journey"
-              subtitle="Share your details and we'll send you this plan, along with an option to talk to a MoneyNow executive."
-            >
-              <form onSubmit={handleLeadSubmit} className="space-y-4">
+            <section className="rounded-[18px] bg-[linear-gradient(135deg,#0E4A89_0%,#072B52_100%)] p-5 text-white shadow-[0_16px_36px_rgba(8,40,80,0.24)] md:p-6">
+              <h2 className="text-[22px] font-semibold tracking-[-0.02em] md:text-[24px]">
+                Want this plan in your inbox?
+              </h2>
+              <p className="mt-4 max-w-[560px] text-[16px] leading-8 text-white/88">
+                We&apos;ll send you a simple summary of your SIP journey and an
+                option to talk to a Moneynow executive.
+              </p>
+
+              <form
+                noValidate
+                onSubmit={handleLeadSubmit}
+                className="mt-8 space-y-4"
+              >
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
+                    <label className="block text-[14px] font-medium text-white">
+                      Full name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       value={lead.name}
-                      onChange={(event) =>
+                      onChange={(event) => {
                         setLead((prev) => ({
                           ...prev,
                           name: event.target.value,
-                        }))
-                      }
-                      placeholder="Full name"
-                      className={`${inputClassName} ${leadErrors.name ? "border-red-500" : ""}`}
+                        }));
+                        setLeadErrors((prev) => ({
+                          ...prev,
+                          name: undefined,
+                          submit: undefined,
+                        }));
+                      }}
+                      placeholder="Enter your full name"
+                      className={`${leadInputClassName} ${
+                        leadErrors.name ? "border-red-500" : ""
+                      }`}
                     />
                     {leadErrors.name ? (
-                      <p className="mt-2 text-sm text-red-600">
+                      <p className="mt-2 text-sm text-red-500">
                         {leadErrors.name}
                       </p>
                     ) : null}
                   </div>
+
                   <div>
+                    <label className="block text-[14px] font-medium text-white">
+                      Email <span className="text-red-500">*</span>
+                    </label>
                     <input
                       value={lead.email}
-                      onChange={(event) =>
+                      onChange={(event) => {
                         setLead((prev) => ({
                           ...prev,
                           email: event.target.value,
-                        }))
-                      }
-                      placeholder="Email"
-                      className={`${inputClassName} ${leadErrors.email ? "border-red-500" : ""}`}
+                        }));
+                        setLeadErrors((prev) => ({
+                          ...prev,
+                          email: undefined,
+                          submit: undefined,
+                        }));
+                      }}
+                      type="text"
+                      inputMode="email"
+                      placeholder="Enter your email"
+                      className={`${leadInputClassName} ${
+                        leadErrors.email ? "border-red-500" : ""
+                      }`}
                     />
                     {leadErrors.email ? (
-                      <p className="mt-2 text-sm text-red-600">
+                      <p className="mt-2 text-sm text-red-500">
                         {leadErrors.email}
                       </p>
                     ) : null}
                   </div>
-                  <div>
-                    <input
-                      ref={phoneRef}
-                      type="tel"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      onChange={() =>
-                        setLeadErrors((prev) => ({
-                          ...prev,
-                          mobile: undefined,
-                          submit: undefined,
-                        }))
-                      }
-                      onBlur={() => {
-                        const mobileError = validateMobileNumber();
-                        setLeadErrors((prev) => ({
-                          ...prev,
-                          mobile: mobileError || undefined,
-                        }));
-                      }}
-                      placeholder="Mobile number"
-                      className={`${inputClassName} ${leadErrors.mobile ? "border-red-500" : ""}`}
-                    />
-                    {leadErrors.mobile ? (
-                      <p className="mt-2 text-sm text-red-600">
-                        {leadErrors.mobile}
-                      </p>
-                    ) : null}
-                  </div>
                 </div>
-                <label className="flex h-[54px] items-center gap-3 rounded-[10px] border border-[#D8D8D8] bg-white px-4 text-[15px] text-slate-700">
+
+                <div className="one-crore-phone-field w-full md:max-w-[calc(50%-0.5rem)]">
+                  <label className="block text-[14px] font-medium text-white">
+                    Mobile number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    ref={phoneRef}
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    onChange={() =>
+                      setLeadErrors((prev) => ({
+                        ...prev,
+                        mobile: undefined,
+                        submit: undefined,
+                      }))
+                    }
+                    onBlur={() => {
+                      const mobileError = validateMobileNumber();
+                      setLeadErrors((prev) => ({
+                        ...prev,
+                        mobile: mobileError || undefined,
+                      }));
+                    }}
+                    placeholder="Enter mobile number"
+                    className={`${leadInputClassName} !pl-[90px] ${
+                      leadErrors.mobile ? "border-red-500" : ""
+                    }`}
+                  />
+                  {leadErrors.mobile ? (
+                    <p className="mt-2 text-sm text-red-500">
+                      {leadErrors.mobile}
+                    </p>
+                  ) : null}
+                </div>
+
+                <label className="flex items-start gap-3 pt-1 text-[15px] leading-7 text-white/92">
                   <input
                     type="checkbox"
                     checked={lead.wants_callback}
@@ -701,25 +823,20 @@ export default function OneCroreJourneyPage() {
                         wants_callback: event.target.checked,
                       }))
                     }
+                    className="mt-1 h-4 w-4 rounded border-white/40"
                   />
-                  I&apos;d like a MoneyNow advisor to walk me through this on a
-                  quick call
+                  I&apos;d like a Moneynow advisor to walk me through this on a
+                  quick call.
                 </label>
 
                 <div className="flex flex-wrap gap-3 pt-2">
                   <button
                     type="submit"
                     disabled={submitLoading}
-                    className="rounded-md bg-[#0B3B6E] px-6 py-3 text-[15px] font-medium text-white transition hover:bg-[#082D54] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-[6px] bg-white px-10 py-3 text-[16px] font-medium text-[#0E4A89] transition hover:bg-[#F4F7FB] disabled:opacity-60"
                   >
                     {submitLoading ? "Sending..." : "Send me this plan"}
                   </button>
-                  <Link
-                    href="/contact-us"
-                    className="rounded-md border border-[#0B3B6E] px-6 py-3 text-[15px] font-medium text-[#0B3B6E]"
-                  >
-                    Book a discovery call
-                  </Link>
                 </div>
 
                 {leadSubmitted ? (
@@ -734,75 +851,112 @@ export default function OneCroreJourneyPage() {
                   </div>
                 ) : null}
               </form>
-            </StartSipPanel>
+            </section>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-8 lg:px-10">
-        <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
-          <StartSipPanel
-            eyebrow="More tools to explore"
-            title="Use these simple tools to look at your money from a few different angles."
-          >
-            <div className="grid gap-4 md:grid-cols-3">
-              {TOOL_LINKS.map((card) => (
-                <div
-                  key={card.title}
-                  className="rounded-[16px] border border-slate-200 bg-[#FAFAFA] p-5"
-                >
-                  <h3 className="text-[18px] font-semibold text-slate-900">
-                    {card.title}
-                  </h3>
-                  <p className="mt-3 text-[14px] leading-7 text-slate-600">
-                    {card.copy}
-                  </p>
-                  <Link
-                    href={card.href}
-                    className="mt-4 inline-flex text-sm font-medium text-[#0B3B6E]"
-                  >
-                    Open calculator
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </StartSipPanel>
+      <section className="border-t border-b border-[#F0F0F0] bg-[radial-gradient(circle_at_center,rgba(27,85,187,0.10),transparent_62%)] py-14">
+        <div className="mx-auto max-w-[1380px] px-4 md:px-6">
+          <div className="mx-auto max-w-[820px] text-center">
+            <h2 className="text-[40px] font-semibold tracking-[-0.03em] text-[#111111]">
+              More Tools To Explore
+            </h2>
+            <p className="mt-4 text-[18px] leading-8 text-[#222222]">
+              Use these simple tools to look at your money from a few different
+              angles
+            </p>
+          </div>
 
-          <StartSipPanel
-            eyebrow="Learn more about long-term investing"
-            title="Related reading"
-          >
-            <div className="space-y-4">
-              {ARTICLE_LINKS.map((article) => (
-                <div
-                  key={article.title}
-                  className="rounded-[16px] border border-slate-200 bg-[#FAFAFA] p-5"
+          <div className="mt-14 grid gap-6 lg:grid-cols-3">
+            {TOOL_LINKS.map((card) => (
+              <div
+                key={card.title}
+                className="rounded-[18px] border border-[#E6E6E6] bg-white p-6 shadow-[0_12px_34px_rgba(15,23,42,0.10)]"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-[8px] bg-[#E8EEF6] text-[#0E4A89]">
+                  <ToolGlyph icon={card.icon} />
+                </div>
+                <h3 className="mt-5 text-[20px] font-semibold tracking-[-0.02em] text-[#111111]">
+                  {card.title}
+                </h3>
+                <p className="mt-4 text-[16px] leading-8 text-[#2D2D2D]">
+                  {card.copy}
+                </p>
+                <Link
+                  href={card.href}
+                  className="mt-7 inline-flex items-center gap-3 rounded-[6px] bg-[#0E4A89] px-5 py-3 text-[16px] font-medium text-white transition hover:bg-[#0A3C6F]"
                 >
-                  <h3 className="text-[18px] font-semibold text-slate-900">
+                  {card.cta}
+                  <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[1380px] px-4 py-16 md:px-6">
+        <div className="mx-auto max-w-[920px] text-center">
+          <h2 className="text-[34px] font-semibold tracking-[-0.03em] text-[#111111] md:text-[40px]">
+            Learn More About Long-Term Investing
+          </h2>
+        </div>
+
+        {blogLoading ? (
+          <p className="mt-12 text-center text-[16px] text-slate-600">
+            Loading articles...
+          </p>
+        ) : blogError ? (
+          <p className="mt-12 text-center text-[16px] text-red-500">
+            Something went wrong. Please try again.
+          </p>
+        ) : (
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            {blogCards.slice(0, 3).map((article) => (
+              <article
+                key={article.slug}
+                className="overflow-hidden rounded-[18px] border border-[#E6E6E6] bg-white shadow-[0_12px_34px_rgba(15,23,42,0.08)]"
+              >
+                <div className="relative aspect-[1.6/1]">
+                  <Image
+                    src={article.imageSrc}
+                    alt={article.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 33vw"
+                    unoptimized
+                  />
+                </div>
+                <div className="p-6">
+                  <h3 className="text-[20px] font-semibold leading-[1.35] tracking-[-0.02em] text-[#111111]">
                     {article.title}
                   </h3>
-                  <p className="mt-3 text-[14px] leading-7 text-slate-600">
-                    {article.copy}
+                  <p className="mt-3 text-[16px] leading-8 text-[#2D2D2D]">
+                    {article.description || article.category}
                   </p>
                   <Link
-                    href="/blog-listing"
-                    className="mt-4 inline-flex text-sm font-medium text-[#0B3B6E]"
+                    href={`/blog/${article.slug}`}
+                    className="mt-7 inline-flex items-center gap-3 text-[16px] font-medium text-[#111111]"
                   >
-                    Read article
+                    Read Article
+                    <span aria-hidden="true">→</span>
                   </Link>
                 </div>
-              ))}
-              <p className="text-[12px] leading-6 text-slate-500">
-                The calculations shown above are for illustration and
-                educational purposes only and are based on the assumptions
-                selected. They do not represent actual returns or guarantees of
-                any kind. Mutual fund investments are subject to market risks.
-                Please read all scheme-related documents carefully before
-                investing.
-              </p>
-            </div>
-          </StartSipPanel>
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mx-auto max-w-[1380px] px-4 pb-12 text-center md:px-6">
+        <p className="mx-auto max-w-[1260px] text-[16px] leading-[2] text-[#111111]">
+          The calculations shown above are for illustration and educational
+          purposes only and are based on the assumptions you have selected. They
+          do not represent actual returns or guarantees of any kind. Mutual fund
+          investments are subject to market risks. Please read all
+          scheme-related documents carefully before investing.
+        </p>
       </section>
     </div>
   );
