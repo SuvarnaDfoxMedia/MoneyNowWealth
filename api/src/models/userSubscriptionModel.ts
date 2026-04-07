@@ -18,6 +18,11 @@
 //   });
 
 import mongoose, { Document, Schema, Model, Types } from "mongoose";
+import {
+  getRemainingDaysInclusive,
+  isActiveByDay,
+  isExpiredByDay,
+} from "@/utils/dateUtils";
 
 /* ===============================
    Interface: User Subscription
@@ -52,6 +57,12 @@ export interface IUserSubscription extends Document {
     status: string;
     changed_at: Date;
     reason: string;
+  }>;
+  expiry_reminder_history: Array<{
+    reminder_key: string;
+    days_remaining: number;
+    cycle_end_date: Date;
+    sent_at: Date;
   }>;
 
   isExpired: boolean;
@@ -156,6 +167,15 @@ const userSubscriptionSchema = new Schema<IUserSubscription>(
         reason: { type: String, required: true },
       },
     ],
+
+    expiry_reminder_history: [
+      {
+        reminder_key: { type: String, required: true },
+        days_remaining: { type: Number, required: true },
+        cycle_end_date: { type: Date, required: true },
+        sent_at: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -168,18 +188,28 @@ const userSubscriptionSchema = new Schema<IUserSubscription>(
    Virtuals
    =============================== */
 userSubscriptionSchema.virtual("isExpired").get(function () {
-  return this.end_date < new Date();
+  if (this.status === "expired" || !this.is_active || this.is_deleted) {
+    return true;
+  }
+
+  return isExpiredByDay(this.end_date);
 });
 
 userSubscriptionSchema.virtual("isActive").get(function () {
-  return this.is_active && !this.is_deleted && this.end_date > new Date();
+  return (
+    this.status !== "expired" &&
+    this.is_active &&
+    !this.is_deleted &&
+    isActiveByDay(this.end_date)
+  );
 });
 
 userSubscriptionSchema.virtual("daysRemaining").get(function () {
-  const now = new Date();
-  const end = new Date(this.end_date);
-  const diffTime = end.getTime() - now.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (this.status === "expired" || !this.is_active || this.is_deleted) {
+    return 0;
+  }
+
+  return getRemainingDaysInclusive(this.end_date);
 });
 
 /* ===============================
@@ -196,7 +226,11 @@ userSubscriptionSchema.methods.populateFull = async function () {
 
 userSubscriptionSchema.methods.canAccessPremiumContent = function () {
   if (!this.is_active || this.is_deleted) return false;
-  return this.plan_type === "Premium" && this.end_date > new Date();
+  return (
+    this.status !== "expired" &&
+    this.plan_type === "Premium" &&
+    isActiveByDay(this.end_date)
+  );
 };
 
 userSubscriptionSchema.methods.requiresPurchase = function () {
@@ -316,6 +350,7 @@ userSubscriptionSchema.index({ status: 1, end_date: -1 });
 userSubscriptionSchema.index({ promotional_trial_used: 1 });
 userSubscriptionSchema.index({ is_promotional: 1 });
 userSubscriptionSchema.index({ "eligibility.purchase_required": 1 });
+userSubscriptionSchema.index({ "expiry_reminder_history.reminder_key": 1 });
 
 /* ===============================
    Export model

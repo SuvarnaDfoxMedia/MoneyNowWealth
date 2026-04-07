@@ -11,6 +11,10 @@ export interface SendEmailParams {
   text?: string;
   html?: string;
   attachments?: EmailAttachment[];
+  metadata?: {
+    type?: string;
+    channel?: "smtp";
+  };
 }
 
 export interface EmailJob {

@@ -7,6 +7,7 @@ import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 
 export default function SignUpForm() {
   const [firstname, setFname] = useState("");
@@ -26,6 +27,7 @@ export default function SignUpForm() {
     terms?: string;
   }>({});
   const navigate = useNavigate();
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   //  Use environment variable from .env
   const API_BASE = import.meta.env.VITE_API_BASE;
@@ -53,6 +55,7 @@ export default function SignUpForm() {
       newErrors.terms = "You must accept the Terms and Conditions.";
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) scrollToFirstError(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -82,11 +85,15 @@ export default function SignUpForm() {
     } catch (err: any) {
       const backendMsg =
         err.response?.data?.message || "Signup failed! Try again.";
-      if (backendMsg.toLowerCase().includes("email"))
-        setErrors({ email: backendMsg });
-      else if (backendMsg.toLowerCase().includes("password"))
-        setErrors({ password: backendMsg });
-      else toast.error(backendMsg, { id: toastId });
+      if (backendMsg.toLowerCase().includes("email")) {
+        const nextErrors = { email: backendMsg };
+        setErrors(nextErrors);
+        scrollToFirstError(nextErrors);
+      } else if (backendMsg.toLowerCase().includes("password")) {
+        const nextErrors = { password: backendMsg };
+        setErrors(nextErrors);
+        scrollToFirstError(nextErrors);
+      } else toast.error(backendMsg, { id: toastId });
     }
   };
 
@@ -113,7 +120,7 @@ export default function SignUpForm() {
             </p>
           </div>
 
-          <form onSubmit={handleSignup} noValidate>
+          <form ref={formRef} onSubmit={handleSignup} noValidate>
             <div className="space-y-5">
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>

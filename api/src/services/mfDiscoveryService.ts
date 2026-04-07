@@ -5,16 +5,26 @@ import MFNfo from "../models/mfNfoModel";
 import MFIndexSnapshot from "../models/mfIndexSnapshotModel";
 import MFAmc from "../models/mfAmcModel";
 import { toNumberOrNull } from "./mfUtils";
+import { computeNfoOpenState } from "../cron/mfNfoCron";
 
 const buildActiveFilter = () => ({ is_active: 1, is_deleted: false });
+
+const sortNfosByCloseDate = <T extends { subscription_end_date?: Date | string | null; fund_name?: string }>(
+  items: T[],
+) =>
+  [...items].sort((a, b) => {
+    const aTime = a.subscription_end_date ? new Date(a.subscription_end_date).getTime() : Number.POSITIVE_INFINITY;
+    const bTime = b.subscription_end_date ? new Date(b.subscription_end_date).getTime() : Number.POSITIVE_INFINITY;
+
+    if (aTime !== bTime) return aTime - bTime;
+    return String(a.fund_name || "").localeCompare(String(b.fund_name || ""));
+  });
 
 export const getMfHomeData = async (query: any) => {
   const featuredLimit = Math.max(toNumberOrNull(query?.featuredLimit) || 8, 1);
   const nfoLimit = Math.max(toNumberOrNull(query?.nfoLimit) || 8, 1);
   const categoryLimit = Math.max(toNumberOrNull(query?.categoryLimit) || 10, 1);
   const indexLimit = Math.max(toNumberOrNull(query?.indexLimit) || 10, 1);
-  const now = new Date();
-
   const [mainCategories, featuredFunds, openNfos, topCategoriesByReturn, indexHighlights] =
     await Promise.all([
       MFMainCategory.find(buildActiveFilter())
@@ -42,20 +52,28 @@ export const getMfHomeData = async (query: any) => {
       MFNfo.find({
         ...buildActiveFilter(),
         is_open: true,
-        $or: [{ subscription_end_date: null }, { subscription_end_date: { $gte: now } }],
       })
         .select(
           "fund_name subscription_start_date subscription_end_date min_investment benchmark risk_level amc_id category_id",
         )
         .sort({ subscription_end_date: 1, created_at: -1 })
-        .limit(nfoLimit)
         .populate("amc_id", "name")
         .populate({
           path: "category_id",
           select: "name main_category_id",
           populate: { path: "main_category_id", select: "name" },
         })
-        .lean(),
+        .lean()
+        .then((items) =>
+          sortNfosByCloseDate(
+            items.filter((item: any) =>
+              computeNfoOpenState(
+                item.subscription_start_date ? new Date(item.subscription_start_date) : null,
+                item.subscription_end_date ? new Date(item.subscription_end_date) : null,
+              ),
+            ),
+          ).slice(0, nfoLimit),
+        ),
 
       MFCategory.find(buildActiveFilter())
         .select("name benchmark_returns main_category_id risk_level")

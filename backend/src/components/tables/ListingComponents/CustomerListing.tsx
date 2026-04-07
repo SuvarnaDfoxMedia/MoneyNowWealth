@@ -65,6 +65,10 @@ export default function CustomerListing() {
       setPage(1);
     }
 
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+
     setIsMounted(true);
 
     return () => {
@@ -77,6 +81,8 @@ export default function CustomerListing() {
     restoreModuleState,
     setCurrentModule,
     setPage,
+    setSort,
+    sortField,
   ]);
 
   /* ------------------- Handlers ------------------- */

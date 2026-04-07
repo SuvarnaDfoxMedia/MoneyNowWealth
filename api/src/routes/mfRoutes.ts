@@ -15,6 +15,11 @@ import {
   updateMainCategory,
 } from "../controllers/mfCategoryController";
 import {
+  getAmcDeleteImpactSummary,
+  getCategoryDeleteImpactSummary,
+  getMainCategoryDeleteImpactSummary,
+} from "../controllers/mfDeleteImpactController";
+import {
   addFund,
   deleteFund,
   getPopularFunds,
@@ -47,8 +52,9 @@ import {
   toggleAmcStatus,
   updateAmc,
 } from "../controllers/mfAmcController";
-import { importExcel } from "../controllers/mfImportController";
+import { exportExcel, importExcel } from "../controllers/mfImportController";
 import { getMfDiscover, getMfFilters, getMfHome } from "../controllers/mfDiscoveryController";
+import { uploadMfExcel } from "../middlewares/uploadMiddleware";
 import { handleValidationErrors } from "../middlewares/validationMiddleware";
 import {
   createAmcValidators,
@@ -97,11 +103,21 @@ router.get(
   getMainCategories,
 );
 router.get(
+  "/:role/mf/main-categories/delete-impact/:id",
+  ...adminEditorMiddleware,
+  getMainCategoryDeleteImpactSummary,
+);
+router.get(
   "/:role/mf/main-categories/:id",
   ...adminEditorMiddleware,
   getMainCategoryById,
 );
 router.get("/:role/mf/categories", ...adminEditorMiddleware, getCategories);
+router.get(
+  "/:role/mf/categories/delete-impact/:id",
+  ...adminEditorMiddleware,
+  getCategoryDeleteImpactSummary,
+);
 router.get(
   "/:role/mf/categories/:identifier",
   ...adminEditorMiddleware,
@@ -112,6 +128,11 @@ router.get("/:role/mf/funds/:id", ...adminEditorMiddleware, getFundById);
 router.get("/:role/mf/nfo", ...adminEditorMiddleware, getNfos);
 router.get("/:role/mf/nfo/:id", ...adminEditorMiddleware, getNfoById);
 router.get("/:role/mf/amcs", ...adminEditorMiddleware, getAmcs);
+router.get(
+  "/:role/mf/amcs/delete-impact/:id",
+  ...adminEditorMiddleware,
+  getAmcDeleteImpactSummary,
+);
 router.get("/:role/mf/amcs/:id", ...adminEditorMiddleware, getAmcById);
 router.get(
   "/:role/mf/index-snapshots",
@@ -357,7 +378,16 @@ router.put(
   updateAmc,
 );
 
-// Legacy Excel import route (kept for backward compatibility).
-router.post("/:role/mf/import/excel", ...adminEditorMiddleware, importExcel);
+router.post(
+  "/:role/mf/import/excel",
+  ...adminEditorMiddleware,
+  uploadMfExcel,
+  importExcel,
+);
+router.get(
+  "/:role/mf/export/excel",
+  ...adminEditorMiddleware,
+  exportExcel,
+);
 
 export default router;

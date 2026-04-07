@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../hooks/useScrollToFirstError";
 
 interface ClusterForm {
   title: string;
@@ -72,6 +73,7 @@ export default function AddCluster() {
   const slugRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const thumbnailRef = useRef<HTMLInputElement>(null);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const inputClass =
     "w-full h-11 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-200";
@@ -176,12 +178,7 @@ export default function AddCluster() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      if (newErrors.title && titleRef.current) titleRef.current.focus();
-      else if (newErrors.slug && slugRef.current) slugRef.current.focus();
-      else if (newErrors.description && descriptionRef.current)
-        descriptionRef.current.focus();
-      else if (newErrors.thumbnail && thumbnailRef.current)
-        thumbnailRef.current.click();
+      scrollToFirstError(newErrors);
       return;
     }
 
@@ -263,7 +260,7 @@ export default function AddCluster() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Title + Slug */}
           <div>

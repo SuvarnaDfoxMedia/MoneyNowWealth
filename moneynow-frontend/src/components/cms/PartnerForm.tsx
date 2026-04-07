@@ -1,16 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import intlTelInput from "intl-tel-input";
 import "intl-tel-input/build/css/intlTelInput.css";
-import {
-  executeRecaptcha,
-  mountRecaptcha,
-  unmountRecaptcha,
-} from "@/lib/recaptcha";
-
-type IntlTelInputInstance = ReturnType<typeof intlTelInput>;
+import { executeRecaptcha } from "@/lib/recaptcha";
+import useRecaptchaLifecycle from "@/hooks/useRecaptchaLifecycle";
+import useIntlPhoneField from "@/hooks/useIntlPhoneField";
 
 const statusOptions = [
   "I am an individual mutual fund distributor / IFA (ARN holder)",
@@ -46,12 +41,10 @@ const labelClassName =
   "mb-1.5 block text-[15px] font-normal leading-5 text-[#1F1F1F]";
 const PARTNER_RECAPTCHA_ACTION = "partner_with_us_submit";
 
-const hasAlphabet = (value: string) => /[A-Za-z]/.test(value);
-
 const PartnerForm = () => {
   const router = useRouter();
-  const phoneRef = useRef<HTMLInputElement | null>(null);
-  const itiRef = useRef<IntlTelInputInstance | null>(null);
+  const { phoneRef, getMobileValue, getCountryCode, clearPhoneValue, validateMobileNumber } =
+    useIntlPhoneField({ autoPlaceholder: "off" });
 
   const [form, setForm] = useState<FormState>({
     full_name: "",
@@ -64,50 +57,7 @@ const PartnerForm = () => {
   });
   const [errors, setErrors] = useState<ErrorsState>({});
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (phoneRef.current && !itiRef.current) {
-      try {
-        itiRef.current = intlTelInput(phoneRef.current, {
-          initialCountry: "in",
-          separateDialCode: true,
-          autoPlaceholder: "off",
-          utilsScript:
-            "https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.0/build/js/utils.js",
-        });
-
-        const container = phoneRef.current.closest(".iti");
-        if (container) container.classList.add("w-full");
-      } catch (error) {
-        console.error("Error initializing intl-tel-input:", error);
-      }
-    }
-
-    return () => {
-      if (itiRef.current) {
-        try {
-          itiRef.current.destroy();
-        } catch (error) {
-          console.error("Error destroying intl-tel-input:", error);
-        }
-        itiRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    mountRecaptcha().catch((error) => {
-      if (!isMounted) return;
-      console.error("Failed to initialize reCAPTCHA:", error);
-    });
-
-    return () => {
-      isMounted = false;
-      unmountRecaptcha();
-    };
-  }, []);
+  useRecaptchaLifecycle();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -124,37 +74,6 @@ const PartnerForm = () => {
     if (errors.submit) {
       setErrors((prev) => ({ ...prev, submit: undefined }));
     }
-  };
-
-  const validateMobileNumber = () => {
-    const mobileValue = phoneRef.current?.value?.trim() || "";
-    const normalizedMobile = mobileValue.replace(/[\s\-().]/g, "");
-    const mobileDigits = normalizedMobile.replace(/\D/g, "");
-    const selectedCountry =
-      itiRef.current?.getSelectedCountryData()?.iso2 || "in";
-
-    if (!mobileValue) return "Mobile number is required";
-    if (hasAlphabet(normalizedMobile)) {
-      return "Mobile number must contain digits only";
-    }
-    if (!/^\+?\d+$/.test(normalizedMobile)) {
-      return "Please enter a valid mobile number";
-    }
-
-    if (selectedCountry === "in") {
-      if (mobileDigits.length !== 10) {
-        return "Mobile number must be exactly 10 digits";
-      }
-      if (!/^[6-9]/.test(mobileDigits)) {
-        return "Indian mobile number must start with 6, 7, 8, or 9";
-      }
-      return "";
-    }
-
-    if (mobileDigits.length < 6) return "Mobile number is too short";
-    if (mobileDigits.length > 15) return "Mobile number is too long";
-
-    return "";
   };
 
   const handleMobileChange = () => {
@@ -207,11 +126,8 @@ const PartnerForm = () => {
 
     try {
       const recaptchaToken = await executeRecaptcha(PARTNER_RECAPTCHA_ACTION);
-      const mobile = phoneRef.current?.value?.trim() || "";
-      const countryData = itiRef.current?.getSelectedCountryData();
-      const countryCode = countryData?.dialCode
-        ? `+${countryData.dialCode}`
-        : "+91";
+      const mobile = getMobileValue();
+      const countryCode = getCountryCode();
 
       const payload = {
         ...form,
@@ -240,9 +156,7 @@ const PartnerForm = () => {
         terms_accepted: false,
       });
 
-      if (phoneRef.current) {
-        phoneRef.current.value = "";
-      }
+      clearPhoneValue();
 
       setErrors({});
       router.push("/thank-You");
@@ -312,6 +226,8 @@ const PartnerForm = () => {
               id="partner_mobile"
               ref={phoneRef}
               type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
               onChange={handleMobileChange}
               onBlur={handleMobileBlur}
               className={`${inputClassName} ${errors.mobile ? "border-red-500" : ""}`}

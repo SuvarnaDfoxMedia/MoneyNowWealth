@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useNavigate, Link } from "react-router-dom";
 import { ChevronLeftIcon } from "../../icons";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -10,6 +11,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<{ email?: string }>({});
   const navigate = useNavigate();
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const validate = () => {
     const newErrors: { email?: string } = {};
@@ -19,6 +21,7 @@ export default function ForgotPassword() {
       newErrors.email = "Please enter a valid email.";
     }
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) scrollToFirstError(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -39,7 +42,9 @@ export default function ForgotPassword() {
     } catch (err: any) {
       const msg =
         err.response?.data?.message || "Error sending reset link.";
-      setErrors({ email: msg });
+      const nextErrors = { email: msg };
+      setErrors(nextErrors);
+      scrollToFirstError(nextErrors);
       toast.error(msg);
     }
   };
@@ -72,7 +77,7 @@ export default function ForgotPassword() {
         </h2>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5" noValidate>
           <div>
             <label className="block text-gray-700 dark:text-gray-300 mb-1">
               Email

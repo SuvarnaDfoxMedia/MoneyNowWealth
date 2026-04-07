@@ -10,16 +10,15 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { pillarLabels } from "@/components/assessment/questions";
 
-type ChartData = {
+type LegacyChartData = {
   savings_score: number;
   investment_score: number;
   protection_score: number;
   distribution_score: number;
 };
 
-type AssessmentResultData = {
+type LegacyResultData = {
   id: string;
   score: number;
   category: string;
@@ -29,17 +28,61 @@ type AssessmentResultData = {
     wealth_restructuring: string;
     wealth_distribution: string;
   };
-  chart_data?: ChartData;
+  chart_data?: LegacyChartData;
   pdf_url?: string | null;
   next_step?: string;
 };
 
+type JourneyPillarResult = {
+  key: string;
+  title: string;
+  status: "Needs attention" | "Could be strengthened" | "On a reasonable track";
+  score: number;
+  copy: string;
+};
+
+type JourneyResultData = {
+  id: string;
+  score: number;
+  category: string;
+  summary: string;
+  pillar_results: JourneyPillarResult[];
+  chart_data?: Record<string, number>;
+  pdf_url?: string | null;
+  next_step?: string;
+};
+
+type AssessmentResultData = LegacyResultData | JourneyResultData;
+
 interface AssessmentResultProps {
   result: AssessmentResultData;
-  pdfHref: string | null;
+  pdfHref?: string | null;
 }
 
-const scoreBands = [
+const legacyPillars = [
+  {
+    key: "savings_score",
+    label: "Savings discipline",
+    description: "How well your monthly cash flow supports resilience.",
+  },
+  {
+    key: "investment_score",
+    label: "Investment readiness",
+    description: "Whether current investing levels match long-term goals.",
+  },
+  {
+    key: "protection_score",
+    label: "Protection layer",
+    description: "Insurance and downside protection readiness.",
+  },
+  {
+    key: "distribution_score",
+    label: "Future planning",
+    description: "Retirement and wealth-transfer preparedness.",
+  },
+] as const;
+
+const legacyScoreBands = [
   { label: "Needs attention", min: 0, max: 39, color: "#E35D2F" },
   { label: "Average", min: 40, max: 54, color: "#F3A61C" },
   { label: "Good", min: 55, max: 69, color: "#78B943" },
@@ -47,11 +90,20 @@ const scoreBands = [
   { label: "Excellent", min: 85, max: 100, color: "#0F4C81" },
 ] as const;
 
+const journeyScoreBands = [
+  { label: "Needs attention", min: 0, max: 39, color: "#E35D2F" },
+  { label: "Could be strengthened", min: 40, max: 69, color: "#F3A61C" },
+  { label: "On a reasonable track", min: 70, max: 100, color: "#2FA28E" },
+] as const;
+
 const scoreTone: Record<string, string> = {
   "Needs Attention": "from-[#C2410C] to-[#FB923C]",
+  "Needs attention": "from-[#C2410C] to-[#FB923C]",
   Average: "from-[#B45309] to-[#FACC15]",
   Good: "from-[#0F766E] to-[#2DD4BF]",
   Excellent: "from-[#0F4C81] to-[#43B0F1]",
+  "Could be strengthened": "from-[#B45309] to-[#FACC15]",
+  "On a reasonable track": "from-[#0F766E] to-[#2DD4BF]",
 };
 
 const reportCards = [
@@ -77,24 +129,36 @@ const reportCards = [
   },
 ] as const;
 
+const statusStyle = {
+  "Needs attention": "border-[#F1C3C3] bg-[#FFF3F3] text-[#A13D3D]",
+  "Could be strengthened": "border-[#EED59D] bg-[#FFF8E8] text-[#8D6000]",
+  "On a reasonable track": "border-[#C8E2CD] bg-[#F3FBF4] text-[#25633A]",
+};
+
 const PDF_BRAND_NAVY = [7, 42, 74] as const;
 const PDF_BRAND_BLUE = [15, 76, 129] as const;
 const PDF_BRAND_SKY = [94, 214, 255] as const;
 const PDF_TEXT = [34, 52, 71] as const;
 
-const formatScoreBand = (score: number) =>
-  scoreBands.find((band) => score >= band.min && score <= band.max) ||
-  scoreBands[2];
+const isJourneyResult = (
+  result: AssessmentResultData,
+): result is JourneyResultData => "pillar_results" in result;
 
 export default function AssessmentResult({
   result,
   pdfHref,
 }: AssessmentResultProps) {
-  const tone = scoreTone[result.category] || scoreTone.Good;
+  const journeyVariant = isJourneyResult(result);
   const safeScore = Math.max(0, Math.min(100, Number(result.score) || 0));
+  const scoreBands = journeyVariant ? journeyScoreBands : legacyScoreBands;
+  const tone =
+    scoreTone[result.category] ||
+    scoreTone[
+      journeyVariant ? "On a reasonable track" : "Good"
+    ];
   const activeBand =
     scoreBands.find((band) => safeScore >= band.min && safeScore <= band.max) ||
-    scoreBands[2];
+    scoreBands[Math.min(1, scoreBands.length - 1)];
 
   const handleRichPdfDownload = () => {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -103,14 +167,20 @@ export default function AssessmentResult({
     const margin = 40;
     const generatedOn = new Date();
 
-    const pillarRows = pillarLabels.map((pillar) => ({
-      label: pillar.label,
-      description: pillar.description,
-      value: Math.max(
-        0,
-        Math.min(100, Number(result.chart_data?.[pillar.key] ?? 0)),
-      ),
-    }));
+    const pillarRows = journeyVariant
+      ? result.pillar_results.map((pillar) => ({
+          label: pillar.title,
+          description: pillar.copy,
+          value: Math.max(0, Math.min(100, Math.round((pillar.score / 3) * 100))),
+        }))
+      : legacyPillars.map((pillar) => ({
+          label: pillar.label,
+          description: pillar.description,
+          value: Math.max(
+            0,
+            Math.min(100, Number(result.chart_data?.[pillar.key] ?? 0)),
+          ),
+        }));
 
     doc.setFillColor(...PDF_BRAND_NAVY);
     doc.rect(0, 0, pageWidth, 104, "F");
@@ -144,7 +214,9 @@ export default function AssessmentResult({
     doc.setFontSize(11);
     doc.text(
       doc.splitTextToSize(
-        "This personalized report summarizes your current financial wellness score, your pillar-wise financial readiness, and the immediate recommendations generated from your assessment.",
+        journeyVariant
+          ? result.summary
+          : "This personalized report summarizes your current financial wellness score, your pillar-wise financial readiness, and the immediate recommendations generated from your assessment.",
         pageWidth - margin * 2,
       ),
       margin,
@@ -160,11 +232,7 @@ export default function AssessmentResult({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.text(`Overall score: ${safeScore}/100`, margin + 18, 246);
-    doc.text(
-      `Score band: ${formatScoreBand(safeScore).label}`,
-      margin + 18,
-      264,
-    );
+    doc.text(`Score band: ${activeBand.label}`, margin + 18, 264);
     doc.text(`Category: ${result.category}`, margin + 18, 282);
 
     const barX = margin + 220;
@@ -195,33 +263,50 @@ export default function AssessmentResult({
     doc.setFontSize(9);
     doc.text(`${safeScore}`, markerX, barY - 29, { align: "center" });
 
-    doc.setTextColor(110, 127, 145);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("0", barX, barY + 34);
-    doc.text("25", barX + barWidth * 0.25, barY + 34, { align: "center" });
-    doc.text("50", barX + barWidth * 0.5, barY + 34, { align: "center" });
-    doc.text("75", barX + barWidth * 0.75, barY + 34, { align: "center" });
-    doc.text("100", barX + barWidth, barY + 34, { align: "right" });
-
-    autoTable(doc, {
-      startY: 322,
-      head: [["Recommendation area", "Guidance"]],
-      body: reportCards.map(({ key, title }) => [title, result.report[key]]),
-      theme: "grid",
-      headStyles: { fillColor: [...PDF_BRAND_BLUE], textColor: 255 },
-      styles: {
-        fontSize: 10,
-        cellPadding: 8,
-        textColor: [...PDF_TEXT],
-        valign: "top",
-      },
-      columnStyles: {
-        0: { cellWidth: 120, fontStyle: "bold" },
-        1: { cellWidth: pageWidth - margin * 2 - 120 },
-      },
-      margin: { left: margin, right: margin },
-    });
+    if (journeyVariant) {
+      autoTable(doc, {
+        startY: 322,
+        head: [["Area", "Status", "Guidance"]],
+        body: result.pillar_results.map((pillar) => [
+          pillar.title,
+          pillar.status,
+          pillar.copy,
+        ]),
+        theme: "grid",
+        headStyles: { fillColor: [...PDF_BRAND_BLUE], textColor: 255 },
+        styles: {
+          fontSize: 10,
+          cellPadding: 8,
+          textColor: [...PDF_TEXT],
+          valign: "top",
+        },
+        columnStyles: {
+          0: { cellWidth: 120, fontStyle: "bold" },
+          1: { cellWidth: 120 },
+          2: { cellWidth: pageWidth - margin * 2 - 240 },
+        },
+        margin: { left: margin, right: margin },
+      });
+    } else {
+      autoTable(doc, {
+        startY: 322,
+        head: [["Recommendation area", "Guidance"]],
+        body: reportCards.map(({ key, title }) => [title, result.report[key]]),
+        theme: "grid",
+        headStyles: { fillColor: [...PDF_BRAND_BLUE], textColor: 255 },
+        styles: {
+          fontSize: 10,
+          cellPadding: 8,
+          textColor: [...PDF_TEXT],
+          valign: "top",
+        },
+        columnStyles: {
+          0: { cellWidth: 120, fontStyle: "bold" },
+          1: { cellWidth: pageWidth - margin * 2 - 120 },
+        },
+        margin: { left: margin, right: margin },
+      });
+    }
 
     let chartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } })
       .lastAutoTable?.finalY
@@ -237,7 +322,11 @@ export default function AssessmentResult({
     doc.setTextColor(...PDF_TEXT);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
-    doc.text("Pillar-wise readiness chart", margin, chartY);
+    doc.text(
+      journeyVariant ? "Area-wise snapshot" : "Pillar-wise readiness chart",
+      margin,
+      chartY,
+    );
 
     const chartX = margin;
     const chartWidth = pageWidth - margin * 2;
@@ -245,6 +334,15 @@ export default function AssessmentResult({
     let rowY = chartY + 28;
 
     pillarRows.forEach((row) => {
+      const descriptionLines = doc.splitTextToSize(row.description, 140);
+      const contentHeight = Math.max(16, descriptionLines.length * 10);
+      const rowHeight = Math.max(52, contentHeight + 24);
+
+      if (rowY + rowHeight > pageHeight - 120) {
+        doc.addPage();
+        rowY = 60;
+      }
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.text(row.label, chartX, rowY);
@@ -252,10 +350,10 @@ export default function AssessmentResult({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(96, 117, 136);
-      doc.text(doc.splitTextToSize(row.description, 140), chartX, rowY + 14);
+      doc.text(descriptionLines, chartX, rowY + 14);
 
       const trackX = chartX + 150;
-      const trackY = rowY - 8;
+      const trackY = rowY - 2;
       doc.setFillColor(232, 239, 245);
       doc.roundedRect(trackX, trackY, trackWidth, 16, 8, 8, "F");
 
@@ -273,19 +371,10 @@ export default function AssessmentResult({
       doc.setTextColor(...PDF_BRAND_NAVY);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      doc.text(
-        `${Math.round(row.value)}/100`,
-        trackX + trackWidth + 8,
-        rowY + 2,
-      );
+      doc.text(`${Math.round(row.value)}/100`, trackX + trackWidth + 8, rowY + 2);
 
-      rowY += 52;
+      rowY += rowHeight;
     });
-
-    if (rowY > pageHeight - 120) {
-      doc.addPage();
-      rowY = 60;
-    }
 
     doc.setTextColor(...PDF_TEXT);
     doc.setFont("helvetica", "bold");
@@ -310,14 +399,9 @@ export default function AssessmentResult({
       doc.setFontSize(9);
       doc.setTextColor(117, 132, 148);
       doc.text("MoneyNow Wealth", margin, pageHeight - 20);
-      doc.text(
-        `Page ${page} of ${totalPages}`,
-        pageWidth - margin,
-        pageHeight - 20,
-        {
-          align: "right",
-        },
-      );
+      doc.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 20, {
+        align: "right",
+      });
     }
 
     doc.save(`Financial_Wellness_Report_${result.id}.pdf`);
@@ -337,9 +421,9 @@ export default function AssessmentResult({
                   {result.category}
                 </h2>
                 <p className="mt-2 max-w-[520px] text-[15px] leading-7 text-[#516275]">
-                  Your current money habits show where you are today and what to
-                  strengthen next. Use this as a practical starting point, not a
-                  label.
+                  {journeyVariant
+                    ? result.summary
+                    : "Your current money habits show where you are today and what to strengthen next. Use this as a practical starting point, not a label."}
                 </p>
               </div>
 
@@ -400,15 +484,13 @@ export default function AssessmentResult({
                   <div className="mx-auto h-10 w-[2px] bg-[#072A4A]" />
                 </div>
 
-                <div className="mt-4 grid gap-3 text-[12px] text-[#5D7387] md:grid-cols-5">
+                <div className={`mt-4 grid gap-3 text-[12px] text-[#5D7387] ${journeyVariant ? "md:grid-cols-3" : "md:grid-cols-5"}`}>
                   {scoreBands.map((band) => (
                     <div
                       key={band.label}
                       className="rounded-[14px] bg-[#F7FBFE] px-3 py-2"
                     >
-                      <p className="font-semibold text-[#163955]">
-                        {band.label}
-                      </p>
+                      <p className="font-semibold text-[#163955]">{band.label}</p>
                       <p>
                         {band.min}-{band.max}
                       </p>
@@ -427,67 +509,125 @@ export default function AssessmentResult({
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {reportCards.map(({ key, title, icon: Icon }) => (
-              <article
-                key={key}
-                className="rounded-[20px] border border-[#E3EDF5] bg-[#FCFEFF] p-5"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-[#E8F3FB] p-2 text-[#0F4C81]">
-                    <Icon className="h-4 w-4" />
+          {journeyVariant ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {result.pillar_results.map((pillar) => (
+                <article
+                  key={pillar.key}
+                  className="rounded-[20px] border border-[#E3EDF5] bg-[#FCFEFF] p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-[18px] font-semibold text-[#0B3258]">
+                      {pillar.title}
+                    </h3>
+                    <span
+                      className={`rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusStyle[pillar.status]}`}
+                    >
+                      {pillar.status}
+                    </span>
                   </div>
-                  <h3 className="text-[18px] font-semibold text-[#0B3258]">
-                    {title}
-                  </h3>
-                </div>
-                <p className="mt-4 text-[15px] leading-7 text-[#556477]">
-                  {result.report[key]}
-                </p>
-              </article>
-            ))}
-          </div>
+                  <p className="mt-3 text-[13px] text-[#5D7387]">
+                    Snapshot score: {pillar.score} / 3
+                  </p>
+                  <p className="mt-4 text-[15px] leading-7 text-[#556477]">
+                    {pillar.copy}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {reportCards.map(({ key, title, icon: Icon }) => (
+                <article
+                  key={key}
+                  className="rounded-[20px] border border-[#E3EDF5] bg-[#FCFEFF] p-5"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-[#E8F3FB] p-2 text-[#0F4C81]">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-[18px] font-semibold text-[#0B3258]">
+                      {title}
+                    </h3>
+                  </div>
+                  <p className="mt-4 text-[15px] leading-7 text-[#556477]">
+                    {result.report[key]}
+                  </p>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-5">
           <div className="rounded-[24px] bg-[#072A4A] p-6 text-white">
             <p className="text-[13px] uppercase tracking-[0.24em] text-white/65">
-              Four-pillar snapshot
+              {journeyVariant ? "Five-area snapshot" : "Four-pillar snapshot"}
             </p>
             <h3 className="mt-2 text-[24px] font-semibold leading-tight">
-              See where your financial foundation is strongest
+              {journeyVariant
+                ? "See where your current money life looks stronger or weaker"
+                : "See where your financial foundation is strongest"}
             </h3>
 
             <div className="mt-6 space-y-4">
-              {pillarLabels.map((pillar) => {
-                const value = Number(result.chart_data?.[pillar.key] ?? 0);
-                const width = Math.max(8, Math.min(100, Math.round(value)));
+              {journeyVariant
+                ? result.pillar_results.map((pillar) => {
+                    const value = Math.max(
+                      8,
+                      Math.min(100, Math.round((pillar.score / 3) * 100)),
+                    );
 
-                return (
-                  <div key={pillar.key}>
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[15px] font-medium">
-                          {pillar.label}
-                        </p>
-                        <p className="text-[13px] text-white/68">
-                          {pillar.description}
-                        </p>
+                    return (
+                      <div key={pillar.key}>
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-[15px] font-medium">{pillar.title}</p>
+                            <p className="text-[13px] text-white/68">
+                              {pillar.status}
+                            </p>
+                          </div>
+                          <span className="text-sm font-semibold text-[#8FD3FF]">
+                            {value}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 h-2.5 rounded-full bg-white/15">
+                          <div
+                            className="h-2.5 rounded-full bg-gradient-to-r from-[#5ED6FF] to-[#C3F1FF]"
+                            style={{ width: `${value}%` }}
+                          />
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-[#8FD3FF]">
-                        {Math.round(value)}
-                      </span>
-                    </div>
+                    );
+                  })
+                : legacyPillars.map((pillar) => {
+                    const value = Number(result.chart_data?.[pillar.key] ?? 0);
+                    const width = Math.max(8, Math.min(100, Math.round(value)));
 
-                    <div className="mt-3 h-2.5 rounded-full bg-white/15">
-                      <div
-                        className="h-2.5 rounded-full bg-gradient-to-r from-[#5ED6FF] to-[#C3F1FF]"
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                    return (
+                      <div key={pillar.key}>
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-[15px] font-medium">{pillar.label}</p>
+                            <p className="text-[13px] text-white/68">
+                              {pillar.description}
+                            </p>
+                          </div>
+                          <span className="text-sm font-semibold text-[#8FD3FF]">
+                            {Math.round(value)}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 h-2.5 rounded-full bg-white/15">
+                          <div
+                            className="h-2.5 rounded-full bg-gradient-to-r from-[#5ED6FF] to-[#C3F1FF]"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
             </div>
           </div>
 
@@ -501,17 +641,17 @@ export default function AssessmentResult({
             </p>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              {/* {pdfHref ? (
+              {pdfHref ? (
                 <a
                   href={pdfHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-[#0F4C81] px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-[#0B3258]"
+                  className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
                 >
                   <Download className="h-4 w-4" />
-                  Open report PDF
+                  Open saved report
                 </a>
-              ) : null} */}
+              ) : null}
 
               <button
                 type="button"

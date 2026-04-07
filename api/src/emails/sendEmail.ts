@@ -1,8 +1,40 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import { SendEmailParams, EmailAttachment } from "./types";
+import { getSmtpConfig } from "../config/emailEnv";
+import { SendEmailParams } from "./types";
 
 dotenv.config();
+
+let transporterPromise: Promise<nodemailer.Transporter> | null = null;
+
+const createTransporter = async () => {
+  const { host, port, user, pass } = getSmtpConfig();
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+  });
+
+  await transporter.verify();
+  console.log(`SMTP transporter verified host=${host} port=${port}`);
+
+  return transporter;
+};
+
+const getTransporter = async () => {
+  if (!transporterPromise) {
+    transporterPromise = createTransporter().catch((error) => {
+      transporterPromise = null;
+      console.error("SMTP transporter initialization failed", error);
+      throw error;
+    });
+  }
+
+  return transporterPromise;
+};
 
 export const sendEmail = async ({
   to,
@@ -10,29 +42,18 @@ export const sendEmail = async ({
   text = "",
   html = "",
   attachments = [],
+  metadata,
 }: SendEmailParams): Promise<void> => {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    throw new Error(
-      "SMTP configuration missing. Ensure SMTP_HOST, SMTP_USER, and SMTP_PASS are set in .env",
-    );
-  }
+  const transporter = await getTransporter();
+  const { user } = getSmtpConfig();
+  const recipients = Array.isArray(to) ? to : [to];
+  const recipientString = recipients.join(", ");
+  const attemptLabel = metadata?.type ? ` type=${metadata.type}` : "";
 
   try {
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass },
-      tls: { rejectUnauthorized: false },
-    });
-
-    const recipients = Array.isArray(to) ? to : [to];
-    const recipientString = recipients.join(", ");
+    console.log(
+      `EMAIL_SEND_ATTEMPT channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString}`,
+    );
 
     await transporter.sendMail({
       from: `"MoneyNow Wealth" <${user}>`,
@@ -44,13 +65,18 @@ export const sendEmail = async ({
     });
 
     console.log(
-      `EMAIL_SENT_SMTP recipients=${recipients.length} to=${recipientString}`,
+      `EMAIL_SENT_SMTP recipients=${recipients.length}${attemptLabel} to=${recipientString}`,
     );
   } catch (err: unknown) {
     if (err instanceof Error) {
-      console.error(`EMAIL_FAILED channel=smtp message=${err.message}`);
+      console.error(
+        `EMAIL_FAILED channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString} message=${err.message}`,
+      );
     } else {
-      console.error("EMAIL_FAILED channel=smtp", err);
+      console.error(
+        `EMAIL_FAILED channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString}`,
+        err,
+      );
     }
     throw err;
   }

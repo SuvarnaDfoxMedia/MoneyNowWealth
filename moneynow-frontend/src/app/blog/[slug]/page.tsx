@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import DOMPurify from "dompurify";
 import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
 import SeniorCitizen from "@/components/blog-details-Page/SeniorCitizen";
+import { useRefreshSignal } from "@/hooks/useRefreshSignal";
+import { API } from "@/app/api/axios";
+import { useContentAccess } from "@/hooks/useContentAccess";
+import PremiumUpgradeCard from "@/components/subscription/PremiumUpgradeCard";
 import {
   FaFacebookF,
   FaTwitter,
@@ -50,6 +54,7 @@ interface Article {
 }
 interface ApiResponse {
   article?: Article;
+  message?: string;
 }
 
 const BlogDetails = () => {
@@ -60,10 +65,12 @@ const BlogDetails = () => {
   const [topicTitle, setTopicTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
+  const { refreshTick } = useRefreshSignal();
+  const { accessLevel, resolved } = useContentAccess();
 
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
   const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL;
 
   const [activeSection, setActiveSection] = useState<string>("introduction"); // default active
@@ -113,17 +120,18 @@ const BlogDetails = () => {
   }, [article]);
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || !resolved) return;
 
     const fetchBlog = async () => {
-      setLoading(true);
+      const isInitialLoad = !hasLoadedRef.current;
+      if (isInitialLoad) {
+        setLoading(true);
+      }
       setError(null);
       try {
-        const res = await fetch(
-          `${API_BASE}/api/article/published/slug/${encodeURIComponent(String(slug))}`,
+        const { data: json } = await API.get<ApiResponse>(
+          `/api/article/published/slug/${encodeURIComponent(String(slug))}`,
         );
-        if (!res.ok) throw new Error("Failed to fetch blog");
-        const json: ApiResponse = await res.json();
 
         if (!json.article) {
           setError("Blog not found");
@@ -134,25 +142,49 @@ const BlogDetails = () => {
 
         setTopicTitle(json.article.topic?.title || "");
         setArticle(json.article);
+        hasLoadedRef.current = true;
       } catch (err: any) {
-        console.error(err);
-        setError("Something went wrong");
-        setArticle(null);
-        setTopicTitle("");
+        const status = err?.response?.status;
+        if (status === 403) {
+          setError(
+            err?.response?.data?.message ||
+              "This article is available for premium members only.",
+          );
+        } else if (status === 404) {
+          setError("Blog not found");
+        } else {
+          console.error("Blog fetch failed", err);
+          setError("Something went wrong");
+        }
+        if (!hasLoadedRef.current) {
+          setArticle(null);
+          setTopicTitle("");
+        }
       } finally {
-        setLoading(false);
+        if (isInitialLoad) {
+          setLoading(false);
+        }
       }
     };
 
     fetchBlog();
-  }, [slug, API_BASE]);
+  }, [slug, refreshTick, accessLevel, resolved]);
 
   const sanitize = (html?: string) => ({
     __html: DOMPurify.sanitize(html || ""),
   });
 
   if (loading) return <p className="py-20 text-center">Loading blog...</p>;
-  if (error) return <p className="py-20 text-center text-red-500">{error}</p>;
+  if (error) {
+    const isPremiumLocked = error.toLowerCase().includes("premium");
+
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-20">
+        <p className="mb-6 text-center text-red-500">{error}</p>
+        {isPremiumLocked && <PremiumUpgradeCard />}
+      </div>
+    );
+  }
   if (!article) return <p className="py-20 text-center">Blog not found</p>;
 
   const heroImageSrc = article.hero_image
@@ -181,7 +213,7 @@ const BlogDetails = () => {
                   className="
                     font-inter
                     line-clamp-5
-                    [&_p]:!text-[19px]
+                    [&_p]:!text-[16px]
                     [&_p]:!leading-[30px]
                     [&_p]:mb-3
                   "
@@ -348,7 +380,7 @@ const BlogDetails = () => {
                     Introduction
                   </h2>
                   <div
-                    className="font-inter w-full max-w-none [&_p]:!text-[19px] [&_p]:!leading-[28px]"
+                    className="font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
                     dangerouslySetInnerHTML={sanitize(article.introduction)}
                   />
                 </section>
@@ -375,7 +407,7 @@ const BlogDetails = () => {
                         </h2>
                       )}
                       <div
-                        className="font-inter w-full max-w-none [&_p]:!text-[19px] [&_p]:!leading-[28px]"
+                        className="font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
                         dangerouslySetInnerHTML={sanitize(sec.content)}
                       />
                     </section>

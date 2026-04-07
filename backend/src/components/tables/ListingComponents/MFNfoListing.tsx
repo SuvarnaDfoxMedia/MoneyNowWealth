@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import MFImportExportActions from "./MFImportExportActions";
 
 interface MFNfo {
   _id: string;
+  nfo_id?: string;
   fund_name: string;
   amc_id?: { name?: string };
   category_id?: { name?: string };
@@ -82,7 +84,7 @@ export default function MFNfoListing() {
     setPage,
   ]);
 
-  const { data, extractList, isLoading, deleteRecord, toggleStatus } =
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFNfo>({
       role,
       module: "mf/nfo",
@@ -92,24 +94,70 @@ export default function MFNfoListing() {
       searchValue,
       sortField,
       sortOrder,
-      liveIntervalMs: 10000,
       enabled: isMounted,
+      extraParams: {
+        prioritizeOpenActive: true,
+      },
     });
 
   const rows = extractList as MFNfo[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
+  );
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+
+  const parseDateValue = (value?: string) => {
+    if (!value) return Number.POSITIVE_INFINITY;
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+  };
+
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const activeDiff = (b.is_active === 1 ? 1 : 0) - (a.is_active === 1 ? 1 : 0);
+      if (activeDiff !== 0) return activeDiff;
+
+      const openDiff = (b.is_open ? 1 : 0) - (a.is_open ? 1 : 0);
+      if (openDiff !== 0) return openDiff;
+
+      const endDateDiff =
+        parseDateValue(a.subscription_end_date) -
+        parseDateValue(b.subscription_end_date);
+      if (endDateDiff !== 0) return endDateDiff;
+
+      return a.fund_name.localeCompare(b.fund_name);
+    });
+  }, [rows]);
+
+  const handleDelete = async () => {
+    if (!deleteModalId) return;
+    await deleteRecord(deleteModalId);
+    setDeleteModalId(null);
+  };
 
   const columns: TableColumn<MFNfo>[] = [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
+    // { key: "nfo_id", label: "NFO ID", sortable: true, render: (r) => r.nfo_id || "-" },
     { key: "fund_name", label: "Fund Name", sortable: true },
     { key: "amc", label: "AMC", render: (r) => r.amc_id?.name || "-" },
-    { key: "category", label: "Category", render: (r) => r.category_id?.name || "-" },
+    {
+      key: "category",
+      label: "Category",
+      render: (r) => r.category_id?.name || "-",
+    },
     {
       key: "is_open",
       label: "Open",
       render: (r) => (
-        <span className={`px-2 py-1 rounded text-xs ${r.is_open ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+        <span
+          className={`px-2 py-1 rounded text-xs ${r.is_open ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+        >
           {r.is_open ? "Yes" : "No"}
         </span>
       ),
@@ -136,10 +184,7 @@ export default function MFNfoListing() {
             cacheModuleState(MODULE_KEY);
             navigate(`/${role}/mf/nfo/edit/${row._id}`);
           }}
-          onDelete={async () => {
-            if (!window.confirm("Delete this NFO?")) return;
-            await deleteRecord(row._id);
-          }}
+          onDelete={() => setDeleteModalId(row._id)}
         />
       ),
     },
@@ -157,8 +202,17 @@ export default function MFNfoListing() {
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={sortedRows}
         loading={isLoading}
+        toolbarActions={
+          <MFImportExportActions
+            role={role}
+            options={[{ value: "nfo", label: "NFOs" }]}
+            onImported={async () => {
+              await refetch();
+            }}
+          />
+        }
         page={page}
         totalPages={totalPages}
         totalRecords={totalRecords}
@@ -173,6 +227,31 @@ export default function MFNfoListing() {
           setSort(field, order);
         }}
       />
+
+      {deleteModalId && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Delete NFO?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this NFO?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModalId(null)}
+                className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

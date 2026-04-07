@@ -344,26 +344,11 @@ export const updateNewsletterPublication = async (
    5. Send newsletter emails to subscribers
 --------------------------------------------------- */
 export const sendNewsletterEmails = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const result = await newsletterPublishService.sendNewsletterEmails(id);
-
-    return sendSuccess(
-      res,
-      "Newsletter emails sent successfully",
-      result,
-      200,
-      { ...result },
-    );
-  } catch (error: any) {
-    console.error("Send newsletter emails error:", error);
-    return sendError(
-      res,
-      error.message || "Failed to send newsletter emails",
-      400,
-    );
-  }
+  return sendError(
+    res,
+    "Direct newsletter sending has been removed. Publish and distribute newsletters through GetResponse.",
+    410,
+  );
 };
 
 /* ---------------------------------------------------

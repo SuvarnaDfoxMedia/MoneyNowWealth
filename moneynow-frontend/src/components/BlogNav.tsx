@@ -8,6 +8,9 @@ import Link from "next/link";
 import { HiChevronDown, HiMenu, HiX, HiChevronLeft } from "react-icons/hi";
 import { FiChevronRight } from "react-icons/fi";
 import { usePathname } from "next/navigation";
+import { useRefreshSignal } from "@/hooks/useRefreshSignal";
+import { API } from "@/app/api/axios";
+import { useContentAccess } from "@/hooks/useContentAccess";
 
 interface Cluster {
   _id: string;
@@ -21,17 +24,14 @@ const BlogNav = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMobileMenu, setActiveMobileMenu] = useState<string | null>(null);
   const [clusters, setClusters] = useState<Cluster[]>([]);
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+  const { refreshTick } = useRefreshSignal();
+  const { accessLevel } = useContentAccess();
 
   /* ---------------- Fetch Clusters ---------------- */
   useEffect(() => {
     const fetchClusters = async () => {
-      if (!API_BASE) return;
-
       try {
-        const res = await fetch(`${API_BASE}/api/cluster`);
-        const json = await res.json();
+        const { data: json } = await API.get("/api/cluster");
 
         const clusterList = json?.clusters || json?.data?.clusters || [];
         if (Array.isArray(clusterList)) {
@@ -49,7 +49,7 @@ const BlogNav = () => {
     };
 
     fetchClusters();
-  }, [API_BASE]);
+  }, [refreshTick, accessLevel]);
 
   /* ---------------- Close mobile menu on route change ---------------- */
   useEffect(() => {

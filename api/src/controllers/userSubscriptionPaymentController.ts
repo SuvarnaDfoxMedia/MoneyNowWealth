@@ -4,7 +4,6 @@ import { userSubscriptionPaymentService } from "@/services/userSubscriptionPayme
 import { userSubscriptionService } from "@/services/userSubscriptionService";
 import SubscriptionPlanModel from "@/models/subscriptionPlan.model";
 import UserSubscriptionPayment from "@/models/userSubscriptionPaymentModel";
-import UserSubscription from "@/models/userSubscriptionModel";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 
 interface AddSubscriptionPaymentBody {
@@ -56,10 +55,10 @@ export const addSubscriptionPayment = async (
       return sendError(res, "Plan not found", 400);
     }
 
-    const isFreePlan = plan.name.toLowerCase() === "free";
+    const isFreePlan = plan.plan_type === "Free";
 
     // Check purchase eligibility for Premium
-    if (plan.name.toLowerCase() === "premium") {
+    if (plan.plan_type === "Premium") {
       const eligibility =
         await userSubscriptionService.checkPurchaseEligibility(
           user_id,
@@ -73,66 +72,45 @@ export const addSubscriptionPayment = async (
     }
 
     // ---------- 1. Create or Update Subscription FIRST ----------
-    let subscription;
+    let result;
     try {
       const durationValue = plan.duration?.value || 1;
       const durationUnit = plan.duration?.unit || "month";
 
-      subscription = await userSubscriptionService.createOrUpdateSubscription(
+      result = await userSubscriptionService.createOrUpdateSubscriptionWithPayment(
         user_id,
         plan._id.toString(),
         durationValue,
         durationUnit as "day" | "month" | "year",
         isFreePlan ? "free_sample" : undefined,
-        false, // isUserPurchase = false (admin/system assignment)
+        false,
+        "system_update",
+        false,
+        {
+          amount: isFreePlan ? 0 : amount,
+          currency: currency || plan.currency || "INR",
+          paymentMethod: isFreePlan
+            ? "free_plan"
+            : ((payment_method || "system") as "system" | "manual" | "free_plan"),
+          metadata: {
+            ...metadata,
+            note: isFreePlan ? "Free plan" : "Paid plan",
+            assigned_by: "admin",
+          },
+        },
       );
     } catch (err: any) {
       console.error("Failed to create subscription:", err);
       return sendError(res, err.message || "Failed to create subscription", 500);
     }
 
-    const payment = await UserSubscriptionPayment.create({
-      user_id: new Types.ObjectId(user_id),
-      plan_id: new Types.ObjectId(plan_id),
-      user_subscription_id: subscription._id,
-
-      amount: isFreePlan ? 0 : amount || plan.price || 0,
-      currency: currency || plan.currency || "INR",
-      payment_method: isFreePlan ? "free_plan" : payment_method || "system",
-      payment_status: "success",
-      type,
-      payment_date: new Date(),
-
-      start_date: subscription.start_date,
-      end_date: subscription.end_date,
-
-      //  optional snapshot (recommended)
-      plan_snapshot: {
-        name: plan.name,
-        price: plan.price,
-        currency: plan.currency,
-        duration: plan.duration,
-        features: plan.features || [],
-      },
-
-      metadata: {
-        ...metadata,
-        note: isFreePlan ? "Free plan" : "Paid plan",
-        assigned_by: "admin",
-      },
-    });
-
-    // ---------- 3. Update Subscription with Payment Reference ----------
-    subscription.last_payment_id = payment._id;
-    await subscription.save();
-
     // ---------- 4. RESPONSE ----------
     return sendSuccess(
       res,
       "Subscription payment created successfully",
-      { payment, subscription },
+      { payment: result.payment, subscription: result.subscription },
       201,
-      { payment, subscription },
+      { payment: result.payment, subscription: result.subscription },
     );
   } catch (error: any) {
     console.error("Error creating subscription payment:", error);
@@ -159,10 +137,10 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
       return sendError(res, "Plan not found", 400);
     }
 
-    const isFreePlan = plan.name.toLowerCase() === "free";
+    const isFreePlan = plan.plan_type === "Free";
 
     // Check purchase eligibility for Premium
-    if (plan.name.toLowerCase() === "premium") {
+    if (plan.plan_type === "Premium") {
       const eligibility =
         await userSubscriptionService.checkPurchaseEligibility(userId, plan_id);
       if (!eligibility.canPurchase) {
@@ -176,57 +154,36 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
     const durationValue = plan.duration?.value || 1;
     const durationUnit = plan.duration?.unit || "month";
 
-    const subscription =
-      await userSubscriptionService.createOrUpdateSubscription(
+    const result =
+      await userSubscriptionService.createOrUpdateSubscriptionWithPayment(
         userId,
         plan._id.toString(),
         durationValue,
         durationUnit as "day" | "month" | "year",
         isFreePlan ? "free_sample" : undefined,
-        true, // isUserPurchase = true (user purchase)
+        true,
+        "user_purchase",
+        false,
+        {
+          amount: isFreePlan ? 0 : amount,
+          currency: plan.currency || "INR",
+          paymentMethod: isFreePlan
+            ? "free_plan"
+            : ((payment_method || "manual") as "manual" | "system" | "free_plan"),
+          metadata: {
+            note: isFreePlan ? "Free plan purchase" : "Paid plan purchase",
+            purchased_by_user: true,
+            is_user_purchase: true,
+          },
+        },
       );
-
-    const payment = await UserSubscriptionPayment.create({
-      user_id: new Types.ObjectId(userId),
-      plan_id: new Types.ObjectId(plan_id),
-      user_subscription_id: subscription._id,
-
-      amount: isFreePlan ? 0 : amount || plan.price || 0,
-      currency: plan.currency || "INR",
-      payment_method: isFreePlan ? "free_plan" : payment_method,
-      payment_status: "success",
-      type: "new",
-      payment_date: new Date(),
-
-      start_date: subscription.start_date,
-      end_date: subscription.end_date,
-
-      //  optional snapshot
-      plan_snapshot: {
-        name: plan.name,
-        price: plan.price,
-        currency: plan.currency,
-        duration: plan.duration,
-        features: plan.features || [],
-      },
-
-      metadata: {
-        note: isFreePlan ? "Free plan purchase" : "Paid plan purchase",
-        purchased_by_user: true,
-        is_user_purchase: true,
-      },
-    });
-
-    // ---------- 3. Update Subscription with Payment Reference ----------
-    subscription.last_payment_id = payment._id;
-    await subscription.save();
 
     return sendSuccess(
       res,
       "Subscription purchased successfully",
-      { payment, subscription },
+      { payment: result.payment, subscription: result.subscription },
       201,
-      { payment, subscription },
+      { payment: result.payment, subscription: result.subscription },
     );
   } catch (error: any) {
     console.error("User purchase error:", error);

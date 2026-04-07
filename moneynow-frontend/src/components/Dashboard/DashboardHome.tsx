@@ -5,17 +5,37 @@ import LatestRecommendationBlogs from "./LatestRecommendationBlogs";
 import LatestNewsletter from "./LatestNewsletter";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFetchProfile } from "@/hooks/useProfile";
+import PremiumUpgradeCard from "@/components/subscription/PremiumUpgradeCard";
+
+const isActiveForFullEndDate = (value?: string) => {
+  if (!value) return false;
+
+  const endDate = new Date(value);
+  const today = new Date();
+
+  if (isNaN(endDate.getTime())) return false;
+
+  endDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return endDate.getTime() >= today.getTime();
+};
 
 const DashboardHome = () => {
   const {
     latestSubscription,
     currentSubscription,
     loading: subscriptionLoading,
+    refresh,
   } = useSubscription();
   const { profile, loading: profileLoading } = useFetchProfile();
 
   const loading = subscriptionLoading || profileLoading;
   const subscriptionCard = currentSubscription || latestSubscription;
+  const isSubscriptionActive = isActiveForFullEndDate(subscriptionCard?.endDate);
+  const isPremiumActive =
+    currentSubscription?.planType?.toLowerCase() === "premium" &&
+    isSubscriptionActive;
 
   const getDisplayName = () => {
     if (!profile) return "User";
@@ -54,62 +74,73 @@ const DashboardHome = () => {
           />
         </div>
 
-        {!loading && subscriptionCard && (
+        {!loading && (
           <div className="lg:col-span-4">
-            <div className="w-full bg-white rounded-lg p-6 shadow flex flex-col items-center text-center sticky top-4">
-              <div className="mb-4 w-24 h-24 relative">
-                <Image
-                  src="/images/subscribe-right-icon.png"
-                  alt="Premium Plan"
-                  fill
-                  className="object-contain"
-                  priority
-                />
+            {subscriptionCard && isPremiumActive ? (
+              <div className="w-full bg-white rounded-lg p-6 shadow flex flex-col items-center text-center sticky top-4">
+                <div className="mb-4 w-24 h-24 relative">
+                  <Image
+                    src="/images/subscribe-right-icon.png"
+                    alt="Premium Plan"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                <h3 className="font-semibold text-lg mb-4">
+                  {subscriptionCard.planName.toUpperCase()} PLAN
+                </h3>
+
+                <div className="flex flex-col text-left text-sm w-full">
+                  <p className="mb-2">
+                    <span className="font-semibold">Amount:</span>{" "}
+                    <span className="font-normal">
+                      {"\u20B9"}{Number(subscriptionCard.amount || 0).toFixed(2)}
+                    </span>
+                  </p>
+
+                  <p className="mb-2">
+                    <span className="font-semibold">Purchase Date:</span>{" "}
+                    <span className="font-normal">
+                      {new Date(subscriptionCard.paymentDate).toLocaleDateString(
+                        "en-GB",
+                      )}
+                    </span>
+                  </p>
+
+                  <p className="mb-2">
+                    <span className="font-semibold">Expiry Date:</span>{" "}
+                    <span className="font-normal">
+                      {new Date(subscriptionCard.endDate).toLocaleDateString(
+                        "en-GB",
+                      )}
+                    </span>
+                  </p>
+
+                  <p className="mb-5">
+                    <span className="font-semibold">Days Left:</span>{" "}
+                    <span className="font-normal">
+                      {currentSubscription?.daysRemaining || 0}
+                    </span>
+                  </p>
+                </div>
+
+                <button
+                  className={`mt-5 py-2 rounded-lg font-semibold w-20 text-sm tracking-wide ${
+                    isSubscriptionActive
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-gray-400 text-white"
+                  }`}
+                >
+                  {isSubscriptionActive ? "ACTIVE" : "EXPIRED"}
+                </button>
               </div>
-
-              <h3 className="font-semibold text-lg mb-4">
-                {subscriptionCard.planName.toUpperCase()} PLAN
-              </h3>
-
-              <div className="flex flex-col text-left text-sm w-full">
-                <p className="mb-2">
-                  <span className="font-semibold">Amount:</span>{" "}
-                  <span className="font-normal">
-                    {"\u20B9"}{Number(subscriptionCard.amount || 0).toFixed(2)}
-                  </span>
-                </p>
-
-                <p className="mb-2">
-                  <span className="font-semibold">Purchase Date:</span>{" "}
-                  <span className="font-normal">
-                    {new Date(subscriptionCard.paymentDate).toLocaleDateString(
-                      "en-GB",
-                    )}
-                  </span>
-                </p>
-
-                <p className="mb-5">
-                  <span className="font-semibold">Expiry Date:</span>{" "}
-                  <span className="font-normal">
-                    {new Date(subscriptionCard.endDate).toLocaleDateString(
-                      "en-GB",
-                    )}
-                  </span>
-                </p>
+            ) : (
+              <div className="sticky top-4">
+                <PremiumUpgradeCard onUpgraded={refresh} />
               </div>
-
-              <button
-                className={`mt-5 py-2 rounded-lg font-semibold w-20 text-sm tracking-wide ${
-                  new Date(subscriptionCard.endDate) > new Date()
-                    ? "bg-green-600 text-white hover:bg-green-700"
-                    : "bg-gray-400 text-white"
-                }`}
-              >
-                {new Date(subscriptionCard.endDate) > new Date()
-                  ? "ACTIVE"
-                  : "EXPIRED"}
-              </button>
-            </div>
+            )}
           </div>
         )}
       </div>

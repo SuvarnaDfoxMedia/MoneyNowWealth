@@ -9,6 +9,7 @@ import {
 } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../hooks/useScrollToFirstError";
 import { RichTextField } from "../components/PagesComponent/RichTextField";
 
 interface Section {
@@ -96,6 +97,7 @@ export default function AddCmsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [slugEdited, setSlugEdited] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
   const inputClass =
     "w-full h-11 border border-gray-300 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-200";
   const labelClass = "block mb-2 text-sm font-medium text-gray-700";
@@ -182,7 +184,11 @@ export default function AddCmsPage() {
     const newErrors: Record<string, string> = {};
     if (!values.title.trim()) newErrors.title = "Title required";
     if (!values.slug.trim()) newErrors.slug = "Slug required";
-    if (Object.keys(newErrors).length) return setErrors(newErrors);
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors);
+      scrollToFirstError(newErrors);
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -246,7 +252,7 @@ export default function AddCmsPage() {
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-6">
         {/* TITLE & SLUG */}
         <div className="grid md:grid-cols-2 gap-6">
           <div>

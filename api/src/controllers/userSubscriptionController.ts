@@ -169,10 +169,10 @@ export const restoreUserSubscription = async (req: Request, res: Response) => {
 
 export const assignUserSubscription = async (req: Request, res: Response) => {
   try {
-    const { user_id, plan_name, duration_days, reason } = req.body;
+    const { user_id, plan_id, plan_name, duration_days, reason } = req.body;
 
-    if (!user_id || !plan_name) {
-      return sendError(res, "user_id and plan_name are required", 400);
+    if (!user_id || (!plan_id && !plan_name)) {
+      return sendError(res, "user_id and either plan_id or plan_name are required", 400);
     }
 
     const user = await User.findById(user_id);
@@ -180,27 +180,40 @@ export const assignUserSubscription = async (req: Request, res: Response) => {
       return sendError(res, "User not found", 404);
     }
 
-    const plan = await SubscriptionPlan.findOne({
-      name: plan_name,
-      is_active: true,
-      is_deleted: false,
-    });
+    const normalizedPlanName =
+      typeof plan_name === "string" ? plan_name.trim() : "";
+
+    let plan = null;
+
+    if (plan_id) {
+      plan = await SubscriptionPlan.findOne({
+        _id: plan_id,
+        is_active: true,
+        is_deleted: false,
+      });
+    }
+
+    if (!plan && normalizedPlanName) {
+      plan = await SubscriptionPlan.findOne({
+        name: normalizedPlanName,
+        is_active: true,
+        is_deleted: false,
+      });
+    }
+
+    if (!plan && normalizedPlanName) {
+      const normalizedType = normalizedPlanName.toLowerCase();
+      if (normalizedType === "free" || normalizedType === "premium") {
+        plan = await SubscriptionPlan.findOne({
+          plan_type: normalizedType === "free" ? "Free" : "Premium",
+          is_active: true,
+          is_deleted: false,
+        });
+      }
+    }
 
     if (!plan) {
       return sendError(res, "Plan not found", 404);
-    }
-
-    if (plan_name === "Premium" && plan.price === 0) {
-      const existingSub = await userSubscriptionService.getByUserId(user_id);
-      if (existingSub?.promotional_trial_used) {
-        return sendError(
-          res,
-          "User has already used promotional trial. Assign a paid Premium plan instead.",
-          400,
-          null,
-          { code: "TRIAL_ALREADY_USED" },
-        );
-      }
     }
 
     const durationValue = duration_days || plan.duration.value;
@@ -212,7 +225,7 @@ export const assignUserSubscription = async (req: Request, res: Response) => {
         plan._id.toString(),
         durationValue,
         durationUnit as "day" | "month" | "year",
-        plan.name.toLowerCase() === "free" ? "free_sample" : "premium_sample",
+        plan.plan_type === "Free" ? "free_sample" : "premium_sample",
         false,
         "manual_assign",
       );
@@ -294,7 +307,7 @@ export const purchaseSubscription = async (req: Request, res: Response) => {
         planDoc._id.toString(),
         planDoc.duration.value,
         planDoc.duration.unit as "day" | "month" | "year",
-        planDoc.name.toLowerCase() === "free" ? "free_sample" : undefined,
+        planDoc.plan_type === "Free" ? "free_sample" : undefined,
         true,
         "user_purchase",
       );
@@ -308,6 +321,33 @@ export const purchaseSubscription = async (req: Request, res: Response) => {
     );
   } catch (error: any) {
     console.error("Purchase subscription error:", error);
+    return sendError(res, error.message || "Internal server error", 500);
+  }
+};
+
+export const upgradeMySubscriptionToPremiumTrial = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return sendError(res, "User not authenticated", 401);
+    }
+
+    const subscription =
+      await userSubscriptionService.upgradeUserToPremiumTrial(userId);
+
+    return sendSuccess(
+      res,
+      "Premium trial activated successfully",
+      { subscription },
+      200,
+      { subscription },
+    );
+  } catch (error: any) {
+    console.error("Upgrade to premium trial error:", error);
     return sendError(res, error.message || "Internal server error", 500);
   }
 };

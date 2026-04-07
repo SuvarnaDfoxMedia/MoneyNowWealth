@@ -1,24 +1,13 @@
 import { Types } from "mongoose";
 import Topic, { ITopic } from "../models/topicModel";
-import Article from "../models/articleModel";
 import Cluster from "../models/clusterModel";
 
-/* ----------------------------------------------
-   INTERFACES
----------------------------------------------- */
 interface PaginationResult<T> {
   topics: T[];
   total: number;
 }
 
-/* ----------------------------------------------
-   TOPIC SERVICE (UPDATED)
----------------------------------------------- */
 export const topicService = {
-  /* ----------------------------------------------
-      PUBLIC — Get published clusters → topics → articles
-      Shows both free and premium topics
-  ---------------------------------------------- */
   getPublishedClustersTopicsArticles: async () => {
     const now = new Date();
 
@@ -38,8 +27,8 @@ export const topicService = {
                     { $eq: ["$is_deleted", false] },
                     { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", now] }, // Check publish_date
-                    { $in: ["$access_type", ["free", "premium"]] }, // Include both free and premium
+                    { $lte: ["$publish_date", now] },
+                    { $in: ["$access_type", ["free", "premium"]] },
                   ],
                 },
               },
@@ -58,7 +47,7 @@ export const topicService = {
                           { $eq: ["$is_deleted", false] },
                           { $eq: ["$is_active", 1] },
                           { $eq: ["$status", "published"] },
-                          { $lte: ["$publish_date", now] }, // Check article publish_date
+                          { $lte: ["$publish_date", now] },
                         ],
                       },
                     },
@@ -75,10 +64,6 @@ export const topicService = {
     ]);
   },
 
-  /* ----------------------------------------------
-      PUBLIC — Get single topic + articles
-      Only free topics accessible without subscription
-  ---------------------------------------------- */
   getPublishedTopicWithArticlesById: async (topicId: string) => {
     const now = new Date();
 
@@ -89,8 +74,8 @@ export const topicService = {
           is_deleted: false,
           is_active: 1,
           status: "published",
-          publish_date: { $lte: now }, // Check publish_date
-          access_type: "free", // Only free topics accessible publicly
+          publish_date: { $lte: now },
+          access_type: "free",
         },
       },
       {
@@ -116,7 +101,7 @@ export const topicService = {
                     { $eq: ["$is_deleted", false] },
                     { $eq: ["$is_active", 1] },
                     { $eq: ["$status", "published"] },
-                    { $lte: ["$publish_date", now] }, // Check article publish_date
+                    { $lte: ["$publish_date", now] },
                   ],
                 },
               },
@@ -131,20 +116,13 @@ export const topicService = {
     return result?.[0] || null;
   },
 
-  /* ----------------------------------------------
-      ADMIN / PUBLIC — Get all topics except soft-deleted
-      For dropdowns, listings, etc.
-  ---------------------------------------------- */
   getTopicList: async () => {
-    return Topic.find({ is_deleted: false }) // exclude soft-deleted
-      .select("_id title status publish_date cluster_id summary slug") // include necessary fields
+    return Topic.find({ is_deleted: false })
+      .select("_id title status publish_date cluster_id summary slug")
       .sort({ title: 1 })
       .lean();
   },
 
-  /* ----------------------------------------------
-      ADMIN — Get all topics (Pagination)
-  ---------------------------------------------- */
   getAll: async (
     filter: Record<string, any>,
     page = 1,
@@ -164,9 +142,6 @@ export const topicService = {
     return { topics, total };
   },
 
-  /* ----------------------------------------------
-      ADMIN — CRUD (UPDATED)
-  ---------------------------------------------- */
   getById: (id: string) =>
     Topic.findOne({ _id: id, is_deleted: false }).populate(
       "cluster_id",
@@ -175,13 +150,10 @@ export const topicService = {
 
   create: async (data: any) => {
     const now = new Date();
+    let publishDate = data.publish_date ? new Date(data.publish_date) : null;
 
-    // Handle publish date
-    let publish_date = data.publish_date ? new Date(data.publish_date) : null;
-
-    // If status is published but no publish_date, set to current date
-    if (data.status === "published" && !publish_date) {
-      publish_date = now;
+    if (data.status === "published" && !publishDate) {
+      publishDate = now;
     }
 
     const topicData = {
@@ -189,9 +161,8 @@ export const topicService = {
       access_type: data.access_type || "free",
       status: data.status || "draft",
       is_active: data.is_active ?? 0,
-      summary: data.summary || "", // Ensure summary exists for cron emails
-      publish_date: publish_date,
-      is_email_sent: false,
+      summary: data.summary || "",
+      publish_date: publishDate,
       created_at: now,
       updated_at: now,
     };
@@ -201,21 +172,13 @@ export const topicService = {
   },
 
   update: async (id: string, updateData: any) => {
-    // Handle publish date in update
     if (updateData.publish_date) {
       updateData.publish_date = new Date(updateData.publish_date);
     } else if (updateData.status === "published" && !updateData.publish_date) {
-      // If publishing now, set publish_date to current date
       updateData.publish_date = new Date();
     }
 
-    // Reset email flag when publishing
-    if (updateData.status === "published") {
-      updateData.is_email_sent = false;
-    }
-
     updateData.updated_at = new Date();
-
     return Topic.findByIdAndUpdate(id, updateData, { new: true });
   },
 
@@ -249,39 +212,6 @@ export const topicService = {
     return topic.save();
   },
 
-  /* ----------------------------------------------
-      NEW: Get topics scheduled for publishing today
-      Used by scheduler to send email notifications
-  ---------------------------------------------- */
-  getTopicsToPublishToday: async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    return await Topic.find({
-      status: "published",
-      publish_date: { $gte: today, $lt: tomorrow },
-      is_email_sent: false,
-      is_deleted: false,
-      is_active: 1,
-    }).populate("cluster_id", "title");
-  },
-
-  /* ----------------------------------------------
-      NEW: Mark topic email as sent
-  ---------------------------------------------- */
-  markTopicEmailSent: async (id: string) => {
-    return await Topic.findByIdAndUpdate(
-      id,
-      { is_email_sent: true, updated_at: new Date() },
-      { new: true },
-    );
-  },
-
-  /* ----------------------------------------------
-      NEW: Publish topic immediately (Admin action)
-  ---------------------------------------------- */
   publishTopic: async (id: string) => {
     const topic = await Topic.findById(id);
     if (!topic) return null;
@@ -289,7 +219,6 @@ export const topicService = {
     topic.status = "published";
     topic.is_active = 1;
     topic.publish_date = new Date();
-    topic.is_email_sent = false; // Reset for email notifications
     topic.updated_at = new Date();
 
     return topic.save();

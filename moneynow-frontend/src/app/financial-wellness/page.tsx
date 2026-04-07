@@ -1,11 +1,11 @@
-import AssessmentShell from "@/components/assessment/AssessmentShell";
+import FinancialWellnessPage from "@/components/assessment/FinancialWellnessPage";
 
 export const metadata = {
   title: "Financial Wellness Assessment | MoneyNow",
   description:
-    "Measure your current financial wellness, get a practical score, and download your personalized MoneyNow report.",
+    "Reflect on your current money habits, protection, investing, goals, and debt through MoneyNow's financial wellness journey.",
 };
 
-export default function FinancialWellnessPage() {
-  return <AssessmentShell />;
+export default function Page() {
+  return <FinancialWellnessPage />;
 }

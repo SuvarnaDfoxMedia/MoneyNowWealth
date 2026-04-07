@@ -24,9 +24,9 @@ const splitFullName = (firstName?: string, lastName?: string) => {
 };
 
 const normalizeSubject = (subject?: string) => {
-  const subjectMap: Record<string, string> = {
-    partnership: "Partner",
-    partner: "Partner",
+  const subjectMap: Record<string, IContactEnquiry["subject"]> = {
+    partnership: "Partnership",
+    partner: "Partnership",
     support: "Support",
     feedback: "Feedback",
     others: "Others",
@@ -38,6 +38,26 @@ const normalizeSubject = (subject?: string) => {
   }
 
   return subjectMap[subject.trim().toLowerCase()] || subject.trim();
+};
+
+export const getContactEnquiryFilter = (search?: string) => {
+  const filter: Record<string, unknown> = { is_active: 1 };
+
+  if (!search) {
+    return filter;
+  }
+
+  const regex = new RegExp(search, "i");
+  filter.$or = [
+    { first_name: regex },
+    { last_name: regex },
+    { email: regex },
+    { mobile: regex },
+    { country_code: regex },
+    { subject: regex },
+  ];
+
+  return filter;
 };
 
 interface GetAllParams {

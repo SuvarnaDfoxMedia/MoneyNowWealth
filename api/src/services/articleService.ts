@@ -12,6 +12,8 @@ export const getArticles = async (query: any) => {
     limit,
     sortField,
     sortOrder,
+    publishedOnly,
+    allowedAccessTypes,
   } = query || {};
 
   // Pagination
@@ -44,9 +46,42 @@ export const getArticles = async (query: any) => {
     sortConfig.created_at = -1;
   }
 
+  if (publishedOnly) {
+    const now = new Date();
+    const topicFilter: Record<string, any> = {
+      is_deleted: false,
+      is_active: 1,
+      status: "published",
+      publish_date: { $lte: now },
+    };
+
+    if (Array.isArray(allowedAccessTypes) && allowedAccessTypes.length > 0) {
+      topicFilter.access_type = { $in: allowedAccessTypes };
+    }
+
+    const matchedTopics = await Topic.find(topicFilter).select("_id").lean();
+    const topicIds = matchedTopics.map((topic) => topic._id);
+
+    if (!topicIds.length) {
+      return {
+        success: true,
+        articles: [],
+        total: 0,
+        currentPage: pageNum,
+        totalPages: 0,
+        limit: perPage,
+      };
+    }
+
+    filter.status = "published";
+    filter.is_active = 1;
+    filter.publish_date = { $lte: now };
+    filter.topic_id = topic_id || { $in: topicIds };
+  }
+
   const [articles, total] = await Promise.all([
     Article.find(filter)
-      .populate("topic_id", "topic_code title")
+      .populate("topic_id", "topic_code title access_type")
       .sort(sortConfig)
       .skip(skip)
       .limit(perPage)
@@ -112,8 +147,6 @@ export const createArticle = async (data: Partial<IArticle>) => {
     related_reads: data.related_reads || [],
     is_active: 1,
     is_deleted: false,
-    // Initialize email flag
-    is_email_sent: false,
   };
 
   const article = new Article(preparedData);
@@ -150,8 +183,6 @@ export const updateArticle = async (id: string, data: Partial<IArticle>) => {
     if (!data.publish_date) {
       data.publish_date = new Date();
     }
-    // Reset email flag for notifications
-    data.is_email_sent = false;
   }
 
   return await Article.findByIdAndUpdate(id, data, { new: true }).exec();
@@ -178,24 +209,3 @@ export const deleteArticle = async (id: string) => {
   ).exec();
 };
 
-export const getArticlesToPublishToday = async () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  return await Article.find({
-    status: "published",
-    publish_date: { $gte: today, $lt: tomorrow },
-    is_email_sent: false,
-    is_deleted: false,
-  }).populate("topic_id", "title slug");
-};
-
-export const markArticleEmailSent = async (id: string) => {
-  return await Article.findByIdAndUpdate(
-    id,
-    { is_email_sent: true, updated_at: new Date() },
-    { new: true },
-  );
-};

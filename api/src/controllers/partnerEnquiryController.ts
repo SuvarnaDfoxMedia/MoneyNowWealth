@@ -1,7 +1,16 @@
 import type { Request, Response } from "express";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import { recaptchaService } from "../services/recaptchaService";
-import { partnerEnquiryService } from "../services/partnerEnquiryService";
+import { syncLeadToGetResponse } from "../services/getresponseService";
+import {
+  partnerEnquiryService,
+  getPartnerEnquiryFilter,
+} from "../services/partnerEnquiryService";
+import {
+  PARTNER_CURRENT_STATUS,
+  type PartnerCurrentStatus,
+} from "../models/partnerEnquiryModel";
+import { getAdminListQuery } from "../utils/adminListQuery";
 
 const PARTNER_RECAPTCHA_ACTION = "partner_with_us_submit";
 const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -83,6 +92,15 @@ export const addPartnerEnquiry = async (
       return sendError(res, "Please enter a valid ARN number", 400);
     }
 
+    const normalizedCurrentStatusValue =
+      PARTNER_CURRENT_STATUS.find(
+        (status) => status.toLowerCase() === normalizedCurrentStatus.toLowerCase(),
+      ) || null;
+
+    if (!normalizedCurrentStatusValue) {
+      return sendError(res, "Please select a valid current status", 400);
+    }
+
     const recaptchaResult = await recaptchaService.verify({
       token: recaptcha_token,
       expectedAction: PARTNER_RECAPTCHA_ACTION,
@@ -107,10 +125,22 @@ export const addPartnerEnquiry = async (
       country_code: normalizedCountryCode,
       city: normalizedCity,
       organisation_name: normalizedOrganisationName,
-      current_status: normalizedCurrentStatus,
+      current_status: normalizedCurrentStatusValue as PartnerCurrentStatus,
       arn_number: normalizedArnNumber,
       terms_accepted: Boolean(terms_accepted),
     });
+
+    try {
+      await syncLeadToGetResponse({
+        email: enquiry.email,
+        name: enquiry.full_name,
+        mobile: `${enquiry.country_code}${enquiry.mobile}`,
+        city: enquiry.city,
+        source: "partner_enquiry",
+      });
+    } catch (syncError: any) {
+      console.error("Partner enquiry GetResponse sync failed:", syncError.message);
+    }
 
     return sendSuccess(
       res,
@@ -142,38 +172,21 @@ export const getPartnerEnquiries = async (
   res: Response,
 ) => {
   try {
-    const search =
-      typeof req.query.search === "string" ? req.query.search.trim() : "";
-    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-    const limit = Math.max(parseInt(req.query.limit as string) || 10, 1);
-    const skip = (page - 1) * limit;
-
-    const sortField =
-      typeof req.query.sortField === "string"
-        ? req.query.sortField
-        : "created_at";
-    const sortOrder =
-      typeof req.query.sortOrder === "string"
-        ? req.query.sortOrder
-        : "desc";
-
-    const filter: Record<string, unknown> = { is_active: 1 };
-
-    if (search) {
-      const regex = new RegExp(search, "i");
-      filter.$or = [
-        { full_name: regex },
-        { email: regex },
-        { mobile: regex },
-        { city: regex },
-        { organisation_name: regex },
-        { current_status: regex },
-        { arn_number: regex },
-      ];
-    }
-
-    const sort: Record<string, 1 | -1> = {};
-    sort[sortField] = sortOrder.toLowerCase() === "asc" ? 1 : -1;
+    const { search, page, limit, skip, sort } = getAdminListQuery(
+      req,
+      [
+        "full_name",
+        "email",
+        "mobile",
+        "city",
+        "organisation_name",
+        "current_status",
+        "arn_number",
+        "created_at",
+      ],
+      "created_at",
+    );
+    const filter = getPartnerEnquiryFilter(search);
 
     const { enquiries, total } = await partnerEnquiryService.getAll({
       filter,

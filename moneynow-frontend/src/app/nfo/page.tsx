@@ -5,9 +5,16 @@ import { useNfoFunds } from "@/hooks/useNfoFunds";
 
 const formatDate = (value?: string) =>
   value ? new Date(value).toLocaleDateString("en-GB") : "-";
+const formatAmount = (value?: number | null) =>
+  value === null || value === undefined ? "-" : `Rs ${Number(value).toLocaleString("en-IN")}`;
 
 export default function NfoPage() {
-  const { nfos, loading, error } = useNfoFunds({ isOpen: true, limit: 20 });
+  const { nfos, loading, error } = useNfoFunds({
+    isOpen: true,
+    limit: 100,
+    sortBy: "subscription_end_date",
+    sortOrder: "asc",
+  });
 
   return (
     <div className="max-w-7xl mx-auto p-6 font-sans text-[#1e293b] min-h-screen bg-white">
@@ -22,9 +29,11 @@ export default function NfoPage() {
         <table className="w-full text-left border-collapse min-w-[950px] table-fixed">
           <thead>
             <tr className="bg-[#F1F3F5] text-[#495057] text-[13px] font-bold">
+              <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[120px]">NFO ID</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] w-auto">Fund Name</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[160px]">AMC</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[160px]">Category</th>
+              <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[130px]">Min Investment</th>
               <th className="px-5 py-2 border-r border-[#E4E4E4] text-center w-[140px]">Open Date</th>
               <th className="px-5 py-2 text-center w-[140px]">Close Date</th>
             </tr>
@@ -32,13 +41,16 @@ export default function NfoPage() {
           <tbody className="divide-y divide-[#E4E4E4]">
             {loading ? (
               <tr>
-                <td colSpan={5} className="py-20 text-center text-gray-400 animate-pulse">
+                <td colSpan={7} className="py-20 text-center text-gray-400 animate-pulse">
                   Loading NFOs...
                 </td>
               </tr>
             ) : nfos.length > 0 ? (
               nfos.map((fund, idx) => (
                 <tr key={`${fund._id}-${idx}`} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
+                    {fund.nfo_id || "-"}
+                  </td>
                   <td className="px-5 py-2 text-[13px] text-[#495057] border-r border-[#E4E4E4] font-medium truncate">
                     {fund.fund_name}
                   </td>
@@ -47,6 +59,9 @@ export default function NfoPage() {
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
                     {fund.category_id?.name || "-"}
+                  </td>
+                  <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
+                    {formatAmount(fund.min_investment)}
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
                     {formatDate(fund.subscription_start_date)}
@@ -58,7 +73,7 @@ export default function NfoPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="py-16 text-center text-gray-400 font-medium">
+                <td colSpan={7} className="py-16 text-center text-gray-400 font-medium">
                   {error ? error : "No open NFOs available"}
                 </td>
               </tr>

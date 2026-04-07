@@ -8,6 +8,7 @@ import "intl-tel-input/build/css/intlTelInput.css";
 import { useProfileStore } from "@/stores/profileStore";
 import { API } from "@/app/api/axios";
 import { toast } from "react-hot-toast";
+import { attachNumericOnlyPhoneBehavior } from "@/utils/phoneInput";
 
 interface EditProfileProps {
   profile: {
@@ -120,6 +121,9 @@ export default function EditProfile({
     });
 
     isInitializedRef.current = true;
+    const detachNumericOnlyBehavior = attachNumericOnlyPhoneBehavior(
+      phoneRef.current,
+    );
 
     // Set initial phone number after initialization
     if (profile?.phone) {
@@ -191,6 +195,7 @@ export default function EditProfile({
     phoneRef.current.addEventListener("countrychange", handlePhoneChange);
 
     return () => {
+      detachNumericOnlyBehavior();
       phoneRef.current?.removeEventListener("input", handlePhoneChange);
       phoneRef.current?.removeEventListener("countrychange", handlePhoneChange);
       if (itiRef.current) {
@@ -508,6 +513,8 @@ export default function EditProfile({
                   ref={phoneRef}
                   className={phoneInputClass}
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   style={{ paddingLeft: "46px" }} // Add padding for flag
                 />
               </div>

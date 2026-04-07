@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { financialAssessmentService } from "../services/financialAssessmentService";
+import { syncLeadToGetResponse } from "../services/getresponseService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 
 /* ============================================
@@ -32,6 +33,17 @@ const isValidPhone = (phone: string) => {
   return /^[6-9]\d{9}$/.test(phone);
 };
 
+const normalizeLeadName = (name: unknown) =>
+  typeof name === "string" ? name.trim() : "";
+
+const normalizeLeadEmail = (email: unknown) =>
+  typeof email === "string" ? email.trim().toLowerCase() : "";
+
+const normalizeLeadPhone = (phone: unknown) =>
+  typeof phone === "string" || typeof phone === "number"
+    ? String(phone).trim()
+    : "";
+
 /* ============================================
    CONTROLLER FUNCTIONS
 ============================================ */
@@ -42,6 +54,9 @@ const isValidPhone = (phone: string) => {
 export const submitAssessment = async (req: Request, res: Response) => {
   try {
     const body = parseBody(req);
+    const isMoneyLifeCheck =
+      body.assessment_variant === "money_life_check" ||
+      (Array.isArray(body.question_answers) && body.question_answers.length > 0);
 
     const {
       name,
@@ -63,7 +78,7 @@ if (!name || !email || !phone) {
       return sendError(res, "Invalid phone number", 400);
     }
 
-    if (!monthly_income || !monthly_expenses) {
+    if (!isMoneyLifeCheck && (!monthly_income || !monthly_expenses)) {
       return sendError(
         res,
         "Monthly income and expenses are required",
@@ -71,19 +86,48 @@ if (!name || !email || !phone) {
       );
     }
 
-    if (monthly_income <= 0) {
+    if (!isMoneyLifeCheck && monthly_income <= 0) {
       return sendError(res, "Income must be greater than 0", 400);
     }
 
 const assessment =
       await financialAssessmentService.createAssessment(body);
 
+    try {
+      await syncLeadToGetResponse({
+        email: normalizeLeadEmail(assessment.email),
+        name: normalizeLeadName(assessment.name),
+        mobile: normalizeLeadPhone(assessment.phone),
+        source: "financial_assessment",
+      });
+    } catch (syncError: any) {
+      console.error("Financial assessment GetResponse sync failed:", syncError.message);
+    }
+
 const pdfResult =
       await financialAssessmentService.generatePDF(
         assessment._id.toString(),
       );
 
-    const pdfObj = pdfResult.toObject() as any;
+const pdfObj = pdfResult.toObject() as any;
+
+    if (assessment.assessment_variant === "money_life_check") {
+      return sendSuccess(
+        res,
+        "Assessment completed successfully",
+        {
+          id: assessment._id,
+          score: assessment.score,
+          category: assessment.category,
+          summary: assessment.summary_text,
+          pillar_results: assessment.pillar_report || [],
+          chart_data: assessment.chart_data || {},
+          pdf_url: pdfObj.pdf_url,
+          next_step: "Talk to someone about this",
+        },
+        201,
+      );
+    }
 
 return sendSuccess(
       res,

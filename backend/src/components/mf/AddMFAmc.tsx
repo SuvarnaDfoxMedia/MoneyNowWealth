@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../../hooks/useScrollToFirstError";
 import {
   MFFormActions,
   MFFormContainer,
@@ -8,6 +10,7 @@ import {
   mfCheckboxClass,
   mfInputClass,
 } from "./MFFormShared";
+import { getApiMessage, isDuplicateEntryMessage, toDuplicateFieldMessage } from "./mfValidation";
 
 export default function AddMFAmc() {
   const { id, role = "admin" } = useParams();
@@ -24,6 +27,7 @@ export default function AddMFAmc() {
   });
   const [errors, setErrors] = useState<{ name?: string }>({});
   const [saving, setSaving] = useState(false);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   useEffect(() => {
     if (!id) return;
@@ -35,7 +39,7 @@ export default function AddMFAmc() {
         is_active: d.is_active ?? 1,
       });
     })();
-  }, [id]);
+  }, [getOne, id]);
 
   const validate = () => {
     const next: { name?: string } = {};
@@ -43,18 +47,29 @@ export default function AddMFAmc() {
     if (form.name.trim().length > 120)
       next.name = "AMC name must be under 120 characters";
     setErrors(next);
+    if (Object.keys(next).length > 0) scrollToFirstError(next);
     return Object.keys(next).length === 0;
   };
 
   const applyApiErrors = (err: any) => {
     const apiErrors = err?.response?.data?.errors;
-    if (!Array.isArray(apiErrors)) return false;
     const next: { name?: string } = {};
-    apiErrors.forEach((e: any) => {
-      const field = e?.path || e?.param;
-      if (field === "name") next.name = e?.msg || "AMC name is invalid";
-    });
+
+    if (Array.isArray(apiErrors)) {
+      apiErrors.forEach((e: any) => {
+        const field = e?.path || e?.param;
+        if (field === "name") next.name = e?.msg || "AMC name is invalid";
+      });
+    }
+
+    const message = getApiMessage(err);
+    if (!next.name && isDuplicateEntryMessage(message)) {
+      next.name = toDuplicateFieldMessage(message, "AMC name");
+    }
+
+    if (Object.keys(next).length === 0) return false;
     setErrors(next);
+    scrollToFirstError(next);
     return true;
   };
 
@@ -63,11 +78,13 @@ export default function AddMFAmc() {
     if (!validate()) return;
     setSaving(true);
     try {
-      if (id) await updateRecord(id, form);
-      else await createRecord(form);
+      const payload = { ...form, name: form.name.trim() };
+      if (id) await updateRecord(id, payload);
+      else await createRecord(payload);
       navigate(`/${role}/mf/amcs`);
     } catch (err: any) {
       if (applyApiErrors(err)) return;
+      toast.error(getApiMessage(err) || "Failed to save AMC");
     } finally {
       setSaving(false);
     }
@@ -90,13 +107,13 @@ export default function AddMFAmc() {
         title={`${id ? "Edit" : "Add"} AMC`}
         onBack={() => navigate(`/${role}/mf/amcs`)}
       />
-      <form onSubmit={onSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label htmlFor="amc_name" className="block mb-2 text-gray-700 font-medium">AMC Name</label>
             <input
               id="amc_name"
-              className={mfInputClass}
+              className={`${mfInputClass} ${errors.name ? "!border-red-500 focus:!border-red-500" : ""}`}
               placeholder="AMC name"
               value={form.name}
               onChange={(e) => {

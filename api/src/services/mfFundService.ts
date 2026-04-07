@@ -4,6 +4,14 @@ import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
 import { buildSort, parsePagination, toDateOrNull, toNumberOrNull, toBoolean } from "./mfUtils";
 
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const exactCaseInsensitive = (value: string) => ({
+  $regex: `^${escapeRegex(value.trim())}$`,
+  $options: "i",
+});
+
 const resolveAmcId = async (payload: any) => {
   if (payload.amc_id) return payload.amc_id;
   if (!payload.amc_name) throw new Error("amc_id or amc_name is required");
@@ -19,6 +27,24 @@ const resolveAmcId = async (payload: any) => {
 const resolveCategoryId = async (payload: any) => {
   if (payload.category_id && /^[a-f\d]{24}$/i.test(String(payload.category_id))) return payload.category_id;
   throw new Error("category_id (mongo id) is required");
+};
+
+const normalizeInvestmentFlags = (payload: any) => {
+  const sipAllowed =
+    payload.sip_allowed !== undefined ? toBoolean(payload.sip_allowed) : true;
+  const lumpsumAllowed =
+    payload.lumpsum_allowed !== undefined ? toBoolean(payload.lumpsum_allowed) : true;
+
+  return {
+    sip_allowed: sipAllowed,
+    lumpsum_allowed: lumpsumAllowed,
+    min_sip_investment: sipAllowed
+      ? toNumberOrNull(payload.min_sip_investment)
+      : null,
+    min_lumpsum_investment: lumpsumAllowed
+      ? toNumberOrNull(payload.min_lumpsum_investment ?? payload.min_investment)
+      : null,
+  };
 };
 
 export const getFunds = async (query: any) => {
@@ -130,6 +156,7 @@ export const getFunds = async (query: any) => {
   if (query?.search) {
     const s = String(query.search).trim();
     filter.$or = [
+      { scheme_code: { $regex: s, $options: "i" } },
       { fund_name: { $regex: s, $options: "i" } },
       { fund_manager: { $regex: s, $options: "i" } },
     ];
@@ -230,6 +257,9 @@ export const getFundById = async (id: string) => {
 };
 
 export const createFund = async (payload: Partial<IMFFund> & any) => {
+  if (!payload.scheme_code) {
+    throw new Error("scheme_code is required");
+  }
   if (!payload.fund_name) {
     throw new Error("fund_name is required");
   }
@@ -242,14 +272,38 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     : typeof payload.top_holdings === "string"
       ? payload.top_holdings.split(",").map((x: string) => x.trim()).filter(Boolean)
       : [];
+  const investmentFlags = normalizeInvestmentFlags(payload);
+  const normalizedSchemeCode = String(payload.scheme_code).trim();
+  const normalizedFundName = String(payload.fund_name).trim();
+  const planType = String(payload.plan_type || "Regular").trim();
+  const optionType = String(payload.option_type || "Growth").trim();
+
+  const exists = await MFFund.findOne({
+    is_deleted: false,
+    $or: [
+      { scheme_code: exactCaseInsensitive(normalizedSchemeCode) },
+      {
+        fund_name: exactCaseInsensitive(normalizedFundName),
+        plan_type: planType,
+        option_type: optionType,
+      },
+    ],
+  }).select("_id");
+  if (exists) throw new Error("Fund already exists");
 
   const doc = new MFFund({
     ...payload,
+    scheme_code: normalizedSchemeCode,
+    fund_name: normalizedFundName,
     amc_id: amcId,
     category_id: categoryId,
     aum_cr: toNumberOrNull(payload.aum_cr),
     expense_ratio: toNumberOrNull(payload.expense_ratio),
     returns: {
+      d1: toNumberOrNull(payload.returns?.d1) ?? 0,
+      m1: toNumberOrNull(payload.returns?.m1) ?? 0,
+      m3: toNumberOrNull(payload.returns?.m3) ?? 0,
+      m6: toNumberOrNull(payload.returns?.m6) ?? 0,
       y1: toNumberOrNull(payload.returns?.y1 ?? payload.y1_return),
       y3_cagr: toNumberOrNull(payload.returns?.y3_cagr ?? payload.y3_cagr),
       y5_cagr: toNumberOrNull(payload.returns?.y5_cagr ?? payload.y5_cagr),
@@ -264,7 +318,25 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
       turnover_ratio: toNumberOrNull(payload.risk_metrics?.turnover_ratio),
     },
     launch_date: toDateOrNull(payload.launch_date),
+    benchmark_index_name: String(payload.benchmark_index_name || "").trim(),
+    benchmark_returns_trailing: {
+      d1: toNumberOrNull(payload.benchmark_returns_trailing?.d1) ?? 0,
+      m1: toNumberOrNull(payload.benchmark_returns_trailing?.m1) ?? 0,
+      m3: toNumberOrNull(payload.benchmark_returns_trailing?.m3) ?? 0,
+      m6: toNumberOrNull(payload.benchmark_returns_trailing?.m6) ?? 0,
+      y1: toNumberOrNull(payload.benchmark_returns_trailing?.y1),
+      y3: toNumberOrNull(payload.benchmark_returns_trailing?.y3),
+      y5: toNumberOrNull(payload.benchmark_returns_trailing?.y5),
+      y10: toNumberOrNull(payload.benchmark_returns_trailing?.y10),
+    },
+    benchmark_returns_annual: {
+      y1: toNumberOrNull(payload.benchmark_returns_annual?.y1),
+      y3: toNumberOrNull(payload.benchmark_returns_annual?.y3),
+      y5: toNumberOrNull(payload.benchmark_returns_annual?.y5),
+      y10: toNumberOrNull(payload.benchmark_returns_annual?.y10),
+    },
     min_investment: toNumberOrNull(payload.min_investment),
+    ...investmentFlags,
     is_featured: toBoolean(payload.is_featured),
     is_popular: toBoolean(payload.is_popular),
     top_holdings: topHoldings,
@@ -284,6 +356,10 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
 export const updateFund = async (id: string, payload: Partial<IMFFund> & any) => {
   const updateData: any = { ...payload };
   ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
+  const currentDoc = await MFFund.findOne({ _id: id, is_deleted: false }).select(
+    "scheme_code fund_name plan_type option_type",
+  );
+  if (!currentDoc) throw new Error("Fund not found");
 
 if (payload.amc_name || payload.amc_id) {
     updateData.amc_id = await resolveAmcId(payload);
@@ -295,6 +371,10 @@ if (payload.amc_name || payload.amc_id) {
 
   if (payload.returns || payload.y1_return || payload.y3_cagr || payload.y5_cagr || payload.y10_cagr) {
     updateData.returns = {
+      d1: toNumberOrNull(payload.returns?.d1) ?? 0,
+      m1: toNumberOrNull(payload.returns?.m1) ?? 0,
+      m3: toNumberOrNull(payload.returns?.m3) ?? 0,
+      m6: toNumberOrNull(payload.returns?.m6) ?? 0,
       y1: toNumberOrNull(payload.returns?.y1 ?? payload.y1_return),
       y3_cagr: toNumberOrNull(payload.returns?.y3_cagr ?? payload.y3_cagr),
       y5_cagr: toNumberOrNull(payload.returns?.y5_cagr ?? payload.y5_cagr),
@@ -321,10 +401,43 @@ if (payload.amc_name || payload.amc_id) {
     };
   }
 
+  if (payload.scheme_code !== undefined) updateData.scheme_code = String(payload.scheme_code || "").trim();
+  if (payload.fund_name !== undefined) updateData.fund_name = String(payload.fund_name || "").trim();
   if (payload.aum_cr !== undefined) updateData.aum_cr = toNumberOrNull(payload.aum_cr);
   if (payload.expense_ratio !== undefined) updateData.expense_ratio = toNumberOrNull(payload.expense_ratio);
   if (payload.launch_date !== undefined) updateData.launch_date = toDateOrNull(payload.launch_date);
+  if (payload.benchmark_index_name !== undefined) {
+    updateData.benchmark_index_name = String(payload.benchmark_index_name || "").trim();
+  }
+  if (payload.benchmark_returns_trailing) {
+    updateData.benchmark_returns_trailing = {
+      d1: toNumberOrNull(payload.benchmark_returns_trailing.d1) ?? 0,
+      m1: toNumberOrNull(payload.benchmark_returns_trailing.m1) ?? 0,
+      m3: toNumberOrNull(payload.benchmark_returns_trailing.m3) ?? 0,
+      m6: toNumberOrNull(payload.benchmark_returns_trailing.m6) ?? 0,
+      y1: toNumberOrNull(payload.benchmark_returns_trailing.y1),
+      y3: toNumberOrNull(payload.benchmark_returns_trailing.y3),
+      y5: toNumberOrNull(payload.benchmark_returns_trailing.y5),
+      y10: toNumberOrNull(payload.benchmark_returns_trailing.y10),
+    };
+  }
+  if (payload.benchmark_returns_annual) {
+    updateData.benchmark_returns_annual = {
+      y1: toNumberOrNull(payload.benchmark_returns_annual.y1),
+      y3: toNumberOrNull(payload.benchmark_returns_annual.y3),
+      y5: toNumberOrNull(payload.benchmark_returns_annual.y5),
+      y10: toNumberOrNull(payload.benchmark_returns_annual.y10),
+    };
+  }
   if (payload.min_investment !== undefined) updateData.min_investment = toNumberOrNull(payload.min_investment);
+  if (
+    payload.sip_allowed !== undefined ||
+    payload.lumpsum_allowed !== undefined ||
+    payload.min_sip_investment !== undefined ||
+    payload.min_lumpsum_investment !== undefined
+  ) {
+    Object.assign(updateData, normalizeInvestmentFlags(payload));
+  }
   if (payload.is_featured !== undefined) updateData.is_featured = toBoolean(payload.is_featured);
   if (payload.is_popular !== undefined) updateData.is_popular = toBoolean(payload.is_popular);
 
@@ -336,6 +449,25 @@ if (payload.amc_name || payload.amc_id) {
           .map((x) => x.trim())
           .filter(Boolean);
   }
+
+  const nextSchemeCode = String(updateData.scheme_code ?? currentDoc.scheme_code ?? "").trim();
+  const nextFundName = String(updateData.fund_name ?? currentDoc.fund_name ?? "").trim();
+  const nextPlanType = String(updateData.plan_type ?? currentDoc.plan_type ?? "Regular").trim();
+  const nextOptionType = String(updateData.option_type ?? currentDoc.option_type ?? "Growth").trim();
+
+  const exists = await MFFund.findOne({
+    _id: { $ne: id },
+    is_deleted: false,
+    $or: [
+      { scheme_code: exactCaseInsensitive(nextSchemeCode) },
+      {
+        fund_name: exactCaseInsensitive(nextFundName),
+        plan_type: nextPlanType,
+        option_type: nextOptionType,
+      },
+    ],
+  }).select("_id");
+  if (exists) throw new Error("Fund already exists");
 
   const doc = await MFFund.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   if (!doc) throw new Error("Fund not found");

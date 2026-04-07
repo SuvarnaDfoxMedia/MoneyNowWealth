@@ -17,17 +17,18 @@ import {
   uploadHeroImage,
   uploadArticleImage,
 } from "../middlewares/uploadMiddleware";
+import { optionalUserProtect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
 /* -------------------- PUBLIC ROUTES -------------------- */
-router.get("/article", getArticles);
-router.get("/articles", getArticles); // alias for frontend compatibility
-router.get("/article/published/latest", getLatestPublishedArticles);
-router.get("/article/published/slug/:slug", getPublishedArticleBySlug);
+router.get("/article", optionalUserProtect, getArticles);
+router.get("/articles", optionalUserProtect, getArticles); // alias for frontend compatibility
+router.get("/article/published/latest", optionalUserProtect, getLatestPublishedArticles);
+router.get("/article/published/slug/:slug", optionalUserProtect, getPublishedArticleBySlug);
 router.get("/article/:id", getArticleById);
-router.get("/cluster/:clusterId/hierarchy", getClusterHierarchy);
-router.get("/cluster/slug/:slug/", getClusterHierarchyBySlug);
+router.get("/cluster/:clusterId/hierarchy", optionalUserProtect, getClusterHierarchy);
+router.get("/cluster/slug/:slug/", optionalUserProtect, getClusterHierarchyBySlug);
 
 /* -------------------- ADMIN / EDITOR ROUTES -------------------- */
 const adminEditorMiddleware = roleFromUrl(["admin", "editor"]);

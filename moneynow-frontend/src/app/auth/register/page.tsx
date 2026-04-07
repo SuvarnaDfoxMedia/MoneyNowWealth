@@ -11,6 +11,7 @@ import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { executeRecaptcha, mountRecaptcha, unmountRecaptcha } from "@/lib/recaptcha";
+import { attachNumericOnlyPhoneBehavior, sanitizePhoneInputValue } from "@/utils/phoneInput";
 
 const SIGNUP_RECAPTCHA_ACTION = "signup";
 
@@ -62,16 +63,19 @@ const Register = () => {
     });
 
     itiInstanceRef.current = iti;
+    const detachNumericOnlyBehavior = attachNumericOnlyPhoneBehavior(phoneRef.current);
 
     return () => {
+      detachNumericOnlyBehavior();
       iti.destroy();
       itiInstanceRef.current = null;
     };
   }, []);
 
-  const getMobileValue = () => phoneRef.current?.value?.trim() || "";
+  const getMobileValue = () =>
+    sanitizePhoneInputValue(phoneRef.current?.value?.trim() || "");
 
-  const getMobileDigits = () => getMobileValue().replace(/\D/g, "");
+  const getMobileDigits = () => getMobileValue();
 
   const getDialCode = (): string => {
     const iti = itiInstanceRef.current;
@@ -96,11 +100,7 @@ const Register = () => {
       return "Mobile number is required";
     }
 
-    if (/[A-Za-z]/.test(mobileValue)) {
-      return "Mobile number must contain digits only";
-    }
-
-    if (!/^[\d\s\-().]+$/.test(mobileValue)) {
+    if (!/^\d+$/.test(mobileValue)) {
       return "Please enter a valid mobile number";
     }
 
@@ -338,6 +338,8 @@ const Register = () => {
                 <input
                   ref={phoneRef}
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   onChange={handleMobileChange}
                   onBlur={handleMobileBlur}
                   className="w-full h-[50px] rounded-[4px] border border-[#D8DEE8] bg-gray-50/30 px-4 text-[14px]"

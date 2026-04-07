@@ -1,5 +1,10 @@
-import mongoose, { Document, Model, Schema } from "mongoose";
+import mongoose, { Document, Model, Schema, Types } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
+
+interface IEnquiryReadEntry {
+  userId: Types.ObjectId;
+  readAt: Date;
+}
 
 export const PARTNER_CURRENT_STATUS = [
   "I am an individual mutual fund distributor / IFA (ARN holder)",
@@ -21,11 +26,24 @@ export interface IPartnerEnquiry extends Document {
   arn_number?: string;
   terms_accepted: boolean;
   status: "new" | "in-progress" | "resolved";
+  readBy: IEnquiryReadEntry[];
   lead_source: string;
   is_active: number;
   created_at: Date;
   updated_at: Date;
 }
+
+const enquiryReadSchema = new Schema<IEnquiryReadEntry>(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    readAt: { type: Date, required: true, default: Date.now },
+  },
+  { _id: false },
+);
 
 const partnerEnquirySchema = new Schema<IPartnerEnquiry>(
   {
@@ -53,6 +71,10 @@ const partnerEnquirySchema = new Schema<IPartnerEnquiry>(
       enum: ["new", "in-progress", "resolved"],
       default: "new",
       index: true,
+    },
+    readBy: {
+      type: [enquiryReadSchema],
+      default: [],
     },
     lead_source: {
       type: String,
@@ -87,6 +109,8 @@ partnerEnquirySchema.pre<IPartnerEnquiry>("save", function (next) {
   this.updated_at = new Date();
   next();
 });
+
+partnerEnquirySchema.index({ "readBy.userId": 1 });
 
 export const PartnerEnquiry: Model<IPartnerEnquiry> =
   mongoose.models.PartnerEnquiry ||

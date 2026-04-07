@@ -32,6 +32,7 @@ import {
 import { toast } from "react-hot-toast";
 import { RichTextField } from "../components/PagesComponent/RichTextField";
 import { useCommonCrud } from "../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../hooks/useScrollToFirstError";
 import { axiosApi } from "../api/axios";
 
 interface Topic {
@@ -128,6 +129,7 @@ export default function AddArticle() {
   const [topicSearch, setTopicSearch] = useState<string>("");
   const [editorKey, setEditorKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -316,7 +318,11 @@ export default function AddArticle() {
     if (!values.title.trim()) newErrors.title = "Title required";
     if (!values.slug.trim()) newErrors.slug = "Slug required";
     if (!file && !previewUrl) newErrors.hero_image = "Hero image required";
-    if (Object.keys(newErrors).length) return setErrors(newErrors);
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors);
+      scrollToFirstError(newErrors);
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -353,7 +359,7 @@ export default function AddArticle() {
         </button>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-8">
         {/* Topic & Title */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Topic Dropdown with Search */}

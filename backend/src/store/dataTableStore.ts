@@ -80,17 +80,20 @@ export const useDataTableStore = create<TableState>((set, get) => ({
     if (state.currentModule === module) return;
 
     const cached = state.moduleCache[module];
+    const isModuleSwitch =
+      !!state.currentModule && state.currentModule !== module;
 
     set({
       currentModule: module,
-      lastAction:
-        state.currentModule && state.currentModule !== module
-          ? "tab-switch"
-          : state.lastAction,
-      page: cached?.page ?? DEFAULT_TABLE_STATE.page,
+      lastAction: isModuleSwitch ? "tab-switch" : state.lastAction,
+      page: isModuleSwitch
+        ? DEFAULT_TABLE_STATE.page
+        : (cached?.page ?? DEFAULT_TABLE_STATE.page),
       recordsPerPage:
         cached?.recordsPerPage ?? DEFAULT_TABLE_STATE.recordsPerPage,
-      searchValue: cached?.searchValue ?? DEFAULT_TABLE_STATE.searchValue,
+      searchValue: isModuleSwitch
+        ? DEFAULT_TABLE_STATE.searchValue
+        : (cached?.searchValue ?? DEFAULT_TABLE_STATE.searchValue),
       sortField: cached?.sortField ?? DEFAULT_TABLE_STATE.sortField,
       sortOrder: cached?.sortOrder ?? DEFAULT_TABLE_STATE.sortOrder,
     });

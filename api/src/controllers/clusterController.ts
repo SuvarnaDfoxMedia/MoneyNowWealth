@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import * as clusterService from "../services/clusterService";
 import Cluster from "../models/clusterModel";
 import { sendError, sendSuccess } from "../utils/apiResponse";
+import { contentAccessService } from "@/services/contentAccessService";
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -52,6 +53,7 @@ export const getClusters = async (req: Request, res: Response) => {
     const includeDeleted = req.query.includeDeleted === "true";
     const sortBy = String(req.query.sortBy || "created_at");
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const isPublicRequest = !req.params.role;
 
     const searchQuery: any = {};
     if (search) {
@@ -65,9 +67,10 @@ export const getClusters = async (req: Request, res: Response) => {
       page,
       limit,
       searchQuery,
-      status,
+      status: isPublicRequest ? status || "published" : status,
       includeDeleted,
       sort: { [sortBy]: sortOrder },
+      isPublicRequest,
     });
 
     return sendSuccess(res, "Clusters fetched successfully", response, 200, response);
@@ -87,6 +90,7 @@ export const getActiveClusters = async (req: Request, res: Response) => {
 
     const sortBy = String(req.query.sortBy || "created_at");
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+    const isPublicRequest = !req.params.role;
 
     /* ---------------- SEARCH ---------------- */
     const searchQuery: any = {};
@@ -100,10 +104,11 @@ export const getActiveClusters = async (req: Request, res: Response) => {
     const response = await clusterService.getActiveClusters({
       page,
       limit,
-      status,
+      status: isPublicRequest ? status || "published" : status,
       searchQuery,
       sort: { [sortBy]: sortOrder },
       includeDeleted,
+      isPublicRequest,
     });
 
     return sendSuccess(
@@ -342,6 +347,9 @@ export const getAllClustersFirstTopicWithArticle = async (
   try {
     const { status = "published" } = req.query;
     const now = new Date();
+    const allowedAccessTypes = await contentAccessService.getAllowedTopicAccessTypes(
+      req.user?.id,
+    );
 
     const clusters = await Cluster.aggregate([
       /* ---------------- MATCH CLUSTERS ---------------- */
@@ -366,6 +374,7 @@ export const getAllClustersFirstTopicWithArticle = async (
                 is_active: 1,
                 status: "published",
                 publish_date: { $lte: now },
+                access_type: { $in: allowedAccessTypes },
               },
             },
 

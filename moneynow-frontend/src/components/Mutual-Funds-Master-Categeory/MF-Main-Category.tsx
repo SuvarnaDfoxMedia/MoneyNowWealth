@@ -13,6 +13,38 @@ type SortConfig = {
   direction: "asc" | "desc" | null;
 };
 
+type TableRow = {
+  name: string;
+  y3: string;
+  y5: string;
+  y10: string;
+  is_featured?: boolean;
+};
+
+const parseReturn = (value: string) => {
+  const numericValue = Number.parseFloat(String(value));
+  return value === "-" || Number.isNaN(numericValue) ? -999 : numericValue;
+};
+
+const sortFeaturedFirst = (rows: TableRow[], sortKey: string) => {
+  const byReturnKey = (row: TableRow) => {
+    if (sortKey === "y5") return parseReturn(row.y5);
+    if (sortKey === "y10") return parseReturn(row.y10);
+    return parseReturn(row.y3);
+  };
+
+  return [...rows].sort((a, b) => {
+    if (!!a.is_featured !== !!b.is_featured) {
+      return a.is_featured ? -1 : 1;
+    }
+
+    const returnDiff = byReturnKey(b) - byReturnKey(a);
+    if (returnDiff !== 0) return returnDiff;
+
+    return a.name.localeCompare(b.name);
+  });
+};
+
 const formatReturnValue = (value: string) => (value === "-" ? "-" : `${value}%`);
 
 const SortIcons = ({
@@ -70,7 +102,9 @@ export default function MFMainCategory() {
     });
   const { nfos, loading: nfoLoading, error: nfoError } = useNfoFunds({
     isOpen: true,
-    limit: 50,
+    limit: 100,
+    sortBy: "subscription_end_date",
+    sortOrder: "asc",
   });
 
   useEffect(() => {
@@ -131,27 +165,27 @@ export default function MFMainCategory() {
   };
 
   const sortedData = useMemo(() => {
-    const data = [...baseData];
-    if (!sortConfig.direction) return data;
+    const data = [...baseData] as TableRow[];
+    if (!sortConfig.direction) return sortFeaturedFirst(data, "y3");
 
-    return data.sort((a, b) => {
+    const sorted = data.sort((a, b) => {
       const valA = a[sortConfig.key as keyof typeof a];
       const valB = b[sortConfig.key as keyof typeof b];
-      const parse = (v: unknown) => {
-        const numericValue = Number.parseFloat(String(v));
-        return v === "-" || Number.isNaN(numericValue) ? -999 : numericValue;
-      };
 
       if (sortConfig.key !== "name") {
         return sortConfig.direction === "asc"
-          ? parse(valA) - parse(valB)
-          : parse(valB) - parse(valA);
+          ? parseReturn(String(valA)) - parseReturn(String(valB))
+          : parseReturn(String(valB)) - parseReturn(String(valA));
       }
 
       return sortConfig.direction === "asc"
         ? String(valA).localeCompare(String(valB))
         : String(valB).localeCompare(String(valA));
     });
+    return sortFeaturedFirst(
+      sorted,
+      sortConfig.key === "y5" || sortConfig.key === "y10" ? sortConfig.key : "y3",
+    );
   }, [baseData, sortConfig]);
 
   const totalItems = sortedData.length;

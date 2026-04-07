@@ -7,6 +7,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FiSave, FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
+import { useScrollToFirstError } from "../hooks/useScrollToFirstError";
 import { RichTextField } from "./PagesComponent/RichTextField";
 
 // Form Interface
@@ -51,6 +52,7 @@ export default function AddSubscriptionPlan() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const extractPlan = (res: any) => {
     if (!res) return null;
@@ -170,6 +172,7 @@ export default function AddSubscriptionPlan() {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      scrollToFirstError(newErrors);
       toast.error("Please fix the errors in the form");
       return;
     }
@@ -229,7 +232,7 @@ export default function AddSubscriptionPlan() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
         {/* Name & Plan Type */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>

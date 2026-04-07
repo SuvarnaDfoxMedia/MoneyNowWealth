@@ -13,7 +13,7 @@ export const welcomeTemplate = (data: AuthEmailData) => ({
           <li>Free subscription plan</li>
           <li>Access to basic content</li>
           <li>Personalized dashboard</li>
-          <li>Free 24-hour Premium trial in 24 hours</li>
+          <li>Option to activate a complimentary Premium trial from your dashboard</li>
         </ul>
       </div>
       
