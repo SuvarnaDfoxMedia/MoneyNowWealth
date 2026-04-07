@@ -97,6 +97,12 @@ export default function ContactEnquiryListing() {
   ]);
 
   useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
+  useEffect(() => {
     if (!isMounted) return;
     void markModulesAsRead(["contact-enquiries"]);
   }, [isMounted, markModulesAsRead]);

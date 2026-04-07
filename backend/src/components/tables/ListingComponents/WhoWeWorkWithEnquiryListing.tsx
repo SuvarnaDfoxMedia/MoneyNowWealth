@@ -88,6 +88,12 @@ export default function WhoWeWorkWithEnquiryListing() {
   ]);
 
   useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
+  useEffect(() => {
     if (!isMounted) return;
     void markModulesAsRead(["who-we-work-with-enquiries"]);
   }, [isMounted, markModulesAsRead]);

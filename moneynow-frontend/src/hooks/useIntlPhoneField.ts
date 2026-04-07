@@ -22,6 +22,7 @@ export const useIntlPhoneField = (options?: UseIntlPhoneFieldOptions) => {
     if (phoneRef.current && !itiRef.current) {
       itiRef.current = intlTelInput(phoneRef.current, {
         initialCountry: options?.initialCountry || "in",
+        preferredCountries: ["in"],
         separateDialCode: options?.separateDialCode ?? true,
         autoPlaceholder: options?.autoPlaceholder,
         utilsScript:

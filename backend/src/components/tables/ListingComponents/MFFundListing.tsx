@@ -86,6 +86,12 @@ export default function MFFundListing() {
     setPage,
   ]);
 
+  useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
   const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFFund>({
       role,

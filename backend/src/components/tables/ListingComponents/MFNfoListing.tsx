@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
@@ -84,6 +84,12 @@ export default function MFNfoListing() {
     setPage,
   ]);
 
+  useEffect(() => {
+    if (!sortField) {
+      setSort("created_at", "desc");
+    }
+  }, [setSort, sortField]);
+
   const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
     useCommonCrud<MFNfo>({
       role,
@@ -107,29 +113,6 @@ export default function MFNfoListing() {
     1,
   );
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-
-  const parseDateValue = (value?: string) => {
-    if (!value) return Number.POSITIVE_INFINITY;
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
-  };
-
-  const sortedRows = useMemo(() => {
-    return [...rows].sort((a, b) => {
-      const activeDiff = (b.is_active === 1 ? 1 : 0) - (a.is_active === 1 ? 1 : 0);
-      if (activeDiff !== 0) return activeDiff;
-
-      const openDiff = (b.is_open ? 1 : 0) - (a.is_open ? 1 : 0);
-      if (openDiff !== 0) return openDiff;
-
-      const endDateDiff =
-        parseDateValue(a.subscription_end_date) -
-        parseDateValue(b.subscription_end_date);
-      if (endDateDiff !== 0) return endDateDiff;
-
-      return a.fund_name.localeCompare(b.fund_name);
-    });
-  }, [rows]);
 
   const handleDelete = async () => {
     if (!deleteModalId) return;
@@ -202,7 +185,7 @@ export default function MFNfoListing() {
 
       <DataTable
         columns={columns}
-        data={sortedRows}
+        data={rows}
         loading={isLoading}
         toolbarActions={
           <MFImportExportActions
