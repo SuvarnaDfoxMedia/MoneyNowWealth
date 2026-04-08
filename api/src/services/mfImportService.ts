@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Types } from "mongoose";
 import * as XLSX from "xlsx";
 import MFMainCategory from "../models/mfMainCategoryModel";
 import MFCategory from "../models/mfCategoryModel";
@@ -63,11 +64,63 @@ type ImportRuntime = {
     indexSnapshots: Set<string>;
   };
   popularFundSchemeCodes: Set<string>;
+  mainCategoriesById: Map<string, StagedMainCategory>;
+  mainCategoriesByName: Map<string, StagedMainCategory>;
+  categoriesById: Map<string, StagedCategory>;
+  categoriesByScopedName: Map<string, StagedCategory>;
+  categoriesByName: Map<string, StagedCategory[]>;
+  amcsById: Map<string, StagedAmc>;
+  amcsByName: Map<string, StagedAmc>;
 };
 
 type SheetDefinition = {
   key: keyof ImportSummary;
   aliases: string[];
+};
+
+type StagedMainCategory = {
+  _id: Types.ObjectId;
+  name: string;
+  description: string;
+  sort_order: number;
+  is_active: number;
+  is_deleted: boolean;
+  deleted_at: Date | null;
+};
+
+type StagedCategory = {
+  _id: Types.ObjectId;
+  name: string;
+  main_category_id: Types.ObjectId;
+  description: string;
+  benchmark_index_name: string;
+  benchmark_return_type: "Annual" | "Trailing";
+  benchmark_returns: {
+    y1: number | null;
+    y3: number | null;
+    y5: number | null;
+    y10: number | null;
+  };
+  category_average_returns: {
+    y1: number | null;
+    y3: number | null;
+    y5: number | null;
+    y10: number | null;
+  };
+  risk_level: string;
+  suggested_use_case: string;
+  suggested_use_case_note: string;
+  is_active: number;
+  is_deleted: boolean;
+  deleted_at: Date | null;
+};
+
+type StagedAmc = {
+  _id: Types.ObjectId;
+  name: string;
+  is_active: number;
+  is_deleted: boolean;
+  deleted_at: Date | null;
 };
 
 const SHEETS: Record<Exclude<MfImportEntity, "full-workbook">, SheetDefinition> = {
@@ -106,6 +159,174 @@ const FULL_WORKBOOK_SEQUENCE: Array<Exclude<MfImportEntity, "full-workbook">> = 
   "index-snapshots",
 ];
 
+const MAIN_CATEGORY_HEADERS = [
+  "main_category_name",
+  "description",
+  "sort_order",
+  "is_active",
+];
+
+const CATEGORY_HEADERS = [
+  "category_name",
+  "main_category_name",
+  "description",
+  "benchmark_index_name",
+  "benchmark_return_type",
+  "benchmark_y1",
+  "benchmark_y3",
+  "benchmark_y5",
+  "benchmark_y10",
+  "category_average_y1",
+  "category_average_y3",
+  "category_average_y5",
+  "category_average_y10",
+  "risk_level",
+  "suggested_use_case",
+  "suggested_use_case_note",
+  "is_active",
+];
+
+const AMC_HEADERS = ["amc_name", "is_active"];
+
+const FUND_HEADERS = [
+  "scheme_code",
+  "fund_name",
+  "amc_name",
+  "category_name",
+  "main_category_name",
+  "plan_type",
+  "option_type",
+  "aum_cr",
+  "expense_ratio",
+  "return_1d",
+  "return_1m",
+  "return_3m",
+  "return_6m",
+  "return_1y",
+  "return_3y_cagr",
+  "return_5y_cagr",
+  "return_10y_cagr",
+  "sharpe_3y",
+  "std_dev_3y",
+  "beta_3y",
+  "alpha_3y",
+  "max_drawdown_5y",
+  "turnover_ratio",
+  "fund_manager",
+  "launch_date",
+  "benchmark_index_name",
+  "benchmark_trailing_1d",
+  "benchmark_trailing_1m",
+  "benchmark_trailing_3m",
+  "benchmark_trailing_6m",
+  "benchmark_trailing_1y",
+  "benchmark_trailing_3y",
+  "benchmark_trailing_5y",
+  "benchmark_trailing_10y",
+  "benchmark_annual_1y",
+  "benchmark_annual_3y",
+  "benchmark_annual_5y",
+  "benchmark_annual_10y",
+  "min_investment",
+  "sip_allowed",
+  "min_sip_investment",
+  "lumpsum_allowed",
+  "min_lumpsum_investment",
+  "exit_load",
+  "is_featured",
+  "is_popular",
+  "fund_objective",
+  "investment_strategy",
+  "top_holdings",
+  "equity_pct",
+  "debt_pct",
+  "other_pct",
+  "tax_type",
+  "riskometer_label",
+  "is_active",
+];
+
+const NFO_HEADERS = [
+  "nfo_id",
+  "fund_name",
+  "amc_name",
+  "category_name",
+  "main_category_name",
+  "fund_objective_short",
+  "subscription_start_date",
+  "subscription_end_date",
+  "min_investment",
+  "benchmark",
+  "risk_level",
+  "is_open",
+  "is_active",
+];
+
+const INDEX_SNAPSHOT_HEADERS = [
+  "benchmark_index_name",
+  "main_category_name",
+  "category_name",
+  "return_1y",
+  "return_3y",
+  "return_5y",
+  "return_10y",
+  "last_updated_date",
+  "is_active",
+];
+
+const REQUIRED_HEADER_GROUPS: Record<
+  Exclude<MfImportEntity, "full-workbook">,
+  string[][]
+> = {
+  "main-categories": [["name", "main_category_name", "main_category"]],
+  categories: [
+    ["category_name", "name", "subcategory_name", "sub_category_name"],
+    [
+      "main_category_id",
+      "maincategoryid",
+      "main_category_mongo_id",
+      "main_category_name",
+      "main_category",
+      "fund_type",
+    ],
+  ],
+  amcs: [["name", "amc_name", "amc"]],
+  funds: [
+    ["scheme_code", "schemecode", "code"],
+    ["fund_name", "scheme_name", "fund"],
+    ["amc_id", "amcid", "amc_mongo_id", "amc_name", "amc", "fund_house"],
+    [
+      "category_id",
+      "categoryid",
+      "category_mongo_id",
+      "sub_category_id",
+      "category_name",
+      "category",
+      "subcategory_name",
+      "sub_category_name",
+    ],
+  ],
+  nfo: [
+    ["nfo_id", "nfoid", "code"],
+    ["fund_name", "scheme_name", "nfo_name"],
+    ["amc_id", "amcid", "amc_mongo_id", "amc_name", "amc", "fund_house"],
+    [
+      "category_id",
+      "categoryid",
+      "category_mongo_id",
+      "sub_category_id",
+      "category_name",
+      "category",
+      "subcategory_name",
+      "sub_category_name",
+    ],
+  ],
+  "index-snapshots": [
+    ["benchmark_index_name", "benchmark", "index_name"],
+    ["last_updated_date", "date", "as_on_date"],
+  ],
+};
+
 const newSection = (): ImportSection => ({
   inserted: 0,
   updated: 0,
@@ -122,17 +343,75 @@ const newSummary = (): ImportSummary => ({
   indexSnapshots: newSection(),
 });
 
-const newRuntime = (): ImportRuntime => ({
-  processedKeys: {
-    mainCategories: new Set<string>(),
-    categories: new Set<string>(),
-    amcs: new Set<string>(),
-    funds: new Set<string>(),
-    nfos: new Set<string>(),
-    indexSnapshots: new Set<string>(),
-  },
-  popularFundSchemeCodes: new Set<string>(),
-});
+const cacheMainCategory = (
+  runtime: ImportRuntime,
+  doc: StagedMainCategory | null | undefined,
+) => {
+  if (!doc?._id) return;
+  runtime.mainCategoriesById.set(String(doc._id), doc);
+  runtime.mainCategoriesByName.set(normalizeText(doc.name), doc);
+};
+
+const cacheCategory = (
+  runtime: ImportRuntime,
+  doc: StagedCategory | null | undefined,
+) => {
+  if (!doc?._id) return;
+  runtime.categoriesById.set(String(doc._id), doc);
+  const scopedKey = `${String(doc.main_category_id)}::${normalizeText(doc.name)}`;
+  runtime.categoriesByScopedName.set(scopedKey, doc);
+  const nameKey = normalizeText(doc.name);
+  const existing = runtime.categoriesByName.get(nameKey) || [];
+  const withoutSameId = existing.filter((item) => String(item._id) !== String(doc._id));
+  runtime.categoriesByName.set(nameKey, [...withoutSameId, doc]);
+};
+
+const cacheAmc = (runtime: ImportRuntime, doc: StagedAmc | null | undefined) => {
+  if (!doc?._id) return;
+  runtime.amcsById.set(String(doc._id), doc);
+  runtime.amcsByName.set(normalizeText(doc.name), doc);
+};
+
+const newRuntime = async (): Promise<ImportRuntime> => {
+  const runtime: ImportRuntime = {
+    processedKeys: {
+      mainCategories: new Set<string>(),
+      categories: new Set<string>(),
+      amcs: new Set<string>(),
+      funds: new Set<string>(),
+      nfos: new Set<string>(),
+      indexSnapshots: new Set<string>(),
+    },
+    popularFundSchemeCodes: new Set<string>(),
+    mainCategoriesById: new Map<string, StagedMainCategory>(),
+    mainCategoriesByName: new Map<string, StagedMainCategory>(),
+    categoriesById: new Map<string, StagedCategory>(),
+    categoriesByScopedName: new Map<string, StagedCategory>(),
+    categoriesByName: new Map<string, StagedCategory[]>(),
+    amcsById: new Map<string, StagedAmc>(),
+    amcsByName: new Map<string, StagedAmc>(),
+  };
+
+  const [mainCategories, categories, amcs] = await Promise.all([
+    MFMainCategory.find({ is_deleted: false })
+      .select("_id name description sort_order is_active is_deleted deleted_at")
+      .lean(),
+    MFCategory.find({ is_deleted: false })
+      .select(
+        "_id name main_category_id description benchmark_index_name benchmark_return_type benchmark_returns category_average_returns risk_level suggested_use_case suggested_use_case_note is_active is_deleted deleted_at",
+      )
+      .lean(),
+    MFAmc.find({ is_deleted: false })
+      .select("_id name is_active is_deleted deleted_at")
+      .lean(),
+  ]);
+
+  mainCategories.forEach((doc: any) => cacheMainCategory(runtime, doc as StagedMainCategory));
+  categories.forEach((doc: any) => cacheCategory(runtime, doc as StagedCategory));
+  amcs.forEach((doc: any) => cacheAmc(runtime, doc as StagedAmc));
+
+  return runtime;
+};
 
 const headerKey = (value: unknown) =>
   String(value || "")
@@ -183,6 +462,20 @@ const normalizeSheetRows = (workbook: XLSX.WorkBook, sheetName: string) => {
   });
 };
 
+const getSheetHeaderKeys = (workbook: XLSX.WorkBook, sheetName: string) => {
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return [];
+  const rows = XLSXModule.utils.sheet_to_json(sheet, {
+    header: 1,
+    blankrows: false,
+    defval: "",
+  }) as unknown[][];
+  const firstRow = Array.isArray(rows[0]) ? rows[0] : [];
+  return firstRow
+    .map((value) => headerKey(value))
+    .filter(Boolean);
+};
+
 const normalizeDateValue = (value: Date | null) => {
   if (!value) return null;
   const normalized = new Date(value);
@@ -211,6 +504,31 @@ const addRowError = (
 ) => {
   summary.errors += 1;
   errors.push({ sheet, row, message, identifier });
+};
+
+const validateRequiredHeaders = (
+  entity: Exclude<MfImportEntity, "full-workbook">,
+  sheetName: string,
+  headerKeys: string[],
+  summary: ImportSummary,
+  errors: ImportError[],
+) => {
+  const section = sectionForEntity(summary, SHEETS[entity].key);
+  const missingGroups = REQUIRED_HEADER_GROUPS[entity].filter(
+    (group) => !group.some((alias) => headerKeys.includes(headerKey(alias))),
+  );
+
+  for (const group of missingGroups) {
+    addRowError(
+      section,
+      errors,
+      sheetName,
+      1,
+      `Missing required column. Add one of: ${group.join(", ")}`,
+    );
+  }
+
+  return missingGroups.length === 0;
 };
 
 const toIsoDate = (value: Date | null | undefined) =>
@@ -327,6 +645,7 @@ const requireWorkbookPresence = (
 
 const resolveMainCategory = async (
   row: Record<string, unknown>,
+  runtime: ImportRuntime,
   allowByName = true,
 ) => {
   const idValue = String(
@@ -334,10 +653,7 @@ const resolveMainCategory = async (
   ).trim();
 
   if (idValue && /^[a-f\d]{24}$/i.test(idValue)) {
-    const byId = await MFMainCategory.findOne({
-      _id: idValue,
-      is_deleted: false,
-    }).select("_id name");
+    const byId = runtime.mainCategoriesById.get(idValue) || null;
     if (byId) return byId;
   }
 
@@ -347,11 +663,12 @@ const resolveMainCategory = async (
     valueByAliases(row, ["main_category_name", "main_category", "fund_type"]) || "",
   ).trim();
   if (!name) return null;
-  return findByNormalizedName(MFMainCategory as any, name);
+  return runtime.mainCategoriesByName.get(normalizeText(name)) || null;
 };
 
 const resolveCategory = async (
   row: Record<string, unknown>,
+  runtime: ImportRuntime,
   allowByName = true,
 ) => {
   const idValue = String(
@@ -359,10 +676,7 @@ const resolveCategory = async (
   ).trim();
 
   if (idValue && /^[a-f\d]{24}$/i.test(idValue)) {
-    const byId = await MFCategory.findOne({
-      _id: idValue,
-      is_deleted: false,
-    }).select("_id name main_category_id");
+    const byId = runtime.categoriesById.get(idValue) || null;
     if (byId) return byId;
   }
 
@@ -373,28 +687,29 @@ const resolveCategory = async (
   ).trim();
   if (!name) return null;
 
-  const mainCategory = await resolveMainCategory(row);
-  const filter: Record<string, unknown> = {
-    is_deleted: false,
-  };
+  const mainCategory = await resolveMainCategory(row, runtime);
   if (mainCategory?._id) {
-    filter.main_category_id = mainCategory._id;
+    return (
+      runtime.categoriesByScopedName.get(
+        `${String(mainCategory._id)}::${normalizeText(name)}`,
+      ) || null
+    );
   }
-  const docs = await MFCategory.find(filter).select("_id name main_category_id").lean();
-  return (
-    docs.find((doc: any) => normalizeText(doc.name) === normalizeText(name)) || null
-  );
+  const matches = runtime.categoriesByName.get(normalizeText(name)) || [];
+  return matches[0] || null;
 };
 
-const resolveAmc = async (row: Record<string, unknown>, allowByName = true) => {
+const resolveAmc = async (
+  row: Record<string, unknown>,
+  runtime: ImportRuntime,
+  allowByName = true,
+) => {
   const idValue = String(
     valueByAliases(row, ["amc_id", "amcid", "amc_mongo_id"]) || "",
   ).trim();
 
   if (idValue && /^[a-f\d]{24}$/i.test(idValue)) {
-    const byId = await MFAmc.findOne({ _id: idValue, is_deleted: false }).select(
-      "_id name",
-    );
+    const byId = runtime.amcsById.get(idValue) || null;
     if (byId) return byId;
   }
 
@@ -402,7 +717,7 @@ const resolveAmc = async (row: Record<string, unknown>, allowByName = true) => {
 
   const name = String(valueByAliases(row, ["amc_name", "amc", "fund_house"]) || "").trim();
   if (!name) return null;
-  return findByNormalizedName(MFAmc as any, name);
+  return runtime.amcsByName.get(normalizeText(name)) || null;
 };
 
 const upsertMainCategoryRow = async (
@@ -428,9 +743,9 @@ const upsertMainCategoryRow = async (
   runtime.processedKeys.mainCategories.add(dedupeKey);
 
   try {
-    const existing = await findByNormalizedName(MFMainCategory as any, name, "_id name description sort_order is_active is_deleted deleted_at");
+    const existing = runtime.mainCategoriesByName.get(dedupeKey) || null;
 
-    const nextData = {
+    const nextData: Omit<StagedMainCategory, "_id"> = {
       name,
       description: String(valueByAliases(row, ["description"]) || "").trim(),
       sort_order: parseNumber(row, ["sort_order", "sortorder"]) ?? 0,
@@ -441,17 +756,32 @@ const upsertMainCategoryRow = async (
 
     if (!existing) {
       section.inserted += 1;
-      if (!validateOnly) await MFMainCategory.create(nextData);
+      if (!validateOnly) {
+        const created = await MFMainCategory.create(nextData);
+        cacheMainCategory(runtime, created.toObject() as StagedMainCategory);
+      } else {
+        cacheMainCategory(runtime, {
+          _id: new Types.ObjectId(),
+          ...nextData,
+        });
+      }
       return;
     }
 
     if (!hasChanges(existing as Record<string, any>, nextData)) {
       section.skipped += 1;
+      cacheMainCategory(runtime, existing);
       return;
     }
 
     section.updated += 1;
-    if (!validateOnly) await MFMainCategory.updateOne({ _id: (existing as any)._id }, nextData);
+    if (!validateOnly) {
+      await MFMainCategory.updateOne({ _id: (existing as any)._id }, nextData);
+    }
+    cacheMainCategory(runtime, {
+      ...(existing as StagedMainCategory),
+      ...nextData,
+    });
   } catch (error: any) {
     addRowError(section, errors, sheetName, rowNumber, error?.message || "Failed to process main category row", name);
   }
@@ -476,7 +806,7 @@ const upsertCategoryRow = async (
   }
 
   try {
-    const mainCategory = await resolveMainCategory(row);
+    const mainCategory = await resolveMainCategory(row, runtime);
     if (!mainCategory?._id) {
       addRowError(section, errors, sheetName, rowNumber, "Main category could not be resolved", name);
       return;
@@ -488,18 +818,9 @@ const upsertCategoryRow = async (
     }
     runtime.processedKeys.categories.add(dedupeKey);
 
-    const existing = (
-      await MFCategory.find({
-        main_category_id: mainCategory._id,
-        is_deleted: false,
-      })
-        .select(
-          "_id name main_category_id description benchmark_index_name benchmark_return_type benchmark_returns category_average_returns risk_level suggested_use_case suggested_use_case_note is_active is_deleted deleted_at",
-        )
-        .lean()
-    ).find((doc: any) => normalizeText(doc.name) === normalizeText(name)) || null;
+    const existing = runtime.categoriesByScopedName.get(dedupeKey) || null;
 
-    const nextData = {
+    const nextData: Omit<StagedCategory, "_id"> = {
       name,
       main_category_id: mainCategory._id,
       description: String(valueByAliases(row, ["description", "short_description"]) || "").trim(),
@@ -532,17 +853,32 @@ const upsertCategoryRow = async (
 
     if (!existing) {
       section.inserted += 1;
-      if (!validateOnly) await MFCategory.create(nextData);
+      if (!validateOnly) {
+        const created = await MFCategory.create(nextData);
+        cacheCategory(runtime, created.toObject() as StagedCategory);
+      } else {
+        cacheCategory(runtime, {
+          _id: new Types.ObjectId(),
+          ...nextData,
+        });
+      }
       return;
     }
 
     if (!hasChanges(existing as Record<string, any>, nextData)) {
       section.skipped += 1;
+      cacheCategory(runtime, existing);
       return;
     }
 
     section.updated += 1;
-    if (!validateOnly) await MFCategory.updateOne({ _id: (existing as any)._id }, nextData);
+    if (!validateOnly) {
+      await MFCategory.updateOne({ _id: (existing as any)._id }, nextData);
+    }
+    cacheCategory(runtime, {
+      ...(existing as StagedCategory),
+      ...nextData,
+    });
   } catch (error: any) {
     addRowError(section, errors, sheetName, rowNumber, error?.message || "Failed to process category row", name);
   }
@@ -571,12 +907,8 @@ const upsertAmcRow = async (
   runtime.processedKeys.amcs.add(dedupeKey);
 
   try {
-    const existing = await findByNormalizedName(
-      MFAmc as any,
-      name,
-      "_id name is_active is_deleted deleted_at",
-    );
-    const nextData = {
+    const existing = runtime.amcsByName.get(dedupeKey) || null;
+    const nextData: Omit<StagedAmc, "_id"> = {
       name,
       is_active: toBoolean(valueByAliases(row, ["is_active"]), true) ? 1 : 0,
       is_deleted: false,
@@ -585,17 +917,32 @@ const upsertAmcRow = async (
 
     if (!existing) {
       section.inserted += 1;
-      if (!validateOnly) await MFAmc.create(nextData);
+      if (!validateOnly) {
+        const created = await MFAmc.create(nextData);
+        cacheAmc(runtime, created.toObject() as StagedAmc);
+      } else {
+        cacheAmc(runtime, {
+          _id: new Types.ObjectId(),
+          ...nextData,
+        });
+      }
       return;
     }
 
     if (!hasChanges(existing as Record<string, any>, nextData)) {
       section.skipped += 1;
+      cacheAmc(runtime, existing);
       return;
     }
 
     section.updated += 1;
-    if (!validateOnly) await MFAmc.updateOne({ _id: (existing as any)._id }, nextData);
+    if (!validateOnly) {
+      await MFAmc.updateOne({ _id: (existing as any)._id }, nextData);
+    }
+    cacheAmc(runtime, {
+      ...(existing as StagedAmc),
+      ...nextData,
+    });
   } catch (error: any) {
     addRowError(section, errors, sheetName, rowNumber, error?.message || "Failed to process AMC row", name);
   }
@@ -634,13 +981,13 @@ const upsertFundRow = async (
   runtime.processedKeys.funds.add(dedupeKey);
 
   try {
-    const category = await resolveCategory(row);
+    const category = await resolveCategory(row, runtime);
     if (!category?._id) {
       addRowError(section, errors, sheetName, rowNumber, "Category could not be resolved", schemeCode);
       return;
     }
 
-    const amc = await resolveAmc(row);
+    const amc = await resolveAmc(row, runtime);
     if (!amc?._id) {
       addRowError(section, errors, sheetName, rowNumber, "AMC could not be resolved", schemeCode);
       return;
@@ -780,13 +1127,13 @@ const upsertNfoRow = async (
   runtime.processedKeys.nfos.add(dedupeKey);
 
   try {
-    const category = await resolveCategory(row);
+    const category = await resolveCategory(row, runtime);
     if (!category?._id) {
       addRowError(section, errors, sheetName, rowNumber, "Category could not be resolved", nfoId);
       return;
     }
 
-    const amc = await resolveAmc(row);
+    const amc = await resolveAmc(row, runtime);
     if (!amc?._id) {
       addRowError(section, errors, sheetName, rowNumber, "AMC could not be resolved", nfoId);
       return;
@@ -869,10 +1216,10 @@ const upsertIndexSnapshotRow = async (
   runtime.processedKeys.indexSnapshots.add(dedupeKey);
 
   try {
-    const category = await resolveCategory(row);
-    const mainCategory = category?._id
-      ? await MFCategory.findById(category._id).select("main_category_id")
-      : await resolveMainCategory(row);
+    const category = await resolveCategory(row, runtime);
+    const mainCategoryId = category?.main_category_id
+      ? category.main_category_id
+      : (await resolveMainCategory(row, runtime))?._id || null;
 
     const dayStart = new Date(lastUpdatedDate);
     const dayEnd = new Date(lastUpdatedDate);
@@ -885,8 +1232,7 @@ const upsertIndexSnapshotRow = async (
 
     const nextData = {
       benchmark_index_name: benchmarkIndexName,
-      main_category_id:
-        (mainCategory as any)?.main_category_id || (mainCategory as any)?._id || null,
+      main_category_id: mainCategoryId,
       category_id: category?._id || null,
       returns: {
         y1: parseNumber(row, ["return_1y", "1y_return", "y1"]),
@@ -940,6 +1286,10 @@ const processRows = async (
   });
   for (const sheetName of matchingSheets) {
     processedSheets.push(sheetName);
+    const headerKeys = getSheetHeaderKeys(workbook, sheetName);
+    if (!validateRequiredHeaders(entity, sheetName, headerKeys, summary, errors)) {
+      continue;
+    }
     const rows = normalizeSheetRows(workbook, sheetName);
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
@@ -967,8 +1317,12 @@ const appendSheet = (
   workbook: XLSX.WorkBook,
   name: string,
   rows: Record<string, unknown>[],
+  headers: string[],
 ) => {
-  const worksheet = XLSXModule.utils.json_to_sheet(rows);
+  const worksheet =
+    rows.length > 0
+      ? XLSXModule.utils.json_to_sheet(rows, { header: headers })
+      : XLSXModule.utils.aoa_to_sheet([headers]);
   XLSXModule.utils.book_append_sheet(workbook, worksheet, name);
 };
 
@@ -1140,47 +1494,15 @@ const exportIndexSnapshotRows = async () => {
   }));
 };
 
-const exportReferenceSheets = async () => {
-  const [mainCategories, categories, amcs] = await Promise.all([
-    MFMainCategory.find({ is_deleted: false }).sort({ name: 1 }).lean(),
-    MFCategory.find({ is_deleted: false })
-      .populate("main_category_id", "name")
-      .sort({ name: 1 })
-      .lean(),
-    MFAmc.find({ is_deleted: false }).sort({ name: 1 }).lean(),
-  ]);
-
-  return {
-    mainCategories: mainCategories.map((item) => ({
-      main_category_name: prettyText(item.name),
-    })),
-    categories: categories.map((item: any) => ({
-      category_name: prettyText(item.name),
-      main_category_name: prettyText(item.main_category_id?.name || ""),
-    })),
-    amcs: amcs.map((item) => ({
-      amc_name: prettyText(item.name),
-    })),
-  };
-};
-
-export const importMfExcel = async ({
-  filePath,
-  entity,
-  validateOnly = false,
-}: ImportOptions) => {
-  const resolvedPath = path.resolve(filePath);
-  if (!fs.existsSync(resolvedPath)) {
-    throw new Error(`Excel file not found at path: ${resolvedPath}`);
-  }
-
-  const workbook = XLSXModule.readFile(resolvedPath, { cellDates: true });
-  requireWorkbookPresence(workbook, entity);
-
+const runImportPipeline = async (
+  workbook: XLSX.WorkBook,
+  entity: MfImportEntity,
+  validateOnly: boolean,
+) => {
   const summary = newSummary();
   const errors: ImportError[] = [];
   const processedSheets: string[] = [];
-  const runtime = newRuntime();
+  const runtime = await newRuntime();
 
   const popularFundSheets = resolveSheetNames(workbook, "funds").filter(
     (sheetName) => normalizeText(sheetName) === normalizeText("Popular_Funds"),
@@ -1224,12 +1546,8 @@ export const importMfExcel = async ({
   }
 
   return {
-    success: true,
-    filePath: resolvedPath,
-    fileName: path.basename(resolvedPath),
     entity,
     validateOnly,
-    sheetsDetected: workbook.SheetNames || [],
     processedSheets,
     summary,
     errorCount: errors.length,
@@ -1237,44 +1555,66 @@ export const importMfExcel = async ({
   };
 };
 
+export const importMfExcel = async ({
+  filePath,
+  entity,
+  validateOnly = false,
+}: ImportOptions) => {
+  const resolvedPath = path.resolve(filePath);
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`Excel file not found at path: ${resolvedPath}`);
+  }
+
+  const workbook = XLSXModule.readFile(resolvedPath, { cellDates: true });
+  requireWorkbookPresence(workbook, entity);
+
+  if (!validateOnly) {
+    const validationReport = await runImportPipeline(workbook, entity, true);
+    if (validationReport.errorCount > 0) {
+      return {
+        success: false,
+        filePath: resolvedPath,
+        fileName: path.basename(resolvedPath),
+        sheetsDetected: workbook.SheetNames || [],
+        ...validationReport,
+      };
+    }
+  }
+
+  const report = await runImportPipeline(workbook, entity, validateOnly);
+
+  return {
+    success: true,
+    filePath: resolvedPath,
+    fileName: path.basename(resolvedPath),
+    sheetsDetected: workbook.SheetNames || [],
+    ...report,
+  };
+};
+
 export const exportMfExcel = async ({ entity }: ExportOptions) => {
   const workbook = buildWorkbook();
-  const references = await exportReferenceSheets();
 
   if (entity === "full-workbook") {
-    appendSheet(workbook, "Main_Categories", await exportMainCategoriesRows());
-    appendSheet(workbook, "Categories_Master", await exportCategoryRows());
-    appendSheet(workbook, "AMCs", await exportAmcRows());
-    appendSheet(workbook, "Popular_Funds", await exportFundRows(true));
-    appendSheet(workbook, "Scheme_Details", await exportFundRows(false));
-    appendSheet(workbook, "NFO_List", await exportNfoRows());
-    appendSheet(workbook, "Index_Data", await exportIndexSnapshotRows());
-    appendSheet(workbook, "Reference_MainCategories", references.mainCategories);
-    appendSheet(workbook, "Reference_Categories", references.categories);
-    appendSheet(workbook, "Reference_AMCs", references.amcs);
+    appendSheet(workbook, "Main_Categories", await exportMainCategoriesRows(), MAIN_CATEGORY_HEADERS);
+    appendSheet(workbook, "Categories_Master", await exportCategoryRows(), CATEGORY_HEADERS);
+    appendSheet(workbook, "AMCs", await exportAmcRows(), AMC_HEADERS);
+    appendSheet(workbook, "Popular_Funds", await exportFundRows(true), FUND_HEADERS);
+    appendSheet(workbook, "Scheme_Details", await exportFundRows(false), FUND_HEADERS);
+    appendSheet(workbook, "NFO_List", await exportNfoRows(), NFO_HEADERS);
+    appendSheet(workbook, "Index_Data", await exportIndexSnapshotRows(), INDEX_SNAPSHOT_HEADERS);
   } else if (entity === "main-categories") {
-    appendSheet(workbook, getPrimarySheetName("main-categories"), await exportMainCategoriesRows());
-    appendSheet(workbook, "Reference_MainCategories", references.mainCategories);
+    appendSheet(workbook, getPrimarySheetName("main-categories"), await exportMainCategoriesRows(), MAIN_CATEGORY_HEADERS);
   } else if (entity === "categories") {
-    appendSheet(workbook, getPrimarySheetName("categories"), await exportCategoryRows());
-    appendSheet(workbook, "Reference_MainCategories", references.mainCategories);
+    appendSheet(workbook, getPrimarySheetName("categories"), await exportCategoryRows(), CATEGORY_HEADERS);
   } else if (entity === "amcs") {
-    appendSheet(workbook, getPrimarySheetName("amcs"), await exportAmcRows());
-    appendSheet(workbook, "Reference_AMCs", references.amcs);
+    appendSheet(workbook, getPrimarySheetName("amcs"), await exportAmcRows(), AMC_HEADERS);
   } else if (entity === "funds") {
-    appendSheet(workbook, "Scheme_Details", await exportFundRows(false));
-    appendSheet(workbook, "Reference_Categories", references.categories);
-    appendSheet(workbook, "Reference_AMCs", references.amcs);
-    appendSheet(workbook, "Reference_MainCategories", references.mainCategories);
+    appendSheet(workbook, "Scheme_Details", await exportFundRows(false), FUND_HEADERS);
   } else if (entity === "nfo") {
-    appendSheet(workbook, getPrimarySheetName("nfo"), await exportNfoRows());
-    appendSheet(workbook, "Reference_Categories", references.categories);
-    appendSheet(workbook, "Reference_AMCs", references.amcs);
-    appendSheet(workbook, "Reference_MainCategories", references.mainCategories);
+    appendSheet(workbook, getPrimarySheetName("nfo"), await exportNfoRows(), NFO_HEADERS);
   } else if (entity === "index-snapshots") {
-    appendSheet(workbook, getPrimarySheetName("index-snapshots"), await exportIndexSnapshotRows());
-    appendSheet(workbook, "Reference_Categories", references.categories);
-    appendSheet(workbook, "Reference_MainCategories", references.mainCategories);
+    appendSheet(workbook, getPrimarySheetName("index-snapshots"), await exportIndexSnapshotRows(), INDEX_SNAPSHOT_HEADERS);
   }
 
   const buffer = XLSXModule.write(workbook, {

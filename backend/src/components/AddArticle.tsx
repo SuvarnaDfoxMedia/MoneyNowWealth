@@ -452,10 +452,10 @@ export default function AddArticle() {
               value={values.title}
               onChange={onChange}
               placeholder="Enter article title"
-              className={inputClass}
+              className={`${inputClass} ${errors.title ? "border-red-500" : ""}`}
             />
             {errors.title && (
-              <p className="text-red-500 text-sm">{errors.title}</p>
+              <p className="text-red-600 text-sm mt-1">{errors.title}</p>
             )}
           </div>
         </div>
@@ -469,8 +469,11 @@ export default function AddArticle() {
               value={values.slug}
               onChange={onChange}
               placeholder="Enter slug"
-              className={inputClass}
+              className={`${inputClass} ${errors.slug ? "border-red-500" : ""}`}
             />
+            {errors.slug && (
+              <p className="text-red-600 text-sm mt-1">{errors.slug}</p>
+            )}
           </div>
           <div>
             <label className="block mb-2 text-gray-700 font-medium">

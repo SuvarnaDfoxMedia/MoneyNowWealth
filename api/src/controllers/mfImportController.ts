@@ -52,6 +52,15 @@ export const importExcel = async (req: Request, res: Response) => {
       validateOnly,
     });
 
+    if (!validateOnly && report?.errorCount > 0) {
+      return sendError(
+        res,
+        "Import blocked because validation failed. Fix the workbook and validate again.",
+        400,
+        report,
+      );
+    }
+
     return sendSuccess(
       res,
       validateOnly ? "File validated successfully" : "Excel import completed",

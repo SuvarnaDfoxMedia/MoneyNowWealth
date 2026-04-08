@@ -310,7 +310,7 @@ const Register = () => {
                   type="text"
                   value={firstname}
                   onChange={(e) => setFirstname(e.target.value)}
-                  className="w-full h-[50px] rounded-[4px] border border-[#D8DEE8] bg-gray-50/30 px-4 text-[14px]"
+                  className={`w-full h-[50px] rounded-[4px] border bg-gray-50/30 px-4 text-[14px] outline-none transition ${errors.firstname ? "border-red-500" : "border-[#D8DEE8]"}`}
                 />
                 {errors.firstname && (
                   <p className="text-red-500 text-[12px] mt-1">
@@ -325,7 +325,7 @@ const Register = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-[50px] rounded-[4px] border border-[#D8DEE8] bg-gray-50/30 px-4 text-[14px]"
+                  className={`w-full h-[50px] rounded-[4px] border bg-gray-50/30 px-4 text-[14px] outline-none transition ${errors.email ? "border-red-500" : "border-[#D8DEE8]"}`}
                 />
                 {errors.email && (
                   <p className="text-red-500 text-[12px] mt-1">
@@ -343,7 +343,7 @@ const Register = () => {
                   pattern="[0-9]*"
                   onChange={handleMobileChange}
                   onBlur={handleMobileBlur}
-                  className="w-full h-[50px] rounded-[4px] border border-[#D8DEE8] bg-gray-50/30 px-4 text-[14px]"
+                  className={`w-full h-[50px] rounded-[4px] border bg-gray-50/30 px-4 text-[14px] outline-none transition ${errors.mobile ? "border-red-500" : "border-[#D8DEE8]"}`}
                 />
                 {errors.mobile && (
                   <p className="text-red-500 text-[12px] mt-1">
@@ -360,7 +360,7 @@ const Register = () => {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-[50px] rounded-[4px] border border-[#D8DEE8] bg-gray-50/30 px-4 pr-12 text-[14px]"
+                    className={`w-full h-[50px] rounded-[4px] border bg-gray-50/30 px-4 pr-12 text-[14px] outline-none transition ${errors.password ? "border-red-500" : "border-[#D8DEE8]"}`}
                   />
 
                   <span
@@ -433,3 +433,5 @@ const Register = () => {
 };
 
 export default Register;
+
+

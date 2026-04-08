@@ -64,10 +64,10 @@ export default function AssessmentLeadGate({
                 value={form.name}
                 onChange={onChange}
                 placeholder="Rahul Sharma"
-                className={`${inputClassName} ${errors.name ? "border-[#D14343]" : ""}`}
+                className={`${inputClassName} ${errors.name ? "border-red-500" : ""}`}
               />
               {errors.name ? (
-                <p className="mt-1 text-xs text-[#D14343]">{errors.name}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.name}</p>
               ) : null}
             </div>
 
@@ -81,10 +81,10 @@ export default function AssessmentLeadGate({
                 value={form.email}
                 onChange={onChange}
                 placeholder="rahul@example.com"
-                className={`${inputClassName} ${errors.email ? "border-[#D14343]" : ""}`}
+                className={`${inputClassName} ${errors.email ? "border-red-500" : ""}`}
               />
               {errors.email ? (
-                <p className="mt-1 text-xs text-[#D14343]">{errors.email}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
               ) : null}
             </div>
 
@@ -97,10 +97,10 @@ export default function AssessmentLeadGate({
                 value={form.phone}
                 onChange={onChange}
                 placeholder="9876543210"
-                className={`${inputClassName} ${errors.phone ? "border-[#D14343]" : ""}`}
+                className={`${inputClassName} ${errors.phone ? "border-red-500" : ""}`}
               />
               {errors.phone ? (
-                <p className="mt-1 text-xs text-[#D14343]">{errors.phone}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
               ) : null}
             </div>
 
@@ -143,10 +143,10 @@ export default function AssessmentLeadGate({
                 value={form.monthly_income}
                 onChange={onChange}
                 placeholder="100000"
-                className={`${inputClassName} ${errors.monthly_income ? "border-[#D14343]" : ""}`}
+                className={`${inputClassName} ${errors.monthly_income ? "border-red-500" : ""}`}
               />
               {errors.monthly_income ? (
-                <p className="mt-1 text-xs text-[#D14343]">
+                <p className="mt-1 text-xs text-red-600">
                   {errors.monthly_income}
                 </p>
               ) : null}
@@ -161,10 +161,10 @@ export default function AssessmentLeadGate({
                 value={form.monthly_expenses}
                 onChange={onChange}
                 placeholder="60000"
-                className={`${inputClassName} ${errors.monthly_expenses ? "border-[#D14343]" : ""}`}
+                className={`${inputClassName} ${errors.monthly_expenses ? "border-red-500" : ""}`}
               />
               {errors.monthly_expenses ? (
-                <p className="mt-1 text-xs text-[#D14343]">
+                <p className="mt-1 text-xs text-red-600">
                   {errors.monthly_expenses}
                 </p>
               ) : null}
@@ -244,3 +244,4 @@ export default function AssessmentLeadGate({
     </section>
   );
 }
+

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
 import { executeRecaptcha, mountRecaptcha, unmountRecaptcha } from "@/lib/recaptcha";
+import { getFieldErrorClassName, getFieldErrorTextClassName } from "@/utils/formFieldStyles";
 
 const LOGIN_RECAPTCHA_ACTION = "login";
 
@@ -175,13 +176,13 @@ const Login = () => {
             <input
               type="email"
               className={`w-full border border-[#E5E5E5] rounded-[4px] h-[40px] md:h-[44px] px-4 text-[14px] md:text-[15px] focus:outline-none focus:ring-1 focus:ring-[#E5E5E5] ${
-                errors.email ? "border-red-500" : ""
+                getFieldErrorClassName(Boolean(errors.email))
               }`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             {errors.email && (
-              <p className="text-red-500 text-[11px] md:text-[12px] mt-1">
+              <p className={getFieldErrorTextClassName("mt-1", "text-[11px] md:text-[12px]")}>
                 {errors.email}
               </p>
             )}
@@ -196,7 +197,7 @@ const Login = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 className={`w-full border border-[#E5E5E5] rounded-[4px] h-[40px] md:h-[44px] px-4 pr-12 text-[14px] md:text-[15px] focus:outline-none focus:ring-1 focus:ring-[#E5E5E5] ${
-                  errors.password ? "border-red-500" : ""
+                  getFieldErrorClassName(Boolean(errors.password))
                 }`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -213,7 +214,7 @@ const Login = () => {
               </span>
             </div>
             {errors.password && (
-              <p className="text-red-500 text-[11px] md:text-[12px] mt-1">
+              <p className={getFieldErrorTextClassName("mt-1", "text-[11px] md:text-[12px]")}>
                 {errors.password}
               </p>
             )}
@@ -291,3 +292,5 @@ const Login = () => {
 };
 
 export default Login;
+
+

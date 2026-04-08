@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import PartnerWithUsSection from "./PartnerWithUsSection";
 import PartnersWhatYouGet from "./PartnersWhatYouGet";
 import HowPartnershipWork from "./HowPartnershipWork";
@@ -24,7 +25,9 @@ const PartnerWithUs = () => {
           </h1>
 
           <div className="flex justify-center items-center gap-2 text-white mt-4 font-medium text-sm md:text-base leading-[28px] capitalize">
-            <span>Home</span>
+            <Link href="/" className="hover:underline">
+              Home
+            </Link>
             <ArrowRight size={18} className="text-white" strokeWidth={2.5} />
             <span>{data.title || "Partner with Us"}</span>
           </div>

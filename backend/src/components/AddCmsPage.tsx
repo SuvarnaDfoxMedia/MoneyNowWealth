@@ -261,9 +261,9 @@ export default function AddCmsPage() {
               name="title"
               value={values.title}
               onChange={handleChange}
-              className={inputClass}
+              className={`${inputClass} ${errors.title ? "border-red-500" : ""}`}
             />
-            {errors.title && <p className="text-red-500">{errors.title}</p>}
+            {errors.title && <p className="text-red-600 text-sm mt-1">{errors.title}</p>}
           </div>
 
           <div>
@@ -272,9 +272,9 @@ export default function AddCmsPage() {
               name="slug"
               value={values.slug}
               onChange={handleChange}
-              className={inputClass}
+              className={`${inputClass} ${errors.slug ? "border-red-500" : ""}`}
             />
-            {errors.slug && <p className="text-red-500">{errors.slug}</p>}
+            {errors.slug && <p className="text-red-600 text-sm mt-1">{errors.slug}</p>}
           </div>
         </div>
 

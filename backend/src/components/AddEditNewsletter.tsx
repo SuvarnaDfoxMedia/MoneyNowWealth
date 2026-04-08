@@ -360,10 +360,10 @@ export default function AddEditNewsletter() {
               value={values.title}
               onChange={handleChange}
               placeholder="Enter newsletter title"
-              className={inputClass}
+              className={`${inputClass} ${errors.title ? "border-red-500" : ""}`}
             />
             {errors.title && (
-              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+              <p className="text-red-600 text-sm mt-1">{errors.title}</p>
             )}
           </div>
 
@@ -380,13 +380,13 @@ export default function AddEditNewsletter() {
                 }
                 minDate={getTodayAtMidnight()}
                 dateFormat="dd/MM/yyyy"
-                className={`${inputClass} pr-16`}
+                className={`${inputClass} pr-16 ${errors.publish_date ? "border-red-500" : ""}`}
                 placeholderText="DD/MM/YYYY"
               />
               <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
             </div>
             {errors.publish_date && (
-              <p className="text-red-500 text-sm mt-1">{errors.publish_date}</p>
+              <p className="text-red-600 text-sm mt-1">{errors.publish_date}</p>
             )}
           </div>
 

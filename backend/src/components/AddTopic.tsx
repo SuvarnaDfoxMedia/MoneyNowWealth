@@ -322,7 +322,7 @@ const handleReset = () => {
   };
 
 const error = (m?: string) =>
-    m ? <p className="text-red-500 text-sm mt-1">{m}</p> : null;
+    m ? <p className="text-red-600 text-sm mt-1">{m}</p> : null;
 
   // Get selected cluster title
   const getSelectedClusterTitle = () => {
@@ -369,7 +369,7 @@ return (
               />
             </div>
             {errors.cluster_id && (
-              <p className="text-red-500 text-sm mt-1">{errors.cluster_id}</p>
+              <p className="text-red-600 text-sm mt-1">{errors.cluster_id}</p>
             )}
 
             {clusterDropdownOpen && (
@@ -437,7 +437,7 @@ return (
               value={values.title}
               onChange={handleInputChange}
               placeholder="Enter topic title"
-              className={inputClass}
+              className={`${inputClass} ${errors.title ? "border-red-500" : ""}`}
             />
             {error(errors.title)}
           </div>
@@ -452,7 +452,7 @@ return (
               value={values.slug}
               onChange={handleInputChange}
               placeholder="Enter slug"
-              className={inputClass}
+              className={`${inputClass} ${errors.slug ? "border-red-500" : ""}`}
             />
             {error(errors.slug)}
           </div>
@@ -533,7 +533,7 @@ return (
               value={values.read_time_minutes}
               onChange={handleInputChange}
               placeholder="Enter read time"
-              className={inputClass}
+              className={`${inputClass} ${errors.read_time_minutes ? "border-red-500" : ""}`}
             />
             {error(errors.read_time_minutes)}
           </div>
@@ -563,7 +563,7 @@ return (
                 minDate={getTodayAtMidnight()}
                 dateFormat="dd/MM/yyyy"
                 placeholderText="Select publish date"
-                className={`${inputClass} pr-10`}
+                className={`${inputClass} pr-10 ${errors.publish_date ? "border-red-500" : ""}`}
               />
               <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
             </div>
