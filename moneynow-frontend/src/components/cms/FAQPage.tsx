@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { FaSearch } from "react-icons/fa";
 import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 const FAQPage = ({ data }: { data: any }) => {
   const [activeId, setActiveId] = useState("");
@@ -73,7 +74,9 @@ const FAQPage = ({ data }: { data: any }) => {
             </h1>
 
             <div className="flex justify-center items-center gap-2 text-white font-medium text-sm md:text-base capitalize">
-              <span>Home</span>
+              <Link href="/" className="hover:underline">
+                Home
+              </Link>
               <ArrowRight size={18} className="text-white" strokeWidth={2.5} />
               <span>{data.title || "Frequently Asked Questions"}</span>
             </div>

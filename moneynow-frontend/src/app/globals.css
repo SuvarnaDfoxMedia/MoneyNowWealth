@@ -267,3 +267,18 @@ html {
     cursor: not-allowed;
   }
 }
+@layer utilities {
+  input.border-red-500,
+  select.border-red-500,
+  textarea.border-red-500,
+  .iti input.border-red-500 {
+    border-color: #ef4444;
+  }
+  input.border-red-500:focus,
+  select.border-red-500:focus,
+  textarea.border-red-500:focus,
+  .iti input.border-red-500:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(254, 202, 202, 0.9);
+  }
+}
