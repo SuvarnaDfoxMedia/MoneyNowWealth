@@ -1,12 +1,3 @@
-
-
-// /* -------------------------
-//    Model
-// ------------------------- */
-// export const ContactEnquiry: Model<IContactEnquiry> =
-//   mongoose.models.ContactEnquiry ||
-//   mongoose.model<IContactEnquiry>("ContactEnquiry", contactEnquirySchema);
-
 import mongoose, { Document, Schema, Model, Types } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
 

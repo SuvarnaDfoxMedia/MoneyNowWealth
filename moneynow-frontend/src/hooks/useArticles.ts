@@ -1,16 +1,3 @@
-
-
-//   return {
-//     articles,
-//     loading,
-//     error,
-//     total,
-//     totalPages,
-//     getImageUrl,
-//     refetch: fetchArticles,
-//   };
-// }
-
 import { useEffect, useRef, useState } from "react";
 import { API } from "@/app/api/axios";
 import { useRefreshSignal } from "./useRefreshSignal";

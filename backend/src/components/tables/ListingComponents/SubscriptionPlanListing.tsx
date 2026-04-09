@@ -1,17 +1,3 @@
-
-
-//   const {
-//     page,
-//     recordsPerPage,
-//     searchValue,
-//     sortField,
-//     sortOrder,
-//     setPage,
-//     setRecordsPerPage,
-//     setSearchValue,
-//     setSort,
-//   } = useDataTableStore();
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";

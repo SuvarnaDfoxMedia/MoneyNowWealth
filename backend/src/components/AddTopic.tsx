@@ -1,14 +1,3 @@
-
-
-//   const generateSlug = (text: string) =>
-//     text
-//       .toLowerCase()
-//       .trim()
-//       .replace(/[^\w\s-]/g, "")
-//       .replace(/\s+/g, "-");
-
-//   /* ================= SUBMIT (JSON ONLY) ================= */
-
 "use client";
 
 import React, {

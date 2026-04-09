@@ -48,6 +48,7 @@ import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
 
 import AddCmsPage from "./components/AddCmsPage";
+import AddSeo from "./components/AddSeo";
 import ClusterListing from "./components/tables/ListingComponents/ClusterListing";
 import AddCluster from "./components/AddCluster";
 import AddTopic from "./components/AddTopic";
@@ -69,6 +70,7 @@ import MFFundListing from "./components/tables/ListingComponents/MFFundListing";
 import MFNfoListing from "./components/tables/ListingComponents/MFNfoListing";
 import MFIndexSnapshotListing from "./components/tables/ListingComponents/MFIndexSnapshotListing";
 import MFAmcListing from "./components/tables/ListingComponents/MFAmcListing";
+import SeoListing from "./components/tables/ListingComponents/SeoListing";
 import AddMFMainCategory from "./components/mf/AddMFMainCategory";
 import AddMFCategory from "./components/mf/AddMFSubCategory";
 import AddMFFund from "./components/mf/AddMFFund";
@@ -159,6 +161,10 @@ function AppRoutes() {
         <Route path="/:role/cmspages/create" element={<AddCmsPage />} />
         <Route path="/:role/cmspages/edit/:id" element={<AddCmsPage />} />
         <Route path="/:role/cmspages/view/:id" element={<ViewCMSPage />} />
+
+        <Route path="/:role/seo" element={<SeoListing />} />
+        <Route path="/:role/seo/create" element={<AddSeo />} />
+        <Route path="/:role/seo/edit/:id" element={<AddSeo />} />
 
         <Route
           path="/:role/subscriptionplan"

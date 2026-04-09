@@ -1,21 +1,3 @@
-
-
-// // /* ============================================
-// //    Helper: Parse FormData fields
-// // ============================================ */
-// // const parseFormData = (req: Request) => {
-// //   // If content-type is multipart/form-data, body fields are already parsed
-// //   // We need to handle both JSON and FormData
-// //   const body = req.body;
-
-// // /* ============================================
-// //    CONTROLLER FUNCTIONS (UPDATED)
-// // ============================================ */
-
-// /* ============================================
-//    CONTROLLER FUNCTIONS (UPDATED)
-// ============================================ */
-
 import type { Request, Response, NextFunction } from "express";
 import { newsletterPublishService } from "../services/newsletterPublishService";
 import multer from "multer";

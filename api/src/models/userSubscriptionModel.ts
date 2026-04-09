@@ -1,22 +1,3 @@
-
-
-// /* ===============================
-//    Virtuals
-//    =============================== */
-// userSubscriptionSchema.virtual("isExpired").get(function () {
-//   return this.end_date < new Date();
-// });
-
-//   this.history.push({
-//     plan_type: `${oldPlanType}→${newPlanType}`,
-//     status:
-//       oldPlanType === "Free" && newPlanType === "Premium"
-//         ? "upgrade"
-//         : "downgrade",
-//     changed_at: new Date(),
-//     reason,
-//   });
-
 import mongoose, { Document, Schema, Model, Types } from "mongoose";
 import {
   getRemainingDaysInclusive,

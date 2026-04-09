@@ -1,15 +1,3 @@
-
-
-// /* --------------------------
-//    MODEL EXPORT
-// ---------------------------- */
-// const UserSubscriptionPayment: IUserSubscriptionPaymentModel =
-//   (mongoose.models.UserSubscriptionPayment as IUserSubscriptionPaymentModel) ||
-//   mongoose.model<IUserSubscriptionPayment, IUserSubscriptionPaymentModel>(
-//     "UserSubscriptionPayment",
-//     userSubscriptionPaymentSchema,
-//   );
-
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
 
 /* --------------------------

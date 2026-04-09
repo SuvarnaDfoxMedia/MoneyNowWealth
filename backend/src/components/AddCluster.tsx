@@ -204,10 +204,8 @@ export default function AddCluster() {
 
       if (id) {
         await updateRecord(id, formData);
-        toast.success("Cluster updated successfully");
       } else {
         await createRecord(formData);
-        toast.success("Cluster created successfully");
       }
 
       navigate(`/${role || "admin"}/cluster`);

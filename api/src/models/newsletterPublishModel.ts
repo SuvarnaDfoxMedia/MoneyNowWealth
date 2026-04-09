@@ -1,33 +1,3 @@
-
-
-//   // File information
-//   pdf_file: string; // PDF filename in uploads/newsletters/
-//   file_size?: number; // File size in bytes
-
-// /* ===============================
-//    Model Export
-//    =============================== */
-// const NewsletterPublish: Model<INewsletterPublish> =
-//   mongoose.models.NewsletterPublish ||
-//   mongoose.model<INewsletterPublish>(
-//     "NewsletterPublish",
-//     newsletterPublishSchema,
-//   );
-
-//   // File information
-//   pdf_file: string; // PDF filename in uploads/newsletters/
-//   file_size?: number; // File size in bytes
-
-// /* ===============================
-//    Model Export
-//    =============================== */
-// const NewsletterPublish: Model<INewsletterPublish> =
-//   mongoose.models.NewsletterPublish ||
-//   mongoose.model<INewsletterPublish>(
-//     "NewsletterPublish",
-//     newsletterPublishSchema,
-//   );
-
 import mongoose, { Document, Schema, Model } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
 

@@ -1,21 +1,3 @@
-
-
-// // const generateSlug = (text: string) =>
-// //   text
-// //     .toLowerCase()
-// //     .trim()
-// //     .replace(/[^a-z0-9\s-]/g, "")
-// //     .replace(/\s+/g, "-")
-// //     .replace(/-+/g, "-");
-
-// const generateSlug = (text: string) =>
-//   text
-//     .toLowerCase()
-//     .trim()
-//     .replace(/[^a-z0-9\s-]/g, "")
-//     .replace(/\s+/g, "-")
-//     .replace(/-+/g, "-");
-
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -335,7 +317,6 @@ export default function AddArticle() {
       if (file) formData.append("hero_image", file);
       if (id) await updateRecord(id, formData);
       else await createRecord(formData);
-      toast.success(`Article ${id ? "updated" : "created"}`);
       navigate(`/${role}/article`);
     } catch (err: any) {
       console.error(err);

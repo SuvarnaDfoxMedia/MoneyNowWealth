@@ -36,6 +36,7 @@ import partnerEnquiryRoutes from "./routes/partnerEnquiryRoutes";
 import oneCroreJourneyEnquiryRoutes from "./routes/oneCroreJourneyEnquiryRoutes";
 import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
+import seoRoutes from "./routes/seoRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
 
 dotenv.config();
@@ -181,6 +182,7 @@ app.use("/api", partnerEnquiryRoutes);
 app.use("/api", oneCroreJourneyEnquiryRoutes);
 app.use("/api", whoWeWorkWithEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
+app.use("/api", seoRoutes);
 
 // Admin route example
 app.get(

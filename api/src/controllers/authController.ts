@@ -1,18 +1,3 @@
-
-
-// export const registerUser = async (req: Request, res: Response) => {
-//   try {
-//     const {
-//       title,
-//       firstname,
-//       lastname,
-//       email,
-//       password,
-//       mobile,
-//       countryCode,
-//       termsAccepted,
-//     } = req.body;
-
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";

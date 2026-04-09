@@ -239,9 +239,7 @@ export default function ClusterListing() {
     if (!deleteModalId) return;
 
     const res = await deleteRecord(deleteModalId);
-    if (res?.success) {
-      toast.success("Cluster deleted");
-    } else {
+    if (!res?.success) {
       toast.error("Delete failed");
     }
 

@@ -1,18 +1,3 @@
-// import express, { Request, Response } from "express";
-// import {
-//   getAllUsers,
-//   softDeleteUser,
-//   registerUser,
-//   loginUser,
-//   logoutUser,
-//   forgotPassword,
-//   resetPassword,
-//   changePassword,
-// } from "../controllers/authController";
-// import { validateRegister } from "../middlewares/validateRequest";
-// import { protect } from "../middlewares/authMiddleware";
-// import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
-
 import express, { Request, Response } from "express";
 import {
   getAllUsers,

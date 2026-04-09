@@ -1,19 +1,3 @@
-
-
-//   return {
-//     payments,
-//     latestSubscription,
-//     total,
-//     totalPages,
-//     currentPage: page,
-//     limit,
-//     loading: loading || userIdLoading,
-//     error: error || userIdError,
-//     userId,
-//     isActive,
-//   };
-// };
-
 import { useState, useEffect } from "react";
 import { API } from "@/app/api/axios";
 import { useUserId } from "./useUserId";

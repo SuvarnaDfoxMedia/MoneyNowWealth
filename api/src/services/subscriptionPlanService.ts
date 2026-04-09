@@ -1,36 +1,3 @@
-
-
-//     const [plans, total] = await Promise.all([
-//       SubscriptionPlan.find(filter)
-//         .sort(sortQuery)
-//         .skip(skip)
-//         .limit(limit)
-//         .lean(),
-
-//   /* =========================================================
-//      GET BY ID
-//   ========================================================= */
-//   getById: async (id: string): Promise<ISubscriptionPlan | null> => {
-//     if (!mongoose.Types.ObjectId.isValid(id)) return null;
-
-//   /* =========================================================
-//      TOGGLE ACTIVE
-//   ========================================================= */
-//   toggleActive: async (id: string): Promise<ISubscriptionPlan | null> => {
-//     if (!mongoose.Types.ObjectId.isValid(id)) return null;
-
-//   /* =========================================================
-//      SOFT DELETE
-//   ========================================================= */
-//   softDelete: async (id: string): Promise<ISubscriptionPlan | null> => {
-//     if (!mongoose.Types.ObjectId.isValid(id)) return null;
-
-//   /* =========================================================
-//      RESTORE SOFT-DELETED PLAN
-//   ========================================================= */
-//   restore: async (id: string): Promise<ISubscriptionPlan | null> => {
-//     if (!mongoose.Types.ObjectId.isValid(id)) return null;
-
 import mongoose from "mongoose";
 import SubscriptionPlan, {
   type ISubscriptionPlan,

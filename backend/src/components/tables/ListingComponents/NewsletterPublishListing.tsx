@@ -241,9 +241,7 @@ export default function NewsletterPublishListing() {
     try {
       const res = await deleteRecord(deleteModalId);
 
-      if (res?.success) {
-        toast.success("Newsletter deleted successfully");
-      } else {
+      if (!res?.success) {
         toast.error("Delete failed");
       }
     } catch {

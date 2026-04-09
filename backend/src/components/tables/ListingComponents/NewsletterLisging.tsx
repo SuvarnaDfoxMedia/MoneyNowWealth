@@ -178,7 +178,6 @@ export default function NewsletterListing() {
 
     const res = await deleteRecord(deleteModalId);
     if (res?.success) {
-      toast.success("Subscriber deleted");
       refetch();
     } else {
       toast.error(res?.message || "Delete failed");
@@ -222,7 +221,6 @@ export default function NewsletterListing() {
       label: "#",
       render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
     },
-    // { key: "name", label: "Name", sortable: true, render: (r) => r.name },
     { key: "email", label: "Email", sortable: true, render: (r) => r.email },
     {
       key: "created_at",

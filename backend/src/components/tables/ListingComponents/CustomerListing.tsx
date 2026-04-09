@@ -180,7 +180,6 @@ export default function CustomerListing() {
     try {
       const res = await deleteRecord(deleteModalId);
       if (res?.success) {
-        toast.success("Customer deleted successfully");
         refetch();
       } else {
         toast.error(res?.message || "Failed to delete customer");

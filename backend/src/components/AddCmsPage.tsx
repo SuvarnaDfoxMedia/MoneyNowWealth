@@ -212,7 +212,6 @@ export default function AddCmsPage() {
 
       if (id) await updateRecord(id, jsonPayload);
       else await createRecord(jsonPayload);
-      toast.success(`CMS Page ${id ? "updated" : "created"}`);
       navigate(`/${role || "admin"}/cmspages`);
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, "Failed to save CMS page"));

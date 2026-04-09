@@ -1,17 +1,3 @@
-
-
-//   const {
-//     page,
-//     recordsPerPage,
-//     searchValue,
-//     sortField,
-//     sortOrder,
-//     setPage,
-//     setRecordsPerPage,
-//     setSearchValue,
-//     setSort,
-//   } = useDataTableStore();
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -237,7 +223,6 @@ export default function CmsPageListing() {
         ),
       );
 
-      toast.success(res?.message || "Status updated successfully");
       refetch();
     } catch (error: any) {
       toast.error(error?.message || "Failed to update page status");
@@ -250,7 +235,6 @@ export default function CmsPageListing() {
     try {
       const res = await deleteRecord(deleteModalId);
       if (res?.success) {
-        toast.success("Page deleted");
         setPages((prev) => prev.filter((p) => p._id !== deleteModalId));
         refetch();
       } else {
