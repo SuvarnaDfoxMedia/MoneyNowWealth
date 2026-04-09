@@ -310,16 +310,6 @@ export const getMyPaymentHistory = async (req: Request, res: Response) => {
     return sendError(res, error?.message || "Server error", 500);
   }
 };
-
-//           // End date is day before next payment's start date
-//           const nextPaymentStartDate = await calculatePaymentStartDate(
-//             nextPayment,
-//             currentSubscription,
-//             nextPlan,
-//           );
-//           endDate = new Date(nextPaymentStartDate);
-//           endDate.setDate(endDate.getDate() - 1); // Previous day
-
 export const getUserSubscriptionHistory = async (
   req: Request,
   res: Response,

@@ -126,7 +126,6 @@ export default function MFNfoListing() {
       label: "#",
       render: (_, i) => (page - 1) * recordsPerPage + i + 1,
     },
-    // { key: "nfo_id", label: "NFO ID", sortable: true, render: (r) => r.nfo_id || "-" },
     { key: "fund_name", label: "Fund Name", sortable: true },
     { key: "amc", label: "AMC", render: (r) => r.amc_id?.name || "-" },
     {

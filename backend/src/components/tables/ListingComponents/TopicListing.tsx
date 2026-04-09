@@ -1,17 +1,3 @@
-
-
-//   const {
-//     page,
-//     recordsPerPage,
-//     searchValue,
-//     sortField,
-//     sortOrder,
-//     setPage,
-//     setRecordsPerPage,
-//     setSearchValue,
-//     setSort,
-//   } = useDataTableStore();
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -227,7 +213,6 @@ export default function TopicListing() {
     if (!deleteModalId) return;
     const result = await deleteRecord(deleteModalId);
     if (result.success) {
-      toast.success("Topic deleted");
       refetch();
     } else {
       toast.error(result.message || "Delete failed");

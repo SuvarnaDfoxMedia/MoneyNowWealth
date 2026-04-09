@@ -1,26 +1,3 @@
-
-// /* ===============================
-//    Interface
-//    =============================== */
-
-//   // EMAIL NOTIFICATION - Ensures same article email sent only once
-//   // Reset to false when status changes back to draft/archived
-//   is_email_sent?: boolean;
-
-// /* ===============================
-//    Schema
-//    =============================== */
-
-//     /* =============================== */
-
-// /* ===============================
-//    Pre-save Hook
-//    =============================== */
-
-// /* ===============================
-//    Model Export
-//    =============================== */
-
 import mongoose, { Document, Schema, Model } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
 

@@ -1,25 +1,3 @@
-
-
-//   const years = Math.max(1, Number(values.years || result.years || 1));
-//   const invested = Number(
-//     result.invested_amount ||
-//       result.stepup_invested_amount ||
-//       values.sip_amount * years * 12 ||
-//       0,
-//   );
-//   const growth = Number(
-//     result.growth_value ||
-//       result.stepup_growth_value ||
-//       result.growth_amount ||
-//       0,
-//   );
-//   const maturity = Number(
-//     result.maturity_amount ||
-//       result.stepup_maturity_amount ||
-//       result.target_wealth ||
-//       0,
-//   );
-
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";

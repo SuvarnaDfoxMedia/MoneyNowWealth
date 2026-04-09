@@ -239,9 +239,7 @@ export default function ArticleListing() {
   const handleDelete = async () => {
     if (!deleteModalId) return;
     const res = await deleteRecord(deleteModalId);
-    if (res?.success) {
-      toast.success("Article deleted");
-    } else {
+    if (!res?.success) {
       toast.error("Delete failed");
     }
     setDeleteModalId(null);

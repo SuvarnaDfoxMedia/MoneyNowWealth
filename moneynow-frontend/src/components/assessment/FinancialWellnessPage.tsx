@@ -225,17 +225,47 @@ const getStatus = (score: number) => {
   return "On a reasonable track" as const;
 };
 
+const hashString = (value: string) => {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 2147483647;
+  }
+
+  return hash;
+};
+
+const getShuffledOptions = (question: Question) =>
+  [...question.options]
+    .map((option, index) => ({
+      option,
+      sortKey: hashString(`${question.id}:${option.label}:${index}`),
+    }))
+    .sort((left, right) => left.sortKey - right.sortKey)
+    .map(({ option }) => option);
+
 export default function FinancialWellnessPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [showResult, setShowResult] = useState(false);
 
-  const currentQuestion = QUESTIONS[step];
+  const shuffledQuestions = useMemo(
+    () =>
+      QUESTIONS.map((question) => ({
+        ...question,
+        options: getShuffledOptions(question),
+      })),
+    [],
+  );
+
+  const currentQuestion = shuffledQuestions[step];
   const progress = ((step + 1) / QUESTIONS.length) * 100;
 
   const result = useMemo(() => {
     const pillarResults = (Object.keys(COPY) as AreaKey[]).map((key) => {
-      const areaQuestions = QUESTIONS.filter((question) => question.area === key);
+      const areaQuestions = shuffledQuestions.filter(
+        (question) => question.area === key,
+      );
       const scores = areaQuestions.map((question) => answers[question.id] ?? 0);
       const average = scores.length
         ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
@@ -283,7 +313,7 @@ export default function FinancialWellnessPage() {
       pillar_results: pillarResults,
       next_step: "Talk to someone about this",
     };
-  }, [answers]);
+  }, [answers, shuffledQuestions]);
 
   const summaryMetrics = showResult
     ? [

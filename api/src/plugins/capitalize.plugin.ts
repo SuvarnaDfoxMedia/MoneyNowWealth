@@ -1,26 +1,3 @@
-
-// /**
-//  * Capitalize first letter of string
-//  * AND first letter after a full stop for description fields
-//  */
-// const capitalizeText = (
-//   value?: string,
-//   isDescription: boolean = false,
-// ): string => {
-//   if (!value || typeof value !== "string") return value || "";
-
-// /**
-//  * Plugin options interface
-//  */
-// export interface CapitalizePluginOptions {
-//   // Fields to capitalize (defaults to all string fields if not specified)
-//   fields?: string[];
-//   // Fields to EXCLUDE from capitalization (SEO/slug fields go here)
-//   except?: string[];
-//   // Fields that should have sentence capitalization (after full stops)
-//   descriptionFields?: string[];
-// }
-
 import { Schema } from "mongoose";
 
 /**

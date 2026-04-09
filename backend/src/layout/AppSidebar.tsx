@@ -80,6 +80,12 @@ const AppSidebar: React.FC = () => {
         roles: ["admin"],
       },
       {
+        name: "Manage SEO",
+        icon: <FiSettings />,
+        path: `/${role}/seo`,
+        roles: ["admin"],
+      },
+      {
         name: "Subscription Plan",
         icon: <FiFile />,
         path: `/${role}/subscriptionplan`,

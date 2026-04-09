@@ -1,27 +1,3 @@
-
-
-// /* -------------------- VALIDATION -------------------- */
-// const updateValidation = [
-//   body("name").optional().isString().withMessage("Name must be a string"),
-
-//   body("phone")
-//     .optional()
-//     .isString()
-//     .isLength({ min: 5 })
-//     .withMessage("Phone number is too short"),
-
-// /* -------------------- PROFILE ROUTES -------------------- */
-
-// // Protected PUT route for updating profile
-// router.put(
-//   "/profile",
-//   protect,
-//   upload.single("profileImage"),
-//   updateValidation,
-//   handleValidationErrors,
-//   updateProfile,
-// );
-
 import express from "express";
 import multer from "multer";
 import path from "path";

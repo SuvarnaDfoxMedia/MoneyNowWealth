@@ -1,19 +1,3 @@
-
-
-// // -------------------------
-// // Indexes
-// // -------------------------
-// cmsPageSchema.index({ is_active: 1, is_deleted: 1, status: 1, created_at: -1 });
-
-// // -------------------------
-// // Model Export
-// // -------------------------
-// const CmsPage: CmsPageModel = mongoose.model<ICmsPage, CmsPageModel>(
-//   "CmsPage",
-//   cmsPageSchema,
-// );
-// export default CmsPage;
-
 import mongoose, { Document, Schema, Model, Query } from "mongoose";
 import { createRequire } from "module";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";

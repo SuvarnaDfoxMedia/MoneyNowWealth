@@ -1,13 +1,3 @@
-
-
-// const TABS: CalculatorTab[] = [
-//   "SIP Growth",
-//   "Step-Up SIP",
-//   "Lumpsum",
-//   "Goal Planner",
-//   "Retirement Planner",
-// ];
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";

@@ -169,7 +169,6 @@ export default function WhoWeWorkWithEnquiryListing() {
     try {
       const res = await deleteRecord(deleteModalId);
       if (res?.success) {
-        toast.success("Who we work with enquiry deleted successfully");
         setEnquiries((prev) =>
           prev.filter((entry) => entry._id !== deleteModalId),
         );

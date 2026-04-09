@@ -197,10 +197,8 @@ export default function AddSubscriptionPlan() {
       // SEND JSON NOT FORMDATA
       if (id) {
         await updateRecord(id, payload);
-        toast.success("Subscription plan updated successfully");
       } else {
         await createRecord(payload);
-        toast.success("Subscription plan created successfully");
       }
 
       // LIFO navigation - return to current page

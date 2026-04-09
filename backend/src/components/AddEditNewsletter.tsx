@@ -1,39 +1,3 @@
-
-// import React, {
-//   useEffect,
-//   useState,
-//   ChangeEvent,
-//   FormEvent,
-//   useRef,
-// } from "react";
-// import { useParams, useNavigate } from "react-router-dom";
-// import {
-//   FiSave,
-//   FiRefreshCw,
-//   FiArrowLeft,
-//   FiUpload,
-//   FiCalendar,
-//   FiFileText,
-//   FiX,
-// } from "react-icons/fi";
-// import { toast } from "react-hot-toast";
-// import useCommonCrud from "../hooks/useCommonCrud";
-// import { RichTextField } from "./PagesComponent/RichTextField";
-// import DatePicker from "react-datepicker";
-// import "react-datepicker/dist/react-datepicker.css";
-
-//   // Extract newsletter data from API response
-//   const extractNewsletter = (res: any) => {
-//     if (!res) return null;
-//     return (
-//       res.data?.newsletter ||
-//       res.data?.data ||
-//       res.newsletter ||
-//       res.data ||
-//       res
-//     );
-//   };
-
 "use client";
 
 import React, {

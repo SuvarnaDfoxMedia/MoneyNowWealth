@@ -200,7 +200,6 @@ export default function MFMainCategoryListing() {
               { value: "full-workbook", label: "Full Workbook" },
               { value: "main-categories", label: "Main Categories" },
               { value: "categories", label: "Sub Categories" },
-              // { value: "amcs", label: "AMCs" },
               { value: "funds", label: "Funds" },
               { value: "nfo", label: "NFOs" },
               { value: "index-snapshots", label: "Index Snapshots" },

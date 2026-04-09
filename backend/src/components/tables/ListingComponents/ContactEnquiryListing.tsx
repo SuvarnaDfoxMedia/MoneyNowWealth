@@ -192,7 +192,6 @@ export default function ContactEnquiryListing() {
     try {
       const res = await deleteRecord(deleteModalId);
       if (res?.success) {
-        toast.success("Enquiry deleted successfully");
         setEnquiries((prev) => prev.filter((e) => e._id !== deleteModalId));
       } else {
         toast.error(res?.message || "Failed to delete enquiry");

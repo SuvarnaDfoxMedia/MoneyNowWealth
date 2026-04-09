@@ -125,7 +125,6 @@ export default function MFFundListing() {
       label: "#",
       render: (_, i) => (page - 1) * recordsPerPage + i + 1,
     },
-    // { key: "scheme_code", label: "Scheme Code", sortable: true, render: (r) => r.scheme_code || "-" },
     { key: "fund_name", label: "Fund Name", sortable: true },
     { key: "amc", label: "AMC", render: (r) => r.amc_id?.name || "-" },
     {
@@ -133,9 +132,6 @@ export default function MFFundListing() {
       label: "Category",
       render: (r) => r.category_id?.name || "-",
     },
-    // { key: "d1", label: "1D", render: (r) => (r.returns?.d1 ?? 0) as any },
-    // { key: "m1", label: "1M", render: (r) => (r.returns?.m1 ?? 0) as any },
-    // { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
     {
       key: "is_featured",
       label: "Featured",

@@ -15,6 +15,7 @@ export interface UserProfile {
 }
 
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL ?? "";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE?.trim() ?? "";
 
 const pickPayload = (raw: any) => raw?.user || raw?.data || raw;
 
@@ -56,6 +57,14 @@ export const useFetchProfile = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
+    if (!API_BASE) {
+      setProfile(null);
+      setProfileImageUrl(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -100,6 +109,17 @@ export const useFetchProfile = () => {
         console.log(
           "User session unavailable (401/403). Skipping profile fetch error.",
         );
+        setProfile(null);
+        setProfileImageUrl(null);
+        setError(null);
+        return;
+      }
+
+      const isNetworkError =
+        !err?.response &&
+        (err?.code === "ERR_NETWORK" || err?.message === "Network Error");
+
+      if (isNetworkError) {
         setProfile(null);
         setProfileImageUrl(null);
         setError(null);

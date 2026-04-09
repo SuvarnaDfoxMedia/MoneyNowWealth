@@ -1,11 +1,3 @@
-
-
-//   //  Fetch newsletters with pagination
-//   const { newsletters, totalPages, loading, error } = useFetchNewsletters(
-//     page,
-//     limit,
-//   );
-
 "use client";
 
 import { FiDownload, FiMail, FiEye } from "react-icons/fi";

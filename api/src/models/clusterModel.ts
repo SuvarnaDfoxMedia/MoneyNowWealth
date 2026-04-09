@@ -1,13 +1,3 @@
-
-
-// /* -----------------------------
-// Model Export
-// ----------------------------- */
-// const Cluster: ClusterModel = mongoose.model<ICluster, ClusterModel>(
-//   "Cluster",
-//   clusterSchema,
-// );
-// export default Cluster;
 import mongoose, { Document, Schema, Model, Query } from "mongoose";
 import { createRequire } from "module";
 import slugify from "slugify";
