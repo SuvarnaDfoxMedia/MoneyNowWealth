@@ -1,0 +1,119 @@
+<svg width="1600" height="1100" viewBox="0 0 1600 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="60" x2="1500" y2="1040" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F8FC"/>
+      <stop offset="0.55" stop-color="#E9F1FB"/>
+      <stop offset="1" stop-color="#F8F2E8"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0E3A66"/>
+      <stop offset="1" stop-color="#1C6BB0"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F6D37A"/>
+      <stop offset="1" stop-color="#C98E2F"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#0A254033" />
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <rect x="36" y="36" width="1528" height="1028" rx="34" fill="#FFFFFF" filter="url(#shadow)"/>
+
+  <rect x="72" y="72" width="260" height="956" rx="28" fill="#0E2338"/>
+  <text x="110" y="136" fill="#FFFFFF" font-size="30" font-family="Arial, sans-serif" font-weight="700">MoneyNow</text>
+  <text x="110" y="170" fill="#8FB4DA" font-size="16" font-family="Arial, sans-serif">Edge User Dashboard</text>
+
+  <rect x="96" y="220" width="212" height="54" rx="16" fill="#173A59"/>
+  <text x="126" y="254" fill="#FFFFFF" font-size="18" font-family="Arial, sans-serif" font-weight="700">Overview</text>
+
+  <text x="126" y="330" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">My Plan</text>
+  <text x="126" y="386" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">Assessments</text>
+  <text x="126" y="442" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">Calculators</text>
+  <text x="126" y="498" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">Portfolio</text>
+  <text x="126" y="554" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">Research Desk</text>
+  <text x="126" y="610" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">Newsletters</text>
+  <text x="126" y="666" fill="#BFD3E8" font-size="18" font-family="Arial, sans-serif">Profile</text>
+
+  <rect x="96" y="798" width="212" height="182" rx="22" fill="#15324D"/>
+  <text x="118" y="840" fill="#F7D98A" font-size="14" font-family="Arial, sans-serif" font-weight="700" letter-spacing="1.5">EDGE BENEFITS</text>
+  <text x="118" y="878" fill="#FFFFFF" font-size="16" font-family="Arial, sans-serif" font-weight="700">Premium blogs</text>
+  <text x="118" y="910" fill="#FFFFFF" font-size="16" font-family="Arial, sans-serif" font-weight="700">Advanced calculators</text>
+  <text x="118" y="942" fill="#FFFFFF" font-size="16" font-family="Arial, sans-serif" font-weight="700">Saved reports</text>
+
+  <rect x="368" y="72" width="1156" height="180" rx="30" fill="url(#hero)"/>
+  <text x="416" y="134" fill="#CFE3F8" font-size="16" font-family="Arial, sans-serif" font-weight="700" letter-spacing="2">PERSONALIZED MEMBER HUB</text>
+  <text x="416" y="184" fill="#FFFFFF" font-size="38" font-family="Arial, sans-serif" font-weight="700">Welcome back, Ananya.</text>
+  <text x="416" y="226" fill="#E5F0FB" font-size="18" font-family="Arial, sans-serif">Track plan status, money health, premium tools, research, and next actions in one place.</text>
+
+  <rect x="1142" y="104" width="330" height="116" rx="24" fill="#0B2C4A" stroke="#2E6DA4"/>
+  <text x="1170" y="142" fill="#F6D48D" font-size="15" font-family="Arial, sans-serif" font-weight="700" letter-spacing="1.3">EDGE STATUS</text>
+  <text x="1170" y="178" fill="#FFFFFF" font-size="26" font-family="Arial, sans-serif" font-weight="700">Premium active</text>
+  <text x="1170" y="204" fill="#CDE4FA" font-size="16" font-family="Arial, sans-serif">18 days left  |  Renewal due 27 Apr</text>
+
+  <rect x="368" y="284" width="548" height="228" rx="26" fill="#FFFFFF" stroke="#D9E5F0"/>
+  <text x="402" y="330" fill="#12324E" font-size="24" font-family="Arial, sans-serif" font-weight="700">My Plan Snapshot</text>
+  <rect x="404" y="356" width="132" height="38" rx="19" fill="url(#gold)"/>
+  <text x="438" y="381" fill="#233246" font-size="16" font-family="Arial, sans-serif" font-weight="700">EDGE USER</text>
+  <text x="404" y="424" fill="#51677C" font-size="18" font-family="Arial, sans-serif">Current plan</text>
+  <text x="404" y="454" fill="#12324E" font-size="30" font-family="Arial, sans-serif" font-weight="700">Premium Annual</text>
+  <text x="404" y="494" fill="#51677C" font-size="18" font-family="Arial, sans-serif">Includes premium blogs, advanced calculators, saved reports, and future portfolio tools.</text>
+
+  <rect x="686" y="360" width="194" height="124" rx="22" fill="#F7FAFD" stroke="#D9E5F0"/>
+  <text x="710" y="395" fill="#74879A" font-size="15" font-family="Arial, sans-serif">Paid amount</text>
+  <text x="710" y="436" fill="#103354" font-size="32" font-family="Arial, sans-serif" font-weight="700">INR 4,999</text>
+  <text x="710" y="464" fill="#2C9B62" font-size="16" font-family="Arial, sans-serif" font-weight="700">Active</text>
+
+  <rect x="944" y="284" width="580" height="228" rx="26" fill="#FFFFFF" stroke="#D9E5F0"/>
+  <text x="978" y="330" fill="#12324E" font-size="24" font-family="Arial, sans-serif" font-weight="700">Next Best Actions</text>
+  <rect x="978" y="360" width="240" height="58" rx="18" fill="#EDF6FF"/>
+  <text x="1000" y="394" fill="#0C4F87" font-size="18" font-family="Arial, sans-serif" font-weight="700">Review latest premium report</text>
+  <rect x="1244" y="360" width="244" height="58" rx="18" fill="#FFF6E7"/>
+  <text x="1266" y="394" fill="#A16400" font-size="18" font-family="Arial, sans-serif" font-weight="700">Schedule advisor call</text>
+  <rect x="978" y="434" width="240" height="58" rx="18" fill="#EFFAF4"/>
+  <text x="1000" y="468" fill="#28784E" font-size="18" font-family="Arial, sans-serif" font-weight="700">Open goal planner</text>
+  <rect x="1244" y="434" width="244" height="58" rx="18" fill="#F5F1FF"/>
+  <text x="1266" y="468" fill="#5F4AA6" font-size="18" font-family="Arial, sans-serif" font-weight="700">Read weekly newsletter</text>
+
+  <rect x="368" y="540" width="364" height="230" rx="26" fill="#FFFFFF" stroke="#D9E5F0"/>
+  <text x="400" y="586" fill="#12324E" font-size="24" font-family="Arial, sans-serif" font-weight="700">Money Health</text>
+  <text x="400" y="620" fill="#607586" font-size="18" font-family="Arial, sans-serif">Last assessment</text>
+  <text x="400" y="658" fill="#12324E" font-size="40" font-family="Arial, sans-serif" font-weight="700">78 / 100</text>
+  <text x="400" y="690" fill="#2D8A57" font-size="18" font-family="Arial, sans-serif" font-weight="700">Stable but needs tuning</text>
+  <rect x="400" y="714" width="268" height="14" rx="7" fill="#E6EEF6"/>
+  <rect x="400" y="714" width="209" height="14" rx="7" fill="#2D8A57"/>
+  <text x="400" y="752" fill="#607586" font-size="17" font-family="Arial, sans-serif">View full PDF report and pillar-wise recommendations.</text>
+
+  <rect x="752" y="540" width="380" height="230" rx="26" fill="#FFFFFF" stroke="#D9E5F0"/>
+  <text x="784" y="586" fill="#12324E" font-size="24" font-family="Arial, sans-serif" font-weight="700">Premium Tools</text>
+  <rect x="786" y="616" width="150" height="44" rx="14" fill="#EEF5FF"/>
+  <text x="812" y="644" fill="#0C4F87" font-size="17" font-family="Arial, sans-serif" font-weight="700">Advanced SIP</text>
+  <rect x="952" y="616" width="150" height="44" rx="14" fill="#EEF5FF"/>
+  <text x="968" y="644" fill="#0C4F87" font-size="17" font-family="Arial, sans-serif" font-weight="700">Step-Up SIP</text>
+  <rect x="786" y="674" width="150" height="44" rx="14" fill="#EEF5FF"/>
+  <text x="806" y="702" fill="#0C4F87" font-size="17" font-family="Arial, sans-serif" font-weight="700">Goal Planner</text>
+  <rect x="952" y="674" width="150" height="44" rx="14" fill="#EEF5FF"/>
+  <text x="963" y="702" fill="#0C4F87" font-size="17" font-family="Arial, sans-serif" font-weight="700">Retirement</text>
+  <text x="784" y="748" fill="#607586" font-size="17" font-family="Arial, sans-serif">Allow save, compare, share PDF, and advisor handoff from calculator results.</text>
+
+  <rect x="1152" y="540" width="372" height="230" rx="26" fill="#FFFFFF" stroke="#D9E5F0"/>
+  <text x="1184" y="586" fill="#12324E" font-size="24" font-family="Arial, sans-serif" font-weight="700">Research And Content</text>
+  <text x="1184" y="626" fill="#0E3A66" font-size="18" font-family="Arial, sans-serif" font-weight="700">Premium blogs for your category</text>
+  <text x="1184" y="658" fill="#607586" font-size="17" font-family="Arial, sans-serif">Weekly newsletter</text>
+  <text x="1184" y="690" fill="#607586" font-size="17" font-family="Arial, sans-serif">NFO and mutual fund watchlist</text>
+  <text x="1184" y="722" fill="#607586" font-size="17" font-family="Arial, sans-serif">Research desk shortcuts</text>
+  <text x="1184" y="752" fill="#607586" font-size="17" font-family="Arial, sans-serif">Recommended reads based on plan and goals</text>
+
+  <rect x="368" y="798" width="1156" height="200" rx="28" fill="#F9FBFE" stroke="#D9E5F0"/>
+  <text x="402" y="842" fill="#12324E" font-size="25" font-family="Arial, sans-serif" font-weight="700">Feature Separation: Registered User vs Edge User</text>
+
+  <rect x="402" y="872" width="524" height="94" rx="22" fill="#FFFFFF" stroke="#E1E8EF"/>
+  <text x="430" y="906" fill="#667B8F" font-size="14" font-family="Arial, sans-serif" font-weight="700" letter-spacing="1.4">REGISTERED USER</text>
+  <text x="430" y="938" fill="#12324E" font-size="16" font-family="Arial, sans-serif">Profile, free blogs, public newsletters, free calculators, and one-time premium trial CTA.</text>
+
+  <rect x="966" y="872" width="524" height="94" rx="22" fill="#FFF8EA" stroke="#EFD39A"/>
+  <text x="994" y="906" fill="#A86B00" font-size="14" font-family="Arial, sans-serif" font-weight="700" letter-spacing="1.4">EDGE USER</text>
+  <text x="994" y="938" fill="#12324E" font-size="16" font-family="Arial, sans-serif">All free features plus premium content, calculators, saved reports, portfolio review, alerts, and advisor workflows.</text>
+  <text x="402" y="1000" fill="#607586" font-size="15" font-family="Arial, sans-serif">Recommended future modules: portfolio snapshot, goal tracker, report vault, renewal nudges, watchlist, advisor chat, and personalized recommendations.</text>
+</svg>
