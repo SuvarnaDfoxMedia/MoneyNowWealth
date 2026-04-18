@@ -193,6 +193,20 @@ export const buildCalculatorPayload = (tab: CalculatorTab, v: any) => {
   return payload;
 };
 
+export async function requestCalculatorResult(tab: CalculatorTab, values: any) {
+  const payload = buildCalculatorPayload(tab, values);
+  const { data } = await axios.post(
+    `/api/calc/${CALCULATOR_ROUTE_MAP[tab]}`,
+    payload,
+  );
+
+  if (!data) {
+    throw new Error("No response received");
+  }
+
+  return data;
+}
+
 export const useCalculator = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -202,20 +216,7 @@ export const useCalculator = () => {
     try {
       setLoading(true);
       setError(null);
-      const payload = buildCalculatorPayload(tab, v);
-
-      console.log("Sending payload:", { tab, payload });
-
-      const { data } = await axios.post(
-        `/api/calc/${CALCULATOR_ROUTE_MAP[tab]}`,
-        payload,
-      );
-
-      // Some AdvisorKhoj APIs return status/msg, some return direct data
-      if (!data) {
-        throw new Error("No response received");
-      }
-
+      const data = await requestCalculatorResult(tab, v);
       setResult(data);
     } catch (err: any) {
       console.error(

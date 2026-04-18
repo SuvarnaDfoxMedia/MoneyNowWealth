@@ -11,6 +11,7 @@ import cookieParser from "cookie-parser";
 // Database
 import connectDatabase from "./db/dbConnection";
 import { cleanupLegacyMfIndexes } from "./db/cleanupLegacyMfIndexes";
+import { cleanupLegacySeoIndexes } from "./db/cleanupLegacySeoIndexes";
 
 // Routes
 import authRoutes from "./routes/authRoutes";
@@ -43,6 +44,7 @@ dotenv.config();
 validateEmailEnvironment();
 await connectDatabase();
 await cleanupLegacyMfIndexes();
+await cleanupLegacySeoIndexes();
 startNewsletterPublishScheduler();
 startMfNfoScheduler();
 

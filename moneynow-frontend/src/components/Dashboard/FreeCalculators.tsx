@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useCalculator, CalculatorTab } from "@/hooks/useCalculator";
 import CalculatorInputs from "@/components/home/CalculatorInputs";
-import CalculatorResults from "@/components/home/CalculatorResults";
+import CalculatorResults from "@/components/CalculatorResults";
 
 /* ----------------------------------------
    SIDEBAR → CALCULATOR TAB MAPPING

@@ -77,9 +77,10 @@ const formatPercent = (value?: number) =>
   })}%`;
 
 const disclaimerLines = [
-  "This report is based on the calculator inputs entered on MoneyNow Wealth and is meant for estimation purposes only.",
-  "Actual returns may vary based on market conditions, product selection, investment timing, and investor behaviour.",
-  "Mutual fund investments are subject to market risks. Please read all scheme related documents carefully before investing.",
+  "We have gathered all the data, information, statistics from the sources believed to be highly reliable and true. All necessary precautions have been taken to avoid any error, lapse or insufficiency; however, no representations or warranties are made (express or implied) as to the reliability, accuracy or completeness of such information. We cannot be held liable for any loss arising directly or indirectly from the use of, or any action taken in on, any information appearing herein. The user is advised to verify the contents of the report independently. It is not an investment recommendation or personal financial, investment or professional advice and should not be treated as such.",
+  "The Risk Level of any of the schemes must always be commensurate with the risk profile, investment objective or financial goals of the investor concerned. Therefore, the Investors should assess their risk profile before making any investment decision and consider the asset allocation accordingly.",
+  "Returns less than 1 year are in absolute (%) and greater than 1 year are compounded annualised (CAGR %). SIP returns are shown in XIRR (%).",
+  "Mutual Fund investments are subject to market risks, read all scheme related documents carefully. Past performance may or may not be sustained.",
 ];
 
 const getCalculatorTitle = (activeTab: CalculatorTab) =>

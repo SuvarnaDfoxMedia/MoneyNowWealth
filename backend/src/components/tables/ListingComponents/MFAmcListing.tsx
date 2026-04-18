@@ -5,7 +5,7 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
-import { axiosApi } from "../../../api/axios";
+import { axiosInstance, axiosApi } from "../../../api/axios";
 import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
@@ -18,6 +18,22 @@ interface MFAmcRow {
   is_active: number;
 }
 
+type MfImportEntity =
+  | "main-categories"
+  | "categories"
+  | "amcs"
+  | "funds"
+  | "nfo"
+  | "index-snapshots"
+  | "full-workbook";
+
+type EntityOption = {
+  value: MfImportEntity;
+  label: string;
+};
+
+type ExportMode = "data" | "template";
+
 export default function MFAmcListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
@@ -25,6 +41,48 @@ export default function MFAmcListing() {
 
   const MODULE_KEY = `${role}-mf-amcs`;
   const [isMounted, setIsMounted] = useState(false);
+
+  const [selectedEntity, setSelectedEntity] =
+    useState<MfImportEntity>("full-workbook");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (mode: ExportMode) => {
+    setIsExporting(true);
+    try {
+      const response = await axiosInstance.get(`/${role}/mf/export/excel`, {
+        params: { entity: selectedEntity, mode },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type:
+          response.headers["content-type"] ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const disposition = String(response.headers["content-disposition"] || "");
+      const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+      const filename =
+        filenameMatch?.[1] || `mf-${selectedEntity}-${mode}.xlsx`;
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(
+        mode === "template"
+          ? "Template download started."
+          : "Data export started.",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || error?.message || "Export failed",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const {
     page,
@@ -105,11 +163,13 @@ export default function MFAmcListing() {
 
   const rows = extractList as MFAmcRow[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
-  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-  const [deleteImpact, setDeleteImpact] = useState<MFDeleteImpactSummary | null>(
-    null,
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
   );
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleteImpact, setDeleteImpact] =
+    useState<MFDeleteImpactSummary | null>(null);
   const [isDeleteImpactLoading, setIsDeleteImpactLoading] = useState(false);
 
   const openDeleteModal = async (row: MFAmcRow) => {
@@ -141,7 +201,11 @@ export default function MFAmcListing() {
   };
 
   const columns: TableColumn<MFAmcRow>[] = [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
     { key: "name", label: "AMC Name", sortable: true },
     {
       key: "is_active",
@@ -179,6 +243,10 @@ export default function MFAmcListing() {
           cacheModuleState(MODULE_KEY);
           navigate(`/${role}/mf/amcs/create`);
         }}
+        selectedEntity={selectedEntity}
+        role={role}
+        isExporting={isExporting}
+        onExport={handleExport}
       />
 
       <DataTable
@@ -189,6 +257,7 @@ export default function MFAmcListing() {
           <MFImportExportActions
             role={role}
             options={[{ value: "amcs", label: "AMCs" }]}
+            selectedEntity={selectedEntity}
             onImported={async () => {
               await refetch();
             }}

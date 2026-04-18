@@ -5,7 +5,7 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
-import { axiosApi } from "../../../api/axios";
+import { axiosInstance, axiosApi } from "../../../api/axios";
 import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
@@ -20,6 +20,22 @@ interface MFMainCategory {
   is_active: number;
 }
 
+type MfImportEntity =
+  | "main-categories"
+  | "categories"
+  | "amcs"
+  | "funds"
+  | "nfo"
+  | "index-snapshots"
+  | "full-workbook";
+
+type EntityOption = {
+  value: MfImportEntity;
+  label: string;
+};
+
+type ExportMode = "data" | "template";
+
 export default function MFMainCategoryListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
@@ -27,6 +43,48 @@ export default function MFMainCategoryListing() {
 
   const MODULE_KEY = `${role}-mf-main-categories`;
   const [isMounted, setIsMounted] = useState(false);
+
+  const [selectedEntity, setSelectedEntity] =
+    useState<MfImportEntity>("full-workbook");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (mode: ExportMode) => {
+    setIsExporting(true);
+    try {
+      const response = await axiosInstance.get(`/${role}/mf/export/excel`, {
+        params: { entity: selectedEntity, mode },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type:
+          response.headers["content-type"] ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const disposition = String(response.headers["content-disposition"] || "");
+      const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+      const filename =
+        filenameMatch?.[1] || `mf-${selectedEntity}-${mode}.xlsx`;
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(
+        mode === "template"
+          ? "Template download started."
+          : "Data export started.",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || error?.message || "Export failed",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const {
     page,
@@ -187,6 +245,20 @@ export default function MFMainCategoryListing() {
           cacheModuleState(MODULE_KEY);
           navigate(`/${role}/mf/main-categories/create`);
         }}
+        templateOptions={[
+          { value: "full-workbook", label: "Full Workbook" },
+          { value: "main-categories", label: "Main Categories" },
+          { value: "categories", label: "Sub Categories" },
+          { value: "amcs", label: "AMCs" },
+          { value: "funds", label: "Funds" },
+          { value: "nfo", label: "NFOs" },
+          { value: "index-snapshots", label: "Index Snapshots" },
+        ]}
+        selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
+        role={role}
+        isExporting={isExporting}
+        onExport={handleExport}
       />
 
       <DataTable
@@ -200,10 +272,13 @@ export default function MFMainCategoryListing() {
               { value: "full-workbook", label: "Full Workbook" },
               { value: "main-categories", label: "Main Categories" },
               { value: "categories", label: "Sub Categories" },
+              { value: "amcs", label: "AMCs" },
               { value: "funds", label: "Funds" },
               { value: "nfo", label: "NFOs" },
               { value: "index-snapshots", label: "Index Snapshots" },
             ]}
+            selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}

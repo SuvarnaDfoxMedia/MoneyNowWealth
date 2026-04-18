@@ -1,17 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import StartSipHero from "@/components/start-sip/charts-sub-components/StartSipHero";
-import StartSipPanel from "@/components/start-sip/charts-sub-components/StartSipPanel";
 import AssessmentResult from "@/components/assessment/AssessmentResult";
+import JourneyBanner from "@/components/journeys/JourneyBanner";
+import JourneyPanel from "@/components/journeys/JourneyPanel";
 
-type AreaKey =
-  | "habits"
-  | "protection"
-  | "investing"
-  | "goals"
-  | "debt";
+type AreaKey = "habits" | "protection" | "investing" | "goals" | "debt";
 
 type Option = { label: string; score: number };
 type Question = {
@@ -40,7 +36,10 @@ const QUESTIONS: Question[] = [
     title:
       "If your income stopped, how many months of essential expenses could your emergency money cover?",
     options: [
-      { label: "Less than 1 month or I do not have a separate emergency fund", score: 0 },
+      {
+        label: "Less than 1 month or I do not have a separate emergency fund",
+        score: 0,
+      },
       { label: "Around 1 to 3 months", score: 1 },
       { label: "Around 3 to 6 months", score: 2 },
       { label: "More than 6 months", score: 3 },
@@ -77,11 +76,13 @@ const QUESTIONS: Question[] = [
       { label: "I have not really started investing yet", score: 0 },
       { label: "I mainly keep money in savings or fixed deposits", score: 1 },
       {
-        label: "I have started mutual funds or other investments, but not very organised",
+        label:
+          "I have started mutual funds or other investments, but not very organised",
         score: 2,
       },
       {
-        label: "I invest regularly through SIPs or planned lumpsums with some structure",
+        label:
+          "I invest regularly through SIPs or planned lumpsums with some structure",
         score: 3,
       },
     ],
@@ -93,9 +94,18 @@ const QUESTIONS: Question[] = [
       "How well are your investments linked to specific goals and timeframes?",
     options: [
       { label: "They are not really linked to any goals yet", score: 0 },
-      { label: "A few investments are goal-linked, others are random", score: 1 },
-      { label: "Most of my investments are loosely aligned to goals", score: 2 },
-      { label: "My investments are clearly mapped to goals and timelines", score: 3 },
+      {
+        label: "A few investments are goal-linked, others are random",
+        score: 1,
+      },
+      {
+        label: "Most of my investments are loosely aligned to goals",
+        score: 2,
+      },
+      {
+        label: "My investments are clearly mapped to goals and timelines",
+        score: 3,
+      },
     ],
   },
   {
@@ -105,8 +115,14 @@ const QUESTIONS: Question[] = [
     options: [
       { label: "I have not really thought about it yet", score: 0 },
       { label: "I have some rough ideas in my head", score: 1 },
-      { label: "I have written goals with rough amounts and timelines", score: 2 },
-      { label: "My goals are written, prioritised, and reviewed periodically", score: 3 },
+      {
+        label: "I have written goals with rough amounts and timelines",
+        score: 2,
+      },
+      {
+        label: "My goals are written, prioritised, and reviewed periodically",
+        score: 3,
+      },
     ],
   },
   {
@@ -126,10 +142,21 @@ const QUESTIONS: Question[] = [
     area: "debt",
     title: "How do you feel about your current loans and EMIs?",
     options: [
-      { label: "EMIs or card dues feel heavy; I am often worried about repayments", score: 0 },
+      {
+        label:
+          "EMIs or card dues feel heavy; I am often worried about repayments",
+        score: 0,
+      },
       { label: "EMIs are manageable but limit how much I can save", score: 1 },
-      { label: "EMIs are reasonable; I can save and invest comfortably alongside", score: 2 },
-      { label: "I have little or no debt, or it is fully under control", score: 3 },
+      {
+        label:
+          "EMIs are reasonable; I can save and invest comfortably alongside",
+        score: 2,
+      },
+      {
+        label: "I have little or no debt, or it is fully under control",
+        score: 3,
+      },
     ],
   },
 ];
@@ -268,7 +295,9 @@ export default function FinancialWellnessPage() {
       );
       const scores = areaQuestions.map((question) => answers[question.id] ?? 0);
       const average = scores.length
-        ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+        ? Math.round(
+            scores.reduce((sum, value) => sum + value, 0) / scores.length,
+          )
         : 0;
       const status = getStatus(average);
       const copy =
@@ -288,7 +317,8 @@ export default function FinancialWellnessPage() {
     });
 
     const averageScore = pillarResults.length
-      ? pillarResults.reduce((sum, item) => sum + item.score, 0) / pillarResults.length
+      ? pillarResults.reduce((sum, item) => sum + item.score, 0) /
+        pillarResults.length
       : 0;
     const category =
       averageScore <= 1
@@ -353,62 +383,26 @@ export default function FinancialWellnessPage() {
 
   return (
     <div className="bg-[#F5F7FB] text-[#111111]">
-      <StartSipHero
+      <JourneyBanner
         title="Your money life, at a glance"
         subtitle="Answer a few simple questions to get a quick snapshot of your current money habits, safety net, investing, goals, and debt position."
         metrics={summaryMetrics}
       />
 
+      {/* <div className="">
+        <Image
+          src="/images/people-behind-1.png"
+          alt="MoneyNow team"
+          width={1600}
+          height={900}
+          className="h-auto w-full"
+        />
+      </div> */}
+
       <section className="mx-auto max-w-7xl px-4 py-10 lg:px-10">
         {!showResult ? (
           <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
-            <StartSipPanel
-              eyebrow="Before you begin"
-              title="What this quick check is meant to do"
-              subtitle="This is a simple guided reflection to help you understand where things look stronger today and where more attention may be useful."
-            >
-              <div className="space-y-4 text-[15px] leading-7 text-slate-600">
-                <p>
-                  The aim is to help you understand where you stand today and
-                  where a conversation may be useful. There are no right or
-                  wrong answers, and this check does not recommend any product
-                  or scheme.
-                </p>
-                <div className="rounded-[16px] border border-slate-200 bg-[#FAFAFA] p-4">
-                  <p className="text-sm font-medium text-[#0B3B6E]">
-                    What this will cover
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {COVERAGE_AREAS.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-slate-200 px-3 py-2 text-[13px] text-slate-700"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  {REASSURANCE_POINTS.map((item) => (
-                    <div
-                      key={item.title}
-                      className="rounded-[16px] border border-slate-200 bg-white p-4"
-                    >
-                      <p className="text-[15px] font-semibold text-[#0B3B6E]">
-                        {item.title}
-                      </p>
-                      <p className="mt-2 text-[14px] leading-6 text-slate-600">
-                        {item.copy}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </StartSipPanel>
-
-            <StartSipPanel
+            <JourneyPanel
               eyebrow={`Question ${step + 1} of ${QUESTIONS.length}`}
               title={currentQuestion.title}
               subtitle="Choose the option that feels closest to your current situation today."
@@ -426,7 +420,8 @@ export default function FinancialWellnessPage() {
                     Progress
                   </p>
                   <p className="text-[13px] leading-6 text-slate-600">
-                    Complete all 9 questions to see your score and area-wise snapshot.
+                    Complete all 9 questions to see your score and area-wise
+                    snapshot.
                   </p>
                 </div>
                 <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700">
@@ -470,17 +465,19 @@ export default function FinancialWellnessPage() {
                   disabled={answers[currentQuestion.id] === undefined}
                   className="rounded-md bg-[#0B3B6E] px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
                 >
-                  {step === QUESTIONS.length - 1 ? "Show result" : "Next question"}
+                  {step === QUESTIONS.length - 1
+                    ? "Show result"
+                    : "Next question"}
                 </button>
               </div>
-            </StartSipPanel>
+            </JourneyPanel>
           </div>
         ) : (
           <div className="space-y-8">
             <AssessmentResult result={result} />
 
             <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
-              <StartSipPanel
+              <JourneyPanel
                 eyebrow="Important note"
                 title="For awareness, not product advice"
                 subtitle="Use this result as a simple checkpoint, not as a final judgement about your finances."
@@ -497,9 +494,9 @@ export default function FinancialWellnessPage() {
                     conversation may help you prioritise better.
                   </p>
                 </div>
-              </StartSipPanel>
+              </JourneyPanel>
 
-              <StartSipPanel
+              <JourneyPanel
                 eyebrow="Where to go next"
                 title="Continue from the path that feels most useful"
                 subtitle="You can move into a goal-based journey, explore fit, or speak with us directly."
@@ -525,7 +522,7 @@ export default function FinancialWellnessPage() {
                     </div>
                   ))}
                 </div>
-              </StartSipPanel>
+              </JourneyPanel>
             </div>
           </div>
         )}

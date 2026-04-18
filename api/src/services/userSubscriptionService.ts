@@ -250,6 +250,22 @@ const downgradeExpiredPremiumSubscription = async (
   return subscription;
 };
 
+const hasUsedPromotionalPremiumTrial = (subscription: any) =>
+  Boolean(subscription?.promotional_trial_used);
+
+const shouldAutoDowngradeExpiredPremium = (
+  subscription: any,
+  now: Date = new Date(),
+) =>
+  Boolean(
+    subscription &&
+      !subscription.is_deleted &&
+      subscription.is_active &&
+      subscription.status !== "expired" &&
+      subscription.plan_type === "Premium" &&
+      isExpiredByDay(subscription.end_date, getMidnight(now)),
+  );
+
 export const userSubscriptionService = {
   async createOrUpdateSubscriptionWithPayment(
     userId: string,
@@ -485,6 +501,10 @@ export const userSubscriptionService = {
       throw new Error("Only active Free subscriptions are eligible");
     }
 
+    if (hasUsedPromotionalPremiumTrial(subscription)) {
+      throw new Error("Premium trial is available only once per user");
+    }
+
     const premiumPlan = await getActivePremiumPlan();
     if (!premiumPlan) {
       throw new Error("Premium plan not available");
@@ -588,6 +608,10 @@ export const userSubscriptionService = {
       throw new Error("Free subscription not found");
     }
 
+    if (hasUsedPromotionalPremiumTrial(subscription)) {
+      throw new Error("Premium trial is available only once per user");
+    }
+
     return this.grantPromotionalPremiumTrial(subscription._id.toString(), now);
   },
 
@@ -595,11 +619,15 @@ export const userSubscriptionService = {
     if (!mongoose.Types.ObjectId.isValid(userId)) return null;
 
     const userObjId = new mongoose.Types.ObjectId(userId);
-    const subscription = await UserSubscription.findOne({
+    let subscription = await UserSubscription.findOne({
       user_id: userObjId,
       is_deleted: false,
       is_active: true,
     });
+
+    if (shouldAutoDowngradeExpiredPremium(subscription)) {
+      subscription = await downgradeExpiredPremiumSubscription(subscription);
+    }
 
     return subscription ? subscription.populateFull() : null;
   },
@@ -714,19 +742,36 @@ export const userSubscriptionService = {
     const subscriptionDocs = await UserSubscription.find(subscriptionQuery)
       .sort({ [sortField]: sortDirection })
       .skip(skip)
-      .limit(perPage)
-      .populate([
-        {
-          path: "user_id",
-          select:
-            "title firstname lastname email countryCode mobile role profileImage created_at",
-        },
-        { path: "plan_id", select: "name" },
-        { path: "last_payment_id" },
-      ]);
+      .limit(perPage);
+
+    const hydratedSubscriptionDocs = await Promise.all(
+      subscriptionDocs.map(async (subscriptionDoc) => {
+        let normalizedSubscription = subscriptionDoc;
+
+        if (shouldAutoDowngradeExpiredPremium(subscriptionDoc)) {
+          normalizedSubscription = await downgradeExpiredPremiumSubscription(
+            subscriptionDoc,
+          );
+        }
+
+        return UserSubscription.findById(normalizedSubscription._id).populate([
+          {
+            path: "user_id",
+            select:
+              "title firstname lastname email countryCode mobile role profileImage created_at",
+          },
+          { path: "plan_id", select: "name" },
+          { path: "last_payment_id" },
+        ]);
+      }),
+    );
+
+    const validHydratedSubscriptionDocs = hydratedSubscriptionDocs.filter(
+      (subscription) => Boolean(subscription),
+    ) as any[];
 
     const subscriptions = await Promise.all(
-      subscriptionDocs.map(async (subscription) => {
+      validHydratedSubscriptionDocs.map(async (subscription) => {
         const user = subscription.user_id as any;
         const userId =
           user?._id?.toString?.() || subscription.user_id?.toString?.() || null;

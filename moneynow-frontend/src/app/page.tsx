@@ -1,6 +1,9 @@
 import React from "react";
 import Index from "@/components/home/index";
-import { buildPageMetadata } from "@/lib/seo";
+import SeoJsonLd from "@/components/seo/SeoJsonLd";
+import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return buildPageMetadata("/", {
@@ -10,9 +13,12 @@ export async function generateMetadata() {
   });
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const seo = await resolveSeoEntry("/");
+
   return (
     <div>
+      <SeoJsonLd schema={seo?.page_schema} />
       <Index />
     </div>
   );

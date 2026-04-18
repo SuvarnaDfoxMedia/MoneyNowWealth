@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 export interface SeoEntry {
   _id?: string;
+  name?: string;
   page_url?: string;
   seo_title?: string;
   meta_description?: string;

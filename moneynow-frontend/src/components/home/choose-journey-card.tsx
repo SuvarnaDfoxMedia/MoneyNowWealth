@@ -197,7 +197,7 @@ const ChooseJourneyCard = () => {
           </Link>
 
           <Link
-            href="/money-life-check"
+            href="/financial-wellness"
             className="group relative h-[440px] overflow-hidden rounded-[14px] bg-[#8d7d3e] transition-all duration-500"
           >
             <div className="absolute inset-0 z-0">

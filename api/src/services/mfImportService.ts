@@ -44,6 +44,14 @@ type ImportError = {
   identifier?: string;
 };
 
+type PreviewSheet = {
+  sheet: string;
+  headers: string[];
+  rows: Record<string, unknown>[];
+};
+
+export type ExportMode = "data" | "template";
+
 type ImportOptions = {
   filePath: string;
   entity: MfImportEntity;
@@ -52,6 +60,7 @@ type ImportOptions = {
 
 type ExportOptions = {
   entity: MfImportEntity;
+  mode?: ExportMode;
 };
 
 type ImportRuntime = {
@@ -474,6 +483,20 @@ const getSheetHeaderKeys = (workbook: XLSX.WorkBook, sheetName: string) => {
   return firstRow
     .map((value) => headerKey(value))
     .filter(Boolean);
+};
+
+const buildPreviewSheet = (
+  workbook: XLSX.WorkBook,
+  sheetName: string,
+  limit = 5,
+): PreviewSheet => {
+  const headers = getSheetHeaderKeys(workbook, sheetName);
+  const rows = normalizeSheetRows(workbook, sheetName).slice(0, limit);
+  return {
+    sheet: sheetName,
+    headers,
+    rows,
+  };
 };
 
 const normalizeDateValue = (value: Date | null) => {
@@ -1552,6 +1575,9 @@ const runImportPipeline = async (
     summary,
     errorCount: errors.length,
     errors: errors.slice(0, 500),
+    previewSheets: processedSheets
+      .slice(0, 3)
+      .map((sheetName) => buildPreviewSheet(workbook, sheetName)),
   };
 };
 
@@ -1592,29 +1618,33 @@ export const importMfExcel = async ({
   };
 };
 
-export const exportMfExcel = async ({ entity }: ExportOptions) => {
+export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) => {
   const workbook = buildWorkbook();
+  const includeRows = mode === "data";
+  const maybeRows = async (loader: () => Promise<Record<string, unknown>[]>) =>
+    includeRows ? await loader() : [];
 
   if (entity === "full-workbook") {
-    appendSheet(workbook, "Main_Categories", await exportMainCategoriesRows(), MAIN_CATEGORY_HEADERS);
-    appendSheet(workbook, "Categories_Master", await exportCategoryRows(), CATEGORY_HEADERS);
-    appendSheet(workbook, "AMCs", await exportAmcRows(), AMC_HEADERS);
-    appendSheet(workbook, "Popular_Funds", await exportFundRows(true), FUND_HEADERS);
-    appendSheet(workbook, "Scheme_Details", await exportFundRows(false), FUND_HEADERS);
-    appendSheet(workbook, "NFO_List", await exportNfoRows(), NFO_HEADERS);
-    appendSheet(workbook, "Index_Data", await exportIndexSnapshotRows(), INDEX_SNAPSHOT_HEADERS);
+    appendSheet(workbook, "Main_Categories", await maybeRows(exportMainCategoriesRows), MAIN_CATEGORY_HEADERS);
+    appendSheet(workbook, "Categories_Master", await maybeRows(exportCategoryRows), CATEGORY_HEADERS);
+    appendSheet(workbook, "AMCs", await maybeRows(exportAmcRows), AMC_HEADERS);
+    appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true)), FUND_HEADERS);
+    appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false)), FUND_HEADERS);
+    appendSheet(workbook, "NFO_List", await maybeRows(exportNfoRows), NFO_HEADERS);
+    appendSheet(workbook, "Index_Data", await maybeRows(exportIndexSnapshotRows), INDEX_SNAPSHOT_HEADERS);
   } else if (entity === "main-categories") {
-    appendSheet(workbook, getPrimarySheetName("main-categories"), await exportMainCategoriesRows(), MAIN_CATEGORY_HEADERS);
+    appendSheet(workbook, getPrimarySheetName("main-categories"), await maybeRows(exportMainCategoriesRows), MAIN_CATEGORY_HEADERS);
   } else if (entity === "categories") {
-    appendSheet(workbook, getPrimarySheetName("categories"), await exportCategoryRows(), CATEGORY_HEADERS);
+    appendSheet(workbook, getPrimarySheetName("categories"), await maybeRows(exportCategoryRows), CATEGORY_HEADERS);
   } else if (entity === "amcs") {
-    appendSheet(workbook, getPrimarySheetName("amcs"), await exportAmcRows(), AMC_HEADERS);
+    appendSheet(workbook, getPrimarySheetName("amcs"), await maybeRows(exportAmcRows), AMC_HEADERS);
   } else if (entity === "funds") {
-    appendSheet(workbook, "Scheme_Details", await exportFundRows(false), FUND_HEADERS);
+    appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true)), FUND_HEADERS);
+    appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false)), FUND_HEADERS);
   } else if (entity === "nfo") {
-    appendSheet(workbook, getPrimarySheetName("nfo"), await exportNfoRows(), NFO_HEADERS);
+    appendSheet(workbook, getPrimarySheetName("nfo"), await maybeRows(exportNfoRows), NFO_HEADERS);
   } else if (entity === "index-snapshots") {
-    appendSheet(workbook, getPrimarySheetName("index-snapshots"), await exportIndexSnapshotRows(), INDEX_SNAPSHOT_HEADERS);
+    appendSheet(workbook, getPrimarySheetName("index-snapshots"), await maybeRows(exportIndexSnapshotRows), INDEX_SNAPSHOT_HEADERS);
   }
 
   const buffer = XLSXModule.write(workbook, {
@@ -1623,7 +1653,7 @@ export const exportMfExcel = async ({ entity }: ExportOptions) => {
   }) as Buffer;
 
   return {
-    fileName: `mf-${entity}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    fileName: `mf-${entity}-${mode}-${new Date().toISOString().slice(0, 10)}.xlsx`,
     contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     buffer,
   };

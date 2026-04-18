@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { CalculatorTab } from "@/hooks/useCalculator";
 import { useCalculator } from "@/hooks/useCalculator";
 import CalculatorInputs from "@/components/home/CalculatorInputs";
-import CalculatorResults from "@/components/home/CalculatorResults";
+import CalculatorResults from "@/components/CalculatorResults";
 
 const TABS: CalculatorTab[] = [
   "SIP Calculator",

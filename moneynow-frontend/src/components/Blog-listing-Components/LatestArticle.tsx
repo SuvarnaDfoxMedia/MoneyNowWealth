@@ -10,6 +10,7 @@ import StayConnected from "@/components/home/home-newsletters";
 import { homeInvestTrackData } from "@/data/homePageData";
 import GetAllCluster from "@/components/Blog-listing-Components/GetAllCluster";
 import DOMPurify from "dompurify";
+import { normalizeRichTextHtml } from "@/utils/normalizeRichTextHtml";
 import { useRefreshSignal } from "@/hooks/useRefreshSignal";
 import { API } from "@/app/api/axios";
 import { useContentAccess } from "@/hooks/useContentAccess";
@@ -31,7 +32,7 @@ const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
 const FALLBACK_IMAGE = "/images/most-popular-blog-img-1.png";
 
 const sanitize = (html?: string) => ({
-  __html: DOMPurify.sanitize(html || ""),
+  __html: DOMPurify.sanitize(normalizeRichTextHtml(html || "")),
 });
 
 const FeaturedArticle = () => {
@@ -142,6 +143,13 @@ const FeaturedArticle = () => {
   sm:[&_p]:!leading-[32px]
   [&_p]:mb-4
   [&_p:last-child]:mb-0
+  [&_ul]:my-3
+  [&_ul]:list-disc
+  [&_ul]:pl-6
+  [&_ol]:my-3
+  [&_ol]:list-decimal
+  [&_ol]:pl-6
+  [&_li]:my-1.5
   mb-6
 "
           dangerouslySetInnerHTML={sanitize(article.introduction)}
@@ -243,3 +251,8 @@ const LatestArticle = () => {
 };
 
 export default LatestArticle;
+
+
+
+
+

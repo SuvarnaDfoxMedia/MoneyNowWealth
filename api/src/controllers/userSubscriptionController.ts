@@ -260,12 +260,14 @@ export const getMySubscription = async (req: Request, res: Response) => {
     const paymentHistory =
       await userSubscriptionService.getPaymentHistory(userId);
 
+    const canGetPremiumTrial = !subscription.promotional_trial_used;
+
     return sendSuccess(
       res,
       "Subscription fetched successfully",
-      { subscription, paymentHistory },
+      { subscription, paymentHistory, canGetPremiumTrial },
       200,
-      { subscription, paymentHistory },
+      { subscription, paymentHistory, canGetPremiumTrial },
     );
   } catch (error) {
     console.error("Get my subscription error:", error);

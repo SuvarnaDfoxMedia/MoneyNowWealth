@@ -1,5 +1,8 @@
 import WhoWeWorkWithPage from "@/components/journeys/WhoWeWorkWithPage";
-import { buildPageMetadata } from "@/lib/seo";
+import SeoJsonLd from "@/components/seo/SeoJsonLd";
+import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return buildPageMetadata("/who-we-work-with", {
@@ -9,6 +12,13 @@ export async function generateMetadata() {
   });
 }
 
-export default function Page() {
-  return <WhoWeWorkWithPage />;
+export default async function Page() {
+  const seo = await resolveSeoEntry("/who-we-work-with");
+
+  return (
+    <>
+      <SeoJsonLd schema={seo?.page_schema} />
+      <WhoWeWorkWithPage />
+    </>
+  );
 }

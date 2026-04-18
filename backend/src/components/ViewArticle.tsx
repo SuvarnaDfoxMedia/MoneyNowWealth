@@ -10,6 +10,7 @@ import {
 import { toast } from "react-hot-toast";
 import { useCommonCrud } from "../hooks/useCommonCrud";
 import DOMPurify from "dompurify";
+import { normalizeRichTextHtml } from "../utils/normalizeRichTextHtml";
 
 interface Section {
   title?: string;
@@ -113,7 +114,7 @@ export default function ViewArticle() {
   const sanitizeAndNormalizeHtml = (html?: string) => {
     if (!html) return { __html: "" };
     const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
+    tempDiv.innerHTML = normalizeRichTextHtml(html);
 
     tempDiv.querySelectorAll("a").forEach((a) => {
       const href = a.getAttribute("href") || "#";
@@ -166,6 +167,9 @@ export default function ViewArticle() {
   const proseClass =
     "max-w-none text-gray-700 " +
     "[&_a]:text-blue-600 [&_a]:underline hover:[&_a]:text-blue-800 " +
+    "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-8 " +
+    "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-8 " +
+    "[&_li]:my-2 [&_li]:pl-1 [&_li::marker]:text-[1.15em] " +
     "[&_table]:w-full [&_table]:border [&_table]:border-collapse [&_table]:my-4 " +
     "[&_th]:border [&_th]:p-2 [&_th]:bg-gray-100 [&_th]:text-left " +
     "[&_td]:border [&_td]:p-2";
@@ -196,12 +200,7 @@ export default function ViewArticle() {
 
               {article.introduction && (
                 <div
-                  className="
-                    text-gray-600 mb-6 font-inter
-                    [&_p]:!text-[16px]
-                    [&_p]:!leading-[32px]
-                    [&_p]:mb-4
-                  "
+                  className={`${proseClass} text-gray-600 mb-6 font-inter [&_p]:!text-[16px] [&_p]:!leading-[32px] [&_p]:mb-4`}
                   dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                     article.introduction,
                   )}

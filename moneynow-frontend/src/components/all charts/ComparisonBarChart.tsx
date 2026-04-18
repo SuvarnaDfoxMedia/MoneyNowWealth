@@ -22,6 +22,17 @@ export interface ComparisonBarChartDatum {
 interface ComparisonBarChartProps {
   data: ComparisonBarChartDatum[];
   height?: number;
+  xAxisDataKey?: string;
+  xAxisLabel?: string;
+  xAxisTickFormatter?: (value: number | string) => string;
+  yAxisTickFormatter?: (value: number | string) => string;
+  tooltipLabelFormatter?: (label: number | string) => string;
+  legendLabels?: Partial<{
+    leftLabel: string;
+    rightLabel: string;
+    leftDescription: string;
+    rightDescription: string;
+  }>;
 }
 
 const formatAmount = (value: number | string) =>
@@ -64,8 +75,17 @@ const resolveConfig = (data: ComparisonBarChartDatum[]) => {
 export default function ComparisonBarChart({
   data,
   height = 320,
+  xAxisDataKey = "label",
+  xAxisLabel,
+  xAxisTickFormatter,
+  yAxisTickFormatter,
+  tooltipLabelFormatter,
+  legendLabels,
 }: ComparisonBarChartProps) {
-  const config = resolveConfig(data);
+  const config = {
+    ...resolveConfig(data),
+    ...legendLabels,
+  };
 
   return (
     <div className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -73,9 +93,35 @@ export default function ComparisonBarChart({
         <ResponsiveContainer>
           <BarChart barGap={12} data={data}>
             <CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-            <Tooltip formatter={(value) => formatAmount(value as number | string)} />
+            <XAxis
+              dataKey={xAxisDataKey}
+              tick={{ fontSize: 11 }}
+              tickFormatter={xAxisTickFormatter}
+              label={
+                xAxisLabel
+                  ? {
+                      value: xAxisLabel,
+                      position: "insideBottom",
+                      offset: -4,
+                      style: { fontSize: 12, fill: "#475569" },
+                    }
+                  : undefined
+              }
+            />
+            <YAxis
+              tickFormatter={
+                yAxisTickFormatter ||
+                ((value) => `${Math.round(Number(value) / 1000)}k`)
+              }
+            />
+            <Tooltip
+              formatter={(value) => formatAmount(value as number | string)}
+              labelFormatter={
+                tooltipLabelFormatter
+                  ? (label) => tooltipLabelFormatter(label)
+                  : undefined
+              }
+            />
             <Bar dataKey={config.leftKey} fill={config.leftColor} radius={[6, 6, 0, 0]} />
             <Bar dataKey={config.rightKey} fill={config.rightColor} radius={[6, 6, 0, 0]} />
           </BarChart>

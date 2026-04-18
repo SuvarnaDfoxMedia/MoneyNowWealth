@@ -183,7 +183,7 @@ export const toggleArticleStatus = async (req: Request, res: Response) => {
 export const deleteArticle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const article = await articleService.getArticleById(id);
+    const article = await Article.findById(id);
 
     if (!article) {
       return sendError(res, "Article not found", 404);
@@ -664,7 +664,7 @@ export const publishArticle = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const article = await articleService.getArticleById(id);
+    const article = await Article.findById(id);
     if (!article) {
       return sendError(res, "Article not found", 404);
     }

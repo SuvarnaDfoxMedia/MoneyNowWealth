@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import DOMPurify from "dompurify";
+import { normalizeRichTextHtml } from "@/utils/normalizeRichTextHtml";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Simple sanitize function to allow basic HTML (you can replace with DOMPurify if needed)
 const sanitize = (html?: string) => {
-  return { __html: html || "" };
+  return {
+    __html: DOMPurify.sanitize(normalizeRichTextHtml(html || "")),
+  };
 };
 
 interface Article {
@@ -93,7 +96,14 @@ const ClusterArticlePagination: React.FC<Props> = ({
                        [&_p]:inline
                        [&_p]:!text-[20px]
                        [&_p]:!leading-[30px]
-                       [&_p]:mb-0"
+                       [&_p]:mb-0
+                       [&_ul]:my-2
+                       [&_ul]:list-disc
+                       [&_ul]:pl-6
+                       [&_ol]:my-2
+                       [&_ol]:list-decimal
+                       [&_ol]:pl-6
+                       [&_li]:my-1"
                   dangerouslySetInnerHTML={sanitize(article.introduction)}
                 />
               )}
@@ -179,3 +189,5 @@ const ClusterArticlePagination: React.FC<Props> = ({
 };
 
 export default ClusterArticlePagination;
+
+

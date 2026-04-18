@@ -32,6 +32,8 @@ export interface CurrentSubscription {
   startDate: string;
   status: string;
   isPromotional?: boolean;
+  promotionalTrialUsed?: boolean;
+  canGetPremiumTrial?: boolean;
   daysRemaining?: number;
 }
 
@@ -142,8 +144,9 @@ export const useSubscription = (page = 1, limit = 10) => {
             withCredentials: true,
           });
 
-          const subscription = currentRes.data?.subscription;
-          const paymentHistory = currentRes.data?.paymentHistory || [];
+          const currentPayload = currentRes.data?.data || currentRes.data;
+          const subscription = currentPayload?.subscription;
+          const paymentHistory = currentPayload?.paymentHistory || [];
           const latestCurrentPayment = Array.isArray(paymentHistory)
             ? paymentHistory[0]
             : null;
@@ -166,6 +169,10 @@ export const useSubscription = (page = 1, limit = 10) => {
               endDate: subscription.end_date,
               status: subscription.status || "active",
               isPromotional: subscription.is_promotional || false,
+              promotionalTrialUsed:
+                subscription.promotional_trial_used === true,
+              canGetPremiumTrial:
+                currentPayload?.canGetPremiumTrial !== false,
               daysRemaining: Number(subscription.daysRemaining || 0),
             });
           } else {

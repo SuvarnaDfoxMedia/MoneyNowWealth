@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import FAQPage from "@/components/cms/FAQPage";
 import PrivacyPolicyPage from "@/components/cms/PrivacyPolicyPage";
 import TermsPage from "@/components/cms/TermsPage";
@@ -106,7 +107,7 @@ export default async function CMSPage({ params }: PageProps) {
   const page = await fetchCmsPageBySlug(slug);
 
   if (!page) {
-    return <DefaultPage />;
+    notFound();
   }
 
   switch (slug) {
@@ -141,6 +142,6 @@ export default async function CMSPage({ params }: PageProps) {
         </>
       );
     default:
-      return <DefaultPage />;
+      notFound();
   }
 }
