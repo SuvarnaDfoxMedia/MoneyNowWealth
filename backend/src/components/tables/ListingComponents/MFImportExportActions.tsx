@@ -89,7 +89,8 @@ const entityGuidance: Record<
     items: [
       "Each category must map to an existing main category name or id.",
       "If you are creating dependencies together, use the full workbook template or import main categories first.",
-      "Benchmark and risk fields can be updated in bulk through the template.",
+      "Use the new workbook columns for trailing, YTD, and annual benchmark returns.",
+      "Category averages are recalculated from active scheme data when funds are imported or updated.",
     ],
   },
   amcs: {
@@ -105,7 +106,8 @@ const entityGuidance: Record<
     items: [
       "`scheme_code` is mandatory and is used for strict matching during updates.",
       "Each fund must resolve to an existing AMC and category by name or id.",
-      "The fund template includes both `Popular_Funds` and `Scheme_Details` sheets for clearer bulk editing.",
+      "The primary workbook format is `Scheme_Details` with trailing, YTD, annual year columns, and duplicate SheetJS-safe headers such as `YTD_1` and `2025_1`.",
+      "`top_holdings` can be comma-separated or line-separated and is normalized into a list automatically.",
     ],
   },
   nfo: {
@@ -488,7 +490,8 @@ export default function MFImportExportActions({
                   />
                   <p className="mt-3 text-xs text-gray-500">
                     Upload a valid `.xlsx` or `.xls` file for the selected
-                    import type.
+                    import type. The latest MF template preserves duplicate
+                    workbook headers required by the client format.
                   </p>
                 </div>
 

@@ -308,8 +308,7 @@ export default function OneCroreJourneyPage() {
 
     return chartData.barData.map((item, index) => ({
       ...item,
-      year: index + 1,
-      label: `${index + 1}`,
+      year: Number(item.label) || new Date().getFullYear() + index,
     }));
   }, [chartData]);
 
@@ -737,14 +736,17 @@ export default function OneCroreJourneyPage() {
                       data={oneCroreChartData}
                       height={380}
                       xAxisDataKey="year"
-                      xAxisLabel="No. of years"
+                      xAxisLabel="Year"
                       xAxisTickFormatter={(value) => {
                         const year = Number(value);
-                        return year === form.years || year % 2 === 1
+                        const startYear = new Date().getFullYear();
+                        const finalYear = startYear + form.years - 1;
+
+                        return year === finalYear || (year - startYear) % 2 === 0
                           ? `${year}`
                           : "";
                       }}
-                      tooltipLabelFormatter={(label) => `Year ${label}`}
+                      tooltipLabelFormatter={(label) => `${label}`}
                     />
                   </StartSipChartBlock>
                 </div>

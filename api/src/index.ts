@@ -39,6 +39,8 @@ import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
 import seoRoutes from "./routes/seoRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
+import chatRoutes from "./routes/chatbot/chatRoutes";
+import { getGeminiApiKeyStatus } from "./controllers/chatbot/chatController.js";
 
 dotenv.config();
 validateEmailEnvironment();
@@ -60,10 +62,15 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
   process.env.WEBSITE_URL,
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://localhost:5000",
-].filter(Boolean) as string[];
+]
+  .flatMap((value) => String(value || "").split(","))
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+  .concat([
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5000",
+  ]);
 
 app.use(
   cors({
@@ -104,6 +111,7 @@ app.use((req, res, next) => {
   const path = req.path || "";
   const shouldRateLimit =
     path.startsWith("/api/auth") ||
+    path.startsWith("/api/chat") ||
     path === "/api/newsletter" ||
     path === "/api/contact-enquiries" ||
     path === "/api/partner-enquiries" ||
@@ -185,6 +193,14 @@ app.use("/api", oneCroreJourneyEnquiryRoutes);
 app.use("/api", whoWeWorkWithEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
 app.use("/api", seoRoutes);
+app.use("/api/chat", chatRoutes);
+
+app.get("/", (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: "Money Now backend is running.",
+  });
+});
 
 // Admin route example
 app.get(
@@ -219,6 +235,19 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: "OK",
+    data: { status: "OK", timestamp: new Date().toISOString() },
+  });
+});
+
+app.get("/api/health", (_req: Request, res: Response) => {
+  const apiKeyStatus = getGeminiApiKeyStatus();
+
+  res.json({
+    success: true,
+    service: "money-now-backend",
+    geminiConfigured: apiKeyStatus.valid,
+    geminiConfigError: apiKeyStatus.valid ? null : apiKeyStatus.error,
+    geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     data: { status: "OK", timestamp: new Date().toISOString() },
   });
 });

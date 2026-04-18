@@ -47,7 +47,7 @@ export default function MFFundListing() {
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("funds");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -251,6 +251,7 @@ export default function MFFundListing() {
           navigate(`/${role}/mf/funds/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -265,6 +266,7 @@ export default function MFFundListing() {
             role={role}
             options={[{ value: "funds", label: "Funds" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}

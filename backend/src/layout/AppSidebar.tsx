@@ -135,6 +135,11 @@ const AppSidebar: React.FC = () => {
             path: `/${role}/mf/categories`,
             roles: ["admin", "editor"],
           },
+           {
+            name: "AMCs",
+            path: `/${role}/mf/amcs`,
+            roles: ["admin", "editor"],
+          },
           {
             name: "Fund",
             path: `/${role}/mf/funds`,

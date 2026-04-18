@@ -1,4 +1,10 @@
 import { body } from "express-validator";
+import {
+  BENCHMARK_TRAILING_KEYS,
+  CATEGORY_TRAILING_KEYS,
+  FUND_RETURN_KEYS,
+  MF_ANNUAL_YEARS,
+} from "../services/mfUtils";
 
 const requiredString = (field: string, label: string, min = 2, max = 120) =>
   body(field)
@@ -119,14 +125,24 @@ export const createCategoryValidators = [
     .optional({ nullable: true, checkFalsy: true })
     .isIn(["Annual", "Trailing"])
     .withMessage("Benchmark return type must be Annual or Trailing"),
-  optionalNumber("benchmark_returns.y1", "Benchmark 1Y return"),
-  optionalNumber("benchmark_returns.y3", "Benchmark 3Y return"),
-  optionalNumber("benchmark_returns.y5", "Benchmark 5Y return"),
-  optionalNumber("benchmark_returns.y10", "Benchmark 10Y return"),
-  optionalNumber("category_average_returns.y1", "Category average 1Y return"),
-  optionalNumber("category_average_returns.y3", "Category average 3Y return"),
-  optionalNumber("category_average_returns.y5", "Category average 5Y return"),
-  optionalNumber("category_average_returns.y10", "Category average 10Y return"),
+  ...CATEGORY_TRAILING_KEYS.map((key) =>
+    optionalNumber(
+      `benchmark_returns.${key}`,
+      `Benchmark ${key.toUpperCase()} return`,
+    ),
+  ),
+  ...CATEGORY_TRAILING_KEYS.map((key) =>
+    optionalNumber(
+      `category_average_returns.${key}`,
+      `Category average ${key.toUpperCase()} return`,
+    ),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`benchmark_returns.annual.${year}`, `Benchmark ${year} return`),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`category_average_returns.annual.${year}`, `Category average ${year} return`),
+  ),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
   optionalString("suggested_use_case_note", "Suggested use case note", 5000),
@@ -142,14 +158,24 @@ export const updateCategoryValidators = [
     .optional({ nullable: true, checkFalsy: true })
     .isIn(["Annual", "Trailing"])
     .withMessage("Benchmark return type must be Annual or Trailing"),
-  optionalNumber("benchmark_returns.y1", "Benchmark 1Y return"),
-  optionalNumber("benchmark_returns.y3", "Benchmark 3Y return"),
-  optionalNumber("benchmark_returns.y5", "Benchmark 5Y return"),
-  optionalNumber("benchmark_returns.y10", "Benchmark 10Y return"),
-  optionalNumber("category_average_returns.y1", "Category average 1Y return"),
-  optionalNumber("category_average_returns.y3", "Category average 3Y return"),
-  optionalNumber("category_average_returns.y5", "Category average 5Y return"),
-  optionalNumber("category_average_returns.y10", "Category average 10Y return"),
+  ...CATEGORY_TRAILING_KEYS.map((key) =>
+    optionalNumber(
+      `benchmark_returns.${key}`,
+      `Benchmark ${key.toUpperCase()} return`,
+    ),
+  ),
+  ...CATEGORY_TRAILING_KEYS.map((key) =>
+    optionalNumber(
+      `category_average_returns.${key}`,
+      `Category average ${key.toUpperCase()} return`,
+    ),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`benchmark_returns.annual.${year}`, `Benchmark ${year} return`),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`category_average_returns.annual.${year}`, `Category average ${year} return`),
+  ),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
   optionalString("suggested_use_case_note", "Suggested use case note", 5000),
@@ -183,14 +209,12 @@ export const createFundValidators = [
     .withMessage("option_type must be Growth or IDCW"),
   optionalNonNegativeNumber("aum_cr", "AUM (Cr)"),
   optionalNumber("expense_ratio", "Expense ratio", 0, 100),
-  optionalNumber("returns.d1", "1D return"),
-  optionalNumber("returns.m1", "1M return"),
-  optionalNumber("returns.m3", "3M return"),
-  optionalNumber("returns.m6", "6M return"),
-  optionalNumber("returns.y1", "1Y return"),
-  optionalNumber("returns.y3_cagr", "3Y CAGR return"),
-  optionalNumber("returns.y5_cagr", "5Y CAGR return"),
-  optionalNumber("returns.y10_cagr", "10Y CAGR return"),
+  ...FUND_RETURN_KEYS.map((key) =>
+    optionalNumber(`returns.${key}`, `Return ${key.toUpperCase()}`),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`returns.annual.${year}`, `Return ${year}`),
+  ),
   optionalNumber("risk_metrics.sharpe_3y", "Sharpe (3Y)"),
   optionalNumber("risk_metrics.std_dev_3y", "Std Dev (3Y)"),
   optionalNumber("risk_metrics.beta_3y", "Beta (3Y)"),
@@ -200,18 +224,12 @@ export const createFundValidators = [
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Acceptance date"),
   optionalString("benchmark_index_name", "Benchmark index name", 200),
-  optionalNumber("benchmark_returns_trailing.d1", "Benchmark trailing 1D return"),
-  optionalNumber("benchmark_returns_trailing.m1", "Benchmark trailing 1M return"),
-  optionalNumber("benchmark_returns_trailing.m3", "Benchmark trailing 3M return"),
-  optionalNumber("benchmark_returns_trailing.m6", "Benchmark trailing 6M return"),
-  optionalNumber("benchmark_returns_trailing.y1", "Benchmark trailing 1Y return"),
-  optionalNumber("benchmark_returns_trailing.y3", "Benchmark trailing 3Y return"),
-  optionalNumber("benchmark_returns_trailing.y5", "Benchmark trailing 5Y return"),
-  optionalNumber("benchmark_returns_trailing.y10", "Benchmark trailing 10Y return"),
-  optionalNumber("benchmark_returns_annual.y1", "Benchmark annual 1Y return"),
-  optionalNumber("benchmark_returns_annual.y3", "Benchmark annual 3Y return"),
-  optionalNumber("benchmark_returns_annual.y5", "Benchmark annual 5Y return"),
-  optionalNumber("benchmark_returns_annual.y10", "Benchmark annual 10Y return"),
+  ...BENCHMARK_TRAILING_KEYS.map((key) =>
+    optionalNumber(`benchmark_returns_trailing.${key}`, `Benchmark ${key.toUpperCase()} return`),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`benchmark_returns_annual.${year}`, `Benchmark annual ${year} return`),
+  ),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
   optionalBoolean("sip_allowed", "sip_allowed"),
   optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
@@ -225,7 +243,7 @@ export const createFundValidators = [
     .custom((value) => {
       if (Array.isArray(value)) return value.every((v) => typeof v === "string");
       if (typeof value === "string") return true;
-      throw new Error("top_holdings must be an array of strings or a comma-separated string");
+      throw new Error("top_holdings must be an array of strings or a comma/newline-separated string");
     }),
   optionalNumber("asset_allocation.equity_pct", "Equity allocation", 0, 100),
   optionalNumber("asset_allocation.debt_pct", "Debt allocation", 0, 100),
@@ -251,14 +269,12 @@ export const updateFundValidators = [
     .withMessage("option_type must be Growth or IDCW"),
   optionalNonNegativeNumber("aum_cr", "AUM (Cr)"),
   optionalNumber("expense_ratio", "Expense ratio", 0, 100),
-  optionalNumber("returns.d1", "1D return"),
-  optionalNumber("returns.m1", "1M return"),
-  optionalNumber("returns.m3", "3M return"),
-  optionalNumber("returns.m6", "6M return"),
-  optionalNumber("returns.y1", "1Y return"),
-  optionalNumber("returns.y3_cagr", "3Y CAGR return"),
-  optionalNumber("returns.y5_cagr", "5Y CAGR return"),
-  optionalNumber("returns.y10_cagr", "10Y CAGR return"),
+  ...FUND_RETURN_KEYS.map((key) =>
+    optionalNumber(`returns.${key}`, `Return ${key.toUpperCase()}`),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`returns.annual.${year}`, `Return ${year}`),
+  ),
   optionalNumber("risk_metrics.sharpe_3y", "Sharpe (3Y)"),
   optionalNumber("risk_metrics.std_dev_3y", "Std Dev (3Y)"),
   optionalNumber("risk_metrics.beta_3y", "Beta (3Y)"),
@@ -268,18 +284,12 @@ export const updateFundValidators = [
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Acceptance date"),
   optionalString("benchmark_index_name", "Benchmark index name", 200),
-  optionalNumber("benchmark_returns_trailing.d1", "Benchmark trailing 1D return"),
-  optionalNumber("benchmark_returns_trailing.m1", "Benchmark trailing 1M return"),
-  optionalNumber("benchmark_returns_trailing.m3", "Benchmark trailing 3M return"),
-  optionalNumber("benchmark_returns_trailing.m6", "Benchmark trailing 6M return"),
-  optionalNumber("benchmark_returns_trailing.y1", "Benchmark trailing 1Y return"),
-  optionalNumber("benchmark_returns_trailing.y3", "Benchmark trailing 3Y return"),
-  optionalNumber("benchmark_returns_trailing.y5", "Benchmark trailing 5Y return"),
-  optionalNumber("benchmark_returns_trailing.y10", "Benchmark trailing 10Y return"),
-  optionalNumber("benchmark_returns_annual.y1", "Benchmark annual 1Y return"),
-  optionalNumber("benchmark_returns_annual.y3", "Benchmark annual 3Y return"),
-  optionalNumber("benchmark_returns_annual.y5", "Benchmark annual 5Y return"),
-  optionalNumber("benchmark_returns_annual.y10", "Benchmark annual 10Y return"),
+  ...BENCHMARK_TRAILING_KEYS.map((key) =>
+    optionalNumber(`benchmark_returns_trailing.${key}`, `Benchmark ${key.toUpperCase()} return`),
+  ),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`benchmark_returns_annual.${year}`, `Benchmark annual ${year} return`),
+  ),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
   optionalBoolean("sip_allowed", "sip_allowed"),
   optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
@@ -293,7 +303,7 @@ export const updateFundValidators = [
     .custom((value) => {
       if (Array.isArray(value)) return value.every((v) => typeof v === "string");
       if (typeof value === "string") return true;
-      throw new Error("top_holdings must be an array of strings or a comma-separated string");
+      throw new Error("top_holdings must be an array of strings or a comma/newline-separated string");
     }),
   optionalNumber("asset_allocation.equity_pct", "Equity allocation", 0, 100),
   optionalNumber("asset_allocation.debt_pct", "Debt allocation", 0, 100),
@@ -340,8 +350,8 @@ export const updateNfoValidators = [
 
 export const createIndexSnapshotValidators = [
   requiredString("benchmark_index_name", "Benchmark index name", 2, 200),
-  optionalMongoId("main_category_id", "Main category"),
-  optionalMongoId("category_id", "Category"),
+  requiredMongoId("main_category_id", "Main category"),
+  requiredMongoId("category_id", "Category"),
   optionalNumber("returns.y1", "1Y return"),
   optionalNumber("returns.y3", "3Y return"),
   optionalNumber("returns.y5", "5Y return"),

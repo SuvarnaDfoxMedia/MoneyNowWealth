@@ -42,7 +42,7 @@ export default function MFIndexSnapshotListing() {
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("index-snapshots");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -235,6 +235,7 @@ export default function MFIndexSnapshotListing() {
           navigate(`/${role}/mf/index-snapshots/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -250,6 +251,7 @@ export default function MFIndexSnapshotListing() {
             role={role}
             options={[{ value: "index-snapshots", label: "Index Snapshots" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}

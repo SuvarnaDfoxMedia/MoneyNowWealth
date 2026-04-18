@@ -45,7 +45,7 @@ export default function MFCategoryListing() {
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("categories");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -252,6 +252,7 @@ export default function MFCategoryListing() {
           navigate(`/${role}/mf/categories/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -266,6 +267,7 @@ export default function MFCategoryListing() {
             role={role}
             options={[{ value: "categories", label: "Categories" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}
