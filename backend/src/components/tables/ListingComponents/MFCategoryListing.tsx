@@ -1,20 +1,22 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { DataTable, TableColumn } from "../../PagesComponent/DataTable";
 import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
-import { axiosInstance } from "../../../api/axios";
+import { axiosInstance, axiosApi } from "../../../api/axios";
 import { toast } from "react-hot-toast";
+import MFDeleteImpactModal, {
+  MFDeleteImpactSummary,
+} from "./MFDeleteImpactModal";
 import MFImportExportActions from "./MFImportExportActions";
 
-interface MFIndexSnapshot {
+interface MFCategory {
   _id: string;
-  benchmark_index_name: string;
+  name: string;
   main_category_id?: { name?: string };
-  returns?: { y1?: number; y3?: number; y5?: number; y10?: number };
-  last_updated_date: string;
+  risk_level?: string;
   is_active: number;
 }
 
@@ -34,15 +36,16 @@ type EntityOption = {
 
 type ExportMode = "data" | "template";
 
-export default function MFIndexSnapshotListing() {
+export default function MFCategoryListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const MODULE_KEY = `${role}-mf-index-snapshots`;
+  const MODULE_KEY = `${role}-mf-categories`;
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("categories");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -97,8 +100,25 @@ export default function MFIndexSnapshotListing() {
     cacheModuleState,
     restoreModuleState,
     markEditNavigation,
+    markTabSwitch,
     lastAction,
   } = useDataTableStore();
+
+  /* ------------------- Detect tab switching ------------------- */
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const storedPath = sessionStorage.getItem("lastPath");
+
+    if (
+      storedPath &&
+      !storedPath.includes("/mf/categories") &&
+      currentPath.includes("/mf/categories")
+    ) {
+      markTabSwitch();
+    }
+
+    sessionStorage.setItem("lastPath", currentPath);
+  }, [location.pathname, markTabSwitch]);
 
   /* ------------------- Initialize module state ------------------- */
   useEffect(() => {
@@ -126,115 +146,113 @@ export default function MFIndexSnapshotListing() {
 
   useEffect(() => {
     if (!sortField) {
-      setSort("last_updated_date", "desc");
+      setSort("created_at", "desc");
     }
   }, [setSort, sortField]);
 
-  const {
-    data,
-    extractList,
-    isLoading,
-    isFetching,
-    deleteRecord,
-    toggleStatus,
-    refetch,
-  } = useCommonCrud<MFIndexSnapshot>({
-    role,
-    module: "mf/index-snapshots",
-    listKey: "data",
-    page,
-    limit: recordsPerPage,
-    searchValue,
-    sortField,
-    sortOrder,
-    enabled: isMounted,
-  });
+  const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
+    useCommonCrud<MFCategory>({
+      role,
+      module: "mf/categories",
+      listKey: "data",
+      page,
+      limit: recordsPerPage,
+      searchValue,
+      sortField,
+      sortOrder,
+      enabled: isMounted,
+    });
 
-  const rows = extractList as MFIndexSnapshot[];
+  const rows = extractList as MFCategory[];
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(
     data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
     1,
   );
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleteImpact, setDeleteImpact] =
+    useState<MFDeleteImpactSummary | null>(null);
+  const [isDeleteImpactLoading, setIsDeleteImpactLoading] = useState(false);
+
+  const openDeleteModal = async (row: MFCategory) => {
+    setDeleteModalId(row._id);
+    setDeleteImpact(null);
+    setIsDeleteImpactLoading(true);
+
+    try {
+      const response = await axiosApi.getOne<MFDeleteImpactSummary>(
+        `/${role}/mf/categories/delete-impact/${row._id}`,
+      );
+      setDeleteImpact(response.data ?? null);
+    } catch (error) {
+      console.error("Failed to load category delete impact", error);
+      toast.error(
+        "Couldn't load related record counts. You can still continue if needed.",
+      );
+    } finally {
+      setIsDeleteImpactLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!deleteModalId) return;
     await deleteRecord(deleteModalId);
     setDeleteModalId(null);
+    setDeleteImpact(null);
+    setIsDeleteImpactLoading(false);
   };
 
-  const columns: TableColumn<MFIndexSnapshot>[] = useMemo(
-    () => [
-      {
-        key: "index",
-        label: "#",
-        render: (_, i) => (page - 1) * recordsPerPage + i + 1,
-      },
-      { key: "benchmark_index_name", label: "Benchmark", sortable: true },
-      {
-        key: "main_category",
-        label: "Main Category",
-        render: (r) => r.main_category_id?.name || "-",
-      },
-      { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
-      { key: "y3", label: "3Y", render: (r) => (r.returns?.y3 ?? "-") as any },
-      {
-        key: "last_updated_date",
-        label: "Last Updated",
-        sortable: true,
-        render: (r) =>
-          new Date(r.last_updated_date).toLocaleDateString("en-GB"),
-      },
-      {
-        key: "is_active",
-        label: "Status",
-        render: (row) => (
-          <button
-            onClick={() => toggleStatus(row._id, row.is_active !== 1)}
-            className={`px-4 py-1 min-w-[90px] rounded-sm text-white text-sm font-medium ${row.is_active === 1 ? "bg-green-600" : "bg-gray-500"}`}
-          >
-            {row.is_active === 1 ? "Active" : "Inactive"}
-          </button>
-        ),
-      },
-      {
-        key: "actions",
-        label: "Actions",
-        render: (row) => (
-          <MFRowActions
-            onEdit={() => {
-              markEditNavigation();
-              cacheModuleState(MODULE_KEY);
-              navigate(`/${role}/mf/index-snapshots/edit/${row._id}`);
-            }}
-            deleteLabel="Delete"
-            onDelete={() => setDeleteModalId(row._id)}
-          />
-        ),
-      },
-    ],
-    [
-      page,
-      recordsPerPage,
-      role,
-      cacheModuleState,
-      MODULE_KEY,
-      markEditNavigation,
-      navigate,
-      toggleStatus,
-    ],
-  );
+  const columns: TableColumn<MFCategory>[] = [
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
+    { key: "name", label: "Name", sortable: true },
+    {
+      key: "main_category",
+      label: "Main Category",
+      render: (r) => r.main_category_id?.name || "-",
+    },
+    { key: "risk_level", label: "Risk", render: (r) => r.risk_level || "-" },
+    {
+      key: "is_active",
+      label: "Status",
+      render: (row) => (
+        <button
+          onClick={() => toggleStatus(row._id, row.is_active !== 1)}
+          className={`px-4 py-1 min-w-[90px] rounded-sm text-white text-sm font-medium ${row.is_active === 1 ? "bg-green-600" : "bg-gray-500"}`}
+        >
+          {row.is_active === 1 ? "Active" : "Inactive"}
+        </button>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (row) => (
+        <MFRowActions
+          onEdit={() => {
+            markEditNavigation();
+            cacheModuleState(MODULE_KEY);
+            navigate(`/${role}/mf/categories/edit/${row._id}`);
+          }}
+          onDelete={() => void openDeleteModal(row)}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <MFListingHeader
-        title="MF Index Snapshots"
+        title="MF Categories"
         onAdd={() => {
           cacheModuleState(MODULE_KEY);
-          navigate(`/${role}/mf/index-snapshots/create`);
+          navigate(`/${role}/mf/categories/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -244,12 +262,12 @@ export default function MFIndexSnapshotListing() {
         columns={columns}
         data={rows}
         loading={isLoading}
-        isFetching={isFetching}
         toolbarActions={
           <MFImportExportActions
             role={role}
-            options={[{ value: "index-snapshots", label: "Index Snapshots" }]}
+            options={[{ value: "categories", label: "Categories" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}
@@ -271,30 +289,18 @@ export default function MFIndexSnapshotListing() {
       />
 
       {deleteModalId && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Delete Index Snapshot?
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Are you sure you want to delete this index snapshot?
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteModalId(null)}
-                className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <MFDeleteImpactModal
+          title="Delete Category?"
+          fallbackMessage="Are you sure you want to delete this category?"
+          impact={deleteImpact}
+          loading={isDeleteImpactLoading}
+          onClose={() => {
+            setDeleteModalId(null);
+            setDeleteImpact(null);
+            setIsDeleteImpactLoading(false);
+          }}
+          onConfirm={() => void handleDelete()}
+        />
       )}
     </div>
   );

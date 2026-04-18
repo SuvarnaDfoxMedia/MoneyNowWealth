@@ -3,6 +3,41 @@ import MFCategory from "../models/mfCategoryModel";
 import { Types } from "mongoose";
 import { buildSort, parsePagination, toDateOrNull, toNumberOrNull } from "./mfUtils";
 
+const normalizeObjectId = (value: unknown) => {
+  const stringValue = String(value || "").trim();
+  return /^[a-f\d]{24}$/i.test(stringValue) ? stringValue : undefined;
+};
+
+const resolveValidatedIndexSnapshotRelations = async (
+  mainCategoryIdInput: unknown,
+  categoryIdInput: unknown,
+) => {
+  const mainCategoryId = normalizeObjectId(mainCategoryIdInput);
+  const categoryId = normalizeObjectId(categoryIdInput);
+
+  if (!mainCategoryId || !categoryId) {
+    throw new Error("main_category_id and category_id are required");
+  }
+
+  const category = await MFCategory.findOne({
+    _id: categoryId,
+    is_deleted: false,
+  }).select("main_category_id");
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  if (String(category.main_category_id) !== mainCategoryId) {
+    throw new Error("category_id does not belong to main_category_id");
+  }
+
+  return {
+    mainCategoryId,
+    categoryId,
+  };
+};
+
 export const getIndexSnapshots = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
   const filter: any = { is_deleted: false };
@@ -53,25 +88,20 @@ export const createIndexSnapshot = async (payload: Partial<IMFIndexSnapshot> & {
     throw new Error("benchmark_index_name and last_updated_date are required");
   }
 
-  let categoryId = payload.category_id;
-  if (categoryId && !/^[a-f\d]{24}$/i.test(String(categoryId))) categoryId = undefined;
-
   const dateValue = toDateOrNull(payload.last_updated_date);
   if (!dateValue) throw new Error("Invalid last_updated_date");
 
-  let mainCategoryId: any = payload.main_category_id;
-  if (mainCategoryId && !/^[a-f\d]{24}$/i.test(String(mainCategoryId))) mainCategoryId = undefined;
-  if (!mainCategoryId && categoryId) {
-    const category = await MFCategory.findById(categoryId).select("main_category_id");
-    mainCategoryId = category?.main_category_id ? (String(category.main_category_id) as any) : undefined;
-  }
+  const { mainCategoryId, categoryId } = await resolveValidatedIndexSnapshotRelations(
+    payload.main_category_id,
+    payload.category_id,
+  );
 
   const { category_id, main_category_id, ...restPayload } = payload;
   
   const doc = new MFIndexSnapshot({
     ...restPayload,
-    category_id: categoryId ? (new Types.ObjectId(String(categoryId)) as any) : null,
-    main_category_id: mainCategoryId ? (new Types.ObjectId(String(mainCategoryId)) as any) : null,
+    category_id: new Types.ObjectId(categoryId) as any,
+    main_category_id: new Types.ObjectId(mainCategoryId) as any,
     returns: {
       y1: toNumberOrNull(payload.returns?.y1),
       y3: toNumberOrNull(payload.returns?.y3),
@@ -94,17 +124,17 @@ export const updateIndexSnapshot = async (
   const doc = await MFIndexSnapshot.findById(id);
   if (!doc || doc.is_deleted) throw new Error("Index snapshot not found");
 
-  let categoryId: any = payload.category_id;
-  if (categoryId && !/^[a-f\d]{24}$/i.test(String(categoryId))) categoryId = undefined;
-
   if (payload.benchmark_index_name !== undefined) {
     doc.benchmark_index_name = String(payload.benchmark_index_name).trim();
   }
-  if (payload.main_category_id !== undefined) {
-    doc.main_category_id = payload.main_category_id ? (new Types.ObjectId(String(payload.main_category_id)) as any) : null;
-  }
-  if (payload.category_id !== undefined) {
-    doc.category_id = categoryId ? (new Types.ObjectId(String(categoryId)) as any) : null;
+
+  if (payload.main_category_id !== undefined || payload.category_id !== undefined) {
+    const { mainCategoryId, categoryId } = await resolveValidatedIndexSnapshotRelations(
+      payload.main_category_id ?? doc.main_category_id,
+      payload.category_id ?? doc.category_id,
+    );
+    doc.main_category_id = new Types.ObjectId(mainCategoryId) as any;
+    doc.category_id = new Types.ObjectId(categoryId) as any;
   }
   if (payload.returns) {
     doc.returns = {

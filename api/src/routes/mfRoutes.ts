@@ -377,6 +377,16 @@ router.put(
   handleValidationErrors,
   updateAmc,
 );
+router.patch(
+  "/:role/mf/amcs/toggle-status/:id",
+  ...adminEditorMiddleware,
+  toggleAmcStatus,
+);
+router.delete(
+  "/:role/mf/amcs/delete/:id",
+  ...adminEditorMiddleware,
+  deleteAmc,
+);
 
 router.post(
   "/:role/mf/import/excel",

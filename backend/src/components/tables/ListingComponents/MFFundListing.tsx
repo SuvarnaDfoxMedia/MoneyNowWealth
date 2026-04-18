@@ -9,14 +9,16 @@ import { axiosInstance } from "../../../api/axios";
 import { toast } from "react-hot-toast";
 import MFImportExportActions from "./MFImportExportActions";
 
-interface MFNfo {
+interface MFFund {
   _id: string;
-  nfo_id?: string;
+  scheme_code?: string;
   fund_name: string;
   amc_id?: { name?: string };
   category_id?: { name?: string };
-  subscription_end_date?: string;
-  is_open: boolean;
+  expense_ratio?: number;
+  returns?: { d1?: number; m1?: number; y1?: number; y3_cagr?: number };
+  is_featured?: boolean;
+  is_popular?: boolean;
   is_active: number;
 }
 
@@ -36,16 +38,16 @@ type EntityOption = {
 
 type ExportMode = "data" | "template";
 
-export default function MFNfoListing() {
+export default function MFFundListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const MODULE_KEY = `${role}-mf-nfo`;
+  const MODULE_KEY = `${role}-mf-funds`;
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("funds");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -111,8 +113,8 @@ export default function MFNfoListing() {
 
     if (
       storedPath &&
-      !storedPath.includes("/mf/nfo") &&
-      currentPath.includes("/mf/nfo")
+      !storedPath.includes("/mf/funds") &&
+      currentPath.includes("/mf/funds")
     ) {
       markTabSwitch();
     }
@@ -151,9 +153,9 @@ export default function MFNfoListing() {
   }, [setSort, sortField]);
 
   const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
-    useCommonCrud<MFNfo>({
+    useCommonCrud<MFFund>({
       role,
-      module: "mf/nfo",
+      module: "mf/funds",
       listKey: "data",
       page,
       limit: recordsPerPage,
@@ -161,12 +163,9 @@ export default function MFNfoListing() {
       sortField,
       sortOrder,
       enabled: isMounted,
-      extraParams: {
-        prioritizeOpenActive: true,
-      },
     });
 
-  const rows = extractList as MFNfo[];
+  const rows = extractList as MFFund[];
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(
     data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
@@ -180,7 +179,7 @@ export default function MFNfoListing() {
     setDeleteModalId(null);
   };
 
-  const columns: TableColumn<MFNfo>[] = [
+  const columns: TableColumn<MFFund>[] = [
     {
       key: "index",
       label: "#",
@@ -194,13 +193,24 @@ export default function MFNfoListing() {
       render: (r) => r.category_id?.name || "-",
     },
     {
-      key: "is_open",
-      label: "Open",
+      key: "is_featured",
+      label: "Featured",
       render: (r) => (
         <span
-          className={`px-2 py-1 rounded text-xs ${r.is_open ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+          className={`px-2 py-1 rounded text-xs ${r.is_featured ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}
         >
-          {r.is_open ? "Yes" : "No"}
+          {r.is_featured ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
+      key: "is_popular",
+      label: "Popular",
+      render: (r) => (
+        <span
+          className={`px-2 py-1 rounded text-xs ${r.is_popular ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}
+        >
+          {r.is_popular ? "Yes" : "No"}
         </span>
       ),
     },
@@ -224,7 +234,7 @@ export default function MFNfoListing() {
           onEdit={() => {
             markEditNavigation();
             cacheModuleState(MODULE_KEY);
-            navigate(`/${role}/mf/nfo/edit/${row._id}`);
+            navigate(`/${role}/mf/funds/edit/${row._id}`);
           }}
           onDelete={() => setDeleteModalId(row._id)}
         />
@@ -235,12 +245,13 @@ export default function MFNfoListing() {
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <MFListingHeader
-        title="MF NFO"
+        title="MF Funds"
         onAdd={() => {
           cacheModuleState(MODULE_KEY);
-          navigate(`/${role}/mf/nfo/create`);
+          navigate(`/${role}/mf/funds/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -253,8 +264,9 @@ export default function MFNfoListing() {
         toolbarActions={
           <MFImportExportActions
             role={role}
-            options={[{ value: "nfo", label: "NFOs" }]}
+            options={[{ value: "funds", label: "Funds" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}
@@ -278,9 +290,11 @@ export default function MFNfoListing() {
       {deleteModalId && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Delete NFO?</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Delete Fund?
+            </h3>
             <p className="mt-2 text-sm text-gray-600">
-              Are you sure you want to delete this NFO?
+              Are you sure you want to delete this fund?
             </p>
             <div className="mt-6 flex justify-end gap-3">
               <button

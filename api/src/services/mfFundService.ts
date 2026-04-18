@@ -2,7 +2,19 @@ import mongoose from "mongoose";
 import MFFund, { IMFFund } from "../models/mfFundModel";
 import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
-import { buildSort, parsePagination, toDateOrNull, toNumberOrNull, toBoolean } from "./mfUtils";
+import {
+  BENCHMARK_TRAILING_KEYS,
+  buildNumericObject,
+  buildSort,
+  FUND_RETURN_KEYS,
+  normalizeTopHoldings,
+  normalizeYearValueMap,
+  parsePagination,
+  toBoolean,
+  toDateOrNull,
+  toNumberOrNull,
+} from "./mfUtils";
+import { recomputeCategoryAverageReturns } from "./mfCategoryService";
 
 const escapeRegex = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -46,6 +58,16 @@ const normalizeInvestmentFlags = (payload: any) => {
       : null,
   };
 };
+
+const normalizeFundReturns = (value: any) => ({
+  ...buildNumericObject(FUND_RETURN_KEYS, value),
+  annual: normalizeYearValueMap(value?.annual),
+});
+
+const normalizeBenchmarkTrailing = (value: any) =>
+  buildNumericObject(BENCHMARK_TRAILING_KEYS, value);
+
+const normalizeBenchmarkAnnual = (value: any) => normalizeYearValueMap(value);
 
 export const getFunds = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
@@ -267,11 +289,7 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
   const amcId = await resolveAmcId(payload);
   const categoryId = await resolveCategoryId(payload);
 
-  const topHoldings = Array.isArray(payload.top_holdings)
-    ? payload.top_holdings
-    : typeof payload.top_holdings === "string"
-      ? payload.top_holdings.split(",").map((x: string) => x.trim()).filter(Boolean)
-      : [];
+  const topHoldings = normalizeTopHoldings(payload.top_holdings);
   const investmentFlags = normalizeInvestmentFlags(payload);
   const normalizedSchemeCode = String(payload.scheme_code).trim();
   const normalizedFundName = String(payload.fund_name).trim();
@@ -299,16 +317,13 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     category_id: categoryId,
     aum_cr: toNumberOrNull(payload.aum_cr),
     expense_ratio: toNumberOrNull(payload.expense_ratio),
-    returns: {
-      d1: toNumberOrNull(payload.returns?.d1) ?? 0,
-      m1: toNumberOrNull(payload.returns?.m1) ?? 0,
-      m3: toNumberOrNull(payload.returns?.m3) ?? 0,
-      m6: toNumberOrNull(payload.returns?.m6) ?? 0,
-      y1: toNumberOrNull(payload.returns?.y1 ?? payload.y1_return),
-      y3_cagr: toNumberOrNull(payload.returns?.y3_cagr ?? payload.y3_cagr),
-      y5_cagr: toNumberOrNull(payload.returns?.y5_cagr ?? payload.y5_cagr),
-      y10_cagr: toNumberOrNull(payload.returns?.y10_cagr ?? payload.y10_cagr),
-    },
+    returns: normalizeFundReturns({
+      ...payload.returns,
+      y1: payload.returns?.y1 ?? payload.y1_return,
+      y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
+      y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
+      y10_cagr: payload.returns?.y10_cagr ?? payload.y10_cagr,
+    }),
     risk_metrics: {
       sharpe_3y: toNumberOrNull(payload.risk_metrics?.sharpe_3y),
       std_dev_3y: toNumberOrNull(payload.risk_metrics?.std_dev_3y),
@@ -319,22 +334,8 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     },
     launch_date: toDateOrNull(payload.launch_date),
     benchmark_index_name: String(payload.benchmark_index_name || "").trim(),
-    benchmark_returns_trailing: {
-      d1: toNumberOrNull(payload.benchmark_returns_trailing?.d1) ?? 0,
-      m1: toNumberOrNull(payload.benchmark_returns_trailing?.m1) ?? 0,
-      m3: toNumberOrNull(payload.benchmark_returns_trailing?.m3) ?? 0,
-      m6: toNumberOrNull(payload.benchmark_returns_trailing?.m6) ?? 0,
-      y1: toNumberOrNull(payload.benchmark_returns_trailing?.y1),
-      y3: toNumberOrNull(payload.benchmark_returns_trailing?.y3),
-      y5: toNumberOrNull(payload.benchmark_returns_trailing?.y5),
-      y10: toNumberOrNull(payload.benchmark_returns_trailing?.y10),
-    },
-    benchmark_returns_annual: {
-      y1: toNumberOrNull(payload.benchmark_returns_annual?.y1),
-      y3: toNumberOrNull(payload.benchmark_returns_annual?.y3),
-      y5: toNumberOrNull(payload.benchmark_returns_annual?.y5),
-      y10: toNumberOrNull(payload.benchmark_returns_annual?.y10),
-    },
+    benchmark_returns_trailing: normalizeBenchmarkTrailing(payload.benchmark_returns_trailing),
+    benchmark_returns_annual: normalizeBenchmarkAnnual(payload.benchmark_returns_annual),
     min_investment: toNumberOrNull(payload.min_investment),
     ...investmentFlags,
     is_featured: toBoolean(payload.is_featured),
@@ -350,6 +351,7 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
   });
 
   await doc.save();
+  await recomputeCategoryAverageReturns(String(categoryId));
   return doc;
 };
 
@@ -357,7 +359,7 @@ export const updateFund = async (id: string, payload: Partial<IMFFund> & any) =>
   const updateData: any = { ...payload };
   ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
   const currentDoc = await MFFund.findOne({ _id: id, is_deleted: false }).select(
-    "scheme_code fund_name plan_type option_type",
+    "scheme_code fund_name plan_type option_type category_id",
   );
   if (!currentDoc) throw new Error("Fund not found");
 
@@ -370,16 +372,13 @@ if (payload.amc_name || payload.amc_id) {
   }
 
   if (payload.returns || payload.y1_return || payload.y3_cagr || payload.y5_cagr || payload.y10_cagr) {
-    updateData.returns = {
-      d1: toNumberOrNull(payload.returns?.d1) ?? 0,
-      m1: toNumberOrNull(payload.returns?.m1) ?? 0,
-      m3: toNumberOrNull(payload.returns?.m3) ?? 0,
-      m6: toNumberOrNull(payload.returns?.m6) ?? 0,
-      y1: toNumberOrNull(payload.returns?.y1 ?? payload.y1_return),
-      y3_cagr: toNumberOrNull(payload.returns?.y3_cagr ?? payload.y3_cagr),
-      y5_cagr: toNumberOrNull(payload.returns?.y5_cagr ?? payload.y5_cagr),
-      y10_cagr: toNumberOrNull(payload.returns?.y10_cagr ?? payload.y10_cagr),
-    };
+    updateData.returns = normalizeFundReturns({
+      ...payload.returns,
+      y1: payload.returns?.y1 ?? payload.y1_return,
+      y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
+      y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
+      y10_cagr: payload.returns?.y10_cagr ?? payload.y10_cagr,
+    });
   }
 
   if (payload.risk_metrics) {
@@ -410,24 +409,12 @@ if (payload.amc_name || payload.amc_id) {
     updateData.benchmark_index_name = String(payload.benchmark_index_name || "").trim();
   }
   if (payload.benchmark_returns_trailing) {
-    updateData.benchmark_returns_trailing = {
-      d1: toNumberOrNull(payload.benchmark_returns_trailing.d1) ?? 0,
-      m1: toNumberOrNull(payload.benchmark_returns_trailing.m1) ?? 0,
-      m3: toNumberOrNull(payload.benchmark_returns_trailing.m3) ?? 0,
-      m6: toNumberOrNull(payload.benchmark_returns_trailing.m6) ?? 0,
-      y1: toNumberOrNull(payload.benchmark_returns_trailing.y1),
-      y3: toNumberOrNull(payload.benchmark_returns_trailing.y3),
-      y5: toNumberOrNull(payload.benchmark_returns_trailing.y5),
-      y10: toNumberOrNull(payload.benchmark_returns_trailing.y10),
-    };
+    updateData.benchmark_returns_trailing = normalizeBenchmarkTrailing(
+      payload.benchmark_returns_trailing,
+    );
   }
   if (payload.benchmark_returns_annual) {
-    updateData.benchmark_returns_annual = {
-      y1: toNumberOrNull(payload.benchmark_returns_annual.y1),
-      y3: toNumberOrNull(payload.benchmark_returns_annual.y3),
-      y5: toNumberOrNull(payload.benchmark_returns_annual.y5),
-      y10: toNumberOrNull(payload.benchmark_returns_annual.y10),
-    };
+    updateData.benchmark_returns_annual = normalizeBenchmarkAnnual(payload.benchmark_returns_annual);
   }
   if (payload.min_investment !== undefined) updateData.min_investment = toNumberOrNull(payload.min_investment);
   if (
@@ -442,12 +429,7 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.is_popular !== undefined) updateData.is_popular = toBoolean(payload.is_popular);
 
   if (payload.top_holdings !== undefined) {
-    updateData.top_holdings = Array.isArray(payload.top_holdings)
-      ? payload.top_holdings
-      : String(payload.top_holdings)
-          .split(",")
-          .map((x) => x.trim())
-          .filter(Boolean);
+    updateData.top_holdings = normalizeTopHoldings(payload.top_holdings);
   }
 
   const nextSchemeCode = String(updateData.scheme_code ?? currentDoc.scheme_code ?? "").trim();
@@ -471,6 +453,13 @@ if (payload.amc_name || payload.amc_id) {
 
   const doc = await MFFund.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   if (!doc) throw new Error("Fund not found");
+  const affectedCategoryIds = [
+    String(currentDoc.get("category_id") || ""),
+    String(updateData.category_id || ""),
+  ].filter(Boolean);
+  for (const categoryId of [...new Set(affectedCategoryIds)]) {
+    await recomputeCategoryAverageReturns(categoryId);
+  }
   return doc;
 };
 

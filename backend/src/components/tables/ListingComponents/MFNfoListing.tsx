@@ -5,18 +5,18 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
-import { axiosInstance, axiosApi } from "../../../api/axios";
+import { axiosInstance } from "../../../api/axios";
 import { toast } from "react-hot-toast";
-import MFDeleteImpactModal, {
-  MFDeleteImpactSummary,
-} from "./MFDeleteImpactModal";
 import MFImportExportActions from "./MFImportExportActions";
 
-interface MFCategory {
+interface MFNfo {
   _id: string;
-  name: string;
-  main_category_id?: { name?: string };
-  risk_level?: string;
+  nfo_id?: string;
+  fund_name: string;
+  amc_id?: { name?: string };
+  category_id?: { name?: string };
+  subscription_end_date?: string;
+  is_open: boolean;
   is_active: number;
 }
 
@@ -36,16 +36,16 @@ type EntityOption = {
 
 type ExportMode = "data" | "template";
 
-export default function MFCategoryListing() {
+export default function MFNfoListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const MODULE_KEY = `${role}-mf-categories`;
+  const MODULE_KEY = `${role}-mf-nfo`;
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("nfo");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -111,8 +111,8 @@ export default function MFCategoryListing() {
 
     if (
       storedPath &&
-      !storedPath.includes("/mf/categories") &&
-      currentPath.includes("/mf/categories")
+      !storedPath.includes("/mf/nfo") &&
+      currentPath.includes("/mf/nfo")
     ) {
       markTabSwitch();
     }
@@ -151,9 +151,9 @@ export default function MFCategoryListing() {
   }, [setSort, sortField]);
 
   const { data, extractList, isLoading, deleteRecord, toggleStatus, refetch } =
-    useCommonCrud<MFCategory>({
+    useCommonCrud<MFNfo>({
       role,
-      module: "mf/categories",
+      module: "mf/nfo",
       listKey: "data",
       page,
       limit: recordsPerPage,
@@ -161,60 +161,49 @@ export default function MFCategoryListing() {
       sortField,
       sortOrder,
       enabled: isMounted,
+      extraParams: {
+        prioritizeOpenActive: true,
+      },
     });
 
-  const rows = extractList as MFCategory[];
+  const rows = extractList as MFNfo[];
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(
     data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
     1,
   );
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-  const [deleteImpact, setDeleteImpact] =
-    useState<MFDeleteImpactSummary | null>(null);
-  const [isDeleteImpactLoading, setIsDeleteImpactLoading] = useState(false);
-
-  const openDeleteModal = async (row: MFCategory) => {
-    setDeleteModalId(row._id);
-    setDeleteImpact(null);
-    setIsDeleteImpactLoading(true);
-
-    try {
-      const response = await axiosApi.getOne<MFDeleteImpactSummary>(
-        `/${role}/mf/categories/delete-impact/${row._id}`,
-      );
-      setDeleteImpact(response.data ?? null);
-    } catch (error) {
-      console.error("Failed to load category delete impact", error);
-      toast.error(
-        "Couldn't load related record counts. You can still continue if needed.",
-      );
-    } finally {
-      setIsDeleteImpactLoading(false);
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteModalId) return;
     await deleteRecord(deleteModalId);
     setDeleteModalId(null);
-    setDeleteImpact(null);
-    setIsDeleteImpactLoading(false);
   };
 
-  const columns: TableColumn<MFCategory>[] = [
+  const columns: TableColumn<MFNfo>[] = [
     {
       key: "index",
       label: "#",
       render: (_, i) => (page - 1) * recordsPerPage + i + 1,
     },
-    { key: "name", label: "Name", sortable: true },
+    { key: "fund_name", label: "Fund Name", sortable: true },
+    { key: "amc", label: "AMC", render: (r) => r.amc_id?.name || "-" },
     {
-      key: "main_category",
-      label: "Main Category",
-      render: (r) => r.main_category_id?.name || "-",
+      key: "category",
+      label: "Category",
+      render: (r) => r.category_id?.name || "-",
     },
-    { key: "risk_level", label: "Risk", render: (r) => r.risk_level || "-" },
+    {
+      key: "is_open",
+      label: "Open",
+      render: (r) => (
+        <span
+          className={`px-2 py-1 rounded text-xs ${r.is_open ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
+        >
+          {r.is_open ? "Yes" : "No"}
+        </span>
+      ),
+    },
     {
       key: "is_active",
       label: "Status",
@@ -235,9 +224,9 @@ export default function MFCategoryListing() {
           onEdit={() => {
             markEditNavigation();
             cacheModuleState(MODULE_KEY);
-            navigate(`/${role}/mf/categories/edit/${row._id}`);
+            navigate(`/${role}/mf/nfo/edit/${row._id}`);
           }}
-          onDelete={() => void openDeleteModal(row)}
+          onDelete={() => setDeleteModalId(row._id)}
         />
       ),
     },
@@ -246,12 +235,13 @@ export default function MFCategoryListing() {
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <MFListingHeader
-        title="MF Categories"
+        title="MF NFO"
         onAdd={() => {
           cacheModuleState(MODULE_KEY);
-          navigate(`/${role}/mf/categories/create`);
+          navigate(`/${role}/mf/nfo/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -264,8 +254,9 @@ export default function MFCategoryListing() {
         toolbarActions={
           <MFImportExportActions
             role={role}
-            options={[{ value: "categories", label: "Categories" }]}
+            options={[{ value: "nfo", label: "NFOs" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}
@@ -287,18 +278,28 @@ export default function MFCategoryListing() {
       />
 
       {deleteModalId && (
-        <MFDeleteImpactModal
-          title="Delete Category?"
-          fallbackMessage="Are you sure you want to delete this category?"
-          impact={deleteImpact}
-          loading={isDeleteImpactLoading}
-          onClose={() => {
-            setDeleteModalId(null);
-            setDeleteImpact(null);
-            setIsDeleteImpactLoading(false);
-          }}
-          onConfirm={() => void handleDelete()}
-        />
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Delete NFO?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete this NFO?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModalId(null)}
+                className="h-10 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

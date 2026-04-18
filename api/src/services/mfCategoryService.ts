@@ -1,6 +1,16 @@
 import MFMainCategory, { IMFMainCategory } from "../models/mfMainCategoryModel";
 import MFCategory, { IMFCategory } from "../models/mfCategoryModel";
-import { buildSort, parsePagination, toNumberOrNull } from "./mfUtils";
+import MFFund from "../models/mfFundModel";
+import {
+  buildNumericObject,
+  buildSort,
+  CATEGORY_TRAILING_KEYS,
+  FUND_RETURN_KEYS,
+  mapToPlainObject,
+  normalizeYearValueMap,
+  parsePagination,
+  toNumberOrNull,
+} from "./mfUtils";
 
 const escapeRegex = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -9,6 +19,77 @@ const exactCaseInsensitive = (value: string) => ({
   $regex: `^${escapeRegex(value.trim())}$`,
   $options: "i",
 });
+
+const normalizeCategoryReturns = (value: any) => ({
+  ...buildNumericObject(CATEGORY_TRAILING_KEYS, value),
+  annual: normalizeYearValueMap(value?.annual),
+});
+
+const fundReturnToCategoryKey: Record<string, string> = {
+  w1: "w1",
+  m1: "m1",
+  m3: "m3",
+  m6: "m6",
+  y1: "y1",
+  y3_cagr: "y3",
+  y5_cagr: "y5",
+  y10_cagr: "y10",
+  ytd: "ytd",
+};
+
+export const recomputeCategoryAverageReturns = async (categoryId: string) => {
+  const funds = await MFFund.find({
+    category_id: categoryId,
+    is_deleted: false,
+    is_active: 1,
+  })
+    .select("returns")
+    .lean();
+
+  const sums: Record<string, number> = {};
+  const counts: Record<string, number> = {};
+  const annualSums: Record<string, number> = {};
+  const annualCounts: Record<string, number> = {};
+
+  for (const fund of funds as any[]) {
+    const returns = fund?.returns || {};
+    for (const fundKey of FUND_RETURN_KEYS) {
+      const categoryKey = fundReturnToCategoryKey[fundKey];
+      if (!categoryKey) continue;
+      const value = toNumberOrNull(returns[fundKey]);
+      if (value === null) continue;
+      sums[categoryKey] = (sums[categoryKey] || 0) + value;
+      counts[categoryKey] = (counts[categoryKey] || 0) + 1;
+    }
+
+    const annualReturns = normalizeYearValueMap(returns.annual);
+    for (const [year, rawValue] of Object.entries(annualReturns)) {
+      const value = toNumberOrNull(rawValue);
+      if (value === null) continue;
+      annualSums[year] = (annualSums[year] || 0) + value;
+      annualCounts[year] = (annualCounts[year] || 0) + 1;
+    }
+  }
+
+  const categoryAverageReturns = {
+    ...Object.fromEntries(
+      CATEGORY_TRAILING_KEYS.map((key) => [
+        key,
+        counts[key] ? sums[key] / counts[key] : null,
+      ]),
+    ),
+    annual: Object.fromEntries(
+      Object.keys(annualSums)
+        .sort((left, right) => Number(right) - Number(left))
+        .map((year) => [year, annualCounts[year] ? annualSums[year] / annualCounts[year] : null]),
+    ),
+  };
+
+  await MFCategory.updateOne(
+    { _id: categoryId, is_deleted: false },
+    { category_average_returns: categoryAverageReturns },
+  );
+};
 
 export const getMainCategories = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
@@ -153,18 +234,8 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
     description: payload.description || payload.short_description || "",
     benchmark_return_type:
       payload.benchmark_return_type === "Annual" ? "Annual" : "Trailing",
-    benchmark_returns: {
-      y1: toNumberOrNull(payload.benchmark_returns?.y1),
-      y3: toNumberOrNull(payload.benchmark_returns?.y3),
-      y5: toNumberOrNull(payload.benchmark_returns?.y5),
-      y10: toNumberOrNull(payload.benchmark_returns?.y10),
-    },
-    category_average_returns: {
-      y1: toNumberOrNull(payload.category_average_returns?.y1),
-      y3: toNumberOrNull(payload.category_average_returns?.y3),
-      y5: toNumberOrNull(payload.category_average_returns?.y5),
-      y10: toNumberOrNull(payload.category_average_returns?.y10),
-    },
+    benchmark_returns: normalizeCategoryReturns(payload.benchmark_returns),
+    category_average_returns: normalizeCategoryReturns(payload.category_average_returns),
     suggested_use_case_note: payload.suggested_use_case_note || "",
     is_active: payload.is_active ?? 1,
     is_deleted: false,
@@ -205,12 +276,7 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
   }
 
   if (payload.benchmark_returns) {
-    updateData.benchmark_returns = {
-      y1: toNumberOrNull(payload.benchmark_returns.y1),
-      y3: toNumberOrNull(payload.benchmark_returns.y3),
-      y5: toNumberOrNull(payload.benchmark_returns.y5),
-      y10: toNumberOrNull(payload.benchmark_returns.y10),
-    };
+    updateData.benchmark_returns = normalizeCategoryReturns(payload.benchmark_returns);
   }
 
   if (payload.benchmark_return_type !== undefined) {
@@ -219,12 +285,7 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
   }
 
   if (payload.category_average_returns) {
-    updateData.category_average_returns = {
-      y1: toNumberOrNull(payload.category_average_returns.y1),
-      y3: toNumberOrNull(payload.category_average_returns.y3),
-      y5: toNumberOrNull(payload.category_average_returns.y5),
-      y10: toNumberOrNull(payload.category_average_returns.y10),
-    };
+    updateData.category_average_returns = normalizeCategoryReturns(payload.category_average_returns);
   }
 
   if (payload.description || payload.short_description) {

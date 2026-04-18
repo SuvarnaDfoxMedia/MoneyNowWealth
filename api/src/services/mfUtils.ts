@@ -1,5 +1,57 @@
 import slugify from "slugify";
 
+export const CATEGORY_TRAILING_KEYS = [
+  "w1",
+  "m1",
+  "m3",
+  "m6",
+  "y1",
+  "y3",
+  "y5",
+  "y10",
+  "ytd",
+] as const;
+
+export const FUND_RETURN_KEYS = [
+  "d1",
+  "w1",
+  "m1",
+  "m3",
+  "m6",
+  "y1",
+  "y3_cagr",
+  "y5_cagr",
+  "y10_cagr",
+  "ytd",
+] as const;
+
+export const BENCHMARK_TRAILING_KEYS = [
+  "d1",
+  "w1",
+  "m1",
+  "m3",
+  "m6",
+  "y1",
+  "y3",
+  "y5",
+  "y10",
+  "ytd",
+] as const;
+
+export const MF_ANNUAL_YEARS = [
+  "2025",
+  "2024",
+  "2023",
+  "2022",
+  "2021",
+  "2020",
+  "2019",
+  "2018",
+  "2017",
+] as const;
+
+type NumericMap = Record<string, unknown> | Map<string, unknown> | null | undefined;
+
 export const toNumberOrNull = (value: any): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
@@ -44,3 +96,41 @@ export const buildSort = (
 
 export const baseSlug = (value: string) =>
   slugify(value || "", { lower: true, strict: true, trim: true });
+
+export const buildNumericObject = <T extends readonly string[]>(
+  keys: T,
+  source: Record<string, unknown> | null | undefined,
+) =>
+  Object.fromEntries(
+    keys.map((key) => [key, toNumberOrNull(source?.[key])]),
+  ) as Record<T[number], number | null>;
+
+export const normalizeYearValueMap = (value: NumericMap) => {
+  const entries =
+    value instanceof Map
+      ? Array.from(value.entries())
+      : Object.entries(value || {});
+
+  return entries.reduce<Record<string, number | null>>((acc, [key, rawValue]) => {
+    const normalizedKey = String(key || "").trim();
+    if (!/^\d{4}$/.test(normalizedKey)) return acc;
+    acc[normalizedKey] = toNumberOrNull(rawValue);
+    return acc;
+  }, {});
+};
+
+export const mapToPlainObject = (value: NumericMap) =>
+  value instanceof Map ? Object.fromEntries(value.entries()) : { ...(value || {}) };
+
+export const normalizeTopHoldings = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  return String(value || "")
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};

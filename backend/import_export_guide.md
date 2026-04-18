@@ -53,11 +53,14 @@ The admin panel provides two export actions:
 
 - Do not rename the Excel sheet tabs.
 - Do not change column header names.
+- The latest client workbook includes duplicate visible headers such as `benchmark_return_type`, `YTD`, and year columns. Always start from the exported template so those columns are preserved in the correct order.
 - Prefer editing the downloaded template rather than making a sheet from scratch.
 - Keep one record per row.
 - Avoid duplicate rows for the same record in the same upload file.
 - Use `Yes` or `No` for status-style columns like `is_active`, `sip_allowed`, `lumpsum_allowed`, `is_open`, `is_popular`, and `is_featured`.
 - Dates should be entered as valid Excel dates or in a clear date format such as `YYYY-MM-DD`.
+- `top_holdings` may be entered as comma-separated text or one holding per line. The importer will normalize it into a list.
+- `Category average` values are recalculated from active scheme return data when funds are imported or updated.
 
 ## Sheet Details
 

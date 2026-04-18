@@ -43,7 +43,7 @@ export default function MFAmcListing() {
   const [isMounted, setIsMounted] = useState(false);
 
   const [selectedEntity, setSelectedEntity] =
-    useState<MfImportEntity>("full-workbook");
+    useState<MfImportEntity>("amcs");
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (mode: ExportMode) => {
@@ -244,6 +244,7 @@ export default function MFAmcListing() {
           navigate(`/${role}/mf/amcs/create`);
         }}
         selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
         role={role}
         isExporting={isExporting}
         onExport={handleExport}
@@ -258,6 +259,7 @@ export default function MFAmcListing() {
             role={role}
             options={[{ value: "amcs", label: "AMCs" }]}
             selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}
