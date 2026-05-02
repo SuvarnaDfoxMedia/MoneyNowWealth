@@ -38,9 +38,11 @@ import oneCroreJourneyEnquiryRoutes from "./routes/oneCroreJourneyEnquiryRoutes"
 import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
 import seoRoutes from "./routes/seoRoutes";
+import navRoutes from "./routes/navRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
-import chatRoutes from "./routes/chatbot/chatRoutes";
-import { getGeminiApiKeyStatus } from "./controllers/chatbot/chatController.js";
+// Chatbot integration is temporarily disabled for lead review; keep code commented instead of deleting it.
+// import chatRoutes from "./routes/chatbot/chatRoutes";
+// import { getGeminiApiKeyStatus } from "./controllers/chatbot/chatController.js";
 
 dotenv.config();
 validateEmailEnvironment();
@@ -111,7 +113,8 @@ app.use((req, res, next) => {
   const path = req.path || "";
   const shouldRateLimit =
     path.startsWith("/api/auth") ||
-    path.startsWith("/api/chat") ||
+    // Chatbot integration is temporarily disabled for lead review; keep rate-limit dependency commented instead of deleting it.
+    // path.startsWith("/api/chat") ||
     path === "/api/newsletter" ||
     path === "/api/contact-enquiries" ||
     path === "/api/partner-enquiries" ||
@@ -193,7 +196,9 @@ app.use("/api", oneCroreJourneyEnquiryRoutes);
 app.use("/api", whoWeWorkWithEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
 app.use("/api", seoRoutes);
-app.use("/api/chat", chatRoutes);
+app.use("/api", navRoutes);
+// Chatbot integration is temporarily disabled for lead review; keep route mount commented instead of deleting it.
+// app.use("/api/chat", chatRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
   res.json({
@@ -240,14 +245,15 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.get("/api/health", (_req: Request, res: Response) => {
-  const apiKeyStatus = getGeminiApiKeyStatus();
+  // Chatbot integration is temporarily disabled for lead review; keep Gemini health dependency commented instead of deleting it.
+  // const apiKeyStatus = getGeminiApiKeyStatus();
 
   res.json({
     success: true,
     service: "money-now-backend",
-    geminiConfigured: apiKeyStatus.valid,
-    geminiConfigError: apiKeyStatus.valid ? null : apiKeyStatus.error,
-    geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    // geminiConfigured: apiKeyStatus.valid,
+    // geminiConfigError: apiKeyStatus.valid ? null : apiKeyStatus.error,
+    // geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     data: { status: "OK", timestamp: new Date().toISOString() },
   });
 });

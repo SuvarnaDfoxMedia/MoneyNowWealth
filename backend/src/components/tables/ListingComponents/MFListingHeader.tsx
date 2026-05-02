@@ -8,6 +8,7 @@ type MfImportEntity =
   | "funds"
   | "nfo"
   | "index-snapshots"
+  | "top-holdings"
   | "full-workbook";
 
 type EntityOption = {
@@ -19,7 +20,7 @@ type ExportMode = "data" | "template";
 
 type MFListingHeaderProps = {
   title: string;
-  onAdd: () => void;
+  onAdd?: () => void;
   templateOptions?: EntityOption[];
   selectedEntity?: MfImportEntity;
   onEntityChange?: (entity: MfImportEntity) => void;
@@ -39,9 +40,9 @@ export default function MFListingHeader({
   onExport,
 }: MFListingHeaderProps) {
   return (
-    <div className="flex justify-between items-center mb-6">
+    <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
       <h2 className="text-xl font-medium">{title}</h2>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {templateOptions && templateOptions.length > 1 && selectedEntity && (
           <select
             value={selectedEntity}
@@ -68,12 +69,14 @@ export default function MFListingHeader({
             {isExporting ? "Preparing..." : "Download Template"}
           </button>
         )}
-        <button
-          onClick={onAdd}
-          className="bg-[#043f79] text-white px-3 py-2 rounded-md flex items-center gap-2"
-        >
-          <FiPlus /> Add
-        </button>
+        {onAdd && (
+          <button
+            onClick={onAdd}
+            className="bg-[#043f79] text-white px-3 py-2 rounded-md flex items-center gap-2"
+          >
+            <FiPlus /> Add
+          </button>
+        )}
       </div>
     </div>
   );

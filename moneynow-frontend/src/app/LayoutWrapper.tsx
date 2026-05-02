@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import BlogNav from "@/components/BlogNav";
-import ChatbotLayout from "@/components/chatbot/ChatbotLayout";
+// Chatbot integration is temporarily disabled for lead review; keep import commented instead of deleting it.
+// import ChatbotLayout from "@/components/chatbot/ChatbotLayout";
 
 const Footer = dynamic(() => import("@/components/Footer"), {
   ssr: false,
@@ -23,7 +24,8 @@ export default function LayoutWrapper({
 
   return (
     <>
-      {!isAuthPage && <ChatbotLayout />}
+      {/* Chatbot integration is temporarily disabled for lead review; keep widget mount commented instead of deleting it. */}
+      {/* {!isAuthPage && <ChatbotLayout />} */}
 
       {/* HEADER LOGIC */}
       {!isAuthPage && (isBlogPageOrCluster ? <BlogNav /> : <Header />)}

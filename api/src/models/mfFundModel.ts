@@ -41,6 +41,7 @@ const benchmarkTrailingSchema = new Schema(
 
 export interface IMFFund extends Document {
   scheme_code?: string;
+  isin?: string;
   fund_name: string;
   amc_id: mongoose.Types.ObjectId;
   category_id: mongoose.Types.ObjectId;
@@ -115,6 +116,7 @@ export interface IMFFund extends Document {
 const mfFundSchema = new Schema<IMFFund>(
   {
     scheme_code: { type: String, trim: true, default: "", index: true },
+    isin: { type: String, trim: true, default: "", index: true },
     fund_name: { type: String, required: true, trim: true, index: true },
     amc_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFAmc", required: true, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", required: true, index: true },
@@ -167,6 +169,7 @@ const mfFundSchema = new Schema<IMFFund>(
 mfFundSchema.index({ category_id: 1, is_active: 1, is_deleted: 1 });
 mfFundSchema.index({ amc_id: 1, is_active: 1, is_deleted: 1 });
 mfFundSchema.index({ scheme_code: 1, is_deleted: 1 });
+mfFundSchema.index({ isin: 1, is_deleted: 1 });
 mfFundSchema.index({ "returns.y1": -1, "returns.y3_cagr": -1 });
 mfFundSchema.index({ expense_ratio: 1, aum_cr: -1 });
 mfFundSchema.index({ category_id: 1, "returns.y3_cagr": -1 });

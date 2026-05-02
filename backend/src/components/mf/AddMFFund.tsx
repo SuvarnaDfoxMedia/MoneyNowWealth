@@ -71,7 +71,11 @@ const emptyForm = () => ({
   aum_cr: "",
   expense_ratio: "",
   return_1d: "",
-  returnsTrailing: emptyMap(FUND_TRAILING_FIELDS.map((field) => field.key) as unknown as readonly string[]),
+  returnsTrailing: emptyMap(
+    FUND_TRAILING_FIELDS.map(
+      (field) => field.key,
+    ) as unknown as readonly string[],
+  ),
   returnsAnnual: emptyMap(ANNUAL_YEARS),
   sharpe_3y: "",
   std_dev_3y: "",
@@ -82,7 +86,11 @@ const emptyForm = () => ({
   fund_manager: "",
   launch_date: null as Date | null,
   benchmark_index_name: "",
-  benchmarkTrailing: emptyMap(BENCHMARK_TRAILING_FIELDS.map((field) => field.key) as unknown as readonly string[]),
+  benchmarkTrailing: emptyMap(
+    BENCHMARK_TRAILING_FIELDS.map(
+      (field) => field.key,
+    ) as unknown as readonly string[],
+  ),
   benchmarkAnnual: emptyMap(ANNUAL_YEARS),
   min_investment: "",
   sip_allowed: true,
@@ -92,7 +100,6 @@ const emptyForm = () => ({
   exit_load: "",
   fund_objective: "",
   investment_strategy: "",
-  top_holdings: "",
   equity_pct: "",
   debt_pct: "",
   other_pct: "",
@@ -155,7 +162,9 @@ export default function AddMFFund() {
           sortOrder: "asc",
         }),
       ]);
-      setCategoryOptions(Array.isArray(categoryRes?.data) ? categoryRes.data : []);
+      setCategoryOptions(
+        Array.isArray(categoryRes?.data) ? categoryRes.data : [],
+      );
       setAmcOptions(Array.isArray(amcRes?.data) ? amcRes.data : []);
     })();
   }, [role]);
@@ -180,7 +189,9 @@ export default function AddMFFund() {
         return_1d: fund.returns?.d1?.toString?.() || "",
         returnsTrailing: {
           ...emptyMap(
-            FUND_TRAILING_FIELDS.map((field) => field.key) as unknown as readonly string[],
+            FUND_TRAILING_FIELDS.map(
+              (field) => field.key,
+            ) as unknown as readonly string[],
           ),
           ...Object.fromEntries(
             FUND_TRAILING_FIELDS.map((field) => [
@@ -209,7 +220,9 @@ export default function AddMFFund() {
         benchmark_index_name: fund.benchmark_index_name || "",
         benchmarkTrailing: {
           ...emptyMap(
-            BENCHMARK_TRAILING_FIELDS.map((field) => field.key) as unknown as readonly string[],
+            BENCHMARK_TRAILING_FIELDS.map(
+              (field) => field.key,
+            ) as unknown as readonly string[],
           ),
           ...Object.fromEntries(
             BENCHMARK_TRAILING_FIELDS.map((field) => [
@@ -235,9 +248,6 @@ export default function AddMFFund() {
         exit_load: fund.exit_load || "",
         fund_objective: fund.fund_objective || "",
         investment_strategy: fund.investment_strategy || "",
-        top_holdings: Array.isArray(fund.top_holdings)
-          ? fund.top_holdings.join(", ")
-          : "",
         equity_pct: fund.asset_allocation?.equity_pct?.toString?.() || "",
         debt_pct: fund.asset_allocation?.debt_pct?.toString?.() || "",
         other_pct: fund.asset_allocation?.other_pct?.toString?.() || "",
@@ -288,13 +298,20 @@ export default function AddMFFund() {
     [amcOptions, amcSearch],
   );
 
-  const setField = (key: keyof FundFormState, value: FundFormState[keyof FundFormState]) => {
+  const setField = (
+    key: keyof FundFormState,
+    value: FundFormState[keyof FundFormState],
+  ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [String(key)]: "" }));
   };
 
   const setMapField = (
-    group: "returnsTrailing" | "returnsAnnual" | "benchmarkTrailing" | "benchmarkAnnual",
+    group:
+      | "returnsTrailing"
+      | "returnsAnnual"
+      | "benchmarkTrailing"
+      | "benchmarkAnnual",
     key: string,
     value: string,
   ) => {
@@ -326,21 +343,35 @@ export default function AddMFFund() {
   const validate = () => {
     const nextErrors: Record<string, string> = {};
 
-    if (!form.scheme_code.trim()) nextErrors.scheme_code = "Scheme code is required";
+    if (!form.scheme_code.trim())
+      nextErrors.scheme_code = "Scheme code is required";
     if (!form.fund_name.trim()) nextErrors.fund_name = "Fund name is required";
     if (!form.amc_id) nextErrors.amc_id = "AMC is required";
     if (!form.category_id) nextErrors.category_id = "Category is required";
-    if (form.scheme_code.length > 80) nextErrors.scheme_code = "Scheme code must be under 80 characters";
-    if (form.fund_name.length > 200) nextErrors.fund_name = "Fund name must be under 200 characters";
-    if (form.amc_name.length > 120) nextErrors.amc_name = "AMC name must be under 120 characters";
-    if (form.fund_manager.length > 200) nextErrors.fund_manager = "Fund manager must be under 200 characters";
-    if (form.benchmark_index_name.length > 200) nextErrors.benchmark_index_name = "Benchmark index name must be under 200 characters";
-    if (form.exit_load.length > 500) nextErrors.exit_load = "Exit load must be under 500 characters";
-    if (form.tax_type.length > 120) nextErrors.tax_type = "Tax type must be under 120 characters";
-    if (form.riskometer_label.length > 120) nextErrors.riskometer_label = "Riskometer label must be under 120 characters";
-    if (form.fund_objective.length > 5000) nextErrors.fund_objective = "Fund objective must be under 5000 characters";
-    if (form.investment_strategy.length > 5000) nextErrors.investment_strategy = "Investment strategy must be under 5000 characters";
-    if (form.top_holdings.length > 2000) nextErrors.top_holdings = "Top holdings must be under 2000 characters";
+    if (form.scheme_code.length > 80)
+      nextErrors.scheme_code = "Scheme code must be under 80 characters";
+    if (form.fund_name.length > 200)
+      nextErrors.fund_name = "Fund name must be under 200 characters";
+    if (form.amc_name.length > 120)
+      nextErrors.amc_name = "AMC name must be under 120 characters";
+    if (form.fund_manager.length > 200)
+      nextErrors.fund_manager = "Fund manager must be under 200 characters";
+    if (form.benchmark_index_name.length > 200)
+      nextErrors.benchmark_index_name =
+        "Benchmark index name must be under 200 characters";
+    if (form.exit_load.length > 500)
+      nextErrors.exit_load = "Exit load must be under 500 characters";
+    if (form.tax_type.length > 120)
+      nextErrors.tax_type = "Tax type must be under 120 characters";
+    if (form.riskometer_label.length > 120)
+      nextErrors.riskometer_label =
+        "Riskometer label must be under 120 characters";
+    if (form.fund_objective.length > 5000)
+      nextErrors.fund_objective =
+        "Fund objective must be under 5000 characters";
+    if (form.investment_strategy.length > 5000)
+      nextErrors.investment_strategy =
+        "Investment strategy must be under 5000 characters";
 
     const numericRules: Array<[keyof FundFormState, string, number, number]> = [
       ["aum_cr", "AUM (Cr)", 0, 1_000_000_000],
@@ -354,14 +385,24 @@ export default function AddMFFund() {
       ["turnover_ratio", "Turnover ratio", 0, 1000],
       ["min_investment", "Minimum investment", 0, 1_000_000_000],
       ["min_sip_investment", "Minimum SIP investment", 0, 1_000_000_000],
-      ["min_lumpsum_investment", "Minimum lumpsum investment", 0, 1_000_000_000],
+      [
+        "min_lumpsum_investment",
+        "Minimum lumpsum investment",
+        0,
+        1_000_000_000,
+      ],
       ["equity_pct", "Equity allocation", 0, 100],
       ["debt_pct", "Debt allocation", 0, 100],
       ["other_pct", "Other allocation", 0, 100],
     ];
 
     for (const [field, label, min, max] of numericRules) {
-      const message = validateNumber(String(form[field] ?? ""), label, min, max);
+      const message = validateNumber(
+        String(form[field] ?? ""),
+        label,
+        min,
+        max,
+      );
       if (message) nextErrors[field] = message;
     }
 
@@ -383,7 +424,8 @@ export default function AddMFFund() {
 
     for (const year of ANNUAL_YEARS) {
       const fundAnnualError = validateNumber(form.returnsAnnual[year], year);
-      if (fundAnnualError) nextErrors[`returnsAnnual.${year}`] = fundAnnualError;
+      if (fundAnnualError)
+        nextErrors[`returnsAnnual.${year}`] = fundAnnualError;
 
       const benchmarkAnnualError = validateNumber(
         form.benchmarkAnnual[year],
@@ -485,7 +527,6 @@ export default function AddMFFund() {
       is_popular: form.is_popular,
       fund_objective: form.fund_objective.trim(),
       investment_strategy: form.investment_strategy.trim(),
-      top_holdings: form.top_holdings,
       asset_allocation: {
         equity_pct: toNumberOrNull(form.equity_pct),
         debt_pct: toNumberOrNull(form.debt_pct),
@@ -625,9 +666,7 @@ export default function AddMFFund() {
           </div>
 
           <div ref={amcWrapperRef} className="relative">
-            <label className="mb-2 block font-medium text-gray-700">
-              AMC
-            </label>
+            <label className="mb-2 block font-medium text-gray-700">AMC</label>
             <div
               onClick={() => setAmcDropdownOpen((prev) => !prev)}
               className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-md border px-3 ${
@@ -817,7 +856,9 @@ export default function AddMFFund() {
               <input
                 className={inputClass(errors.fund_manager)}
                 value={form.fund_manager}
-                onChange={(event) => setField("fund_manager", event.target.value)}
+                onChange={(event) =>
+                  setField("fund_manager", event.target.value)
+                }
               />
               {error(errors.fund_manager)}
             </div>
@@ -979,7 +1020,9 @@ export default function AddMFFund() {
                   {field.label}
                 </label>
                 <input
-                  className={inputClass(errors[`benchmarkTrailing.${field.key}`])}
+                  className={inputClass(
+                    errors[`benchmarkTrailing.${field.key}`],
+                  )}
                   value={form.benchmarkTrailing[field.key]}
                   onChange={(event) =>
                     setMapField(
@@ -1047,24 +1090,6 @@ export default function AddMFFund() {
                 }
               />
               {error(errors.investment_strategy)}
-            </div>
-
-            <div>
-              <label className="mb-2 block font-medium text-gray-700">
-                Top Holdings
-              </label>
-              <textarea
-                className={textAreaClass(errors.top_holdings)}
-                rows={3}
-                placeholder="Comma-separated or line-separated holdings"
-                value={form.top_holdings}
-                onChange={(event) => setField("top_holdings", event.target.value)}
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                Stored as a normalized list and exported back as comma-separated
-                text.
-              </p>
-              {error(errors.top_holdings)}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

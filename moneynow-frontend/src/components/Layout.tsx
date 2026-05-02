@@ -3,7 +3,8 @@
 import { ReactNode } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
-import ChatbotLayout from "./chatbot/ChatbotLayout";
+// Chatbot integration is temporarily disabled for lead review; keep import commented instead of deleting it.
+// import ChatbotLayout from "./chatbot/ChatbotLayout";
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,9 +13,10 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="relative z-[9999]">
+      {/* Chatbot integration is temporarily disabled for lead review; keep widget mount commented instead of deleting it. */}
+      {/* <div className="relative z-[9999]">
         <ChatbotLayout />
-      </div>
+      </div> */}
       <Header />
       <main className="flex-grow">{children}</main>
       <Footer />

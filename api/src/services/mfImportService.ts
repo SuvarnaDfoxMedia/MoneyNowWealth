@@ -8,6 +8,12 @@ import MFAmc from "../models/mfAmcModel";
 import MFFund from "../models/mfFundModel";
 import MFNfo from "../models/mfNfoModel";
 import MFIndexSnapshot from "../models/mfIndexSnapshotModel";
+import MFTopHolding from "../models/mfTopHoldingModel";
+import {
+  buildTopHoldingSchemeIdentity,
+  computeTopHoldingSnapshotHash,
+  recomputeTopHoldingLatestForIdentity,
+} from "./mfTopHoldingService";
 import {
   BENCHMARK_TRAILING_KEYS,
   buildNumericObject,
@@ -31,6 +37,7 @@ export type MfImportEntity =
   | "funds"
   | "nfo"
   | "index-snapshots"
+  | "top-holdings"
   | "full-workbook";
 
 type ImportSection = {
@@ -47,6 +54,7 @@ type ImportSummary = {
   funds: ImportSection;
   nfos: ImportSection;
   indexSnapshots: ImportSection;
+  topHoldings: ImportSection;
 };
 
 type ImportError = {
@@ -181,6 +189,10 @@ const SHEETS: Record<Exclude<MfImportEntity, "full-workbook">, SheetDefinition> 
     key: "indexSnapshots",
     aliases: ["Index_Data", "Index Snapshots", "IndexSnapshots"],
   },
+  "top-holdings": {
+    key: "topHoldings",
+    aliases: ["Top_Holdings", "Top Holdings", "MF_Top_Holdings"],
+  },
 };
 
 const FULL_WORKBOOK_SEQUENCE: Array<Exclude<MfImportEntity, "full-workbook">> = [
@@ -190,6 +202,7 @@ const FULL_WORKBOOK_SEQUENCE: Array<Exclude<MfImportEntity, "full-workbook">> = 
   "funds",
   "nfo",
   "index-snapshots",
+  "top-holdings",
 ];
 
 const MAIN_CATEGORY_HEADERS = [
@@ -313,6 +326,30 @@ const INDEX_SNAPSHOT_HEADERS = [
   "is_active",
 ];
 
+const TOP_HOLDING_HEADERS = [
+  "scheme_code",
+  "fund_name",
+  "source_standard_name",
+  "source_isin",
+  "portfolio_date",
+  "prev_portfolio_date",
+  "stock_holdings",
+  "bond_holdings",
+  "assets_top_10_holdings_pct",
+  "turnover_pct",
+  "holding_name",
+  "net_assets_pct",
+  "market_value",
+  "share_amount",
+  "share_change",
+  "security_type",
+  "sector",
+  "maturity",
+  "credit_quality_india",
+  "country",
+  "is_active",
+];
+
 const REQUIRED_HEADER_GROUPS: Record<
   Exclude<MfImportEntity, "full-workbook">,
   string[][]
@@ -366,6 +403,10 @@ const REQUIRED_HEADER_GROUPS: Record<
     ["category_name", "category", "subcategory_name", "sub_category_name"],
     ["last_updated_date", "date", "as_on_date"],
   ],
+  "top-holdings": [
+    ["holding_name", "name"],
+    ["fund_name", "source_standard_name", "standard_name"],
+  ],
 };
 
 const newSection = (): ImportSection => ({
@@ -382,6 +423,7 @@ const newSummary = (): ImportSummary => ({
   funds: newSection(),
   nfos: newSection(),
   indexSnapshots: newSection(),
+  topHoldings: newSection(),
 });
 
 const cacheMainCategory = (
@@ -467,6 +509,13 @@ const normalizeText = (value: unknown) =>
     .replace(/\s+/g, " ")
     .toLowerCase();
 
+const normalizeFundMatchKey = (value: unknown) =>
+  normalizeText(value)
+    .replace(/\b(gr|growth|direct|regular|idcw|plan|option)\b/g, " ")
+    .replace(/\bfund\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const prettyText = (value: unknown) =>
   String(value || "")
     .trim()
@@ -490,7 +539,11 @@ const valueByAliases = (row: Record<string, unknown>, aliases: string[]) => {
 const normalizeSheetRows = (workbook: XLSX.WorkBook, sheetName: string) => {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return [];
-  const rows = XLSXModule.utils.sheet_to_json(sheet, { defval: "" }) as Record<
+  const rows = XLSXModule.utils.sheet_to_json(sheet, {
+    defval: "",
+    raw: false,
+    blankrows: false,
+  }) as Record<
     string,
     unknown
   >[];
@@ -545,8 +598,27 @@ const normalizeDateValue = (value: Date | null) => {
   return normalized;
 };
 
+const parseNumericValue = (value: unknown) => {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const negative = raw.startsWith("(") && raw.endsWith(")");
+  const normalized = raw
+    .replace(/[,%]/g, (match) => (match === "%" ? "%" : ""))
+    .replace(/,/g, "")
+    .replace(/[^\d.%()-]/g, "")
+    .trim();
+  if (!normalized) return null;
+  const isPercent = normalized.endsWith("%");
+  const numeric = Number(normalized.replace(/%/g, "").replace(/[()]/g, ""));
+  if (!Number.isFinite(numeric)) return null;
+  const signed = negative ? -numeric : numeric;
+  return isPercent ? signed : signed;
+};
+
 const parseNumber = (row: Record<string, unknown>, aliases: string[]) =>
-  toNumberOrNull(valueByAliases(row, aliases));
+  parseNumericValue(valueByAliases(row, aliases));
 
 const parseDate = (row: Record<string, unknown>, aliases: string[]) =>
   normalizeDateValue(toDateOrNull(valueByAliases(row, aliases)));
@@ -618,6 +690,65 @@ const toIsoDate = (value: Date | null | undefined) =>
 
 const mapToPlainYearValue = (value: Record<string, unknown> | Map<string, unknown> | null | undefined, year: string) =>
   normalizeYearValueMap(value)[year] ?? "";
+
+const formatPercentLabel = (value: number | null | undefined) => {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "";
+  return `${Number(value.toFixed(2)).toString()}%`;
+};
+
+const buildTopHoldingSummary = (
+  holdings: Array<{ name?: string; net_assets_pct?: number | null }>,
+) =>
+  holdings
+    .filter((item) => String(item.name || "").trim())
+    .slice(0, 10)
+    .map((item) => {
+      const name = String(item.name || "").trim();
+      const pctLabel = formatPercentLabel(item.net_assets_pct ?? null);
+      return pctLabel ? `${name} ${pctLabel}` : name;
+    });
+
+const resolveFundForTopHolding = async (rawName: string, schemeCode?: string) => {
+  const normalizedSchemeCode = String(schemeCode || "").trim();
+  if (normalizedSchemeCode) {
+    const bySchemeCode = await MFFund.findOne({
+      scheme_code: exactRegex(normalizedSchemeCode),
+      is_deleted: false,
+    })
+      .select("_id fund_name scheme_code plan_type option_type")
+      .lean();
+    if (bySchemeCode) return bySchemeCode;
+  }
+
+  const normalizedTarget = normalizeFundMatchKey(rawName);
+  if (!normalizedTarget) return null;
+
+  const funds = await MFFund.find({ is_deleted: false })
+    .select("_id fund_name scheme_code plan_type option_type")
+    .lean();
+
+  const exactMatches = funds.filter(
+    (item: any) => normalizeFundMatchKey(item.fund_name) === normalizedTarget,
+  );
+  const candidates = exactMatches.length > 0
+    ? exactMatches
+    : funds.filter((item: any) =>
+        normalizeFundMatchKey(item.fund_name).includes(normalizedTarget) ||
+        normalizedTarget.includes(normalizeFundMatchKey(item.fund_name)),
+      );
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((left: any, right: any) => {
+    const score = (item: any) =>
+      (item.plan_type === "Regular" ? 2 : 0) +
+      (item.option_type === "Growth" ? 2 : 0) +
+      (item.option_type === "IDCW" ? 1 : 0);
+    return score(right) - score(left);
+  });
+
+  return candidates[0];
+};
 
 const normalizeComparable = (value: unknown): unknown => {
   if (value instanceof Date) return toIsoDate(value);
@@ -706,6 +837,12 @@ const requireWorkbookPresence = (
   workbook: XLSX.WorkBook,
   entity: MfImportEntity,
 ) => {
+  if (entity === "top-holdings") {
+    if ((workbook.SheetNames || []).length === 0) {
+      throw new Error("This workbook does not contain any sheets.");
+    }
+    return;
+  }
   if (entity === "full-workbook") {
     const hasSupportedSheet = FULL_WORKBOOK_SEQUENCE.some(
       (item) => resolveSheetNames(workbook, item).length > 0,
@@ -726,6 +863,255 @@ const requireWorkbookPresence = (
       `No supported sheet found for ${entity}. Expected one of: ${SHEETS[entity].aliases.join(", ")}`,
     );
   }
+};
+
+const parseTopHoldingsWorkbook = (workbook: XLSX.WorkBook) => {
+  const sheetName = workbook.SheetNames?.[0];
+  if (!sheetName) {
+    throw new Error("Top holdings workbook does not contain any sheet.");
+  }
+
+  const rows = XLSXModule.utils.sheet_to_json(workbook.Sheets[sheetName], {
+    header: 1,
+    defval: "",
+    raw: false,
+    blankrows: false,
+  }) as unknown[][];
+
+  const detailMarkerIndex = rows.findIndex(
+    (row) => normalizeText(row?.[0]) === normalizeText("Holdings Detail"),
+  );
+  const summaryHeaderIndex = rows.findIndex(
+    (row) => normalizeText(row?.[0]) === normalizeText("Standard Name"),
+  );
+
+  if (detailMarkerIndex > 0 && summaryHeaderIndex >= 0 && rows[detailMarkerIndex + 1]) {
+    const summaryValues = rows[summaryHeaderIndex + 1] || [];
+    const sourceStandardName = String(summaryValues[0] || "").trim();
+    const sourceIsin = String((rows[summaryHeaderIndex + 2] || [])[0] || "")
+      .replace(/^ISIN-/i, "")
+      .trim();
+    const holdingsRows = rows.slice(detailMarkerIndex + 2).filter((row) =>
+      String(row?.[0] || "").trim(),
+    );
+
+    return {
+      sheetName,
+      records: [
+        {
+          scheme_code: "",
+          fund_name: sourceStandardName,
+          source_standard_name: sourceStandardName,
+          source_isin: sourceIsin,
+          portfolio_date: summaryValues[1],
+          prev_portfolio_date: summaryValues[2],
+          stock_holdings: summaryValues[3],
+          bond_holdings: summaryValues[4],
+          assets_top_10_holdings_pct: summaryValues[5],
+          turnover_pct: summaryValues[6],
+          holdings: holdingsRows.map((row) => ({
+            name: String(row[0] || "").trim(),
+            net_assets_pct: parseNumericValue(row[1]),
+            market_value: parseNumericValue(row[2]),
+            share_amount: parseNumericValue(row[3]),
+            share_change: parseNumericValue(row[4]),
+            security_type: String(row[5] || "").trim(),
+            sector: String(row[6] || "").trim(),
+            maturity: String(row[7] || "").trim(),
+            credit_quality_india: String(row[8] || "").trim(),
+            country: String(row[9] || "").trim(),
+          })),
+        },
+      ],
+    };
+  }
+
+  const normalizedRows = normalizeSheetRows(workbook, sheetName);
+  const grouped = new Map<string, any>();
+  for (const row of normalizedRows) {
+    const holdingName = String(valueByAliases(row, ["holding_name", "name"]) || "").trim();
+    const sourceStandardName = String(
+      valueByAliases(row, ["source_standard_name", "fund_name", "standard_name"]) || "",
+    ).trim();
+    if (!holdingName || !sourceStandardName) continue;
+
+    const schemeCode = String(valueByAliases(row, ["scheme_code"]) || "").trim();
+    const portfolioDate = String(valueByAliases(row, ["portfolio_date"]) || "").trim();
+    const key = `${schemeCode}::${sourceStandardName}::${portfolioDate}`;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        scheme_code: schemeCode,
+        fund_name: String(valueByAliases(row, ["fund_name", "source_standard_name"]) || sourceStandardName).trim(),
+        source_standard_name: sourceStandardName,
+        source_isin: String(valueByAliases(row, ["source_isin"]) || "").trim(),
+        portfolio_date: valueByAliases(row, ["portfolio_date"]),
+        prev_portfolio_date: valueByAliases(row, ["prev_portfolio_date"]),
+        stock_holdings: valueByAliases(row, ["stock_holdings"]),
+        bond_holdings: valueByAliases(row, ["bond_holdings"]),
+        assets_top_10_holdings_pct: valueByAliases(row, ["assets_top_10_holdings_pct"]),
+        turnover_pct: valueByAliases(row, ["turnover_pct"]),
+        holdings: [],
+      });
+    }
+    grouped.get(key).holdings.push({
+      name: holdingName,
+      net_assets_pct: parseNumericValue(valueByAliases(row, ["net_assets_pct"])),
+      market_value: parseNumericValue(valueByAliases(row, ["market_value"])),
+      share_amount: parseNumericValue(valueByAliases(row, ["share_amount"])),
+      share_change: parseNumericValue(valueByAliases(row, ["share_change"])),
+      security_type: String(valueByAliases(row, ["security_type"]) || "").trim(),
+      sector: String(valueByAliases(row, ["sector"]) || "").trim(),
+      maturity: String(valueByAliases(row, ["maturity"]) || "").trim(),
+      credit_quality_india: String(valueByAliases(row, ["credit_quality_india"]) || "").trim(),
+      country: String(valueByAliases(row, ["country"]) || "").trim(),
+    });
+  }
+
+  const records = Array.from(grouped.values());
+  if (records.length === 0) {
+    throw new Error(
+      "Top holdings workbook is not in a supported format. Use the client workbook layout or the exported Top_Holdings sheet.",
+    );
+  }
+  return { sheetName, records };
+};
+
+const importTopHoldingsWorkbook = async (
+  workbook: XLSX.WorkBook,
+  validateOnly: boolean,
+) => {
+  const summary = newSummary();
+  const errors: ImportError[] = [];
+  const section = sectionForEntity(summary, "topHoldings");
+  const parsed = parseTopHoldingsWorkbook(workbook);
+  const previewRows: Record<string, unknown>[] = [];
+  const uploadBatchId = new Types.ObjectId().toString();
+  const uploadedAt = new Date();
+  const affectedSchemeIdentities = new Set<string>();
+
+  for (let index = 0; index < parsed.records.length; index += 1) {
+    const record = parsed.records[index];
+    const rowNumber = index + 2;
+    try {
+      const matchedFund = await resolveFundForTopHolding(record.fund_name, record.scheme_code);
+      const topHoldingsSummary = buildTopHoldingSummary(record.holdings);
+      const portfolioDate = normalizeDateValue(toDateOrNull(record.portfolio_date));
+      const prevPortfolioDate = normalizeDateValue(toDateOrNull(record.prev_portfolio_date));
+      const schemeCode = String(matchedFund?.scheme_code || record.scheme_code || "").trim();
+      const sourceIsin = String(record.source_isin || "").trim();
+      const schemeIdentity = buildTopHoldingSchemeIdentity(schemeCode, sourceIsin);
+      const holdings = Array.isArray(record.holdings) ? record.holdings : [];
+
+      const nextData = {
+        fund_id: matchedFund?._id ?? null,
+        scheme_code: schemeCode,
+        scheme_identity: schemeIdentity,
+        fund_name: String(matchedFund?.fund_name || record.fund_name || record.source_standard_name || "").trim(),
+        source_standard_name: String(record.source_standard_name || record.fund_name || "").trim(),
+        source_isin: sourceIsin,
+        portfolio_date: portfolioDate,
+        prev_portfolio_date: prevPortfolioDate,
+        stock_holdings: parseNumericValue(record.stock_holdings),
+        bond_holdings: parseNumericValue(record.bond_holdings),
+        assets_top_10_holdings_pct: parseNumericValue(record.assets_top_10_holdings_pct),
+        turnover_pct: parseNumericValue(record.turnover_pct),
+        top_holdings_summary: topHoldingsSummary,
+        holdings,
+        holdings_count: holdings.length,
+        is_latest: false,
+        upload_batch_id: uploadBatchId,
+        uploaded_at: uploadedAt,
+        snapshot_hash: "",
+        is_active: 1,
+        is_deleted: false,
+        deleted_at: null,
+      };
+      nextData.snapshot_hash = computeTopHoldingSnapshotHash(nextData);
+
+      if (!nextData.fund_name) {
+        addRowError(section, errors, parsed.sheetName, rowNumber, "Fund name could not be resolved for top holdings import");
+        continue;
+      }
+      if (!nextData.scheme_identity) {
+        addRowError(section, errors, parsed.sheetName, rowNumber, "scheme_code is required for top holdings identity", nextData.fund_name);
+        continue;
+      }
+      if (!nextData.portfolio_date) {
+        addRowError(section, errors, parsed.sheetName, rowNumber, "portfolio_date is required", nextData.fund_name);
+        continue;
+      }
+
+      const duplicate = await MFTopHolding.findOne({
+        is_deleted: false,
+        scheme_identity: nextData.scheme_identity,
+        portfolio_date: nextData.portfolio_date,
+        snapshot_hash: nextData.snapshot_hash,
+      })
+        .select("_id")
+        .lean();
+
+      previewRows.push({
+        fund_name: nextData.fund_name,
+        scheme_code: nextData.scheme_code,
+        source_isin: nextData.source_isin,
+        portfolio_date: toIsoDate(nextData.portfolio_date),
+        holdings_count: nextData.holdings.length,
+        top_holdings_summary: nextData.top_holdings_summary.join(", "),
+        duplicate: duplicate ? "Yes" : "No",
+      });
+
+      if (duplicate) {
+        section.skipped += 1;
+        continue;
+      }
+
+      const activeSource = await MFTopHolding.findOne({
+        scheme_identity: nextData.scheme_identity,
+        is_deleted: false,
+      })
+        .sort({ portfolio_date: -1, uploaded_at: -1, _id: -1 })
+        .select("is_active")
+        .lean();
+      nextData.is_active = activeSource?.is_active === 0 ? 0 : 1;
+
+      section.inserted += 1;
+      if (!validateOnly) {
+        await MFTopHolding.create(nextData);
+        affectedSchemeIdentities.add(nextData.scheme_identity);
+      }
+    } catch (error: any) {
+      addRowError(
+        section,
+        errors,
+        parsed.sheetName,
+        rowNumber,
+        error?.message || "Failed to process top holdings workbook",
+        String(record.fund_name || record.source_standard_name || ""),
+      );
+    }
+  }
+
+  if (!validateOnly) {
+    for (const schemeIdentity of affectedSchemeIdentities) {
+      await recomputeTopHoldingLatestForIdentity(schemeIdentity);
+    }
+  }
+
+  return {
+    entity: "top-holdings" as MfImportEntity,
+    validateOnly,
+    processedSheets: [parsed.sheetName],
+    summary,
+    errorCount: errors.length,
+    errors: errors.slice(0, 500),
+    previewSheets: [
+      {
+        sheet: parsed.sheetName,
+        headers: ["fund_name", "scheme_code", "source_isin", "portfolio_date", "holdings_count", "top_holdings_summary", "duplicate"],
+        rows: previewRows.slice(0, 5),
+      },
+    ],
+  };
 };
 
 const resolveMainCategory = async (
@@ -1125,7 +1511,7 @@ const upsertFundRow = async (
       category_id: category._id,
       plan_type: planType,
       option_type: optionType,
-      aum_cr: parseNumber(row, ["aum_cr", "aum"]),
+      aum_cr: parseNumber(row, ["aum_cr", "aum", ""]),
       expense_ratio: parseNumber(row, ["expense_ratio", "expense"]),
       returns: {
         ...buildNumericObject(FUND_RETURN_KEYS, {
@@ -1646,6 +2032,42 @@ const exportIndexSnapshotRows = async () => {
   }));
 };
 
+const exportTopHoldingRows = async () => {
+  const items = await MFTopHolding.find({ is_deleted: false })
+    .populate("fund_id", "fund_name scheme_code")
+    .sort({ portfolio_date: -1, fund_name: 1 })
+    .lean();
+
+  return items.flatMap((item: any) => {
+    const holdings = Array.isArray(item.holdings) && item.holdings.length > 0
+      ? item.holdings
+      : [{}];
+    return holdings.map((holding: any) => ({
+      scheme_code: item.scheme_code || item.fund_id?.scheme_code || "",
+      fund_name: prettyText(item.fund_name || item.fund_id?.fund_name || ""),
+      source_standard_name: item.source_standard_name || "",
+      source_isin: item.source_isin || "",
+      portfolio_date: toIsoDate(item.portfolio_date),
+      prev_portfolio_date: toIsoDate(item.prev_portfolio_date),
+      stock_holdings: item.stock_holdings ?? "",
+      bond_holdings: item.bond_holdings ?? "",
+      assets_top_10_holdings_pct: item.assets_top_10_holdings_pct ?? "",
+      turnover_pct: item.turnover_pct ?? "",
+      holding_name: holding.name || "",
+      net_assets_pct: holding.net_assets_pct ?? "",
+      market_value: holding.market_value ?? "",
+      share_amount: holding.share_amount ?? "",
+      share_change: holding.share_change ?? "",
+      security_type: holding.security_type || "",
+      sector: holding.sector || "",
+      maturity: holding.maturity || "",
+      credit_quality_india: holding.credit_quality_india || "",
+      country: holding.country || "",
+      is_active: item.is_active === 1 ? "Yes" : "No",
+    }));
+  });
+};
+
 const runImportPipeline = async (
   workbook: XLSX.WorkBook,
   entity: MfImportEntity,
@@ -1720,8 +2142,37 @@ export const importMfExcel = async ({
     throw new Error(`Excel file not found at path: ${resolvedPath}`);
   }
 
-  const workbook = XLSXModule.readFile(resolvedPath, { cellDates: true });
+  const workbook = XLSXModule.readFile(resolvedPath, {
+    cellDates: true,
+    cellNF: true,
+    cellText: true,
+    cellFormula: true,
+  });
   requireWorkbookPresence(workbook, entity);
+
+  if (entity === "top-holdings") {
+    if (!validateOnly) {
+      const validationReport = await importTopHoldingsWorkbook(workbook, true);
+      if (validationReport.errorCount > 0) {
+        return {
+          success: false,
+          filePath: resolvedPath,
+          fileName: path.basename(resolvedPath),
+          sheetsDetected: workbook.SheetNames || [],
+          ...validationReport,
+        };
+      }
+    }
+
+    const report = await importTopHoldingsWorkbook(workbook, validateOnly);
+    return {
+      success: true,
+      filePath: resolvedPath,
+      fileName: path.basename(resolvedPath),
+      sheetsDetected: workbook.SheetNames || [],
+      ...report,
+    };
+  }
 
   if (!validateOnly) {
     const validationReport = await runImportPipeline(workbook, entity, true);
@@ -1776,6 +2227,8 @@ export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) =>
     appendSheet(workbook, getPrimarySheetName("nfo"), await maybeRows(exportNfoRows), NFO_HEADERS);
   } else if (entity === "index-snapshots") {
     appendSheet(workbook, getPrimarySheetName("index-snapshots"), await maybeRows(exportIndexSnapshotRows), INDEX_SNAPSHOT_HEADERS);
+  } else if (entity === "top-holdings") {
+    appendSheet(workbook, getPrimarySheetName("top-holdings"), await maybeRows(exportTopHoldingRows), TOP_HOLDING_HEADERS);
   }
 
   const buffer = XLSXModule.write(workbook, {

@@ -29,6 +29,7 @@ type MfImportEntity =
   | "funds"
   | "nfo"
   | "index-snapshots"
+  | "top-holdings"
   | "full-workbook";
 
 type EntityOption = {
