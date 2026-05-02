@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import {
   exportMfExcel,
   importMfExcel,
+  type ExportMode,
   type MfImportEntity,
 } from "../services/mfImportService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
@@ -14,6 +15,7 @@ const VALID_ENTITIES: MfImportEntity[] = [
   "funds",
   "nfo",
   "index-snapshots",
+  "top-holdings",
   "full-workbook",
 ];
 
@@ -23,6 +25,14 @@ const resolveEntity = (value: unknown): MfImportEntity => {
     throw new Error("Invalid import/export entity");
   }
   return entity;
+};
+
+const resolveExportMode = (value: unknown): ExportMode => {
+  const mode = String(value || "data").trim().toLowerCase();
+  if (mode === "data" || mode === "template") {
+    return mode;
+  }
+  throw new Error("Invalid export mode");
 };
 
 const cleanupUploadedFile = (filePath?: string) => {
@@ -76,7 +86,8 @@ export const importExcel = async (req: Request, res: Response) => {
 export const exportExcel = async (req: Request, res: Response) => {
   try {
     const entity = resolveEntity(req.query?.entity);
-    const exportFile = await exportMfExcel({ entity });
+    const mode = resolveExportMode(req.query?.mode);
+    const exportFile = await exportMfExcel({ entity, mode });
 
     res.setHeader("Content-Type", exportFile.contentType);
     res.setHeader(

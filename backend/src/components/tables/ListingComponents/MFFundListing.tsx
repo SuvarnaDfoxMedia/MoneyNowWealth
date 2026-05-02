@@ -5,6 +5,8 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import { axiosInstance } from "../../../api/axios";
+import { toast } from "react-hot-toast";
 import MFImportExportActions from "./MFImportExportActions";
 
 interface MFFund {
@@ -20,6 +22,23 @@ interface MFFund {
   is_active: number;
 }
 
+type MfImportEntity =
+  | "main-categories"
+  | "categories"
+  | "amcs"
+  | "funds"
+  | "nfo"
+  | "index-snapshots"
+  | "top-holdings"
+  | "full-workbook";
+
+type EntityOption = {
+  value: MfImportEntity;
+  label: string;
+};
+
+type ExportMode = "data" | "template";
+
 export default function MFFundListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
@@ -27,6 +46,48 @@ export default function MFFundListing() {
 
   const MODULE_KEY = `${role}-mf-funds`;
   const [isMounted, setIsMounted] = useState(false);
+
+  const [selectedEntity, setSelectedEntity] =
+    useState<MfImportEntity>("funds");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (mode: ExportMode) => {
+    setIsExporting(true);
+    try {
+      const response = await axiosInstance.get(`/${role}/mf/export/excel`, {
+        params: { entity: selectedEntity, mode },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type:
+          response.headers["content-type"] ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const disposition = String(response.headers["content-disposition"] || "");
+      const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+      const filename =
+        filenameMatch?.[1] || `mf-${selectedEntity}-${mode}.xlsx`;
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(
+        mode === "template"
+          ? "Template download started."
+          : "Data export started.",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || error?.message || "Export failed",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const {
     page,
@@ -190,6 +251,11 @@ export default function MFFundListing() {
           cacheModuleState(MODULE_KEY);
           navigate(`/${role}/mf/funds/create`);
         }}
+        selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
+        role={role}
+        isExporting={isExporting}
+        onExport={handleExport}
       />
 
       <DataTable
@@ -200,6 +266,8 @@ export default function MFFundListing() {
           <MFImportExportActions
             role={role}
             options={[{ value: "funds", label: "Funds" }]}
+            selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}
@@ -223,7 +291,9 @@ export default function MFFundListing() {
       {deleteModalId && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Delete Fund?</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Delete Fund?
+            </h3>
             <p className="mt-2 text-sm text-gray-600">
               Are you sure you want to delete this fund?
             </p>

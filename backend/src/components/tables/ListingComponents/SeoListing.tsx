@@ -11,6 +11,7 @@ import { useDataTableStore } from "../../../store/dataTableStore";
 
 interface SeoEntry {
   _id: string;
+  name?: string;
   page_url: string;
   seo_title?: string;
   status: "draft" | "published" | "archived";
@@ -238,10 +239,10 @@ export default function SeoListing() {
       render: (_row, idx) => (page - 1) * recordsPerPage + idx + 1,
     },
     {
-      key: "page_url",
+      key: "name",
       label: "NAME",
       sortable: true,
-      render: (row) => row.page_url.replace(/^\//, ""),
+      render: (row) => row.name?.trim() || row.page_url.replace(/^\//, "") || "/",
     },
     {
       key: "updated_at",

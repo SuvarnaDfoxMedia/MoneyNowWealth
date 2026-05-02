@@ -5,7 +5,7 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
-import { axiosApi } from "../../../api/axios";
+import { axiosInstance, axiosApi } from "../../../api/axios";
 import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
@@ -20,6 +20,23 @@ interface MFCategory {
   is_active: number;
 }
 
+type MfImportEntity =
+  | "main-categories"
+  | "categories"
+  | "amcs"
+  | "funds"
+  | "nfo"
+  | "index-snapshots"
+  | "top-holdings"
+  | "full-workbook";
+
+type EntityOption = {
+  value: MfImportEntity;
+  label: string;
+};
+
+type ExportMode = "data" | "template";
+
 export default function MFCategoryListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
@@ -27,6 +44,48 @@ export default function MFCategoryListing() {
 
   const MODULE_KEY = `${role}-mf-categories`;
   const [isMounted, setIsMounted] = useState(false);
+
+  const [selectedEntity, setSelectedEntity] =
+    useState<MfImportEntity>("categories");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (mode: ExportMode) => {
+    setIsExporting(true);
+    try {
+      const response = await axiosInstance.get(`/${role}/mf/export/excel`, {
+        params: { entity: selectedEntity, mode },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type:
+          response.headers["content-type"] ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const disposition = String(response.headers["content-disposition"] || "");
+      const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+      const filename =
+        filenameMatch?.[1] || `mf-${selectedEntity}-${mode}.xlsx`;
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(
+        mode === "template"
+          ? "Template download started."
+          : "Data export started.",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || error?.message || "Export failed",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const {
     page,
@@ -107,11 +166,13 @@ export default function MFCategoryListing() {
 
   const rows = extractList as MFCategory[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
-  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
-  const [deleteImpact, setDeleteImpact] = useState<MFDeleteImpactSummary | null>(
-    null,
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
   );
+  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleteImpact, setDeleteImpact] =
+    useState<MFDeleteImpactSummary | null>(null);
   const [isDeleteImpactLoading, setIsDeleteImpactLoading] = useState(false);
 
   const openDeleteModal = async (row: MFCategory) => {
@@ -143,9 +204,17 @@ export default function MFCategoryListing() {
   };
 
   const columns: TableColumn<MFCategory>[] = [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
+    {
+      key: "index",
+      label: "#",
+      render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+    },
     { key: "name", label: "Name", sortable: true },
-    { key: "main_category", label: "Main Category", render: (r) => r.main_category_id?.name || "-" },
+    {
+      key: "main_category",
+      label: "Main Category",
+      render: (r) => r.main_category_id?.name || "-",
+    },
     { key: "risk_level", label: "Risk", render: (r) => r.risk_level || "-" },
     {
       key: "is_active",
@@ -183,6 +252,11 @@ export default function MFCategoryListing() {
           cacheModuleState(MODULE_KEY);
           navigate(`/${role}/mf/categories/create`);
         }}
+        selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
+        role={role}
+        isExporting={isExporting}
+        onExport={handleExport}
       />
 
       <DataTable
@@ -193,6 +267,8 @@ export default function MFCategoryListing() {
           <MFImportExportActions
             role={role}
             options={[{ value: "categories", label: "Categories" }]}
+            selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}

@@ -5,6 +5,8 @@ import { useCommonCrud } from "../../../hooks/useCommonCrud";
 import MFRowActions from "./MFRowActions";
 import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
+import { axiosInstance } from "../../../api/axios";
+import { toast } from "react-hot-toast";
 import MFImportExportActions from "./MFImportExportActions";
 
 interface MFIndexSnapshot {
@@ -16,12 +18,71 @@ interface MFIndexSnapshot {
   is_active: number;
 }
 
+type MfImportEntity =
+  | "main-categories"
+  | "categories"
+  | "amcs"
+  | "funds"
+  | "nfo"
+  | "index-snapshots"
+  | "top-holdings"
+  | "full-workbook";
+
+type EntityOption = {
+  value: MfImportEntity;
+  label: string;
+};
+
+type ExportMode = "data" | "template";
+
 export default function MFIndexSnapshotListing() {
   const { role = "admin" } = useParams();
   const navigate = useNavigate();
 
   const MODULE_KEY = `${role}-mf-index-snapshots`;
   const [isMounted, setIsMounted] = useState(false);
+
+  const [selectedEntity, setSelectedEntity] =
+    useState<MfImportEntity>("index-snapshots");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async (mode: ExportMode) => {
+    setIsExporting(true);
+    try {
+      const response = await axiosInstance.get(`/${role}/mf/export/excel`, {
+        params: { entity: selectedEntity, mode },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type:
+          response.headers["content-type"] ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const disposition = String(response.headers["content-disposition"] || "");
+      const filenameMatch = disposition.match(/filename="([^"]+)"/i);
+      const filename =
+        filenameMatch?.[1] || `mf-${selectedEntity}-${mode}.xlsx`;
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(
+        mode === "template"
+          ? "Template download started."
+          : "Data export started.",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || error?.message || "Export failed",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const {
     page,
@@ -40,7 +101,7 @@ export default function MFIndexSnapshotListing() {
     lastAction,
   } = useDataTableStore();
 
-/* ------------------- Initialize module state ------------------- */
+  /* ------------------- Initialize module state ------------------- */
   useEffect(() => {
     setCurrentModule(MODULE_KEY);
 
@@ -70,22 +131,32 @@ export default function MFIndexSnapshotListing() {
     }
   }, [setSort, sortField]);
 
-  const { data, extractList, isLoading, isFetching, deleteRecord, toggleStatus, refetch } =
-    useCommonCrud<MFIndexSnapshot>({
-      role,
-      module: "mf/index-snapshots",
-      listKey: "data",
-      page,
-      limit: recordsPerPage,
-      searchValue,
-      sortField,
-      sortOrder,
-      enabled: isMounted,
-    });
+  const {
+    data,
+    extractList,
+    isLoading,
+    isFetching,
+    deleteRecord,
+    toggleStatus,
+    refetch,
+  } = useCommonCrud<MFIndexSnapshot>({
+    role,
+    module: "mf/index-snapshots",
+    listKey: "data",
+    page,
+    limit: recordsPerPage,
+    searchValue,
+    sortField,
+    sortOrder,
+    enabled: isMounted,
+  });
 
   const rows = extractList as MFIndexSnapshot[];
   const totalRecords = data?.total ?? 0;
-  const totalPages = Math.max(data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage), 1);
+  const totalPages = Math.max(
+    data?.totalPages ?? Math.ceil(totalRecords / recordsPerPage),
+    1,
+  );
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
 
   const handleDelete = async () => {
@@ -94,46 +165,67 @@ export default function MFIndexSnapshotListing() {
     setDeleteModalId(null);
   };
 
-  const columns: TableColumn<MFIndexSnapshot>[] = useMemo(() => [
-    { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
-    { key: "benchmark_index_name", label: "Benchmark", sortable: true },
-    { key: "main_category", label: "Main Category", render: (r) => r.main_category_id?.name || "-" },
-    { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
-    { key: "y3", label: "3Y", render: (r) => (r.returns?.y3 ?? "-") as any },
-    {
-      key: "last_updated_date",
-      label: "Last Updated",
-      sortable: true,
-      render: (r) => new Date(r.last_updated_date).toLocaleDateString("en-GB"),
-    },
-    {
-      key: "is_active",
-      label: "Status",
-      render: (row) => (
-        <button
-          onClick={() => toggleStatus(row._id, row.is_active !== 1)}
-          className={`px-4 py-1 min-w-[90px] rounded-sm text-white text-sm font-medium ${row.is_active === 1 ? "bg-green-600" : "bg-gray-500"}`}
-        >
-          {row.is_active === 1 ? "Active" : "Inactive"}
-        </button>
-      ),
-    },
-    {
-      key: "actions",
-      label: "Actions",
-      render: (row) => (
-        <MFRowActions
-          onEdit={() => {
-            markEditNavigation();
-            cacheModuleState(MODULE_KEY);
-            navigate(`/${role}/mf/index-snapshots/edit/${row._id}`);
-          }}
-          deleteLabel="Delete"
-          onDelete={() => setDeleteModalId(row._id)}
-        />
-      ),
-    },
-  ], [page, recordsPerPage, role, cacheModuleState, MODULE_KEY, markEditNavigation, navigate, toggleStatus]);
+  const columns: TableColumn<MFIndexSnapshot>[] = useMemo(
+    () => [
+      {
+        key: "index",
+        label: "#",
+        render: (_, i) => (page - 1) * recordsPerPage + i + 1,
+      },
+      { key: "benchmark_index_name", label: "Benchmark", sortable: true },
+      {
+        key: "main_category",
+        label: "Main Category",
+        render: (r) => r.main_category_id?.name || "-",
+      },
+      { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
+      { key: "y3", label: "3Y", render: (r) => (r.returns?.y3 ?? "-") as any },
+      {
+        key: "last_updated_date",
+        label: "Last Updated",
+        sortable: true,
+        render: (r) =>
+          new Date(r.last_updated_date).toLocaleDateString("en-GB"),
+      },
+      {
+        key: "is_active",
+        label: "Status",
+        render: (row) => (
+          <button
+            onClick={() => toggleStatus(row._id, row.is_active !== 1)}
+            className={`px-4 py-1 min-w-[90px] rounded-sm text-white text-sm font-medium ${row.is_active === 1 ? "bg-green-600" : "bg-gray-500"}`}
+          >
+            {row.is_active === 1 ? "Active" : "Inactive"}
+          </button>
+        ),
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (row) => (
+          <MFRowActions
+            onEdit={() => {
+              markEditNavigation();
+              cacheModuleState(MODULE_KEY);
+              navigate(`/${role}/mf/index-snapshots/edit/${row._id}`);
+            }}
+            deleteLabel="Delete"
+            onDelete={() => setDeleteModalId(row._id)}
+          />
+        ),
+      },
+    ],
+    [
+      page,
+      recordsPerPage,
+      role,
+      cacheModuleState,
+      MODULE_KEY,
+      markEditNavigation,
+      navigate,
+      toggleStatus,
+    ],
+  );
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
@@ -143,6 +235,11 @@ export default function MFIndexSnapshotListing() {
           cacheModuleState(MODULE_KEY);
           navigate(`/${role}/mf/index-snapshots/create`);
         }}
+        selectedEntity={selectedEntity}
+        onEntityChange={setSelectedEntity}
+        role={role}
+        isExporting={isExporting}
+        onExport={handleExport}
       />
 
       <DataTable
@@ -154,6 +251,8 @@ export default function MFIndexSnapshotListing() {
           <MFImportExportActions
             role={role}
             options={[{ value: "index-snapshots", label: "Index Snapshots" }]}
+            selectedEntity={selectedEntity}
+            onEntityChange={setSelectedEntity}
             onImported={async () => {
               await refetch();
             }}

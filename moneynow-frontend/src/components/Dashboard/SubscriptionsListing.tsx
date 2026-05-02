@@ -62,6 +62,11 @@ const SubscriptionsListing = () => {
   const isPremiumActive =
     currentSubscription?.planType?.toLowerCase() === "premium" &&
     isSubscriptionActive;
+  const canShowPremiumTrialCard =
+    Boolean(currentSubscription) &&
+    !isPremiumActive &&
+    currentSubscription?.canGetPremiumTrial !== false &&
+    currentSubscription?.promotionalTrialUsed !== true;
 
   return (
     <div className="w-full min-h-screen p-2 bg-gray-50">
@@ -238,7 +243,7 @@ const SubscriptionsListing = () => {
                 </button>
               </div>
 
-              {!isPremiumActive && (
+              {canShowPremiumTrialCard && (
                 <PremiumUpgradeCard variant="compact" onUpgraded={refresh} />
               )}
             </div>

@@ -1,6 +1,9 @@
 import FreeCalculators from "@/components/Dashboard/FreeCalculators";
 import React from "react";
-import { buildPageMetadata } from "@/lib/seo";
+import SeoJsonLd from "@/components/seo/SeoJsonLd";
+import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return buildPageMetadata("/free-calculators", {
@@ -10,9 +13,12 @@ export async function generateMetadata() {
   });
 }
 
-const FreeCalculatorsPage = () => {
+const FreeCalculatorsPage = async () => {
+  const seo = await resolveSeoEntry("/free-calculators");
+
   return (
     <div className="min-h-screen bg-[#ffffff]">
+      <SeoJsonLd schema={seo?.page_schema} />
       <FreeCalculators />
     </div>
   );

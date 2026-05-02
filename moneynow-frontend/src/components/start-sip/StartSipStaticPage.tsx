@@ -7,50 +7,11 @@ import ComparisonBarChart from "@/components/all charts/ComparisonBarChart";
 import StartSipReportDownload from "./charts-sub-components/StartSipReportDownload";
 import {
   START_SIP_CALCULATORS,
+  buildStartSipChartData,
+  buildStartSipResultRows,
+  StartSipResult,
   useStartSipStore,
 } from "@/stores/startSipStore";
-
-const formatCurrency = (value?: number) =>
-  `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
-
-const currentYear = new Date().getFullYear();
-
-type StartSipValues = ReturnType<typeof useStartSipStore.getState>["values"];
-
-type StartSipResult = Partial<{
-  years: number;
-  target_amount: number;
-  target_wealth: number;
-  invested_amount: number;
-  target_savings: number;
-  savings_amount: number;
-  growth_value: number;
-  stepup_growth_value: number;
-  growth_amount: number;
-  maturity_amount: number;
-  stepup_maturity_amount: number;
-  stepup_invested_amount: number;
-  sip_amount: number;
-  monthly_savings: number;
-  total_earnings: number;
-}>;
-
-type ChartState =
-  | {
-      type: "goal";
-      data: Array<{ label: string; target: number; savings: number }>;
-    }
-  | {
-      type: "sip";
-      barData: Array<{
-        label: string;
-        invested: number;
-        growth: number;
-        totalValue: number;
-      }>;
-      pieData: Array<{ label: string; value: number; color: string }>;
-    }
-  | null;
 
 const FIELD_CONFIG = {
   "sip-starter": [
@@ -78,137 +39,6 @@ const FIELD_CONFIG = {
     { key: "savings_amount", label: "Current Savings (Rs.)", type: "number" },
   ],
 } as const;
-
-function buildChartData(
-  activeCalculatorId: string,
-  values: StartSipValues,
-  result: StartSipResult | null,
-): ChartState {
-  if (!result) return null;
-
-  if (activeCalculatorId === "crore-journey") {
-    const years = Math.max(
-      1,
-      Number(result.years || values.retirement_age - values.current_age || 1),
-    );
-    const target = Number(result.target_amount || result.target_wealth || 0);
-    const savings = Number(
-      result.invested_amount ||
-        result.target_savings ||
-        result.savings_amount ||
-        0,
-    );
-
-    return {
-      type: "goal",
-      data: Array.from({ length: years }, (_, index) => ({
-        label: `${currentYear + index}`,
-        target: Math.round(target * ((index + 1) / years)),
-        savings: Math.round(savings * ((index + 1) / years)),
-      })),
-    };
-  }
-
-  const years = Math.max(1, Number(values.years || result.years || 1));
-  const invested = Number(
-    result.invested_amount ||
-      result.stepup_invested_amount ||
-      values.sip_amount * years * 12 ||
-      0,
-  );
-  const growth = Number(
-    result.growth_value ||
-      result.stepup_growth_value ||
-      result.growth_amount ||
-      0,
-  );
-  const maturity = Number(
-    result.maturity_amount ||
-      result.stepup_maturity_amount ||
-      result.target_wealth ||
-      0,
-  );
-
-  return {
-    type: "sip",
-    barData: Array.from({ length: years }, (_, index) => {
-      const progress = (index + 1) / years;
-      const investedValue = Math.round(invested * progress);
-      const growthValue = Math.round(growth * progress);
-
-      return {
-        label: `${currentYear + index}`,
-        invested: investedValue,
-        growth: growthValue,
-        totalValue: investedValue + growthValue,
-      };
-    }),
-    pieData: [
-      { label: "Total SIP Amount Invested", value: invested, color: "#48A8C8" },
-      {
-        label: "Total Growth",
-        value: growth || Math.max(maturity - invested, 0),
-        color: "#34A853",
-      },
-    ],
-  };
-}
-
-function buildResultRows(
-  activeCalculatorId: string,
-  values: StartSipValues,
-  result: StartSipResult | null,
-) {
-  if (!result) return [];
-
-  switch (activeCalculatorId) {
-    case "step-up-sip":
-      return [
-        [
-          "Total SIP Amount Invested",
-          formatCurrency(
-            result.stepup_invested_amount || result.invested_amount,
-          ),
-        ],
-        [
-          "Total Growth",
-          formatCurrency(result.stepup_growth_value || result.growth_value),
-        ],
-        [
-          "Total Future Value",
-          formatCurrency(
-            result.stepup_maturity_amount || result.maturity_amount,
-          ),
-        ],
-      ];
-    case "target-based-sip":
-      return [
-        [
-          "Target Wealth",
-          formatCurrency(result.target_wealth || values.wealth_amount),
-        ],
-        ["Required SIP Amount", formatCurrency(result.sip_amount)],
-        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.growth_amount)],
-      ];
-    case "crore-journey":
-      return [
-        [
-          "Target Corpus",
-          formatCurrency(result.target_amount || result.target_wealth),
-        ],
-        ["Monthly Savings Required", formatCurrency(result.monthly_savings)],
-        ["Total Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.total_earnings)],
-      ];
-    default:
-      return [
-        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.growth_value)],
-        ["Total Future Value", formatCurrency(result.maturity_amount)],
-      ];
-  }
-}
 
 export default function StartSipStaticPage() {
   const activeCalculatorId = useStartSipStore(
@@ -241,12 +71,12 @@ export default function StartSipStaticPage() {
     FIELD_CONFIG[activeCalculatorId as keyof typeof FIELD_CONFIG] || [];
 
   const resultRows = useMemo(
-    () => buildResultRows(activeCalculatorId, values, result),
+    () => buildStartSipResultRows(activeCalculatorId, values, result),
     [activeCalculatorId, values, result],
   );
 
   const chartData = useMemo(
-    () => buildChartData(activeCalculatorId, values, result),
+    () => buildStartSipChartData(activeCalculatorId, values, result),
     [activeCalculatorId, values, result],
   );
 

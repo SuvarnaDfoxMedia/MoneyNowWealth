@@ -135,9 +135,19 @@ const AppSidebar: React.FC = () => {
             path: `/${role}/mf/categories`,
             roles: ["admin", "editor"],
           },
+           {
+            name: "AMCs",
+            path: `/${role}/mf/amcs`,
+            roles: ["admin", "editor"],
+          },
           {
             name: "Fund",
             path: `/${role}/mf/funds`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Top Holdings",
+            path: `/${role}/mf/top-holdings`,
             roles: ["admin", "editor"],
           },
           {
@@ -151,6 +161,23 @@ const AppSidebar: React.FC = () => {
             roles: ["admin", "editor"],
           },
           // MF import entry intentionally disabled
+        ],
+      },
+      {
+        name: "NAV",
+        icon: <FiFileText />,
+        roles: ["admin", "editor"],
+        subItems: [
+          {
+            name: "Dashboard",
+            path: `/${role}/nav/dashboard`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "History",
+            path: `/${role}/nav/history`,
+            roles: ["admin", "editor"],
+          },
         ],
       },
       {

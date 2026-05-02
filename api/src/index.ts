@@ -11,6 +11,7 @@ import cookieParser from "cookie-parser";
 // Database
 import connectDatabase from "./db/dbConnection";
 import { cleanupLegacyMfIndexes } from "./db/cleanupLegacyMfIndexes";
+import { cleanupLegacySeoIndexes } from "./db/cleanupLegacySeoIndexes";
 
 // Routes
 import authRoutes from "./routes/authRoutes";
@@ -37,12 +38,17 @@ import oneCroreJourneyEnquiryRoutes from "./routes/oneCroreJourneyEnquiryRoutes"
 import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
 import seoRoutes from "./routes/seoRoutes";
+import navRoutes from "./routes/navRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
+// Chatbot integration is temporarily disabled for lead review; keep code commented instead of deleting it.
+// import chatRoutes from "./routes/chatbot/chatRoutes";
+// import { getGeminiApiKeyStatus } from "./controllers/chatbot/chatController.js";
 
 dotenv.config();
 validateEmailEnvironment();
 await connectDatabase();
 await cleanupLegacyMfIndexes();
+await cleanupLegacySeoIndexes();
 startNewsletterPublishScheduler();
 startMfNfoScheduler();
 
@@ -58,10 +64,15 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.ADMIN_URL,
   process.env.WEBSITE_URL,
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://localhost:5000",
-].filter(Boolean) as string[];
+]
+  .flatMap((value) => String(value || "").split(","))
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+  .concat([
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5000",
+  ]);
 
 app.use(
   cors({
@@ -102,6 +113,8 @@ app.use((req, res, next) => {
   const path = req.path || "";
   const shouldRateLimit =
     path.startsWith("/api/auth") ||
+    // Chatbot integration is temporarily disabled for lead review; keep rate-limit dependency commented instead of deleting it.
+    // path.startsWith("/api/chat") ||
     path === "/api/newsletter" ||
     path === "/api/contact-enquiries" ||
     path === "/api/partner-enquiries" ||
@@ -183,6 +196,16 @@ app.use("/api", oneCroreJourneyEnquiryRoutes);
 app.use("/api", whoWeWorkWithEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
 app.use("/api", seoRoutes);
+app.use("/api", navRoutes);
+// Chatbot integration is temporarily disabled for lead review; keep route mount commented instead of deleting it.
+// app.use("/api/chat", chatRoutes);
+
+app.get("/", (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: "Money Now backend is running.",
+  });
+});
 
 // Admin route example
 app.get(
@@ -217,6 +240,20 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: "OK",
+    data: { status: "OK", timestamp: new Date().toISOString() },
+  });
+});
+
+app.get("/api/health", (_req: Request, res: Response) => {
+  // Chatbot integration is temporarily disabled for lead review; keep Gemini health dependency commented instead of deleting it.
+  // const apiKeyStatus = getGeminiApiKeyStatus();
+
+  res.json({
+    success: true,
+    service: "money-now-backend",
+    // geminiConfigured: apiKeyStatus.valid,
+    // geminiConfigError: apiKeyStatus.valid ? null : apiKeyStatus.error,
+    // geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     data: { status: "OK", timestamp: new Date().toISOString() },
   });
 });

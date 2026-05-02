@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import DOMPurify from "dompurify";
+import { normalizeRichTextHtml } from "@/utils/normalizeRichTextHtml";
 import MostPopularBlogs from "@/components/Blog-listing-Components/MostPopularBlogs";
 import SeniorCitizen from "@/components/blog-details-Page/SeniorCitizen";
 import PremiumUpgradeCard from "@/components/subscription/PremiumUpgradeCard";
@@ -131,7 +132,7 @@ const BlogDetailsClient = ({
     }
 
     const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = html;
+    tempDiv.innerHTML = normalizeRichTextHtml(html);
 
     tempDiv.querySelectorAll("table").forEach((table) => {
       table.setAttribute(
@@ -227,6 +228,16 @@ const BlogDetailsClient = ({
     ? `${IMAGE_BASE}/hero/${article.hero_image.replace(/^\/+/, "")}`
     : null;
 
+  const richContentClass =
+    "blog-rich-content font-inter w-full max-w-none text-gray-700 " +
+    "[&_p]:mb-3 [&_p]:leading-[28px] " +
+    "[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 " +
+    "[&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 " +
+    "[&_li]:my-2 [&_li]:leading-[28px] " +
+    "[&_a]:text-blue-600 [&_a]:underline hover:[&_a]:text-blue-800";
+
+  const richContentLargeClass = `${richContentClass} [&_p]:!text-[18px]`;
+
   return (
     <>
       <section className="w-full bg-white py-10">
@@ -252,6 +263,13 @@ const BlogDetailsClient = ({
                     [&_p]:!text-[16px]
                     [&_p]:!leading-[30px]
                     [&_p]:mb-3
+                    [&_ul]:my-3
+                    [&_ul]:list-disc
+                    [&_ul]:pl-6
+                    [&_ol]:my-3
+                    [&_ol]:list-decimal
+                    [&_ol]:pl-6
+                    [&_li]:my-1.5
                   "
                   dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                     article.introduction,
@@ -437,7 +455,7 @@ const BlogDetailsClient = ({
                     Introduction
                   </h2>
                   <div
-                    className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
+                    className={`${richContentClass} [&_p]:!text-[16px]`}
                     dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                       article.introduction,
                     )}
@@ -465,7 +483,7 @@ const BlogDetailsClient = ({
                         </h2>
                       )}
                       <div
-                        className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[16px] [&_p]:!leading-[28px]"
+                        className={`${richContentClass} [&_p]:!text-[16px]`}
                         dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                           sec.content,
                         )}
@@ -483,7 +501,7 @@ const BlogDetailsClient = ({
                     <div key={i} className="mb-4">
                       <p className="font-semibold text-[18px]">{faq.question}</p>
                       <div
-                        className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[18px]"
+                        className={richContentLargeClass}
                         dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                           faq.answer,
                         )}
@@ -505,7 +523,7 @@ const BlogDetailsClient = ({
                       )}
                       {tool.content?.trim() && (
                         <div
-                          className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[18px]"
+                          className={richContentLargeClass}
                           dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                             tool.content,
                           )}
@@ -531,7 +549,7 @@ const BlogDetailsClient = ({
                       )}
                       {read.content?.trim() && (
                         <div
-                          className="blog-rich-content font-inter w-full max-w-none [&_p]:!text-[18px]"
+                          className={richContentLargeClass}
                           dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(
                             read.content,
                           )}
@@ -554,3 +572,8 @@ const BlogDetailsClient = ({
 };
 
 export default BlogDetailsClient;
+
+
+
+
+

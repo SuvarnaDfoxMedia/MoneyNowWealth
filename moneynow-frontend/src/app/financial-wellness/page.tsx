@@ -1,5 +1,8 @@
 import FinancialWellnessPage from "@/components/assessment/FinancialWellnessPage";
-import { buildPageMetadata } from "@/lib/seo";
+import SeoJsonLd from "@/components/seo/SeoJsonLd";
+import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return buildPageMetadata("/financial-wellness", {
@@ -9,6 +12,13 @@ export async function generateMetadata() {
   });
 }
 
-export default function Page() {
-  return <FinancialWellnessPage />;
+export default async function Page() {
+  const seo = await resolveSeoEntry("/financial-wellness");
+
+  return (
+    <>
+      <SeoJsonLd schema={seo?.page_schema} />
+      <FinancialWellnessPage />
+    </>
+  );
 }

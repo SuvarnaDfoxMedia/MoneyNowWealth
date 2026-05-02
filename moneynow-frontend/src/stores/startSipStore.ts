@@ -1,12 +1,10 @@
 "use client";
 
-import axios from "axios";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import {
-  buildCalculatorPayload,
-  CALCULATOR_ROUTE_MAP,
   CalculatorTab,
+  requestCalculatorResult,
 } from "@/hooks/useCalculator";
 
 export type StartSipCalculatorId =
@@ -22,6 +20,41 @@ export interface StartSipCalculatorItem {
   tab?: CalculatorTab;
   isInteractive: boolean;
 }
+
+export type StartSipResult = Partial<{
+  years: number;
+  target_amount: number;
+  target_wealth: number;
+  invested_amount: number;
+  target_savings: number;
+  savings_amount: number;
+  growth_value: number;
+  stepup_growth_value: number;
+  growth_amount: number;
+  maturity_amount: number;
+  stepup_maturity_amount: number;
+  stepup_invested_amount: number;
+  sip_amount: number;
+  monthly_savings: number;
+  total_earnings: number;
+}>;
+
+export type StartSipChartState =
+  | {
+      type: "goal";
+      data: Array<{ label: string; target: number; savings: number }>;
+    }
+  | {
+      type: "sip";
+      barData: Array<{
+        label: string;
+        invested: number;
+        growth: number;
+        totalValue: number;
+      }>;
+      pieData: Array<{ label: string; value: number; color: string }>;
+    }
+  | null;
 
 export const START_SIP_CALCULATORS: StartSipCalculatorItem[] = [
   {
@@ -108,9 +141,149 @@ export const START_SIP_DEFAULT_VALUES = {
   ],
 };
 
+export type StartSipValues = typeof START_SIP_DEFAULT_VALUES;
+
+const currentYear = new Date().getFullYear();
+
+const formatCurrency = (value?: number) =>
+  `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+
+export function buildStartSipChartData(
+  activeCalculatorId: string,
+  values: StartSipValues,
+  result: StartSipResult | null,
+): StartSipChartState {
+  if (!result) return null;
+
+  if (activeCalculatorId === "crore-journey") {
+    const years = Math.max(
+      1,
+      Number(result.years || values.retirement_age - values.current_age || 1),
+    );
+    const target = Number(result.target_amount || result.target_wealth || 0);
+    const savings = Number(
+      result.invested_amount ||
+        result.target_savings ||
+        result.savings_amount ||
+        0,
+    );
+
+    return {
+      type: "goal",
+      data: Array.from({ length: years }, (_, index) => ({
+        label: `${currentYear + index}`,
+        target: Math.round(target * ((index + 1) / years)),
+        savings: Math.round(savings * ((index + 1) / years)),
+      })),
+    };
+  }
+
+  const years = Math.max(1, Number(values.years || result.years || 1));
+  const invested = Number(
+    result.invested_amount ||
+      result.stepup_invested_amount ||
+      values.sip_amount * years * 12 ||
+      0,
+  );
+  const growth = Number(
+    result.growth_value ||
+      result.stepup_growth_value ||
+      result.growth_amount ||
+      result.total_earnings ||
+      0,
+  );
+  const maturity = Number(
+    result.maturity_amount ||
+      result.stepup_maturity_amount ||
+      result.target_wealth ||
+      result.target_amount ||
+      0,
+  );
+
+  return {
+    type: "sip",
+    barData: Array.from({ length: years }, (_, index) => {
+      const progress = (index + 1) / years;
+      const investedValue = Math.round(invested * progress);
+      const growthValue = Math.round(growth * progress);
+
+      return {
+        label: `${currentYear + index}`,
+        invested: investedValue,
+        growth: growthValue,
+        totalValue: investedValue + growthValue,
+      };
+    }),
+    pieData: [
+      { label: "Total SIP Amount Invested", value: invested, color: "#48A8C8" },
+      {
+        label: "Total Growth",
+        value: growth || Math.max(maturity - invested, 0),
+        color: "#34A853",
+      },
+    ],
+  };
+}
+
+export function buildStartSipResultRows(
+  activeCalculatorId: string,
+  values: StartSipValues,
+  result: StartSipResult | null,
+) {
+  if (!result) return [];
+
+  switch (activeCalculatorId) {
+    case "step-up-sip":
+      return [
+        [
+          "Total SIP Amount Invested",
+          formatCurrency(
+            result.stepup_invested_amount || result.invested_amount,
+          ),
+        ],
+        [
+          "Total Growth",
+          formatCurrency(result.stepup_growth_value || result.growth_value),
+        ],
+        [
+          "Total Future Value",
+          formatCurrency(
+            result.stepup_maturity_amount || result.maturity_amount,
+          ),
+        ],
+      ];
+    case "target-based-sip":
+      return [
+        [
+          "Target Wealth",
+          formatCurrency(result.target_wealth || values.wealth_amount),
+        ],
+        ["Required SIP Amount", formatCurrency(result.sip_amount)],
+        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
+        ["Total Growth", formatCurrency(result.growth_amount)],
+      ];
+    case "crore-journey":
+      return [
+        [
+          "Target Corpus",
+          formatCurrency(result.target_amount || result.target_wealth),
+        ],
+        ["Monthly Savings Required", formatCurrency(result.monthly_savings)],
+        ["Total Amount Invested", formatCurrency(result.invested_amount)],
+        ["Total Growth", formatCurrency(result.total_earnings)],
+      ];
+    default:
+      return [
+        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
+        ["Total Growth", formatCurrency(result.growth_value)],
+        ["Total Future Value", formatCurrency(result.maturity_amount)],
+      ];
+  }
+}
+
 interface StartSipStore {
   activeCalculatorId: StartSipCalculatorId;
-  values: typeof START_SIP_DEFAULT_VALUES;
+  values: StartSipValues;
   result: any;
   loading: boolean;
   error: string | null;
@@ -198,15 +371,7 @@ export const useStartSipStore = create<StartSipStore>()(
         set({ loading: true, error: null });
 
         const uiValues = buildUiAwareValues(activeCalculatorId, values);
-        const payload = buildCalculatorPayload(calculator.tab, uiValues);
-        const { data } = await axios.post(
-          `/api/calc/${CALCULATOR_ROUTE_MAP[calculator.tab]}`,
-          payload,
-        );
-
-        if (!data) {
-          throw new Error("No response received");
-        }
+        const data = await requestCalculatorResult(calculator.tab, uiValues);
 
         set({
           result: data,

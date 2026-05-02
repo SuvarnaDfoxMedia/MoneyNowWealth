@@ -1,6 +1,7 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 export interface ISeo extends Document {
+  name: string;
   page_url: string;
   seo_title?: string;
   meta_description?: string;
@@ -27,6 +28,13 @@ const normalizePath = (value: string) => {
 
 const seoSchema = new Schema<ISeo>(
   {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      default: "",
+      index: true,
+    },
     page_url: {
       type: String,
       required: true,
@@ -79,7 +87,7 @@ seoSchema.pre(/^find/, function (this: any, next) {
 });
 
 seoSchema.index({ page_url: 1, is_deleted: 1 }, { unique: true });
-seoSchema.index({ seo_title: 1, status: 1, is_active: 1, created_at: -1 });
+seoSchema.index({ name: 1, seo_title: 1, status: 1, is_active: 1, created_at: -1 });
 
 const Seo: Model<ISeo> =
   mongoose.models.Seo || mongoose.model<ISeo>("Seo", seoSchema);

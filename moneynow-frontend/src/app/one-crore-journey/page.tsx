@@ -1,5 +1,8 @@
 import OneCroreJourneyPage from "@/components/journeys/OneCroreJourneyPage";
-import { buildPageMetadata } from "@/lib/seo";
+import SeoJsonLd from "@/components/seo/SeoJsonLd";
+import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return buildPageMetadata("/one-crore-journey", {
@@ -9,6 +12,13 @@ export async function generateMetadata() {
   });
 }
 
-export default function Page() {
-  return <OneCroreJourneyPage />;
+export default async function Page() {
+  const seo = await resolveSeoEntry("/one-crore-journey");
+
+  return (
+    <>
+      <SeoJsonLd schema={seo?.page_schema} />
+      <OneCroreJourneyPage />
+    </>
+  );
 }

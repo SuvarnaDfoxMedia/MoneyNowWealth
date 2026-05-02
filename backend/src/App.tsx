@@ -70,6 +70,7 @@ import MFFundListing from "./components/tables/ListingComponents/MFFundListing";
 import MFNfoListing from "./components/tables/ListingComponents/MFNfoListing";
 import MFIndexSnapshotListing from "./components/tables/ListingComponents/MFIndexSnapshotListing";
 import MFAmcListing from "./components/tables/ListingComponents/MFAmcListing";
+import MFTopHoldingListing from "./components/tables/ListingComponents/MFTopHoldingListing";
 import SeoListing from "./components/tables/ListingComponents/SeoListing";
 import AddMFMainCategory from "./components/mf/AddMFMainCategory";
 import AddMFCategory from "./components/mf/AddMFSubCategory";
@@ -77,6 +78,11 @@ import AddMFFund from "./components/mf/AddMFFund";
 import AddMFNfo from "./components/mf/AddMFNfo";
 import AddMFIndexSnapshot from "./components/mf/AddMFIndexSnapshot";
 import AddMFAmc from "./components/mf/AddMFAmc";
+import AddMFTopHolding from "./components/mf/AddMFTopHolding";
+import MFTopHoldingDetail from "./components/mf/MFTopHoldingDetail";
+import MFTopHoldingHistoryPage from "./components/mf/MFTopHoldingHistoryPage";
+import NavDashboardPage from "./modules/nav/pages/NavDashboardPage";
+import NavHistoryPage from "./modules/nav/pages/NavHistoryPage";
 
 export default function App() {
   return (
@@ -84,6 +90,7 @@ export default function App() {
       <ScrollToTop />
       <Toaster
         position="top-right"
+        containerStyle={{ top: 84 }}
         toastOptions={{
           style: {
             zIndex: 999999,
@@ -245,6 +252,15 @@ function AppRoutes() {
         <Route path="/:role/mf/funds" element={<MFFundListing />} />
         <Route path="/:role/mf/funds/create" element={<AddMFFund />} />
         <Route path="/:role/mf/funds/edit/:id" element={<AddMFFund />} />
+        <Route path="/:role/nav/dashboard" element={<NavDashboardPage />} />
+        <Route path="/:role/nav/history" element={<NavHistoryPage />} />
+        <Route path="/:role/mf/nav-dashboard" element={<NavDashboardPage />} />
+        <Route path="/:role/mf/nav-history" element={<NavHistoryPage />} />
+        <Route path="/:role/mf/top-holdings" element={<MFTopHoldingListing />} />
+        <Route path="/:role/mf/top-holdings/create" element={<AddMFTopHolding />} />
+        <Route path="/:role/mf/top-holdings/edit/:id" element={<AddMFTopHolding />} />
+        <Route path="/:role/mf/top-holdings/view/:id" element={<MFTopHoldingDetail />} />
+        <Route path="/:role/mf/top-holdings/history/:schemeId" element={<MFTopHoldingHistoryPage />} />
         <Route path="/:role/mf/nfo" element={<MFNfoListing />} />
         <Route path="/:role/mf/nfo/create" element={<AddMFNfo />} />
         <Route path="/:role/mf/nfo/edit/:id" element={<AddMFNfo />} />

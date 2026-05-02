@@ -159,6 +159,23 @@ export default function AssessmentResult({
   const activeBand =
     scoreBands.find((band) => safeScore >= band.min && safeScore <= band.max) ||
     scoreBands[Math.min(1, scoreBands.length - 1)];
+  const snapshotItems = journeyVariant
+    ? result.pillar_results.map((pillar) => ({
+        key: pillar.key,
+        title: pillar.title,
+        subtitle: pillar.status,
+        value: Math.max(8, Math.min(100, Math.round((pillar.score / 3) * 100))),
+      }))
+    : legacyPillars.map((pillar) => {
+        const value = Number(result.chart_data?.[pillar.key] ?? 0);
+
+        return {
+          key: pillar.key,
+          title: pillar.label,
+          subtitle: pillar.description,
+          value: Math.max(8, Math.min(100, Math.round(value))),
+        };
+      });
 
   const handleRichPdfDownload = () => {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -408,269 +425,238 @@ export default function AssessmentResult({
   };
 
   return (
-    <section className="font-poppins rounded-[28px] border border-[#D9E8F4] bg-white p-6 shadow-[0_18px_60px_rgba(6,36,68,0.08)] md:p-8">
+    <section className="font-poppins space-y-8">
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="space-y-6">
-          <div className="rounded-[24px] bg-[#F6FAFD] p-6">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#0F4C81]">
-              Assessment outcome
-            </p>
-            <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="rounded-[24px] bg-[#F6FAFD] p-6 shadow-[0_14px_36px_rgba(6,36,68,0.06)] md:p-8">
+          <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#0F4C81]">
+            Assessment outcome
+          </p>
+          <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="max-w-[320px] text-[34px] font-semibold leading-[1.1] text-[#072A4A] md:text-[56px]">
+                {result.category}
+              </h2>
+              <p className="mt-4 max-w-[420px] text-[15px] leading-8 text-[#667789]">
+                {journeyVariant
+                  ? result.summary
+                  : "Your current money habits show where you are today and what to strengthen next. Use this as a practical starting point, not a label."}
+              </p>
+            </div>
+
+            <div
+              className={`min-w-[180px] rounded-[24px] bg-gradient-to-br ${tone} px-6 py-5 text-white`}
+            >
+              <p className="text-sm uppercase tracking-[0.24em] text-white/80">
+                Wellness score
+              </p>
+              <div className="mt-2 flex items-end gap-2">
+                <span className="text-[52px] font-semibold leading-none">
+                  {safeScore}
+                </span>
+                <span className="pb-1 text-sm text-white/75">/100</span>
+              </div>
+              <p className="mt-2 text-[13px] text-white/80">
+                Score band: {activeBand.label}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-[22px] border border-[#DCE8F1] bg-white px-4 py-5 md:px-5">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-[32px] font-semibold leading-tight text-[#072A4A] md:text-[42px]">
-                  {result.category}
-                </h2>
-                <p className="mt-2 max-w-[520px] text-[15px] leading-7 text-[#516275]">
-                  {journeyVariant
-                    ? result.summary
-                    : "Your current money habits show where you are today and what to strengthen next. Use this as a practical starting point, not a label."}
+                <p className="text-[14px] font-semibold text-[#0B3258]">
+                  Your financial well-being score
                 </p>
+                <p className="text-[13px] leading-6 text-[#617487]">
+                  A quick visual view of where your current result sits.
+                </p>
+              </div>
+              <div className="rounded-full bg-[#EAF5FD] px-4 py-2 text-[13px] font-semibold text-[#0F4C81]">
+                Category: {result.category}
+              </div>
+            </div>
+
+            <div className="relative mt-8 px-1 pb-10 pt-12">
+              <div className="flex h-[18px] overflow-hidden rounded-full shadow-inner">
+                {scoreBands.map((band) => (
+                  <div
+                    key={band.label}
+                    className="h-full"
+                    style={{
+                      width: `${band.max - band.min + 1}%`,
+                      backgroundColor: band.color,
+                    }}
+                  />
+                ))}
               </div>
 
               <div
-                className={`min-w-[180px] rounded-[24px] bg-gradient-to-br ${tone} px-6 py-5 text-white`}
+                className="absolute top-0 -translate-x-1/2"
+                style={{ left: `${safeScore}%` }}
               >
-                <p className="text-sm uppercase tracking-[0.24em] text-white/80">
-                  Wellness score
-                </p>
-                <div className="mt-2 flex items-end gap-2">
-                  <span className="text-[46px] font-semibold leading-none">
-                    {safeScore}
-                  </span>
-                  <span className="pb-1 text-sm text-white/75">/100</span>
+                <div className="rounded-full bg-[#072A4A] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_12px_28px_rgba(7,42,74,0.18)]">
+                  Your score: {safeScore}
                 </div>
-                <p className="mt-2 text-[13px] text-white/80">
-                  Score band: {activeBand.label}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 rounded-[22px] border border-[#DCE8F1] bg-white px-4 py-5 md:px-5">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-[14px] font-semibold text-[#0B3258]">
-                    Your financial well-being score
-                  </p>
-                  <p className="text-[13px] leading-6 text-[#617487]">
-                    A quick visual view of where your current result sits.
-                  </p>
-                </div>
-                <div className="rounded-full bg-[#EAF5FD] px-4 py-2 text-[13px] font-semibold text-[#0F4C81]">
-                  Category: {result.category}
-                </div>
+                <div className="mx-auto h-10 w-[2px] bg-[#072A4A]" />
               </div>
 
-              <div className="relative mt-8 px-1 pb-10 pt-12">
-                <div className="flex h-[22px] overflow-hidden rounded-full shadow-inner">
-                  {scoreBands.map((band) => (
-                    <div
-                      key={band.label}
-                      className="h-full"
-                      style={{
-                        width: `${band.max - band.min + 1}%`,
-                        backgroundColor: band.color,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div
-                  className="absolute top-0 -translate-x-1/2"
-                  style={{ left: `${safeScore}%` }}
-                >
-                  <div className="rounded-full bg-[#072A4A] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_12px_28px_rgba(7,42,74,0.18)]">
-                    Your score: {safeScore}
+              <div
+                className={`mt-4 grid gap-3 text-[12px] text-[#5D7387] ${
+                  journeyVariant ? "md:grid-cols-3" : "md:grid-cols-5"
+                }`}
+              >
+                {scoreBands.map((band) => (
+                  <div
+                    key={band.label}
+                    className="rounded-[14px] bg-[#F7FBFE] px-3 py-2"
+                  >
+                    <p className="font-semibold text-[#163955]">{band.label}</p>
+                    <p>
+                      {band.min}-{band.max}
+                    </p>
                   </div>
-                  <div className="mx-auto h-10 w-[2px] bg-[#072A4A]" />
-                </div>
+                ))}
+              </div>
 
-                <div className={`mt-4 grid gap-3 text-[12px] text-[#5D7387] ${journeyVariant ? "md:grid-cols-3" : "md:grid-cols-5"}`}>
-                  {scoreBands.map((band) => (
-                    <div
-                      key={band.label}
-                      className="rounded-[14px] bg-[#F7FBFE] px-3 py-2"
-                    >
-                      <p className="font-semibold text-[#163955]">{band.label}</p>
-                      <p>
-                        {band.min}-{band.max}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-0.5 text-[12px] text-[#708394]">
-                  <span>0</span>
-                  <span>25</span>
-                  <span>50</span>
-                  <span>75</span>
-                  <span>100</span>
-                </div>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-0.5 text-[12px] text-[#708394]">
+                <span>0</span>
+                <span>25</span>
+                <span>50</span>
+                <span>75</span>
+                <span>100</span>
               </div>
             </div>
           </div>
-
-          {journeyVariant ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {result.pillar_results.map((pillar) => (
-                <article
-                  key={pillar.key}
-                  className="rounded-[20px] border border-[#E3EDF5] bg-[#FCFEFF] p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-[18px] font-semibold text-[#0B3258]">
-                      {pillar.title}
-                    </h3>
-                    <span
-                      className={`rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusStyle[pillar.status]}`}
-                    >
-                      {pillar.status}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-[13px] text-[#5D7387]">
-                    Snapshot score: {pillar.score} / 3
-                  </p>
-                  <p className="mt-4 text-[15px] leading-7 text-[#556477]">
-                    {pillar.copy}
-                  </p>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {reportCards.map(({ key, title, icon: Icon }) => (
-                <article
-                  key={key}
-                  className="rounded-[20px] border border-[#E3EDF5] bg-[#FCFEFF] p-5"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-full bg-[#E8F3FB] p-2 text-[#0F4C81]">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <h3 className="text-[18px] font-semibold text-[#0B3258]">
-                      {title}
-                    </h3>
-                  </div>
-                  <p className="mt-4 text-[15px] leading-7 text-[#556477]">
-                    {result.report[key]}
-                  </p>
-                </article>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="space-y-5">
-          <div className="rounded-[24px] bg-[#072A4A] p-6 text-white">
-            <p className="text-[13px] uppercase tracking-[0.24em] text-white/65">
-              {journeyVariant ? "Five-area snapshot" : "Four-pillar snapshot"}
-            </p>
-            <h3 className="mt-2 text-[24px] font-semibold leading-tight">
-              {journeyVariant
-                ? "See where your current money life looks stronger or weaker"
-                : "See where your financial foundation is strongest"}
-            </h3>
+        <div className="rounded-[24px] bg-[#072A4A] p-6 text-white md:p-8">
+          <p className="text-[13px] uppercase tracking-[0.24em] text-white/65">
+            {journeyVariant ? "Five-area snapshot" : "Four-pillar snapshot"}
+          </p>
+          <h3 className="mt-3 text-[28px] font-semibold leading-tight">
+            {journeyVariant
+              ? "See where your current money life looks stronger or weaker"
+              : "See where your financial foundation is strongest"}
+          </h3>
 
-            <div className="mt-6 space-y-4">
-              {journeyVariant
-                ? result.pillar_results.map((pillar) => {
-                    const value = Math.max(
-                      8,
-                      Math.min(100, Math.round((pillar.score / 3) * 100)),
-                    );
+          <div className="mt-8 space-y-5">
+            {snapshotItems.map((item) => (
+              <div key={item.key}>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[15px] font-medium">{item.title}</p>
+                    <p className="text-[13px] text-white/68">{item.subtitle}</p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#8FD3FF]">
+                    {item.value}
+                  </span>
+                </div>
 
-                    return (
-                      <div key={pillar.key}>
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p className="text-[15px] font-medium">{pillar.title}</p>
-                            <p className="text-[13px] text-white/68">
-                              {pillar.status}
-                            </p>
-                          </div>
-                          <span className="text-sm font-semibold text-[#8FD3FF]">
-                            {value}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 h-2.5 rounded-full bg-white/15">
-                          <div
-                            className="h-2.5 rounded-full bg-gradient-to-r from-[#5ED6FF] to-[#C3F1FF]"
-                            style={{ width: `${value}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })
-                : legacyPillars.map((pillar) => {
-                    const value = Number(result.chart_data?.[pillar.key] ?? 0);
-                    const width = Math.max(8, Math.min(100, Math.round(value)));
-
-                    return (
-                      <div key={pillar.key}>
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <p className="text-[15px] font-medium">{pillar.label}</p>
-                            <p className="text-[13px] text-white/68">
-                              {pillar.description}
-                            </p>
-                          </div>
-                          <span className="text-sm font-semibold text-[#8FD3FF]">
-                            {Math.round(value)}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 h-2.5 rounded-full bg-white/15">
-                          <div
-                            className="h-2.5 rounded-full bg-gradient-to-r from-[#5ED6FF] to-[#C3F1FF]"
-                            style={{ width: `${width}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-            </div>
+                <div className="mt-3 h-2.5 rounded-full bg-white/15">
+                  <div
+                    className="h-2.5 rounded-full bg-gradient-to-r from-[#5ED6FF] to-[#C3F1FF]"
+                    style={{ width: `${item.value}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+      </div>
 
-          <div className="rounded-[24px] border border-[#DCE8F1] bg-[#F7FBFE] p-6">
-            <h3 className="text-[22px] font-semibold text-[#0B3258]">
-              What to do next
-            </h3>
-            <p className="mt-3 text-[15px] leading-7 text-[#556477]">
-              Review your report, save the PDF, and speak with an advisor if you
-              want help turning these insights into an action plan.
-            </p>
-
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              {pdfHref ? (
-                <a
-                  href={pdfHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
-                >
-                  <Download className="h-4 w-4" />
-                  Open saved report
-                </a>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={handleRichPdfDownload}
-                className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
+      {journeyVariant ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {result.pillar_results.map((pillar) => (
+            <article
+              key={pillar.key}
+              className="rounded-[20px] border border-[#E3EDF5] bg-[#F8FBFE] p-5"
+            >
+              <h3 className="text-[18px] font-semibold text-[#111111]">
+                {pillar.title}
+              </h3>
+              <span
+                className={`mt-4 inline-flex rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusStyle[pillar.status]}`}
               >
-                <Download className="h-4 w-4" />
-                Download report
-              </button>
+                {pillar.status}
+              </span>
+              <p className="mt-4 text-[13px] text-[#5D7387]">
+                Snapshot score: {pillar.score} / 3
+              </p>
+              <p className="mt-4 text-[15px] leading-8 text-[#556477]">
+                {pillar.copy}
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {reportCards.map(({ key, title, icon: Icon }) => (
+            <article
+              key={key}
+              className="rounded-[20px] border border-[#E3EDF5] bg-[#F8FBFE] p-5"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-[#E8F3FB] p-2 text-[#0F4C81]">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <h3 className="text-[18px] font-semibold text-[#0B3258]">
+                  {title}
+                </h3>
+              </div>
+              <p className="mt-4 text-[15px] leading-7 text-[#556477]">
+                {result.report[key]}
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
 
-              <Link
-                href="/contact-us"
-                className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
-              >
-                {result.next_step || "Book Discovery Call"}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
+      <div className="text-center">
+        <p className="mx-auto max-w-[860px] text-[18px] font-semibold leading-9 text-[#111111]">
+          This snapshot is for your personal awareness. It is not a financial
+          plan or professional advice, and it does not evaluate or compare any
+          mutual fund schemes.
+        </p>
+      </div>
+
+      <div className="rounded-[24px] border border-[#DCE8F1] bg-[#F7FBFE] p-6 text-center md:p-8">
+        <h3 className="text-[30px] font-semibold text-[#0B3258]">
+          What to do next
+        </h3>
+        <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#556477]">
+          Review your report, save the PDF, and speak with an advisor if you
+          want help turning these insights into an action plan.
+        </p>
+
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {pdfHref ? (
+            <a
+              href={pdfHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
+            >
+              <Download className="h-4 w-4" />
+              Open saved report
+            </a>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={handleRichPdfDownload}
+            className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
+          >
+            <Download className="h-4 w-4" />
+            Download report
+          </button>
+
+          <Link
+            href="/contact-us"
+            className="inline-flex min-w-[240px] items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
+          >
+            {result.next_step || "Book Discovery Call"}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </section>

@@ -3,6 +3,10 @@ import DOMPurify from "dompurify";
 import JoditEditor from "jodit-react";
 import { Jodit } from "jodit";
 import type { IJodit } from "jodit/esm/types/jodit";
+import {
+  hasLooseBulletLines,
+  normalizeRichTextHtml,
+} from "../../utils/normalizeRichTextHtml";
 
 interface RichTextFieldProps {
   value: string;
@@ -19,7 +23,8 @@ export const RichTextField: React.FC<RichTextFieldProps> = ({
 }) => {
   const editorRef = useRef<IJodit | null>(null);
   const isEditingRef = useRef(false);
-  const [draftValue, setDraftValue] = useState(value ?? "");
+  const isPastedRef = useRef(false);
+  const [initialValue] = useState(value ?? "");
 
   const config = useMemo(
     () => ({
@@ -54,12 +59,15 @@ export const RichTextField: React.FC<RichTextFieldProps> = ({
         fontFamily: "Poppins, sans-serif",
         a: "color: #2563eb; text-decoration: underline;",
         "a:hover": "color: #1d4ed8;",
+        ul: "list-style-type: disc; margin: 1em 0; padding-left: 1.5rem;",
+        ol: "list-style-type: decimal; margin: 1em 0; padding-left: 1.5rem;",
+        li: "margin: 0.35em 0;",
       },
     }),
     [height, readOnly],
   );
 
-const cleanHtml = useCallback((html: string) => {
+  const cleanHtml = useCallback((html: string) => {
     const sanitized = DOMPurify.sanitize(html || "", {
       USE_PROFILES: { html: true },
     });
@@ -69,7 +77,7 @@ const cleanHtml = useCallback((html: string) => {
     }
 
     const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = sanitized;
+    tempDiv.innerHTML = normalizeRichTextHtml(sanitized);
 
     const setFontFamily = (element: Element, fontFamily: string) => {
       const style = element.getAttribute("style");
@@ -97,7 +105,10 @@ const cleanHtml = useCallback((html: string) => {
         .filter(Boolean)
         .map((rule) => {
           const [property, ...valueParts] = rule.split(":");
-          return [property?.trim().toLowerCase(), valueParts.join(":").trim()] as const;
+          return [
+            property?.trim().toLowerCase(),
+            valueParts.join(":").trim(),
+          ] as const;
         })
         .filter(([property, value]) => property && value);
 
@@ -135,7 +146,6 @@ const cleanHtml = useCallback((html: string) => {
       .querySelectorAll("p, li, td, th, blockquote")
       .forEach((element) => setFontFamily(element, "Poppins, sans-serif"));
 
-    // Keep links safe and consistently styled without flattening paragraphs.
     tempDiv.querySelectorAll("a").forEach((a) => {
       const href = a.getAttribute("href")?.trim() ?? "";
 
@@ -155,48 +165,65 @@ const cleanHtml = useCallback((html: string) => {
     return tempDiv.innerHTML.replace(/&nbsp;/g, " ").trim();
   }, []);
 
-  const handleChange = useCallback(
-    (content: string) => {
-      isEditingRef.current = true;
-      if (editorRef.current && content !== editorRef.current.value) {
-        editorRef.current.value = content || "";
-      }
-    },
-    [],
-  );
+  const handleChange = useCallback(() => {
+    isEditingRef.current = true;
+  }, []);
 
   const handleBlur = useCallback(
     (content: string) => {
       isEditingRef.current = false;
-      const cleaned = cleanHtml(content || "");
-      setDraftValue(cleaned);
-      onChange(cleaned);
+      const nextContent = content || "";
+      const shouldNormalize =
+        isPastedRef.current || hasLooseBulletLines(nextContent);
+
+      isPastedRef.current = false;
+
+      if (shouldNormalize) {
+        const cleaned = cleanHtml(nextContent);
+
+        if (editorRef.current && editorRef.current.value !== cleaned) {
+          editorRef.current.value = cleaned;
+        }
+
+        onChange(cleaned);
+        return;
+      }
+
+      onChange(nextContent);
     },
     [cleanHtml, onChange],
   );
 
   useEffect(() => {
-    const nextValue = value ?? "";
-    if (!isEditingRef.current && nextValue !== draftValue) {
-      setDraftValue(nextValue);
-    }
-  }, [draftValue, value]);
-
-  useEffect(() => {
-    if (!editorRef.current) return;
     if (isEditingRef.current) return;
+    if (!editorRef.current) return;
 
-    const nextValue = value ?? "";
+    const nextValue = cleanHtml(value ?? "");
     if (editorRef.current.value !== nextValue) {
       editorRef.current.value = nextValue;
     }
-  }, [value]);
+  }, [cleanHtml, value]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const handlePaste = () => {
+      isPastedRef.current = true;
+    };
+
+    editor.events.on("paste", handlePaste);
+
+    return () => {
+      editor.events.off("paste", handlePaste);
+    };
+  }, []);
 
   return (
     <JoditEditor
       ref={editorRef}
       className="rich-text-field"
-      value={draftValue}
+      value={initialValue}
       config={config}
       onChange={handleChange}
       onBlur={handleBlur}

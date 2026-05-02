@@ -22,6 +22,7 @@ declare module "intl-tel-input" {
 
   export interface IntlTelInputOptions {
     initialCountry?: string;
+    preferredCountries?: string[];
     separateDialCode?: boolean;
     utilsScript?: string;
     customContainer?: string;

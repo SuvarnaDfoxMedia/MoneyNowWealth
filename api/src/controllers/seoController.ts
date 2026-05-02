@@ -19,6 +19,7 @@ const sanitizePayload = (body: Record<string, any>) => {
   }
 
   const trimFields = [
+    "name",
     "page_url",
     "seo_title",
     "meta_description",
@@ -45,6 +46,11 @@ const sanitizePayload = (body: Record<string, any>) => {
     payload.status = "published";
   }
 
+  delete payload.route_path;
+  delete payload.meta_keywords;
+  delete payload.schema_json;
+  delete payload.og_image;
+
   return payload;
 };
 
@@ -64,6 +70,7 @@ export const getSeoEntries = async (req: Request, res: Response) => {
 
     if (search) {
       query.$or = [
+        { name: { $regex: search, $options: "i" } },
         { page_url: { $regex: search, $options: "i" } },
         { seo_title: { $regex: search, $options: "i" } },
       ];
@@ -104,6 +111,9 @@ export const getSeoEntryById = async (req: Request, res: Response) => {
 export const createSeoEntry = async (req: Request, res: Response) => {
   try {
     const payload = sanitizePayload(req.body || {});
+    if (!payload.name) {
+      return sendError(res, "Name is required", 400);
+    }
     if (!payload.page_url) {
       return sendError(res, "Page URL is required", 400);
     }
@@ -116,6 +126,13 @@ export const createSeoEntry = async (req: Request, res: Response) => {
     const seo = await Seo.create(payload);
     return sendSuccess(res, "SEO entry created successfully", seo, 201, { seo });
   } catch (error: any) {
+    if (error?.code === 11000) {
+      return sendError(
+        res,
+        "SEO entry already exists for this page URL",
+        409,
+      );
+    }
     return sendError(res, error.message || "Failed to create SEO entry", 500);
   }
 };
@@ -127,6 +144,10 @@ export const updateSeoEntry = async (req: Request, res: Response) => {
 
     if (!seo) {
       return sendError(res, "SEO entry not found", 404);
+    }
+
+    if (!payload.name && !seo.name) {
+      return sendError(res, "Name is required", 400);
     }
 
     if (payload.page_url && payload.page_url !== seo.page_url) {
@@ -141,6 +162,13 @@ export const updateSeoEntry = async (req: Request, res: Response) => {
 
     return sendSuccess(res, "SEO entry updated successfully", seo, 200, { seo });
   } catch (error: any) {
+    if (error?.code === 11000) {
+      return sendError(
+        res,
+        "SEO entry already exists for this page URL",
+        409,
+      );
+    }
     return sendError(res, error.message || "Failed to update SEO entry", 500);
   }
 };

@@ -1,6 +1,9 @@
 import React from "react";
 import LatestArticle from "@/components/Blog-listing-Components/LatestArticle";
-import { buildPageMetadata } from "@/lib/seo";
+import SeoJsonLd from "@/components/seo/SeoJsonLd";
+import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata() {
   return buildPageMetadata("/blog-listing", {
@@ -10,9 +13,12 @@ export async function generateMetadata() {
   });
 }
 
-const Page = () => {
+const Page = async () => {
+  const seo = await resolveSeoEntry("/blog-listing");
+
   return (
     <>
+      <SeoJsonLd schema={seo?.page_schema} />
       <LatestArticle />
     </>
   );
