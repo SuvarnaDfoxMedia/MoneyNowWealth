@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiEdit, FiMoreVertical, FiTrash2 } from "react-icons/fi";
+import { FiClock, FiEdit, FiEye, FiMoreVertical, FiTrash2 } from "react-icons/fi";
 
 type MFRowActionsProps = {
   onDelete: () => void;
   onEdit?: () => void;
+  onView?: () => void;
+  onHistory?: () => void;
   deleteLabel?: string;
 };
 
 export default function MFRowActions({
   onDelete,
   onEdit,
+  onView,
+  onHistory,
   deleteLabel = "Delete",
 }: MFRowActionsProps) {
   const [open, setOpen] = useState(false);
@@ -60,6 +64,32 @@ export default function MFRowActions({
               >
                 <FiEdit className="text-lg" />
                 <span>Edit</span>
+              </button>
+            )}
+
+            {onView && (
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  onView();
+                }}
+                className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
+              >
+                <FiEye className="text-lg" />
+                <span>View</span>
+              </button>
+            )}
+
+            {onHistory && (
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  onHistory();
+                }}
+                className="flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm text-gray-700 transition hover:bg-gray-100"
+              >
+                <FiClock className="text-lg" />
+                <span>History</span>
               </button>
             )}
 

@@ -436,7 +436,7 @@ const handleDownload = async () => {
 
       const margin = 40;
 
-      // ✅ FULL WIDTH (clean layout)
+      //  FULL WIDTH (clean layout)
       const width = pageWidth - margin * 2;
       const height = width * ratio;
 

@@ -52,6 +52,16 @@ import {
   toggleAmcStatus,
   updateAmc,
 } from "../controllers/mfAmcController";
+import {
+  addTopHolding,
+  deleteTopHolding,
+  getTopHoldingById,
+  getTopHoldingHistory,
+  getTopHoldings,
+  importTopHoldings,
+  toggleTopHoldingStatus,
+  updateTopHolding,
+} from "../controllers/mfTopHoldingController";
 import { exportExcel, importExcel } from "../controllers/mfImportController";
 import { getMfDiscover, getMfFilters, getMfHome } from "../controllers/mfDiscoveryController";
 import { uploadMfExcel } from "../middlewares/uploadMiddleware";
@@ -92,6 +102,8 @@ router.get("/mf/amcs", getAmcs);
 router.get("/mf/amcs/:id", getAmcById);
 
 router.get("/mf/index-snapshots", getIndexSnapshots);
+router.get("/mf/top-holdings", getTopHoldings);
+router.get("/mf/top-holdings/history/:schemeId", getTopHoldingHistory);
 router.get("/mf/home", getMfHome);
 router.get("/mf/filters", getMfFilters);
 router.get("/mf/discover", getMfDiscover);
@@ -144,6 +156,13 @@ router.get(
   ...adminEditorMiddleware,
   getIndexSnapshotById,
 );
+router.get("/:role/mf/top-holdings", ...adminEditorMiddleware, getTopHoldings);
+router.get("/:role/mf/top-holdings/history/:schemeId", ...adminEditorMiddleware, getTopHoldingHistory);
+router.patch("/:role/mf/top-holdings/toggle-status/:schemeId", ...adminEditorMiddleware, toggleTopHoldingStatus);
+router.post("/:role/mf/top-holdings/import", ...adminEditorMiddleware, uploadMfExcel, importTopHoldings);
+router.get("/:role/mf/top-holdings/:id", ...adminEditorMiddleware, getTopHoldingById);
+router.post("/:role/mf/top-holdings/create", ...adminEditorMiddleware, addTopHolding);
+router.put("/:role/mf/top-holdings/edit/:id", ...adminEditorMiddleware, updateTopHolding);
 
 /* -------------------- ADMIN CLEAN CRUD ROUTES -------------------- */
 router.post(
@@ -361,6 +380,16 @@ router.delete(
   "/:role/mf/index-snapshots/delete/:id",
   ...adminEditorMiddleware,
   deleteIndexSnapshot,
+);
+router.delete(
+  "/:role/mf/top-holdings/:id",
+  ...adminEditorMiddleware,
+  deleteTopHolding,
+);
+router.delete(
+  "/:role/mf/top-holdings/delete/:id",
+  ...adminEditorMiddleware,
+  deleteTopHolding,
 );
 
 router.post(

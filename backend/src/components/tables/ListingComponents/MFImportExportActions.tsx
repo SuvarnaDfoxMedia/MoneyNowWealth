@@ -17,6 +17,7 @@ export type MfImportEntity =
   | "funds"
   | "nfo"
   | "index-snapshots"
+  | "top-holdings"
   | "full-workbook";
 
 type ExportMode = "data" | "template";
@@ -40,6 +41,7 @@ type ImportSummary = {
   funds: ImportSection;
   nfos: ImportSection;
   indexSnapshots: ImportSection;
+  topHoldings: ImportSection;
 };
 
 type ImportReport = {
@@ -68,6 +70,8 @@ type Props = {
   onImported?: () => void | Promise<void>;
   selectedEntity?: MfImportEntity;
   onEntityChange?: (entity: MfImportEntity) => void;
+  forceOpenKey?: number;
+  trailingActions?: React.ReactNode;
 };
 
 const emptyReport: ImportReport | null = null;
@@ -107,7 +111,7 @@ const entityGuidance: Record<
       "`scheme_code` is mandatory and is used for strict matching during updates.",
       "Each fund must resolve to an existing AMC and category by name or id.",
       "The primary workbook format is `Scheme_Details` with trailing, YTD, annual year columns, and duplicate SheetJS-safe headers such as `YTD_1` and `2025_1`.",
-      "`top_holdings` can be comma-separated or line-separated and is normalized into a list automatically.",
+      "Use the dedicated Top Holdings module for detailed holdings workbooks. The legacy `top_holdings` fund column is still normalized when present.",
     ],
   },
   nfo: {
@@ -124,6 +128,14 @@ const entityGuidance: Record<
       "`benchmark_index_name` and `last_updated_date` are required for matching.",
       "Category is optional, but linking one improves reporting clarity.",
       "Use one row per benchmark per date.",
+    ],
+  },
+  "top-holdings": {
+    title: "Top holdings import tips",
+    items: [
+      "You can import the client workbook layout with Holdings Summary and Holdings Detail sections.",
+      "Percentage cells are read from their displayed values, so 12.98% stays 12.98 during import.",
+      "Export downloads a flat `Top_Holdings` sheet that can also be re-imported later.",
     ],
   },
   "full-workbook": {
@@ -153,6 +165,8 @@ export default function MFImportExportActions({
   onImported,
   selectedEntity: propSelectedEntity,
   onEntityChange,
+  forceOpenKey,
+  trailingActions,
 }: Props) {
   const [selectedEntity, setSelectedEntity] = useState<MfImportEntity>(
     propSelectedEntity || options[0]?.value || "funds",
@@ -196,6 +210,11 @@ export default function MFImportExportActions({
     report?.validateOnly === true &&
     report?.errorCount === 0;
 
+  React.useEffect(() => {
+    if (!forceOpenKey) return;
+    setIsImportOpen(true);
+  }, [forceOpenKey]);
+
   const closeImportDialog = () => {
     setIsImportOpen(false);
     setFile(null);
@@ -228,10 +247,14 @@ export default function MFImportExportActions({
     setInlineNotice(null);
 
     try {
+      const importEndpoint =
+        currentSelectedEntity === "top-holdings"
+          ? `/${role}/mf/top-holdings/import`
+          : `/${role}/mf/import/excel`;
       const response = await axiosInstance.post<{
         data: ImportReport;
         message: string;
-      }>(`/${role}/mf/import/excel`, formData, {
+      }>(importEndpoint, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const nextReport = response.data?.data;
@@ -396,6 +419,8 @@ export default function MFImportExportActions({
           <FiDownload />
           {isExporting ? "Preparing..." : "Export"}
         </button>
+
+        {trailingActions}
 
         {/* {!propSelectedEntity && (
           <button

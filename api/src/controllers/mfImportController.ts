@@ -15,6 +15,7 @@ const VALID_ENTITIES: MfImportEntity[] = [
   "funds",
   "nfo",
   "index-snapshots",
+  "top-holdings",
   "full-workbook",
 ];
 

@@ -38,6 +38,7 @@ import oneCroreJourneyEnquiryRoutes from "./routes/oneCroreJourneyEnquiryRoutes"
 import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
 import seoRoutes from "./routes/seoRoutes";
+import navRoutes from "./routes/navRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
 import chatRoutes from "./routes/chatbot/chatRoutes";
 import { getGeminiApiKeyStatus } from "./controllers/chatbot/chatController.js";
@@ -193,6 +194,7 @@ app.use("/api", oneCroreJourneyEnquiryRoutes);
 app.use("/api", whoWeWorkWithEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
 app.use("/api", seoRoutes);
+app.use("/api", navRoutes);
 app.use("/api/chat", chatRoutes);
 
 app.get("/", (_req: Request, res: Response) => {

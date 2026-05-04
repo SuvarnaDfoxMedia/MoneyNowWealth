@@ -29,6 +29,7 @@ type MfImportEntity =
   | "funds"
   | "nfo"
   | "index-snapshots"
+  | "top-holdings"
   | "full-workbook";
 
 type EntityOption = {
@@ -235,6 +236,11 @@ export default function MFFundListing() {
             markEditNavigation();
             cacheModuleState(MODULE_KEY);
             navigate(`/${role}/mf/funds/edit/${row._id}`);
+          }}
+          onView={() => {
+            markEditNavigation();
+            cacheModuleState(MODULE_KEY);
+            navigate(`/${role}/mf/funds/view/${row._id}`);
           }}
           onDelete={() => setDeleteModalId(row._id)}
         />

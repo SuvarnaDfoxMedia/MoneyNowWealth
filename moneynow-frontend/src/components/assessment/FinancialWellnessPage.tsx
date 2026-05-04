@@ -1,11 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import AssessmentResult from "@/components/assessment/AssessmentResult";
+import FinancialWellnessAssessmentModule from "@/components/assessment/FinancialWellnessAssessmentModule";
 import JourneyBanner from "@/components/journeys/JourneyBanner";
-import JourneyPanel from "@/components/journeys/JourneyPanel";
 
 type AreaKey = "habits" | "protection" | "investing" | "goals" | "debt";
 
@@ -194,37 +191,6 @@ const COPY = {
   },
 } as const;
 
-const heroMetrics = [
-  { label: "Time needed", value: "3 minutes" },
-  { label: "Questions", value: "9 simple prompts" },
-  { label: "What you get", value: "Personal snapshot" },
-  { label: "Next step", value: "Score + report" },
-];
-
-const COVERAGE_AREAS = [
-  "Saving habits",
-  "Emergency readiness",
-  "Insurance cover",
-  "Investing behaviour",
-  "Goal clarity",
-  "Debt comfort",
-];
-
-const REASSURANCE_POINTS = [
-  {
-    title: "Simple and low-pressure",
-    copy: "This is a guided reflection to help you understand your current position, not a technical test.",
-  },
-  {
-    title: "Built around real money habits",
-    copy: "The questions focus on cash flow, protection, investing, goals, and debt so the result feels practical.",
-  },
-  {
-    title: "Useful next step",
-    copy: "You will get an easy snapshot, a downloadable report, and a clear route to a conversation if needed.",
-  },
-];
-
 const RELATED_PATHS = [
   {
     title: "See how your SIP can grow towards Rs 1 Crore",
@@ -345,15 +311,6 @@ export default function FinancialWellnessPage() {
     };
   }, [answers, shuffledQuestions]);
 
-  const summaryMetrics = showResult
-    ? [
-        { label: "Overall score", value: `${result.score}/100` },
-        { label: "Current picture", value: result.category },
-        { label: "Question set", value: "9 answers" },
-        { label: "Next step", value: "Talk to us" },
-      ]
-    : heroMetrics;
-
   const handleAnswerSelect = (score: number) => {
     setAnswers((prev) => ({
       ...prev,
@@ -385,148 +342,23 @@ export default function FinancialWellnessPage() {
     <div className="bg-[#F5F7FB] text-[#111111]">
       <JourneyBanner
         title="Your money life, at a glance"
-        subtitle="Answer a few simple questions to get a quick snapshot of your current money habits, safety net, investing, goals, and debt position."
-        metrics={summaryMetrics}
+        subtitle="This short check is designed to help you reflect on where you stand today across a few key areas – daily money habits, emergency readiness, investing behaviour, clarity about future goals, and comfort with debt."
       />
 
-      {/* <div className="">
-        <Image
-          src="/images/people-behind-1.png"
-          alt="MoneyNow team"
-          width={1600}
-          height={900}
-          className="h-auto w-full"
-        />
-      </div> */}
-
-      <section className="mx-auto max-w-7xl px-4 py-10 lg:px-10">
-        {!showResult ? (
-          <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
-            <JourneyPanel
-              eyebrow={`Question ${step + 1} of ${QUESTIONS.length}`}
-              title={currentQuestion.title}
-              subtitle="Choose the option that feels closest to your current situation today."
-            >
-              <div className="mb-6 h-2 overflow-hidden rounded-full bg-slate-200">
-                <div
-                  className="h-full rounded-full bg-[#0B3B6E] transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-slate-200 bg-[#FAFAFA] px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-[#0B3B6E]">
-                    Progress
-                  </p>
-                  <p className="text-[13px] leading-6 text-slate-600">
-                    Complete all 9 questions to see your score and area-wise
-                    snapshot.
-                  </p>
-                </div>
-                <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-                  {step + 1} / {QUESTIONS.length}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {currentQuestion.options.map((option) => {
-                  const selected = answers[currentQuestion.id] === option.score;
-
-                  return (
-                    <button
-                      key={option.label}
-                      type="button"
-                      onClick={() => handleAnswerSelect(option.score)}
-                      className={`w-full rounded-[16px] border px-5 py-4 text-left text-[15px] leading-7 transition ${
-                        selected
-                          ? "border-[#0B3B6E] bg-[#EEF5FB] text-[#0B3B6E]"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-[#0B3B6E]"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  disabled={step === 0}
-                  className="rounded-md border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 disabled:opacity-50"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={answers[currentQuestion.id] === undefined}
-                  className="rounded-md bg-[#0B3B6E] px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
-                >
-                  {step === QUESTIONS.length - 1
-                    ? "Show result"
-                    : "Next question"}
-                </button>
-              </div>
-            </JourneyPanel>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            <AssessmentResult result={result} />
-
-            <div className="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
-              <JourneyPanel
-                eyebrow="Important note"
-                title="For awareness, not product advice"
-                subtitle="Use this result as a simple checkpoint, not as a final judgement about your finances."
-              >
-                <div className="space-y-4 text-[15px] leading-7 text-slate-600">
-                  <p>
-                    This result is designed to help you reflect on your current
-                    money situation. It is not personal financial advice and it
-                    does not compare or recommend any mutual fund schemes.
-                  </p>
-                  <p>
-                    If one or two areas look weaker, that does not mean things
-                    are failing overall. It simply shows where a guided
-                    conversation may help you prioritise better.
-                  </p>
-                </div>
-              </JourneyPanel>
-
-              <JourneyPanel
-                eyebrow="Where to go next"
-                title="Continue from the path that feels most useful"
-                subtitle="You can move into a goal-based journey, explore fit, or speak with us directly."
-              >
-                <div className="grid gap-4 md:grid-cols-3">
-                  {RELATED_PATHS.map((card) => (
-                    <div
-                      key={card.title}
-                      className="rounded-[16px] border border-slate-200 bg-[#FAFAFA] p-5"
-                    >
-                      <h3 className="text-[18px] font-semibold text-slate-900">
-                        {card.title}
-                      </h3>
-                      <p className="mt-3 text-[14px] leading-7 text-slate-600">
-                        {card.copy}
-                      </p>
-                      <Link
-                        href={card.href}
-                        className="mt-4 inline-flex text-sm font-medium text-[#0B3B6E]"
-                      >
-                        {card.label}
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </JourneyPanel>
-            </div>
-          </div>
-        )}
-      </section>
+      <FinancialWellnessAssessmentModule
+        showResult={showResult}
+        currentStep={step + 1}
+        totalSteps={QUESTIONS.length}
+        progress={progress}
+        questionTitle={currentQuestion.title}
+        options={currentQuestion.options}
+        selectedScore={answers[currentQuestion.id]}
+        onSelect={handleAnswerSelect}
+        onBack={handleBack}
+        onNext={handleNext}
+        result={result}
+        relatedPaths={RELATED_PATHS}
+      />
     </div>
   );
 }

@@ -18,7 +18,6 @@ const Index = () => {
 
       <HomeInvestTrack data={homeInvestTrackData} />
 
-      {/* Insights Desk Section */}
       <HomeBlog title={homeBlogData.title} subtitle={homeBlogData.subtitle} />
 
       <StayConnected />
