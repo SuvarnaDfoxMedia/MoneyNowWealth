@@ -18,6 +18,7 @@ const fundReturnsSchema = new Schema(
     y5_cagr: { type: Number, default: null },
     y10_cagr: { type: Number, default: null },
     ytd: { type: Number, default: null },
+    since_inception: { type: Number, default: null },
     annual: yearValueMapField,
   },
   { _id: false },
@@ -39,14 +40,31 @@ const benchmarkTrailingSchema = new Schema(
   { _id: false },
 );
 
+const frontendVisibilitySchema = new Schema(
+  {
+    groups: {
+      type: Schema.Types.Mixed,
+      default: () => ({}),
+    },
+    fields: {
+      type: Schema.Types.Mixed,
+      default: () => ({}),
+    },
+  },
+  { _id: false },
+);
+
 export interface IMFFund extends Document {
   scheme_code?: string;
   isin?: string;
+  isin_number?: string;
   fund_name: string;
   amc_id: mongoose.Types.ObjectId;
   category_id: mongoose.Types.ObjectId;
   plan_type?: "Regular" | "Direct" | "";
   option_type?: "Growth" | "IDCW" | "";
+  nav_Current?: number | null;
+  aum?: number | null;
   aum_cr?: number | null;
   expense_ratio?: number | null;
   returns?: {
@@ -60,14 +78,20 @@ export interface IMFFund extends Document {
     y5_cagr?: number | null;
     y10_cagr?: number | null;
     ytd?: number | null;
+    since_inception?: number | null;
     annual?: Map<string, number | null> | Record<string, number | null>;
   };
   risk_metrics?: {
     sharpe_3y?: number | null;
+    sharpe_5y?: number | null;
     std_dev_3y?: number | null;
+    std_dev_5y?: number | null;
     beta_3y?: number | null;
+    beta_5y?: number | null;
     alpha_3y?: number | null;
+    alpha_5y?: number | null;
     max_drawdown_5y?: number | null;
+    max_drawdown_10y?: number | null;
     turnover_ratio?: number | null;
   };
   fund_manager?: string;
@@ -100,12 +124,25 @@ export interface IMFFund extends Document {
   investment_strategy?: string;
   top_holdings?: string[];
   asset_allocation?: {
+    domestic_equity_pct?: number | null;
+    international_equity_pct?: number | null;
     equity_pct?: number | null;
     debt_pct?: number | null;
     other_pct?: number | null;
+    gold_pct?: number | null;
+    cash_pct?: number | null;
+  };
+  equity_allocation?: {
+    large_cap_pct?: number | null;
+    mid_cap_pct?: number | null;
+    small_cap_pct?: number | null;
   };
   tax_type?: string;
   riskometer_label?: string;
+  frontend_visibility?: {
+    groups?: Map<string, boolean> | Record<string, boolean>;
+    fields?: Map<string, boolean> | Record<string, boolean>;
+  };
   is_active: number;
   is_deleted: boolean;
   deleted_at?: Date | null;
@@ -117,20 +154,28 @@ const mfFundSchema = new Schema<IMFFund>(
   {
     scheme_code: { type: String, trim: true, default: "", index: true },
     isin: { type: String, trim: true, default: "", index: true },
+    isin_number: { type: String, trim: true, default: "", index: true },
     fund_name: { type: String, required: true, trim: true, index: true },
     amc_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFAmc", required: true, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", required: true, index: true },
     plan_type: { type: String, enum: ["Regular", "Direct", ""], default: "" },
     option_type: { type: String, enum: ["Growth", "IDCW", ""], default: "" },
+    nav_Current: { type: Number, default: null },
+    aum: { type: Number, default: null },
     aum_cr: { type: Number, default: null },
     expense_ratio: { type: Number, default: null },
     returns: { type: fundReturnsSchema, default: () => ({}) },
     risk_metrics: {
       sharpe_3y: { type: Number, default: null },
+      sharpe_5y: { type: Number, default: null },
       std_dev_3y: { type: Number, default: null },
+      std_dev_5y: { type: Number, default: null },
       beta_3y: { type: Number, default: null },
+      beta_5y: { type: Number, default: null },
       alpha_3y: { type: Number, default: null },
+      alpha_5y: { type: Number, default: null },
       max_drawdown_5y: { type: Number, default: null },
+      max_drawdown_10y: { type: Number, default: null },
       turnover_ratio: { type: Number, default: null },
     },
     fund_manager: { type: String, trim: true, default: "" },
@@ -150,12 +195,25 @@ const mfFundSchema = new Schema<IMFFund>(
     investment_strategy: { type: String, trim: true, default: "" },
     top_holdings: [{ type: String, trim: true }],
     asset_allocation: {
+      domestic_equity_pct: { type: Number, default: null },
+      international_equity_pct: { type: Number, default: null },
       equity_pct: { type: Number, default: null },
       debt_pct: { type: Number, default: null },
       other_pct: { type: Number, default: null },
+      gold_pct: { type: Number, default: null },
+      cash_pct: { type: Number, default: null },
+    },
+    equity_allocation: {
+      large_cap_pct: { type: Number, default: null },
+      mid_cap_pct: { type: Number, default: null },
+      small_cap_pct: { type: Number, default: null },
     },
     tax_type: { type: String, trim: true, default: "" },
     riskometer_label: { type: String, trim: true, default: "" },
+    frontend_visibility: {
+      type: frontendVisibilitySchema,
+      default: () => ({ groups: {}, fields: {} }),
+    },
     is_active: { type: Number, default: 1, index: true },
     is_deleted: { type: Boolean, default: false, index: true },
     deleted_at: { type: Date, default: null },
