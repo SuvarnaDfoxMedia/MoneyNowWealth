@@ -22,7 +22,6 @@ export interface StackedBarLineChartDatum {
 interface StackedBarLineChartProps {
   data: StackedBarLineChartDatum[];
   height?: number;
-  showLegend?: boolean;
   xAxisDataKey?: string;
   xAxisLabel?: string;
   xAxisTickFormatter?: (value: number | string) => string;
@@ -36,7 +35,6 @@ const formatAmount = (value: number | string) =>
 export default function StackedBarLineChart({
   data,
   height = 320,
-  showLegend = true,
   xAxisDataKey = "label",
   xAxisLabel,
   xAxisTickFormatter,
@@ -116,24 +114,22 @@ export default function StackedBarLineChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      {showLegend ? (
-        <ChartLegend
-          items={[
-            {
-              label: "Invested Amount",
-              color: "#2563EB",
-            },
-            {
-              label: "Growth",
-              color: "#34A853",
-            },
-            {
-              label: "Total SIP Value",
-              color: "#FB923C",
-            },
-          ]}
-        />
-      ) : null}
+      <ChartLegend
+        items={[
+          {
+            label: "Invested Amount",
+            color: "#2563EB",
+          },
+          {
+            label: "Growth",
+            color: "#34A853",
+          },
+          {
+            label: "Total SIP Value",
+            color: "#FB923C",
+          },
+        ]}
+      />
     </div>
   );
 }

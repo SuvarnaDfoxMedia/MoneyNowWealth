@@ -11,7 +11,7 @@ export default function FinancialWellnessSectionCard({
 }: FinancialWellnessSectionCardProps) {
   return (
     <div
-      className={`rounded-[20px] bg-white p-5 shadow-[0_16px_36px_rgba(8,40,69,0.1)] md:p-6 ${className}`.trim()}
+      className={`rounded-[8px] bg-white p-5 shadow-[0_16px_36px_rgba(8,40,69,0.1)] md:p-6 ${className}`.trim()}
     >
       {children}
     </div>

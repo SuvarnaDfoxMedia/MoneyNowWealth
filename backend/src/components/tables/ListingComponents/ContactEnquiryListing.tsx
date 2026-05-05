@@ -63,8 +63,8 @@ export default function ContactEnquiryListing() {
 
     if (
       storedPath &&
-      !storedPath.includes("/contactenquiry") &&
-      currentPath.includes("/contactenquiry")
+      !storedPath.includes("/contact-enquiry") &&
+      currentPath.includes("/contact-enquiry")
     ) {
       markTabSwitch();
     }
@@ -129,7 +129,7 @@ export default function ContactEnquiryListing() {
     const handleNavClick = () => {
       setTimeout(() => {
         const currentPath = window.location.pathname;
-        if (!currentPath.includes("/contactenquiry")) {
+        if (!currentPath.includes("/contact-enquiry")) {
           markTabSwitch();
         }
       }, 100);

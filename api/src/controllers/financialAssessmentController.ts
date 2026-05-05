@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { financialAssessmentService } from "../services/financialAssessmentService";
 import { syncLeadToGetResponse } from "../services/getresponseService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
+import { recaptchaService } from "../services/recaptchaService";
 
 /* ============================================
    Helper: Parse Request Body
@@ -41,7 +42,14 @@ const normalizeLeadEmail = (email: unknown) =>
 
 const normalizeLeadPhone = (phone: unknown) =>
   typeof phone === "string" || typeof phone === "number"
-    ? String(phone).trim()
+    ? (() => {
+        const raw = String(phone).trim();
+        if (!raw) return "";
+        if (raw.startsWith("+")) return raw;
+        const digits = raw.replace(/\D/g, "");
+        if (digits.length === 10) return `+91${digits}`;
+        return `+${digits}`;
+      })()
     : "";
 
 /* ============================================
@@ -88,6 +96,25 @@ if (!name || !email || !phone) {
 
     if (!isMoneyLifeCheck && monthly_income <= 0) {
       return sendError(res, "Income must be greater than 0", 400);
+    }
+
+    if (body.lead_source === "financial_wellness_enquiry") {
+      const recaptchaResult = await recaptchaService.verify({
+        token: String(body.recaptcha_token || ""),
+        expectedAction: "financial_wellness_enquiry_submit",
+        minScore: 0.5,
+        remoteIp: req.ip,
+      });
+
+      if (!recaptchaResult.ok) {
+        return sendError(
+          res,
+          recaptchaResult.message,
+          recaptchaResult.statusCode,
+          null,
+          { recaptcha: recaptchaResult.details ?? null },
+        );
+      }
     }
 
 const assessment =
@@ -175,6 +202,8 @@ export const getAssessments = async (req: Request, res: Response) => {
       includeDeleted = "false",
       sortField = "created_at",
       sortOrder = "desc",
+      leadSource = "",
+      assessmentVariant = "",
     } = req.query;
 
     const result = await financialAssessmentService.getAll({
@@ -184,6 +213,8 @@ export const getAssessments = async (req: Request, res: Response) => {
       includeDeleted: includeDeleted === "true",
       sortField: String(sortField),
       sortOrder: sortOrder as "asc" | "desc",
+      leadSource: String(leadSource || ""),
+      assessmentVariant: String(assessmentVariant || ""),
     });
 
     return sendSuccess(res, "Assessments fetched successfully", result, 200);

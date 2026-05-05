@@ -3,6 +3,7 @@ import Image from "next/image";
 import AssessmentResult from "@/components/assessment/AssessmentResult";
 import FinancialWellnessModuleIntro from "@/components/assessment/FinancialWellnessModuleIntro";
 import FinancialWellnessQuestionCard from "@/components/assessment/FinancialWellnessQuestionCard";
+import FinancialWellnessResultView from "@/components/assessment/FinancialWellnessResultView";
 import FinancialWellnessResultSupport from "@/components/assessment/FinancialWellnessResultSupport";
 import FinancialWellnessSectionCard from "@/components/assessment/FinancialWellnessSectionCard";
 
@@ -58,20 +59,21 @@ export default function FinancialWellnessAssessmentModule({
         style={sectionStyle}
       >
         <div className="mx-auto max-w-7xl">
-          <FinancialWellnessModuleIntro showResult={showResult} />
+          {!showResult ? (
+            <FinancialWellnessModuleIntro showResult={showResult} />
+          ) : null}
 
           {!showResult ? (
             <div className="mt-10 grid items-center gap-6 lg:mt-12 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-              <FinancialWellnessSectionCard className="overflow-hidden">
+              <FinancialWellnessSectionCard className="overflow-hidden rounded-[8px] p-0">
                 <Image
                   src="/images/financial-wellness-pointer.png"
                   alt="Financial wellness illustration"
                   width={640}
                   height={660}
-                  className="h-auto w-full rounded-[14px] object-contain"
+                  className="block h-full w-full object-cover"
                 />
               </FinancialWellnessSectionCard>
-
               <FinancialWellnessQuestionCard
                 currentStep={currentStep}
                 totalSteps={totalSteps}
@@ -84,8 +86,12 @@ export default function FinancialWellnessAssessmentModule({
                 onNext={onNext}
               />
             </div>
+          ) : "pillar_results" in result ? (
+            <div className="rounded-[8px] bg-white p-4 shadow-[0_18px_50px_rgba(6,36,68,0.08)] md:p-6 lg:p-10">
+              <FinancialWellnessResultView result={result} />
+            </div>
           ) : (
-            <div className="mt-10 rounded-[28px] bg-white p-4 shadow-[0_18px_50px_rgba(6,36,68,0.08)] md:p-6 lg:mt-12 lg:p-8">
+            <div className="mt-10 rounded-[8px] bg-white p-4 shadow-[0_18px_50px_rgba(6,36,68,0.08)] md:p-6 lg:mt-12 lg:p-8">
               <AssessmentResult result={result} />
               <FinancialWellnessResultSupport relatedPaths={relatedPaths} />
             </div>

@@ -191,13 +191,6 @@ const COPY = {
   },
 } as const;
 
-const heroMetrics = [
-  { label: "Time needed", value: "3 minutes" },
-  { label: "Questions", value: "9 simple prompts" },
-  { label: "What you get", value: "Personal snapshot" },
-  { label: "Next step", value: "Score + report" },
-];
-
 const RELATED_PATHS = [
   {
     title: "See how your SIP can grow towards Rs 1 Crore",
@@ -293,13 +286,28 @@ export default function FinancialWellnessPage() {
       ? pillarResults.reduce((sum, item) => sum + item.score, 0) /
         pillarResults.length
       : 0;
+    const score = Math.round((averageScore / 3) * 100);
     const category =
-      averageScore <= 1
+      score <= 39
         ? "Needs attention"
-        : averageScore < 2.5
+        : score <= 69
           ? "Could be strengthened"
           : "On a reasonable track";
-    const score = Math.round((averageScore / 3) * 100);
+
+    const question_answers = shuffledQuestions.map((question) => {
+      const selectedScore = answers[question.id] ?? 0;
+      const selectedOption = question.options.find(
+        (option) => option.score === selectedScore,
+      );
+
+      return {
+        id: question.id,
+        pillar: question.area,
+        question: question.title,
+        answer: selectedOption?.label || "",
+        score: selectedScore,
+      };
+    });
 
     const summary =
       category === "Needs attention"
@@ -314,18 +322,10 @@ export default function FinancialWellnessPage() {
       category,
       summary,
       pillar_results: pillarResults,
+      question_answers,
       next_step: "Talk to someone about this",
     };
   }, [answers, shuffledQuestions]);
-
-  const summaryMetrics = showResult
-    ? [
-        { label: "Overall score", value: `${result.score}/100` },
-        { label: "Current picture", value: result.category },
-        { label: "Question set", value: "9 answers" },
-        { label: "Next step", value: "Talk to us" },
-      ]
-    : heroMetrics;
 
   const handleAnswerSelect = (score: number) => {
     setAnswers((prev) => ({
@@ -358,8 +358,7 @@ export default function FinancialWellnessPage() {
     <div className="bg-[#F5F7FB] text-[#111111]">
       <JourneyBanner
         title="Your money life, at a glance"
-        subtitle="Answer a few simple questions to get a quick snapshot of your current money habits, safety net, investing, goals, and debt position."
-        metrics={summaryMetrics}
+        subtitle="This short check is designed to help you reflect on where you stand today across a few key areas – daily money habits, emergency readiness, investing behaviour, clarity about future goals, and comfort with debt."
       />
 
       <FinancialWellnessAssessmentModule

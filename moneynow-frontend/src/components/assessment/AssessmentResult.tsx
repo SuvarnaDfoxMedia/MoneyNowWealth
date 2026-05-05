@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import {
-  ArrowRight,
   Download,
   FileText,
   ShieldCheck,
@@ -56,7 +52,6 @@ type AssessmentResultData = LegacyResultData | JourneyResultData;
 
 interface AssessmentResultProps {
   result: AssessmentResultData;
-  pdfHref?: string | null;
 }
 
 const legacyPillars = [
@@ -135,19 +130,11 @@ const statusStyle = {
   "On a reasonable track": "border-[#C8E2CD] bg-[#F3FBF4] text-[#25633A]",
 };
 
-const PDF_BRAND_NAVY = [7, 42, 74] as const;
-const PDF_BRAND_BLUE = [15, 76, 129] as const;
-const PDF_BRAND_SKY = [94, 214, 255] as const;
-const PDF_TEXT = [34, 52, 71] as const;
-
 const isJourneyResult = (
   result: AssessmentResultData,
 ): result is JourneyResultData => "pillar_results" in result;
 
-export default function AssessmentResult({
-  result,
-  pdfHref,
-}: AssessmentResultProps) {
+export default function AssessmentResult({ result }: AssessmentResultProps) {
   const journeyVariant = isJourneyResult(result);
   const safeScore = Math.max(0, Math.min(100, Number(result.score) || 0));
   const scoreBands = journeyVariant ? journeyScoreBands : legacyScoreBands;
@@ -177,258 +164,11 @@ export default function AssessmentResult({
         };
       });
 
-  const handleRichPdfDownload = () => {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 40;
-    const generatedOn = new Date();
-
-    const pillarRows = journeyVariant
-      ? result.pillar_results.map((pillar) => ({
-          label: pillar.title,
-          description: pillar.copy,
-          value: Math.max(0, Math.min(100, Math.round((pillar.score / 3) * 100))),
-        }))
-      : legacyPillars.map((pillar) => ({
-          label: pillar.label,
-          description: pillar.description,
-          value: Math.max(
-            0,
-            Math.min(100, Number(result.chart_data?.[pillar.key] ?? 0)),
-          ),
-        }));
-
-    doc.setFillColor(...PDF_BRAND_NAVY);
-    doc.rect(0, 0, pageWidth, 104, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("MoneyNow Financial Wellness Report", margin, 46);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(
-      `Generated on ${generatedOn.toLocaleDateString("en-GB")} at ${generatedOn.toLocaleTimeString(
-        "en-IN",
-        {
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      )}`,
-      margin,
-      68,
-    );
-    doc.text(`Report ID: ${result.id}`, margin, 86);
-
-    doc.setTextColor(...PDF_TEXT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text(result.category, margin, 142);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(
-      doc.splitTextToSize(
-        journeyVariant
-          ? result.summary
-          : "This personalized report summarizes your current financial wellness score, your pillar-wise financial readiness, and the immediate recommendations generated from your assessment.",
-        pageWidth - margin * 2,
-      ),
-      margin,
-      162,
-    );
-
-    doc.setFillColor(246, 250, 253);
-    doc.roundedRect(margin, 200, pageWidth - margin * 2, 92, 16, 16, "F");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("Score summary", margin + 18, 225);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(`Overall score: ${safeScore}/100`, margin + 18, 246);
-    doc.text(`Score band: ${activeBand.label}`, margin + 18, 264);
-    doc.text(`Category: ${result.category}`, margin + 18, 282);
-
-    const barX = margin + 220;
-    const barY = 232;
-    const barWidth = pageWidth - barX - margin - 18;
-    const barHeight = 18;
-
-    let currentX = barX;
-    scoreBands.forEach((band) => {
-      const width = (barWidth * (band.max - band.min + 1)) / 101;
-      const [r, g, b] = [
-        parseInt(band.color.slice(1, 3), 16),
-        parseInt(band.color.slice(3, 5), 16),
-        parseInt(band.color.slice(5, 7), 16),
-      ];
-      doc.setFillColor(r, g, b);
-      doc.roundedRect(currentX, barY, width, barHeight, 8, 8, "F");
-      currentX += width;
-    });
-
-    const markerX = barX + (barWidth * safeScore) / 100;
-    doc.setDrawColor(...PDF_BRAND_NAVY);
-    doc.setLineWidth(1.5);
-    doc.line(markerX, barY - 24, markerX, barY + barHeight + 20);
-    doc.setFillColor(...PDF_BRAND_NAVY);
-    doc.roundedRect(markerX - 32, barY - 42, 64, 18, 9, 9, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    doc.text(`${safeScore}`, markerX, barY - 29, { align: "center" });
-
-    if (journeyVariant) {
-      autoTable(doc, {
-        startY: 322,
-        head: [["Area", "Status", "Guidance"]],
-        body: result.pillar_results.map((pillar) => [
-          pillar.title,
-          pillar.status,
-          pillar.copy,
-        ]),
-        theme: "grid",
-        headStyles: { fillColor: [...PDF_BRAND_BLUE], textColor: 255 },
-        styles: {
-          fontSize: 10,
-          cellPadding: 8,
-          textColor: [...PDF_TEXT],
-          valign: "top",
-        },
-        columnStyles: {
-          0: { cellWidth: 120, fontStyle: "bold" },
-          1: { cellWidth: 120 },
-          2: { cellWidth: pageWidth - margin * 2 - 240 },
-        },
-        margin: { left: margin, right: margin },
-      });
-    } else {
-      autoTable(doc, {
-        startY: 322,
-        head: [["Recommendation area", "Guidance"]],
-        body: reportCards.map(({ key, title }) => [title, result.report[key]]),
-        theme: "grid",
-        headStyles: { fillColor: [...PDF_BRAND_BLUE], textColor: 255 },
-        styles: {
-          fontSize: 10,
-          cellPadding: 8,
-          textColor: [...PDF_TEXT],
-          valign: "top",
-        },
-        columnStyles: {
-          0: { cellWidth: 120, fontStyle: "bold" },
-          1: { cellWidth: pageWidth - margin * 2 - 120 },
-        },
-        margin: { left: margin, right: margin },
-      });
-    }
-
-    let chartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } })
-      .lastAutoTable?.finalY
-      ? (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!
-          .finalY + 28
-      : 520;
-
-    if (chartY > pageHeight - 210) {
-      doc.addPage();
-      chartY = 60;
-    }
-
-    doc.setTextColor(...PDF_TEXT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(15);
-    doc.text(
-      journeyVariant ? "Area-wise snapshot" : "Pillar-wise readiness chart",
-      margin,
-      chartY,
-    );
-
-    const chartX = margin;
-    const chartWidth = pageWidth - margin * 2;
-    const trackWidth = chartWidth - 160;
-    let rowY = chartY + 28;
-
-    pillarRows.forEach((row) => {
-      const descriptionLines = doc.splitTextToSize(row.description, 140);
-      const contentHeight = Math.max(16, descriptionLines.length * 10);
-      const rowHeight = Math.max(52, contentHeight + 24);
-
-      if (rowY + rowHeight > pageHeight - 120) {
-        doc.addPage();
-        rowY = 60;
-      }
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(row.label, chartX, rowY);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(96, 117, 136);
-      doc.text(descriptionLines, chartX, rowY + 14);
-
-      const trackX = chartX + 150;
-      const trackY = rowY - 2;
-      doc.setFillColor(232, 239, 245);
-      doc.roundedRect(trackX, trackY, trackWidth, 16, 8, 8, "F");
-
-      doc.setFillColor(...PDF_BRAND_SKY);
-      doc.roundedRect(
-        trackX,
-        trackY,
-        Math.max((trackWidth * row.value) / 100, 10),
-        16,
-        8,
-        8,
-        "F",
-      );
-
-      doc.setTextColor(...PDF_BRAND_NAVY);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(`${Math.round(row.value)}/100`, trackX + trackWidth + 8, rowY + 2);
-
-      rowY += rowHeight;
-    });
-
-    doc.setTextColor(...PDF_TEXT);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("Next step", margin, rowY + 8);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(
-      doc.splitTextToSize(
-        `Use this report as a starting point for discussion. ${result.next_step || "Book Discovery Call"} if you want help converting these insights into an action plan.`,
-        pageWidth - margin * 2,
-      ),
-      margin,
-      rowY + 28,
-    );
-
-    const totalPages = doc.getNumberOfPages();
-    for (let page = 1; page <= totalPages; page += 1) {
-      doc.setPage(page);
-      doc.setDrawColor(222, 230, 238);
-      doc.line(margin, pageHeight - 36, pageWidth - margin, pageHeight - 36);
-      doc.setFontSize(9);
-      doc.setTextColor(117, 132, 148);
-      doc.text("MoneyNow Wealth", margin, pageHeight - 20);
-      doc.text(`Page ${page} of ${totalPages}`, pageWidth - margin, pageHeight - 20, {
-        align: "right",
-      });
-    }
-
-    doc.save(`Financial_Wellness_Report_${result.id}.pdf`);
-  };
-
   return (
     <section className="font-poppins space-y-8">
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-[24px] bg-[#F6FAFD] p-6 shadow-[0_14px_36px_rgba(6,36,68,0.06)] md:p-8">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.24em] text-[#0F4C81]">
+        <div className="rounded-[14px] bg-[#F6FAFD] p-6 shadow-[0_14px_36px_rgba(6,36,68,0.06)] md:p-8">
+          <p className="text-[16px] font-semibold uppercase tracking-[0.4em] text-[#0F4C81]">
             Assessment outcome
           </p>
           <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -444,7 +184,7 @@ export default function AssessmentResult({
             </div>
 
             <div
-              className={`min-w-[180px] rounded-[24px] bg-gradient-to-br ${tone} px-6 py-5 text-white`}
+              className={`min-w-[180px] rounded-[14px] bg-gradient-to-br ${tone} px-6 py-5 text-white`}
             >
               <p className="text-sm uppercase tracking-[0.24em] text-white/80">
                 Wellness score
@@ -461,23 +201,23 @@ export default function AssessmentResult({
             </div>
           </div>
 
-          <div className="mt-8 rounded-[22px] border border-[#DCE8F1] bg-white px-4 py-5 md:px-5">
+          <div className="mt-8 rounded-[14px] border border-[#DCE8F1] bg-white px-4 py-5 md:px-5">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-[14px] font-semibold text-[#0B3258]">
+                <p className="text-[18px] font-semibold text-[#0B3258]">
                   Your financial well-being score
                 </p>
-                <p className="text-[13px] leading-6 text-[#617487]">
+                <p className="text-[16px] leading-7 text-[#667789]">
                   A quick visual view of where your current result sits.
                 </p>
               </div>
-              <div className="rounded-full bg-[#EAF5FD] px-4 py-2 text-[13px] font-semibold text-[#0F4C81]">
+              <div className="rounded-full bg-[#EAF5FD] px-4 py-2 text-[14px] font-semibold text-[#0F4C81]">
                 Category: {result.category}
               </div>
             </div>
 
             <div className="relative mt-8 px-1 pb-10 pt-12">
-              <div className="flex h-[18px] overflow-hidden rounded-full shadow-inner">
+              <div className="flex h-[22px] overflow-hidden rounded-full shadow-inner">
                 {scoreBands.map((band) => (
                   <div
                     key={band.label}
@@ -494,14 +234,14 @@ export default function AssessmentResult({
                 className="absolute top-0 -translate-x-1/2"
                 style={{ left: `${safeScore}%` }}
               >
-                <div className="rounded-full bg-[#072A4A] px-4 py-2 text-[13px] font-semibold text-white shadow-[0_12px_28px_rgba(7,42,74,0.18)]">
+                <div className="rounded-full bg-[#072A4A] px-4 py-2 text-[14px] font-semibold text-white shadow-[0_12px_28px_rgba(7,42,74,0.18)]">
                   Your score: {safeScore}
                 </div>
                 <div className="mx-auto h-10 w-[2px] bg-[#072A4A]" />
               </div>
 
               <div
-                className={`mt-4 grid gap-3 text-[12px] text-[#5D7387] ${
+                className={`mt-4 grid gap-3 text-[13px] text-[#5D7387] ${
                   journeyVariant ? "md:grid-cols-3" : "md:grid-cols-5"
                 }`}
               >
@@ -518,7 +258,7 @@ export default function AssessmentResult({
                 ))}
               </div>
 
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-0.5 text-[12px] text-[#708394]">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-between px-0.5 text-[13px] text-[#708394]">
                 <span>0</span>
                 <span>25</span>
                 <span>50</span>
@@ -529,7 +269,7 @@ export default function AssessmentResult({
           </div>
         </div>
 
-        <div className="rounded-[24px] bg-[#072A4A] p-6 text-white md:p-8">
+        <div className="rounded-[14px] bg-[#072A4A] p-6 text-white md:p-8">
           <p className="text-[13px] uppercase tracking-[0.24em] text-white/65">
             {journeyVariant ? "Five-area snapshot" : "Four-pillar snapshot"}
           </p>
@@ -544,7 +284,7 @@ export default function AssessmentResult({
               <div key={item.key}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[15px] font-medium">{item.title}</p>
+                    <p className="text-[18px] font-medium">{item.title}</p>
                     <p className="text-[13px] text-white/68">{item.subtitle}</p>
                   </div>
                   <span className="text-sm font-semibold text-[#8FD3FF]">
@@ -569,7 +309,7 @@ export default function AssessmentResult({
           {result.pillar_results.map((pillar) => (
             <article
               key={pillar.key}
-              className="rounded-[20px] border border-[#E3EDF5] bg-[#F8FBFE] p-5"
+              className="rounded-[14px] border border-[#E3EDF5] bg-[#F8FBFE] p-5"
             >
               <h3 className="text-[18px] font-semibold text-[#111111]">
                 {pillar.title}
@@ -593,7 +333,7 @@ export default function AssessmentResult({
           {reportCards.map(({ key, title, icon: Icon }) => (
             <article
               key={key}
-              className="rounded-[20px] border border-[#E3EDF5] bg-[#F8FBFE] p-5"
+              className="rounded-[14px] border border-[#E3EDF5] bg-[#F8FBFE] p-5"
             >
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-[#E8F3FB] p-2 text-[#0F4C81]">
@@ -617,47 +357,6 @@ export default function AssessmentResult({
           plan or professional advice, and it does not evaluate or compare any
           mutual fund schemes.
         </p>
-      </div>
-
-      <div className="rounded-[24px] border border-[#DCE8F1] bg-[#F7FBFE] p-6 text-center md:p-8">
-        <h3 className="text-[30px] font-semibold text-[#0B3258]">
-          What to do next
-        </h3>
-        <p className="mx-auto mt-3 max-w-[760px] text-[15px] leading-7 text-[#556477]">
-          Review your report, save the PDF, and speak with an advisor if you
-          want help turning these insights into an action plan.
-        </p>
-
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          {pdfHref ? (
-            <a
-              href={pdfHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
-            >
-              <Download className="h-4 w-4" />
-              Open saved report
-            </a>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={handleRichPdfDownload}
-            className="inline-flex min-w-[210px] items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] bg-white px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
-          >
-            <Download className="h-4 w-4" />
-            Download report
-          </button>
-
-          <Link
-            href="/contact-us"
-            className="inline-flex min-w-[240px] items-center justify-center gap-2 rounded-[14px] border border-[#0F4C81] px-5 py-3 text-[15px] font-semibold text-[#0F4C81] transition hover:bg-[#EAF5FD]"
-          >
-            {result.next_step || "Book Discovery Call"}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
       </div>
     </section>
   );

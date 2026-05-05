@@ -60,6 +60,8 @@ interface GetAssessmentParams {
   includeDeleted?: boolean;
   sortField?: string;
   sortOrder?: "asc" | "desc";
+  leadSource?: string;
+  assessmentVariant?: string;
 }
 
 interface PaginationResult<T> {
@@ -156,26 +158,38 @@ export const financialAssessmentService = {
   ): Promise<IFinancialAssessment> => {
     if (
       data.assessment_variant === "money_life_check" ||
-      (Array.isArray(data.question_answers) && data.question_answers.length > 0)
+      (Array.isArray(data.question_answers) && data.question_answers.length > 0) ||
+      (Array.isArray(data.pillar_report) && data.pillar_report.length > 0)
     ) {
       const answers = (data.question_answers || []) as JourneyQuestionAnswer[];
+      const hasAnswers = answers.length > 0;
+      const hasPillarReport =
+        Array.isArray(data.pillar_report) && data.pillar_report.length > 0;
 
-      if (!answers.length) {
-        throw new Error("Question answers are required");
+      if (!hasAnswers && !hasPillarReport) {
+        throw new Error("Question answers or pillar report are required");
       }
 
-      const grouped = answers.reduce<Record<string, JourneyQuestionAnswer[]>>(
-        (accumulator, answer) => {
-          const key = answer.pillar || "other";
-          if (!accumulator[key]) accumulator[key] = [];
-          accumulator[key].push(answer);
-          return accumulator;
-        },
-        {},
-      );
+      let pillarReport = (data.pillar_report || []) as NonNullable<
+        IFinancialAssessment["pillar_report"]
+      >;
+      let overallStatus = data.category as IFinancialAssessment["category"];
+      let overallScore = Number(data.score || 0);
+      let chartData = (data.chart_data || {}) as Record<string, number>;
+      let summaryText = data.summary_text || "";
 
-      const pillarReport = Object.entries(JOURNEY_PILLAR_COPY).map(
-        ([key, config]) => {
+      if (hasAnswers) {
+        const grouped = answers.reduce<Record<string, JourneyQuestionAnswer[]>>(
+          (accumulator, answer) => {
+            const key = answer.pillar || "other";
+            if (!accumulator[key]) accumulator[key] = [];
+            accumulator[key].push(answer);
+            return accumulator;
+          },
+          {},
+        );
+
+        pillarReport = Object.entries(JOURNEY_PILLAR_COPY).map(([key, config]) => {
           const scores = (grouped[key] || []).map((item) => Number(item.score) || 0);
           const average = scores.length
             ? Math.round(
@@ -198,38 +212,39 @@ export const financialAssessmentService = {
             score: average,
             copy,
           };
-        },
-      );
+        });
 
-      const averageScore = pillarReport.length
-        ? pillarReport.reduce((sum, item) => sum + item.score, 0) /
-          pillarReport.length
-        : 0;
-      const overallStatus =
-        averageScore <= 1
-          ? "Needs attention"
-          : averageScore < 2.5
-            ? "Could be strengthened"
-            : "On a reasonable track";
-      const overallScore = Math.max(
-        0,
-        Math.min(100, Math.round((averageScore / 3) * 100)),
-      );
+        const averageScore = pillarReport.length
+          ? pillarReport.reduce((sum, item) => sum + item.score, 0) /
+            pillarReport.length
+          : 0;
+        overallScore = Math.max(
+          0,
+          Math.min(100, Math.round((averageScore / 3) * 100)),
+        );
+        overallStatus =
+          overallScore <= 39
+            ? "Needs attention"
+            : overallScore <= 69
+              ? "Could be strengthened"
+              : "On a reasonable track";
 
-      const chartData = pillarReport.reduce<Record<string, number>>(
-        (accumulator, item) => {
-          accumulator[`${item.key}_score`] = Math.round((item.score / 3) * 100);
-          return accumulator;
-        },
-        {},
-      );
+        chartData = pillarReport.reduce<Record<string, number>>(
+          (accumulator, item) => {
+            accumulator[`${item.key}_score`] = Math.round((item.score / 3) * 100);
+            return accumulator;
+          },
+          {},
+        );
+        summaryText = buildJourneySummary(overallStatus);
+      }
 
       const assessment = new FinancialAssessment({
         ...data,
         assessment_variant: "money_life_check",
         category: overallStatus,
         score: overallScore,
-        summary_text: buildJourneySummary(overallStatus),
+        summary_text: summaryText,
         question_answers: answers,
         pillar_report: pillarReport,
         chart_data: chartData,
@@ -370,6 +385,8 @@ export const financialAssessmentService = {
     includeDeleted = false,
     sortField = "created_at",
     sortOrder = "desc",
+    leadSource = "",
+    assessmentVariant = "",
   }: GetAssessmentParams): Promise<
     PaginationResult<IFinancialAssessment>
   > => {
@@ -377,6 +394,13 @@ export const financialAssessmentService = {
 
     const filter: Record<string, any> = {};
     if (!includeDeleted) filter.is_deleted = false;
+    if (leadSource.trim()) {
+      const escaped = leadSource.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.lead_source = { $regex: `^${escaped}$`, $options: "i" };
+    }
+    if (assessmentVariant.trim()) {
+      filter.assessment_variant = assessmentVariant.trim();
+    }
 
     if (search.trim()) {
       filter.$or = [

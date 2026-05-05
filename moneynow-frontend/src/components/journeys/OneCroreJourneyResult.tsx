@@ -7,24 +7,6 @@ import StartSipReportDownload from "@/components/start-sip/charts-sub-components
 import StartSipChartBlock from "@/components/start-sip/charts-sub-components/StartSipChartBlock";
 import { START_SIP_DEFAULT_VALUES } from "@/stores/startSipStore";
 
-const CHART_INFO_ITEMS = [
-  {
-    label: "Invested Amount",
-    copy: "Shows the total contribution built up across the selected time period.",
-    color: "#2F6EF2",
-  },
-  {
-    label: "Growth",
-    copy: "Shows the returns earned on top of the invested SIP amount.",
-    color: "#56B95B",
-  },
-  {
-    label: "Total SIP Value",
-    copy: "Shows the combined future value of invested amount plus growth.",
-    color: "#FB923C",
-  },
-] as const;
-
 type JourneyFormState = {
   wealth_amount: number;
   user_sip_capacity: number;
@@ -49,10 +31,7 @@ type AllocationItem = {
 
 type ChartDataItem = {
   year: number;
-  label: string;
-  invested: number;
-  growth: number;
-  totalValue?: number;
+  label?: string;
   [key: string]: unknown;
 };
 
@@ -235,7 +214,6 @@ export default function OneCroreJourneyResult({
               <StackedBarLineChart
                 data={oneCroreChartData}
                 height={380}
-                showLegend={false}
                 xAxisDataKey="year"
                 xAxisLabel="Year"
                 xAxisTickFormatter={(value) => {
@@ -258,12 +236,10 @@ export default function OneCroreJourneyResult({
               copy="A simple breakdown of how much comes from your contribution versus potential growth."
             >
               <div className="grid gap-3 md:grid-cols-2">
-                {CHART_INFO_ITEMS.map((item, index) => (
+                {allocationData.map((item) => (
                   <div
                     key={item.label}
-                    className={`rounded-[8px] border border-[#E7E7E7] bg-[#FAFBFD] p-4 ${
-                      index === CHART_INFO_ITEMS.length - 1 ? "md:col-span-2" : ""
-                    }`}
+                    className="rounded-[8px] border border-[#E7E7E7] bg-[#FAFBFD] p-4"
                   >
                     <div className="flex items-center gap-2">
                       <span
@@ -274,9 +250,21 @@ export default function OneCroreJourneyResult({
                         {item.label}
                       </p>
                     </div>
-                    <p className="mt-3 text-[14px] leading-6 text-[#4B5563]">
-                      {item.copy}
+                    <p className="mt-3 text-[22px] font-semibold text-[#111111]">
+                      Rs. {Number(item.value).toLocaleString("en-IN")}
                     </p>
+                    <p className="mt-1 text-[13px] text-[#4B5563]">
+                      {item.share}% of total projected amount
+                    </p>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#E8EEF5]">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(item.share, 100)}%`,
+                          backgroundColor: item.color,
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

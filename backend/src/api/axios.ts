@@ -46,6 +46,11 @@ const handleRequest = async <T>(
   request: Promise<{ data: ApiResponse<T> }>,
 ): Promise<ApiResponse<T>> => {
   const res = await request;
+  if (!res || typeof res.data !== "object" || res.data === null) {
+    throw new Error(
+      "Invalid API response. Check VITE_API_BASE and backend API availability.",
+    );
+  }
   return res.data;
 };
 

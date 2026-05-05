@@ -3,12 +3,14 @@ import { ContactEnquiry } from "../models/contactEnquiryModel";
 import { PartnerEnquiry } from "../models/partnerEnquiryModel";
 import { OneCroreJourneyEnquiry } from "../models/oneCroreJourneyEnquiryModel";
 import { WhoWeWorkWithEnquiry } from "../models/whoWeWorkWithEnquiryModel";
+import FinancialAssessment from "../models/financialAssessmentModel";
 
 export const ENQUIRY_MODULES = [
   "contact-enquiries",
   "partner-enquiries",
   "one-crore-journey-enquiries",
   "who-we-work-with-enquiries",
+  "financial-wellness-enquiries",
 ] as const;
 
 export type EnquiryModule = (typeof ENQUIRY_MODULES)[number];
@@ -26,16 +28,36 @@ const enquiryModels: Record<EnquiryModule, EnquiryModel> = {
   "partner-enquiries": PartnerEnquiry,
   "one-crore-journey-enquiries": OneCroreJourneyEnquiry,
   "who-we-work-with-enquiries": WhoWeWorkWithEnquiry,
+  "financial-wellness-enquiries": FinancialAssessment,
 };
 
-const getUnreadFilter = (userId: mongoose.Types.ObjectId) => ({
-  is_active: 1,
-  readBy: {
-    $not: {
-      $elemMatch: { userId },
+const getUnreadFilter = (
+  module: EnquiryModule,
+  userId: mongoose.Types.ObjectId,
+) => {
+  const baseReadFilter = {
+    readBy: {
+      $not: {
+        $elemMatch: { userId },
+      },
     },
-  },
-});
+  };
+
+  if (module === "financial-wellness-enquiries") {
+    return {
+      ...baseReadFilter,
+      is_active: true,
+      is_deleted: false,
+      assessment_variant: "money_life_check",
+      lead_source: { $regex: "^financial_wellness_enquiry$", $options: "i" },
+    };
+  }
+
+  return {
+    ...baseReadFilter,
+    is_active: 1,
+  };
+};
 
 const resolveModules = (modules?: string[], markAll?: boolean): EnquiryModule[] => {
   if (markAll || !modules?.length) {
@@ -59,7 +81,7 @@ const getUnreadCountsForUser = async (userId: string) => {
   const countEntries = await Promise.all(
     ENQUIRY_MODULES.map(async (module) => {
       const count = await enquiryModels[module].countDocuments(
-        getUnreadFilter(objectId),
+        getUnreadFilter(module, objectId),
       );
       return [module, count] as const;
     }),
@@ -75,6 +97,7 @@ const getUnreadCountsForUser = async (userId: string) => {
       "partner-enquiries": 0,
       "one-crore-journey-enquiries": 0,
       "who-we-work-with-enquiries": 0,
+      "financial-wellness-enquiries": 0,
     },
   );
 
@@ -95,7 +118,7 @@ export const enquiryUnreadService = {
 
     await Promise.all(
       selectedModules.map((module) =>
-        enquiryModels[module].updateMany(getUnreadFilter(objectId), {
+        enquiryModels[module].updateMany(getUnreadFilter(module, objectId), {
           $push: {
             readBy: {
               userId: objectId,

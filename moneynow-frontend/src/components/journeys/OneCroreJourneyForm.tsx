@@ -98,8 +98,7 @@ export default function OneCroreJourneyForm({
   onFormChange,
 }: OneCroreJourneyFormProps) {
   return (
-    <section className="rounded-[8px] bg-[#ffffff] p-4 shadow-[0_10px_20px_rgba(15,23,42,0.12)] md:py-[30px] px-[20px]">
-      <p className="text-[16px] text-[#000000]">
+<section className="rounded-[8px] bg-[#ffffff] p-4 shadow-[0_4px_10px_rgba(15,23,42,0.08)] md:py-[30px] px-[20px]">      <p className="text-[16px] text-[#000000]">
         See how your SIP can grow towards Rs.1crore and beyond
       </p>
       <h2 className="text-[32px] mb-[30px] font-semibold leading-[60px] text-[#000000]">

@@ -7,7 +7,8 @@ export type EnquiryModule =
   | "contact-enquiries"
   | "partner-enquiries"
   | "one-crore-journey-enquiries"
-  | "who-we-work-with-enquiries";
+  | "who-we-work-with-enquiries"
+  | "financial-wellness-enquiries";
 
 export interface EnquiryUnreadCounts {
   total: number;
@@ -27,6 +28,7 @@ const ENQUIRY_MODULES: EnquiryModule[] = [
   "partner-enquiries",
   "one-crore-journey-enquiries",
   "who-we-work-with-enquiries",
+  "financial-wellness-enquiries",
 ];
 
 const ZERO_COUNTS: Record<EnquiryModule, number> = {
@@ -34,6 +36,7 @@ const ZERO_COUNTS: Record<EnquiryModule, number> = {
   "partner-enquiries": 0,
   "one-crore-journey-enquiries": 0,
   "who-we-work-with-enquiries": 0,
+  "financial-wellness-enquiries": 0,
 };
 
 const ENQUIRY_UNREAD_QUERY_KEY = ["admin", "enquiries", "unread-count"];
@@ -139,7 +142,7 @@ export const useEnquiryUnread = () => {
   const markModulesAsRead = useCallback(
     async (modules?: EnquiryModule[]) =>
       markAsReadMutation.mutateAsync(modules?.length ? modules : undefined),
-    [markAsReadMutation],
+    [markAsReadMutation.mutateAsync],
   );
 
   return {

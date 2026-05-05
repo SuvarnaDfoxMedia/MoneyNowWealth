@@ -24,6 +24,7 @@ import ContactEnquiryListing from "./components/tables/ListingComponents/Contact
 import PartnershipEnquiryListing from "./components/tables/ListingComponents/PartnershipEnquiryListing";
 import OneCroreJourneyEnquiryListing from "./components/tables/ListingComponents/OneCroreJourneyEnquiryListing";
 import WhoWeWorkWithEnquiryListing from "./components/tables/ListingComponents/WhoWeWorkWithEnquiryListing";
+import FinancialWellnessEnquiryListing from "./components/tables/ListingComponents/FinancialWellnessEnquiryListing";
 import CmsPageListing from "./components/tables/ListingComponents/CmsPageListing";
 import TopicListing from "./components/tables/ListingComponents/TopicListing";
 
@@ -83,6 +84,7 @@ import MFTopHoldingDetail from "./components/mf/MFTopHoldingDetail";
 import MFTopHoldingHistoryPage from "./components/mf/MFTopHoldingHistoryPage";
 import NavDashboardPage from "./modules/nav/pages/NavDashboardPage";
 import NavHistoryPage from "./modules/nav/pages/NavHistoryPage";
+import FinancialWellnessEnquiryView from "./components/FinancialWellnessEnquiryView";
 
 export default function App() {
   return (
@@ -228,6 +230,14 @@ function AppRoutes() {
         <Route
           path="/:role/who-we-work-with-enquiry"
           element={<WhoWeWorkWithEnquiryListing />}
+        />
+        <Route
+          path="/:role/financial-wellness-enquiry"
+          element={<FinancialWellnessEnquiryListing />}
+        />
+        <Route
+          path="/:role/financial-wellness-enquiry/view/:id"
+          element={<FinancialWellnessEnquiryView />}
         />
 
         {/* MF Admin Module */}

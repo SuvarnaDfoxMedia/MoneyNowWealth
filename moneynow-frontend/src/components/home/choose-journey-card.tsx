@@ -128,7 +128,7 @@ const ChooseJourneyCard = () => {
             <div className="relative z-10 flex h-full flex-col justify-end p-6 md:p-8">
               <div className="max-w-[316px] xl:max-w-[332px]">
                 <h3 className="text-[23px] font-semibold leading-[140%]  text-[#ffffff] md:text-[24px] xl:text-[24px]">
-                  See how your SIP can grow towards ₹1 Crore and beyond
+                  See how your SIP can grow towards ₹1 Crore and beyond 
                 </h3>
                 <p className="mt-3 max-h-0 overflow-hidden text-[16px] leading-[1.5] text-white/92 opacity-0 transition-all duration-700 max-md:max-h-[240px] max-md:opacity-100 group-hover:max-h-[320px] group-hover:opacity-100">
                   Start with an amount you&apos;re comfortable investing each
