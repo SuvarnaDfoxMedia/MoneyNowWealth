@@ -32,6 +32,15 @@ export default function NavDashboardPage() {
   const change = latestQuery.data?.data?.change;
   const returns = returnsQuery.data?.data;
   const selectedScheme = selectedSchemeQuery.data?.data;
+  const returnRows = [
+    { label: "1 Day", item: returns?.d1 },
+    { label: "1 Month", item: returns?.m1 },
+    { label: "3 Months", item: returns?.m3 },
+    { label: "6 Months", item: returns?.m6 },
+    { label: "1 Year", item: returns?.y1 },
+    { label: "5 Years", item: returns?.y5 },
+    { label: "10 Years", item: returns?.y10 },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -107,46 +116,55 @@ export default function NavDashboardPage() {
         />
         <StatCard
           label="1Y Return"
-          value={formatPercent(returns?.y1.value)}
+          value={formatPercent(returns?.y1?.value)}
           meta={
-            returns?.y1.pastDate
+            returns?.y1?.pastDate
               ? `Since ${formatDate(returns.y1.pastDate)}`
               : "History unavailable"
           }
-          tone={statTone(returns?.y1.value)}
+          tone={statTone(returns?.y1?.value)}
         />
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_420px]">
         <ChartCard
           title="NAV Trend"
           data={historyQuery.data?.data ?? []}
           loading={historyQuery.isLoading}
         />
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">Returns</h2>
-          <div className="mt-4 space-y-4">
-            {[
-              ["1 Day", returns?.d1.value, returns?.d1.pastDate],
-              ["1 Month", returns?.m1.value, returns?.m1.pastDate],
-              ["1 Year", returns?.y1.value, returns?.y1.pastDate],
-            ].map(([label, value, date]) => (
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Returns</h2>
+              <p className="mt-1 text-xs text-gray-500">
+                Based on the latest available NAV
+              </p>
+            </div>
+            {returnsQuery.isFetching ? (
+              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+                Updating
+              </span>
+            ) : null}
+          </div>
+          {/* <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1"> */}
+          <div className="mt-4 max-h-[260px] overflow-y-auto pr-1 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            {returnRows.map(({ label, item }) => (
               <div
-                key={String(label)}
-                className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                key={label}
+                className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5"
               >
                 <div>
                   <p className="text-sm font-medium text-gray-700">{label}</p>
                   <p className="mt-1 text-xs text-gray-500">
-                    {typeof date === "string"
-                      ? formatDate(date)
+                    {item?.pastDate
+                      ? `Since ${formatDate(item.pastDate)}`
                       : "Historical NAV unavailable"}
                   </p>
                 </div>
                 <p
-                  className={`text-lg font-semibold ${toneClassForReturn(value as number | null)}`}
+                  className={`text-lg font-semibold ${toneClassForReturn(item?.value)}`}
                 >
-                  {formatPercent(value as number | null)}
+                  {formatPercent(item?.value)}
                 </p>
               </div>
             ))}

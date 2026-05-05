@@ -55,6 +55,17 @@ const emptyForm = () => ({
   bond_holdings: "",
   assets_top_10_holdings_pct: "",
   turnover_pct: "",
+  domestic_equity_pct: "",
+  international_equity_pct: "",
+  debt_pct: "",
+  other_pct: "",
+  gold_pct: "",
+  cash_pct: "",
+  large_cap_pct: "",
+  mid_cap_pct: "",
+  small_cap_pct: "",
+  tax_type: "",
+  riskometer_label: "",
   top_holdings_summary: "",
   is_active: 1,
 });
@@ -133,6 +144,18 @@ export default function AddMFTopHolding() {
         assets_top_10_holdings_pct:
           data.assets_top_10_holdings_pct?.toString?.() || "",
         turnover_pct: data.turnover_pct?.toString?.() || "",
+        domestic_equity_pct: data.domestic_equity_pct?.toString?.() || "",
+        international_equity_pct:
+          data.international_equity_pct?.toString?.() || "",
+        debt_pct: data.debt_pct?.toString?.() || "",
+        other_pct: data.other_pct?.toString?.() || "",
+        gold_pct: data.gold_pct?.toString?.() || "",
+        cash_pct: data.cash_pct?.toString?.() || "",
+        large_cap_pct: data.large_cap_pct?.toString?.() || "",
+        mid_cap_pct: data.mid_cap_pct?.toString?.() || "",
+        small_cap_pct: data.small_cap_pct?.toString?.() || "",
+        tax_type: data.tax_type || "",
+        riskometer_label: data.riskometer_label || "",
         top_holdings_summary: Array.isArray(data.top_holdings_summary)
           ? data.top_holdings_summary.join("\n")
           : "",
@@ -244,6 +267,28 @@ export default function AddMFTopHolding() {
       nextErrors.holdings = "At least one holding row is required";
     }
 
+    const percentageFields: Array<[keyof typeof form, string]> = [
+      ["assets_top_10_holdings_pct", "% Assets Top 10 Holdings"],
+      ["domestic_equity_pct", "% Domestic Equity"],
+      ["international_equity_pct", "% International Equity"],
+      ["debt_pct", "% Fixed Income"],
+      ["other_pct", "% Others"],
+      ["gold_pct", "% Gold"],
+      ["cash_pct", "% Cash"],
+      ["large_cap_pct", "Large Cap %"],
+      ["mid_cap_pct", "Mid Cap %"],
+      ["small_cap_pct", "Small Cap %"],
+    ];
+
+    percentageFields.forEach(([field, label]) => {
+      const rawValue = String(form[field] ?? "").trim();
+      if (!rawValue) return;
+      const value = Number(rawValue);
+      if (Number.isNaN(value) || value < 0 || value > 100) {
+        nextErrors[field] = `${label} must be between 0 and 100`;
+      }
+    });
+
     filledHoldings.forEach((row, index) => {
       if (!row.name.trim())
         nextErrors[`holding_${index}_name`] = "Holding name is required";
@@ -291,6 +336,19 @@ export default function AddMFTopHolding() {
         form.assets_top_10_holdings_pct,
       ),
       turnover_pct: toNumberOrNull(form.turnover_pct),
+      domestic_equity_pct: toNumberOrNull(form.domestic_equity_pct),
+      international_equity_pct: toNumberOrNull(
+        form.international_equity_pct,
+      ),
+      debt_pct: toNumberOrNull(form.debt_pct),
+      other_pct: toNumberOrNull(form.other_pct),
+      gold_pct: toNumberOrNull(form.gold_pct),
+      cash_pct: toNumberOrNull(form.cash_pct),
+      large_cap_pct: toNumberOrNull(form.large_cap_pct),
+      mid_cap_pct: toNumberOrNull(form.mid_cap_pct),
+      small_cap_pct: toNumberOrNull(form.small_cap_pct),
+      tax_type: form.tax_type.trim(),
+      riskometer_label: form.riskometer_label.trim(),
       is_active: form.is_active,
     };
 
@@ -528,6 +586,94 @@ export default function AddMFTopHolding() {
               onChange={(e) => setField("turnover_pct", e.target.value)}
             />
             {error(errors.turnover_pct)}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-4 text-lg font-semibold text-[#043f79]">
+            Asset Allocation
+          </h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["domestic_equity_pct", "% Domestic Equity"],
+              ["international_equity_pct", "% International Equity"],
+              ["debt_pct", "% Fixed Income"],
+              ["other_pct", "% Others"],
+              ["gold_pct", "% Gold"],
+              ["cash_pct", "% Cash"],
+            ].map(([key, label]) => (
+              <div key={key}>
+                <label className="mb-2 block font-medium text-gray-700">
+                  {label}
+                </label>
+                <input
+                  className={inputClass(errors[key])}
+                  value={String(form[key as keyof typeof form] ?? "")}
+                  onChange={(e) =>
+                    setField(key as keyof typeof form, e.target.value as never)
+                  }
+                />
+                {error(errors[key])}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-4 text-lg font-semibold text-[#043f79]">
+            Equity Allocation
+          </h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[
+              ["large_cap_pct", "Large Cap %"],
+              ["mid_cap_pct", "Mid Cap %"],
+              ["small_cap_pct", "Small Cap %"],
+            ].map(([key, label]) => (
+              <div key={key}>
+                <label className="mb-2 block font-medium text-gray-700">
+                  {label}
+                </label>
+                <input
+                  className={inputClass(errors[key])}
+                  value={String(form[key as keyof typeof form] ?? "")}
+                  onChange={(e) =>
+                    setField(key as keyof typeof form, e.target.value as never)
+                  }
+                />
+                {error(errors[key])}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-4 text-lg font-semibold text-[#043f79]">
+            Fund Overview and Risk
+          </h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block font-medium text-gray-700">
+                Tax Type
+              </label>
+              <input
+                className={inputClass(errors.tax_type)}
+                value={form.tax_type}
+                onChange={(e) => setField("tax_type", e.target.value)}
+              />
+              {error(errors.tax_type)}
+            </div>
+
+            <div>
+              <label className="mb-2 block font-medium text-gray-700">
+                Risk-o-meter
+              </label>
+              <input
+                className={inputClass(errors.riskometer_label)}
+                value={form.riskometer_label}
+                onChange={(e) => setField("riskometer_label", e.target.value)}
+              />
+              {error(errors.riskometer_label)}
+            </div>
           </div>
         </div>
 

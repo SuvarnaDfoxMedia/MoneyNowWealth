@@ -1,6 +1,6 @@
 import NavHistory from "../models/navHistoryModel";
 
-export type ReturnWindow = "d1" | "m1" | "y1";
+export type ReturnWindow = "d1" | "m1" | "m3" | "m6" | "y1" | "y5" | "y10";
 
 export type ReturnValue = {
   value: number | null;
@@ -52,12 +52,29 @@ export const calculateReturnValue = (
 
 const targetDateForWindow = (currentDate: Date, window: ReturnWindow) => {
   const target = normalizeDateOnly(currentDate);
-  if (window === "d1") {
-    target.setDate(target.getDate() - 1);
-  } else if (window === "m1") {
-    target.setMonth(target.getMonth() - 1);
-  } else {
-    target.setFullYear(target.getFullYear() - 1);
+  switch (window) {
+    case "d1":
+      target.setDate(target.getDate() - 1);
+      break;
+    case "m1":
+      target.setMonth(target.getMonth() - 1);
+      break;
+    case "m3":
+      target.setMonth(target.getMonth() - 3);
+      break;
+    case "m6":
+      target.setMonth(target.getMonth() - 6);
+      break;
+    case "y5":
+      target.setFullYear(target.getFullYear() - 5);
+      break;
+    case "y10":
+      target.setFullYear(target.getFullYear() - 10);
+      break;
+    case "y1":
+    default:
+      target.setFullYear(target.getFullYear() - 1);
+      break;
   }
   return target;
 };
@@ -100,11 +117,15 @@ export const calculateReturns = async (
     return {
       d1: empty("Current NAV not found"),
       m1: empty("Current NAV not found"),
+      m3: empty("Current NAV not found"),
+      m6: empty("Current NAV not found"),
       y1: empty("Current NAV not found"),
+      y5: empty("Current NAV not found"),
+      y10: empty("Current NAV not found"),
     };
   }
 
-  const windows: ReturnWindow[] = ["d1", "m1", "y1"];
+  const windows: ReturnWindow[] = ["d1", "m1", "m3", "m6", "y1", "y5", "y10"];
   const entries = await Promise.all(
     windows.map(async (window) => {
       const past = await findPastNav(

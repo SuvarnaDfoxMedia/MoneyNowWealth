@@ -37,6 +37,17 @@ export const computeTopHoldingSnapshotHash = (payload: Record<string, unknown>) 
     bond_holdings: payload.bond_holdings ?? null,
     assets_top_10_holdings_pct: payload.assets_top_10_holdings_pct ?? null,
     turnover_pct: payload.turnover_pct ?? null,
+    domestic_equity_pct: payload.domestic_equity_pct ?? null,
+    international_equity_pct: payload.international_equity_pct ?? null,
+    debt_pct: payload.debt_pct ?? null,
+    other_pct: payload.other_pct ?? null,
+    gold_pct: payload.gold_pct ?? null,
+    cash_pct: payload.cash_pct ?? null,
+    large_cap_pct: payload.large_cap_pct ?? null,
+    mid_cap_pct: payload.mid_cap_pct ?? null,
+    small_cap_pct: payload.small_cap_pct ?? null,
+    tax_type: payload.tax_type ?? "",
+    riskometer_label: payload.riskometer_label ?? "",
     top_holdings_summary: payload.top_holdings_summary ?? [],
     holdings: payload.holdings ?? [],
   };
@@ -72,7 +83,8 @@ const normalizeHoldingsRows = (value: unknown) => {
       credit_quality_india: String(item?.credit_quality_india || "").trim(),
       country: String(item?.country || "").trim(),
     }))
-    .filter((item) => item.name);
+    .filter((item) => item.name)
+    .sort((a, b) => (b.net_assets_pct || 0) - (a.net_assets_pct || 0));
 };
 
 const resolveFundReference = async (payload: any) => {
@@ -121,6 +133,17 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
     bond_holdings: toNumberOrNull(payload?.bond_holdings),
     assets_top_10_holdings_pct: toNumberOrNull(payload?.assets_top_10_holdings_pct),
     turnover_pct: toNumberOrNull(payload?.turnover_pct),
+    domestic_equity_pct: toNumberOrNull(payload?.domestic_equity_pct),
+    international_equity_pct: toNumberOrNull(payload?.international_equity_pct),
+    debt_pct: toNumberOrNull(payload?.debt_pct),
+    other_pct: toNumberOrNull(payload?.other_pct),
+    gold_pct: toNumberOrNull(payload?.gold_pct),
+    cash_pct: toNumberOrNull(payload?.cash_pct),
+    large_cap_pct: toNumberOrNull(payload?.large_cap_pct),
+    mid_cap_pct: toNumberOrNull(payload?.mid_cap_pct),
+    small_cap_pct: toNumberOrNull(payload?.small_cap_pct),
+    tax_type: String(payload?.tax_type || "").trim(),
+    riskometer_label: String(payload?.riskometer_label || "").trim(),
     top_holdings_summary: normalizeHoldingsSummary(payload?.top_holdings_summary),
     holdings,
     holdings_count: holdings.length,
