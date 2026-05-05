@@ -23,6 +23,7 @@ export const FUND_RETURN_KEYS = [
   "y5_cagr",
   "y10_cagr",
   "ytd",
+  "since_inception",
 ] as const;
 
 export const BENCHMARK_TRAILING_KEYS = [
@@ -48,6 +49,7 @@ export const MF_ANNUAL_YEARS = [
   "2019",
   "2018",
   "2017",
+  "2016",
 ] as const;
 
 type NumericMap = Record<string, unknown> | Map<string, unknown> | null | undefined;

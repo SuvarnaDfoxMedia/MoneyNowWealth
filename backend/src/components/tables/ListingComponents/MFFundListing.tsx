@@ -237,6 +237,11 @@ export default function MFFundListing() {
             cacheModuleState(MODULE_KEY);
             navigate(`/${role}/mf/funds/edit/${row._id}`);
           }}
+          onView={() => {
+            markEditNavigation();
+            cacheModuleState(MODULE_KEY);
+            navigate(`/${role}/mf/funds/view/${row._id}`);
+          }}
           onDelete={() => setDeleteModalId(row._id)}
         />
       ),

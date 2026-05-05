@@ -69,6 +69,18 @@ const normalizeBenchmarkTrailing = (value: any) =>
 
 const normalizeBenchmarkAnnual = (value: any) => normalizeYearValueMap(value);
 
+const normalizeVisibilityMap = (value: any) => {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).map(([key, rawValue]) => [key, toBoolean(rawValue)]),
+  );
+};
+
+const normalizeFrontendVisibility = (value: any) => ({
+  groups: normalizeVisibilityMap(value?.groups),
+  fields: normalizeVisibilityMap(value?.fields),
+});
+
 export const getFunds = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
   const filter: any = { is_deleted: false };
@@ -315,10 +327,18 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     fund_name: normalizedFundName,
     amc_id: amcId,
     category_id: categoryId,
-    aum_cr: toNumberOrNull(payload.aum_cr),
+    isin: String(payload.isin ?? payload.isin_number ?? "").trim(),
+    isin_number: String(payload.isin_number ?? payload.isin ?? "").trim(),
+    nav_Current: toNumberOrNull(payload.nav_Current ?? payload.nav_current),
+    aum: toNumberOrNull(payload.aum ?? payload.aum_cr),
+    aum_cr: toNumberOrNull(payload.aum_cr ?? payload.aum),
     expense_ratio: toNumberOrNull(payload.expense_ratio),
     returns: normalizeFundReturns({
       ...payload.returns,
+      since_inception:
+        payload.returns?.since_inception ??
+        payload.returns?.["Since Inception Return"] ??
+        payload.inception_return,
       y1: payload.returns?.y1 ?? payload.y1_return,
       y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
       y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
@@ -326,10 +346,15 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     }),
     risk_metrics: {
       sharpe_3y: toNumberOrNull(payload.risk_metrics?.sharpe_3y),
+      sharpe_5y: toNumberOrNull(payload.risk_metrics?.sharpe_5y),
       std_dev_3y: toNumberOrNull(payload.risk_metrics?.std_dev_3y),
+      std_dev_5y: toNumberOrNull(payload.risk_metrics?.std_dev_5y),
       beta_3y: toNumberOrNull(payload.risk_metrics?.beta_3y),
+      beta_5y: toNumberOrNull(payload.risk_metrics?.beta_5y),
       alpha_3y: toNumberOrNull(payload.risk_metrics?.alpha_3y),
+      alpha_5y: toNumberOrNull(payload.risk_metrics?.alpha_5y),
       max_drawdown_5y: toNumberOrNull(payload.risk_metrics?.max_drawdown_5y),
+      max_drawdown_10y: toNumberOrNull(payload.risk_metrics?.max_drawdown_10y),
       turnover_ratio: toNumberOrNull(payload.risk_metrics?.turnover_ratio),
     },
     launch_date: toDateOrNull(payload.launch_date),
@@ -342,10 +367,20 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     is_popular: toBoolean(payload.is_popular),
     top_holdings: topHoldings,
     asset_allocation: {
+      domestic_equity_pct: toNumberOrNull(payload.asset_allocation?.domestic_equity_pct),
+      international_equity_pct: toNumberOrNull(payload.asset_allocation?.international_equity_pct),
       equity_pct: toNumberOrNull(payload.asset_allocation?.equity_pct),
       debt_pct: toNumberOrNull(payload.asset_allocation?.debt_pct),
       other_pct: toNumberOrNull(payload.asset_allocation?.other_pct),
+      gold_pct: toNumberOrNull(payload.asset_allocation?.gold_pct ?? payload.asset_allocation?.["% Gold"]),
+      cash_pct: toNumberOrNull(payload.asset_allocation?.cash_pct ?? payload.asset_allocation?.["% Cash"]),
     },
+    equity_allocation: {
+      large_cap_pct: toNumberOrNull(payload.equity_allocation?.large_cap_pct),
+      mid_cap_pct: toNumberOrNull(payload.equity_allocation?.mid_cap_pct),
+      small_cap_pct: toNumberOrNull(payload.equity_allocation?.small_cap_pct),
+    },
+    frontend_visibility: normalizeFrontendVisibility(payload.frontend_visibility),
     is_active: payload.is_active ?? 1,
     is_deleted: false,
   });
@@ -374,6 +409,10 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.returns || payload.y1_return || payload.y3_cagr || payload.y5_cagr || payload.y10_cagr) {
     updateData.returns = normalizeFundReturns({
       ...payload.returns,
+      since_inception:
+        payload.returns?.since_inception ??
+        payload.returns?.["Since Inception Return"] ??
+        payload.inception_return,
       y1: payload.returns?.y1 ?? payload.y1_return,
       y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
       y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
@@ -384,25 +423,52 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.risk_metrics) {
     updateData.risk_metrics = {
       sharpe_3y: toNumberOrNull(payload.risk_metrics.sharpe_3y),
+      sharpe_5y: toNumberOrNull(payload.risk_metrics.sharpe_5y),
       std_dev_3y: toNumberOrNull(payload.risk_metrics.std_dev_3y),
+      std_dev_5y: toNumberOrNull(payload.risk_metrics.std_dev_5y),
       beta_3y: toNumberOrNull(payload.risk_metrics.beta_3y),
+      beta_5y: toNumberOrNull(payload.risk_metrics.beta_5y),
       alpha_3y: toNumberOrNull(payload.risk_metrics.alpha_3y),
+      alpha_5y: toNumberOrNull(payload.risk_metrics.alpha_5y),
       max_drawdown_5y: toNumberOrNull(payload.risk_metrics.max_drawdown_5y),
+      max_drawdown_10y: toNumberOrNull(payload.risk_metrics.max_drawdown_10y),
       turnover_ratio: toNumberOrNull(payload.risk_metrics.turnover_ratio),
     };
   }
 
   if (payload.asset_allocation) {
     updateData.asset_allocation = {
+      domestic_equity_pct: toNumberOrNull(payload.asset_allocation.domestic_equity_pct),
+      international_equity_pct: toNumberOrNull(payload.asset_allocation.international_equity_pct),
       equity_pct: toNumberOrNull(payload.asset_allocation.equity_pct),
       debt_pct: toNumberOrNull(payload.asset_allocation.debt_pct),
       other_pct: toNumberOrNull(payload.asset_allocation.other_pct),
+      gold_pct: toNumberOrNull(payload.asset_allocation.gold_pct ?? payload.asset_allocation["% Gold"]),
+      cash_pct: toNumberOrNull(payload.asset_allocation.cash_pct ?? payload.asset_allocation["% Cash"]),
+    };
+  }
+
+  if (payload.equity_allocation) {
+    updateData.equity_allocation = {
+      large_cap_pct: toNumberOrNull(payload.equity_allocation.large_cap_pct),
+      mid_cap_pct: toNumberOrNull(payload.equity_allocation.mid_cap_pct),
+      small_cap_pct: toNumberOrNull(payload.equity_allocation.small_cap_pct),
     };
   }
 
   if (payload.scheme_code !== undefined) updateData.scheme_code = String(payload.scheme_code || "").trim();
+  if (payload.isin !== undefined || payload.isin_number !== undefined) {
+    updateData.isin = String(payload.isin ?? payload.isin_number ?? "").trim();
+    updateData.isin_number = String(payload.isin_number ?? payload.isin ?? "").trim();
+  }
   if (payload.fund_name !== undefined) updateData.fund_name = String(payload.fund_name || "").trim();
-  if (payload.aum_cr !== undefined) updateData.aum_cr = toNumberOrNull(payload.aum_cr);
+  if (payload.nav_Current !== undefined || payload.nav_current !== undefined) {
+    updateData.nav_Current = toNumberOrNull(payload.nav_Current ?? payload.nav_current);
+  }
+  if (payload.aum !== undefined || payload.aum_cr !== undefined) {
+    updateData.aum = toNumberOrNull(payload.aum ?? payload.aum_cr);
+    updateData.aum_cr = toNumberOrNull(payload.aum_cr ?? payload.aum);
+  }
   if (payload.expense_ratio !== undefined) updateData.expense_ratio = toNumberOrNull(payload.expense_ratio);
   if (payload.launch_date !== undefined) updateData.launch_date = toDateOrNull(payload.launch_date);
   if (payload.benchmark_index_name !== undefined) {
@@ -430,6 +496,12 @@ if (payload.amc_name || payload.amc_id) {
 
   if (payload.top_holdings !== undefined) {
     updateData.top_holdings = normalizeTopHoldings(payload.top_holdings);
+  }
+
+  if (payload.frontend_visibility !== undefined) {
+    updateData.frontend_visibility = normalizeFrontendVisibility(
+      payload.frontend_visibility,
+    );
   }
 
   const nextSchemeCode = String(updateData.scheme_code ?? currentDoc.scheme_code ?? "").trim();

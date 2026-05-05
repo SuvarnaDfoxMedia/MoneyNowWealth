@@ -252,6 +252,7 @@ function AppRoutes() {
         <Route path="/:role/mf/funds" element={<MFFundListing />} />
         <Route path="/:role/mf/funds/create" element={<AddMFFund />} />
         <Route path="/:role/mf/funds/edit/:id" element={<AddMFFund />} />
+        <Route path="/:role/mf/funds/view/:id" element={<AddMFFund />} />
         <Route path="/:role/nav/dashboard" element={<NavDashboardPage />} />
         <Route path="/:role/nav/history" element={<NavHistoryPage />} />
         <Route path="/:role/mf/nav-dashboard" element={<NavDashboardPage />} />
