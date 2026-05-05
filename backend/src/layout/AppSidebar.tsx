@@ -209,6 +209,12 @@ const AppSidebar: React.FC = () => {
             roles: ["admin"],
             enquiryModule: "who-we-work-with-enquiries",
           },
+          {
+            name: "Financial Wellness",
+            path: `/${role}/financial-wellness-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "financial-wellness-enquiries",
+          },
         ],
       },
       {

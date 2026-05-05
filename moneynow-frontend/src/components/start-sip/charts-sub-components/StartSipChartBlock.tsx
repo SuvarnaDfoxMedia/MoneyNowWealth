@@ -15,12 +15,10 @@ export default function StartSipChartBlock({
 }: StartSipChartBlockProps) {
   return (
     <div>
-      <h3 className="mb-2 font-poppins text-[18px] font-semibold text-[#111111] md:text-[20px]">
+      <h3 className="text-2xl font-bold text-slate-900 mb-4 font-poppins">
         {title}
       </h3>
-      <p className="mb-5 text-[12px] leading-5 text-[#4B5563] md:text-[13px]">
-        {copy}
-      </p>
+      <p className="text-slate-600 mb-5">{copy}</p>
       {children}
     </div>
   );

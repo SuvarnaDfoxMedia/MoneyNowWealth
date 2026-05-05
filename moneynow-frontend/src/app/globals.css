@@ -122,16 +122,23 @@ body {
 }
 
 .one-crore-phone-field .iti {
+  display: block !important;
   width: 100% !important;
+  margin: 0 !important;
+  vertical-align: top !important;
 }
 
 .one-crore-phone-field .iti input {
+  display: block !important;
   width: 100% !important;
   height: 52px !important;
   border-radius: 6px !important;
   border: 1px solid #d8dee8 !important;
   background: #ffffff !important;
   padding-left: 78px !important;
+  margin: 0 !important;
+  padding-bottom: 0 !important;
+  box-sizing: border-box !important;
 }
 
 .one-crore-phone-field .iti__flag-container,

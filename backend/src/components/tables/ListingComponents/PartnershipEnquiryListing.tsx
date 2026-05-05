@@ -71,8 +71,8 @@ export default function PartnershipEnquiryListing() {
 
     if (
       storedPath &&
-      !storedPath.includes("/partnershipenquiry") &&
-      currentPath.includes("/partnershipenquiry")
+      !storedPath.includes("/partnership-enquiry") &&
+      currentPath.includes("/partnership-enquiry")
     ) {
       markTabSwitch();
     }
@@ -134,7 +134,7 @@ export default function PartnershipEnquiryListing() {
     const handleNavClick = () => {
       setTimeout(() => {
         const currentPath = window.location.pathname;
-        if (!currentPath.includes("/partnershipenquiry")) {
+        if (!currentPath.includes("/partnership-enquiry")) {
           markTabSwitch();
         }
       }, 100);

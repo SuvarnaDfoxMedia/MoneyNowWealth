@@ -73,13 +73,13 @@ export default function HeroBanner() {
               transition-colors
             "
             >
-              Start a SIP
+              Start Investing
               <span className="bg-white p-1 rounded-sm text-[#04407B]">
                 <ArrowUpRight size={18} />
               </span>
             </button>
 
-            <button
+            {/* <button
               className="
               group flex items-center gap-3
               bg-[#04407B] hover:bg-[#032F5A]
@@ -94,7 +94,7 @@ export default function HeroBanner() {
               <span className="bg-white p-1 rounded-sm text-[#04407B]">
                 <ArrowUpRight size={18} />
               </span>
-            </button>
+            </button> */}
 
             <button
               className="

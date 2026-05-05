@@ -1,6 +1,11 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 import { capitalizePlugin } from "../plugins/capitalize.plugin";
 
+interface IEnquiryReadEntry {
+  userId: mongoose.Types.ObjectId;
+  readAt: Date;
+}
+
 /* ===============================
    Interface: Financial Assessment
    =============================== */
@@ -69,6 +74,7 @@ export interface IFinancialAssessment extends Document {
   // Tracking
   lead_source: string;
   is_contacted: boolean;
+  readBy?: IEnquiryReadEntry[];
 
   // Audit
   is_active: boolean;
@@ -266,6 +272,20 @@ const financialAssessmentSchema = new Schema<IFinancialAssessment>(
       index: true,
     },
 
+    readBy: {
+      type: [
+        {
+          userId: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          readAt: { type: Date, required: true, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
     // Soft delete
     is_active: {
       type: Boolean,
@@ -323,6 +343,7 @@ financialAssessmentSchema.plugin(capitalizePlugin, {
     "pdf_generated",
 
     "is_contacted",
+    "readBy",
     "is_active",
     "is_deleted",
 
@@ -364,6 +385,7 @@ financialAssessmentSchema.index({ email: 1, created_at: -1 });
 financialAssessmentSchema.index({ score: -1 });
 financialAssessmentSchema.index({ is_deleted: 1, is_active: 1 });
 financialAssessmentSchema.index({ lead_source: 1, created_at: -1 });
+financialAssessmentSchema.index({ "readBy.userId": 1 });
 
 /* ===============================
    Model Export
