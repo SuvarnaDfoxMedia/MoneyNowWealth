@@ -106,7 +106,11 @@ export default function MFTopHoldingHistoryPage() {
       render: (row) => (
         <button
           type="button"
-          onClick={() => navigate(`/${role}/mf/top-holdings/view/${row._id}`)}
+          onClick={() =>
+            navigate(
+              `/${role}/mf/top-holdings/view/${row._id}?source=history&schemeId=${encodeURIComponent(decodedSchemeId)}`,
+            )
+          }
           className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
         >
           <FiEye /> View

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { axiosApi, axiosInstance } from "../../api/axios";
 import { MFFormContainer, MFFormHeader } from "./MFFormShared";
@@ -42,6 +42,9 @@ const formatValue = (value: unknown) =>
 export default function MFTopHoldingDetail() {
   const { id = "", role = "admin" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isHistoryView = searchParams.get("source") === "history";
+  const historySchemeId = searchParams.get("schemeId") || "";
   const [record, setRecord] = useState<TopHoldingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -65,9 +68,12 @@ export default function MFTopHoldingDetail() {
   }, [id, role]);
 
   const holdings = record?.holdings || [];
-  const totalPages = Math.max(Math.ceil(holdings.length / recordsPerPage), 1);
+  const sortedHoldings = holdings
+    .slice()
+    .sort((a, b) => (b.net_assets_pct || 0) - (a.net_assets_pct || 0));
+  const totalPages = Math.max(Math.ceil(sortedHoldings.length / recordsPerPage), 1);
   const pageStart = (page - 1) * recordsPerPage;
-  const paginatedHoldings = holdings
+  const paginatedHoldings = sortedHoldings
     .slice(pageStart, page * recordsPerPage)
     .map((holding, index) => ({ ...holding, __index: pageStart + index }));
 
@@ -138,27 +144,36 @@ export default function MFTopHoldingDetail() {
       label: "Country",
       render: (row) => formatValue(row.country),
     },
-    {
+  ];
+
+  if (!isHistoryView) {
+    columns.push({
       key: "actions",
       label: "Actions",
       render: (row) => (
         <MFRowActions
-          // onEdit={() =>
-          //   navigate(
-          //     `/${role}/mf/top-holdings/edit/${id}?focusHolding=${row.__index ?? 0}`,
-          //   )
-          // }
+          onEdit={() =>
+            navigate(
+              `/${role}/mf/top-holdings/edit/${id}?focusHolding=${row.__index ?? 0}`,
+            )
+          }
           onDelete={() => setDeleteOpen(true)}
         />
       ),
-    },
-  ];
+    });
+  }
 
   return (
     <MFFormContainer>
       <MFFormHeader
-        title="MF Top Holding Details"
-        onBack={() => navigate(`/${role}/mf/top-holdings`)}
+        title={isHistoryView ? "MF Top Holding History Details" : "MF Top Holding Details"}
+        onBack={() =>
+          isHistoryView && historySchemeId
+            ? navigate(
+                `/${role}/mf/top-holdings/history/${encodeURIComponent(historySchemeId)}`,
+              )
+            : navigate(`/${role}/mf/top-holdings`)
+        }
       />
 
       {loading ? (

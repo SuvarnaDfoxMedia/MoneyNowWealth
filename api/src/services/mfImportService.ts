@@ -337,6 +337,17 @@ const TOP_HOLDING_HEADERS = [
   "bond_holdings",
   "assets_top_10_holdings_pct",
   "turnover_pct",
+  "domestic_equity_pct",
+  "international_equity_pct",
+  "debt_pct",
+  "other_pct",
+  "gold_pct",
+  "cash_pct",
+  "large_cap_pct",
+  "mid_cap_pct",
+  "small_cap_pct",
+  "tax_type",
+  "riskometer_label",
   "holding_name",
   "net_assets_pct",
   "market_value",
@@ -701,6 +712,7 @@ const buildTopHoldingSummary = (
 ) =>
   holdings
     .filter((item) => String(item.name || "").trim())
+    .sort((a, b) => (b.net_assets_pct || 0) - (a.net_assets_pct || 0))
     .slice(0, 10)
     .map((item) => {
       const name = String(item.name || "").trim();
@@ -950,6 +962,17 @@ const parseTopHoldingsWorkbook = (workbook: XLSX.WorkBook) => {
         bond_holdings: valueByAliases(row, ["bond_holdings"]),
         assets_top_10_holdings_pct: valueByAliases(row, ["assets_top_10_holdings_pct"]),
         turnover_pct: valueByAliases(row, ["turnover_pct"]),
+        domestic_equity_pct: valueByAliases(row, ["domestic_equity_pct", "domestic_equity"]),
+        international_equity_pct: valueByAliases(row, ["international_equity_pct", "international_equity"]),
+        debt_pct: valueByAliases(row, ["debt_pct", "fixed_income_pct", "fixed_income"]),
+        other_pct: valueByAliases(row, ["other_pct", "others_pct", "others"]),
+        gold_pct: valueByAliases(row, ["gold_pct", "gold"]),
+        cash_pct: valueByAliases(row, ["cash_pct", "cash"]),
+        large_cap_pct: valueByAliases(row, ["large_cap_pct", "large_cap"]),
+        mid_cap_pct: valueByAliases(row, ["mid_cap_pct", "mid_cap"]),
+        small_cap_pct: valueByAliases(row, ["small_cap_pct", "small_cap"]),
+        tax_type: valueByAliases(row, ["tax_type"]),
+        riskometer_label: valueByAliases(row, ["riskometer_label", "riskometer"]),
         holdings: [],
       });
     }
@@ -1015,6 +1038,17 @@ const importTopHoldingsWorkbook = async (
         bond_holdings: parseNumericValue(record.bond_holdings),
         assets_top_10_holdings_pct: parseNumericValue(record.assets_top_10_holdings_pct),
         turnover_pct: parseNumericValue(record.turnover_pct),
+        domestic_equity_pct: parseNumericValue(record.domestic_equity_pct),
+        international_equity_pct: parseNumericValue(record.international_equity_pct),
+        debt_pct: parseNumericValue(record.debt_pct),
+        other_pct: parseNumericValue(record.other_pct),
+        gold_pct: parseNumericValue(record.gold_pct),
+        cash_pct: parseNumericValue(record.cash_pct),
+        large_cap_pct: parseNumericValue(record.large_cap_pct),
+        mid_cap_pct: parseNumericValue(record.mid_cap_pct),
+        small_cap_pct: parseNumericValue(record.small_cap_pct),
+        tax_type: String(record.tax_type || "").trim(),
+        riskometer_label: String(record.riskometer_label || "").trim(),
         top_holdings_summary: topHoldingsSummary,
         holdings,
         holdings_count: holdings.length,
@@ -2039,10 +2073,12 @@ const exportTopHoldingRows = async () => {
     .lean();
 
   return items.flatMap((item: any) => {
-    const holdings = Array.isArray(item.holdings) && item.holdings.length > 0
+    const rawHoldings = Array.isArray(item.holdings) && item.holdings.length > 0
       ? item.holdings
+          .sort((a: any, b: any) => (b.net_assets_pct || 0) - (a.net_assets_pct || 0))
+          .slice(0, 10)
       : [{}];
-    return holdings.map((holding: any) => ({
+    return rawHoldings.map((holding: any) => ({
       scheme_code: item.scheme_code || item.fund_id?.scheme_code || "",
       fund_name: prettyText(item.fund_name || item.fund_id?.fund_name || ""),
       source_standard_name: item.source_standard_name || "",
@@ -2053,6 +2089,17 @@ const exportTopHoldingRows = async () => {
       bond_holdings: item.bond_holdings ?? "",
       assets_top_10_holdings_pct: item.assets_top_10_holdings_pct ?? "",
       turnover_pct: item.turnover_pct ?? "",
+      domestic_equity_pct: item.domestic_equity_pct ?? "",
+      international_equity_pct: item.international_equity_pct ?? "",
+      debt_pct: item.debt_pct ?? "",
+      other_pct: item.other_pct ?? "",
+      gold_pct: item.gold_pct ?? "",
+      cash_pct: item.cash_pct ?? "",
+      large_cap_pct: item.large_cap_pct ?? "",
+      mid_cap_pct: item.mid_cap_pct ?? "",
+      small_cap_pct: item.small_cap_pct ?? "",
+      tax_type: item.tax_type || "",
+      riskometer_label: item.riskometer_label || "",
       holding_name: holding.name || "",
       net_assets_pct: holding.net_assets_pct ?? "",
       market_value: holding.market_value ?? "",

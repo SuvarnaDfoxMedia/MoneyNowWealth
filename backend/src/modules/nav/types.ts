@@ -40,7 +40,11 @@ export type ReturnValue = {
 export type ReturnsResponse = {
   d1: ReturnValue;
   m1: ReturnValue;
+  m3: ReturnValue;
+  m6: ReturnValue;
   y1: ReturnValue;
+  y5: ReturnValue;
+  y10: ReturnValue;
 };
 
 export type UploadReport = {
