@@ -91,6 +91,7 @@ const emptyForm = () => ({
   plan_type: "Regular",
   option_type: "Growth",
   nav_Current: "",
+  nav_date: null as string | null,
   aum: "",
   expense_ratio: "",
   inception_return: "",
@@ -164,6 +165,17 @@ type AmcOption = {
 
 const toNumberOrNull = (value: string) => (value === "" ? null : Number(value));
 
+const formatNavDate = (value?: string | null) => {
+  if (!value) return "(Date not available)";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "(Date not available)";
+  return `As on ${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}`;
+};
+
 export default function AddMFFund() {
   const { id, role = "admin" } = useParams();
   const navigate = useNavigate();
@@ -229,6 +241,7 @@ export default function AddMFFund() {
         option_type: fund.option_type || "Growth",
         nav_Current:
           fund.nav_Current?.toString?.() || fund.nav_current?.toString?.() || "",
+        nav_date: fund.nav_date || null,
         aum: fund.aum?.toString?.() || fund.aum_cr?.toString?.() || "",
         expense_ratio: fund.expense_ratio?.toString?.() || "",
         inception_return:
@@ -1012,7 +1025,18 @@ export default function AddMFFund() {
               {error(errors.option_type)}
             </div>
 
-            {renderInputField("nav_Current", "NAV", "fund_overview.nav_Current")}
+            <div>
+              {renderFieldLabel("NAV", "fund_overview.nav_Current")}
+              <input
+                className={`${mfInputClass} bg-gray-50`}
+                value={form.nav_Current ? `INR ${form.nav_Current}` : ""}
+                readOnly
+                disabled
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                {formatNavDate(form.nav_date)}
+              </p>
+            </div>
             {renderInputField("aum", "AUM (Crs.)", "fund_overview.aum")}
             {renderInputField(
               "expense_ratio",
@@ -1304,3 +1328,7 @@ export default function AddMFFund() {
     </MFFormContainer>
   );
 }
+
+
+
+

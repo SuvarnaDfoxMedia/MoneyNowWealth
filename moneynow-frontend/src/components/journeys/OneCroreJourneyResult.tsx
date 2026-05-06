@@ -3,6 +3,7 @@
 import type { RefObject } from "react";
 import { useMemo } from "react";
 import StackedBarLineChart from "@/components/all charts/StackedBarLineChart";
+import type { StackedBarLineChartDatum } from "@/components/all charts/StackedBarLineChart";
 import StartSipReportDownload from "@/components/start-sip/charts-sub-components/StartSipReportDownload";
 import StartSipChartBlock from "@/components/start-sip/charts-sub-components/StartSipChartBlock";
 import { START_SIP_DEFAULT_VALUES } from "@/stores/startSipStore";
@@ -29,10 +30,9 @@ type AllocationItem = {
   color: string;
 };
 
-type ChartDataItem = {
+type ChartDataItem = StackedBarLineChartDatum & {
   year: number;
   label?: string;
-  [key: string]: unknown;
 };
 
 type OneCroreJourneyResultProps = {

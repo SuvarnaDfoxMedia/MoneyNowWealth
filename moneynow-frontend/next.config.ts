@@ -13,15 +13,6 @@ const nextConfig: NextConfig = {
   },
 
   reactStrictMode: true,
-
-  //  IMPORTANT: disable lint + TS build blocking
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 export default nextConfig;

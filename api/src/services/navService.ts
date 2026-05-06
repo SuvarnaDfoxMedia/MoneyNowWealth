@@ -382,6 +382,22 @@ const updateSchemeReturns = async (schemeId: string) => {
   );
 };
 
+const syncFundLatestNav = async (schemeId: string, nav: number, navDate: Date) => {
+  const normalizedNavDate = normalizeDateOnly(navDate);
+  await MFFund.updateOne(
+    {
+      _id: schemeId,
+      $or: [{ nav_date: null }, { nav_date: { $lte: normalizedNavDate } }],
+    },
+    {
+      $set: {
+        nav_Current: nav,
+        nav_date: normalizedNavDate,
+      },
+    },
+  );
+};
+
 export const uploadNavWorkbook = async ({
   filePath,
   fileName,
@@ -445,6 +461,10 @@ export const uploadNavWorkbook = async ({
     if (existing) updated += 1;
     else inserted += 1;
     affectedSchemeIds.add(String(row.schemeId));
+
+    if (!validateOnly) {
+      await syncFundLatestNav(String(row.schemeId), row.nav, row.date);
+    }
   }
 
   if (validateOnly) {

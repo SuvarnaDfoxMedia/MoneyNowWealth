@@ -64,6 +64,7 @@ export interface IMFFund extends Document {
   plan_type?: "Regular" | "Direct" | "";
   option_type?: "Growth" | "IDCW" | "";
   nav_Current?: number | null;
+  nav_date?: Date | null;
   aum?: number | null;
   aum_cr?: number | null;
   expense_ratio?: number | null;
@@ -161,6 +162,7 @@ const mfFundSchema = new Schema<IMFFund>(
     plan_type: { type: String, enum: ["Regular", "Direct", ""], default: "" },
     option_type: { type: String, enum: ["Growth", "IDCW", ""], default: "" },
     nav_Current: { type: Number, default: null },
+    nav_date: { type: Date, default: null, index: true },
     aum: { type: Number, default: null },
     aum_cr: { type: Number, default: null },
     expense_ratio: { type: Number, default: null },

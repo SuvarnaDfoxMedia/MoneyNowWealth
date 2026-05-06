@@ -291,6 +291,11 @@ export const getFundById = async (id: string) => {
 };
 
 export const createFund = async (payload: Partial<IMFFund> & any) => {
+  const createData: any = { ...payload };
+  delete createData.nav_Current;
+  delete createData.nav_current;
+  delete createData.nav_date;
+
   if (!payload.scheme_code) {
     throw new Error("scheme_code is required");
   }
@@ -322,14 +327,14 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
   if (exists) throw new Error("Fund already exists");
 
   const doc = new MFFund({
-    ...payload,
+    ...createData,
     scheme_code: normalizedSchemeCode,
     fund_name: normalizedFundName,
     amc_id: amcId,
     category_id: categoryId,
     isin: String(payload.isin ?? payload.isin_number ?? "").trim(),
     isin_number: String(payload.isin_number ?? payload.isin ?? "").trim(),
-    nav_Current: toNumberOrNull(payload.nav_Current ?? payload.nav_current),
+    // NAV is system-managed via NAV import; ignore manual NAV inputs.
     aum: toNumberOrNull(payload.aum ?? payload.aum_cr),
     aum_cr: toNumberOrNull(payload.aum_cr ?? payload.aum),
     expense_ratio: toNumberOrNull(payload.expense_ratio),
@@ -393,6 +398,9 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
 export const updateFund = async (id: string, payload: Partial<IMFFund> & any) => {
   const updateData: any = { ...payload };
   ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
+  delete updateData.nav_Current;
+  delete updateData.nav_current;
+  delete updateData.nav_date;
   const currentDoc = await MFFund.findOne({ _id: id, is_deleted: false }).select(
     "scheme_code fund_name plan_type option_type category_id",
   );
@@ -462,9 +470,7 @@ if (payload.amc_name || payload.amc_id) {
     updateData.isin_number = String(payload.isin_number ?? payload.isin ?? "").trim();
   }
   if (payload.fund_name !== undefined) updateData.fund_name = String(payload.fund_name || "").trim();
-  if (payload.nav_Current !== undefined || payload.nav_current !== undefined) {
-    updateData.nav_Current = toNumberOrNull(payload.nav_Current ?? payload.nav_current);
-  }
+  // NAV is system-managed via NAV import; ignore manual NAV inputs.
   if (payload.aum !== undefined || payload.aum_cr !== undefined) {
     updateData.aum = toNumberOrNull(payload.aum ?? payload.aum_cr);
     updateData.aum_cr = toNumberOrNull(payload.aum_cr ?? payload.aum);
