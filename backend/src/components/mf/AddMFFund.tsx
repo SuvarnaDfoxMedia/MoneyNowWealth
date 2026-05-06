@@ -130,7 +130,7 @@ const emptyForm = () => ({
   exit_load: "",
   fund_objective: "",
   investment_strategy: "",
-  top_holdings: "",
+
   domestic_equity_pct: "",
   international_equity_pct: "",
   debt_pct: "",
@@ -240,7 +240,9 @@ export default function AddMFFund() {
         plan_type: fund.plan_type || "Regular",
         option_type: fund.option_type || "Growth",
         nav_Current:
-          fund.nav_Current?.toString?.() || fund.nav_current?.toString?.() || "",
+          fund.nav_Current?.toString?.() ||
+          fund.nav_current?.toString?.() ||
+          "",
         nav_date: fund.nav_date || null,
         aum: fund.aum?.toString?.() || fund.aum_cr?.toString?.() || "",
         expense_ratio: fund.expense_ratio?.toString?.() || "",
@@ -316,9 +318,7 @@ export default function AddMFFund() {
         exit_load: fund.exit_load || "",
         fund_objective: fund.fund_objective || "",
         investment_strategy: fund.investment_strategy || "",
-        top_holdings: Array.isArray(fund.top_holdings)
-          ? fund.top_holdings.join("\n")
-          : fund.top_holdings || "",
+
         domestic_equity_pct:
           fund.asset_allocation?.domestic_equity_pct?.toString?.() || "",
         international_equity_pct:
@@ -341,7 +341,9 @@ export default function AddMFFund() {
           "",
         tax_type: fund.tax_type || "",
         riskometer_label: fund.riskometer_label || "",
-        frontend_visibility: normalizeMFFundVisibility(fund.frontend_visibility),
+        frontend_visibility: normalizeMFFundVisibility(
+          fund.frontend_visibility,
+        ),
         is_featured: !!fund.is_featured,
         is_popular: !!fund.is_popular,
         is_active: fund.is_active ?? 1,
@@ -468,8 +470,6 @@ export default function AddMFFund() {
     if (form.investment_strategy.length > 5000)
       nextErrors.investment_strategy =
         "Investment strategy must be under 5000 characters";
-    if (form.top_holdings.length > 5000)
-      nextErrors.top_holdings = "Top holdings must be under 5000 characters";
 
     const numericRules: Array<[keyof FundFormState, string, number, number]> = [
       ["nav_Current", "NAV", 0, 1_000_000_000],
@@ -497,12 +497,7 @@ export default function AddMFFund() {
         1_000_000_000,
       ],
       ["domestic_equity_pct", "Domestic equity allocation", 0, 100],
-      [
-        "international_equity_pct",
-        "International equity allocation",
-        0,
-        100,
-      ],
+      ["international_equity_pct", "International equity allocation", 0, 100],
       ["debt_pct", "Debt allocation", 0, 100],
       ["other_pct", "Other allocation", 0, 100],
       ["gold_pct", "Gold allocation", 0, 100],
@@ -542,7 +537,6 @@ export default function AddMFFund() {
       const fundAnnualError = validateNumber(form.returnsAnnual[year], year);
       if (fundAnnualError)
         nextErrors[`returnsAnnual.${year}`] = fundAnnualError;
-
     }
 
     for (const year of BENCHMARK_ANNUAL_YEARS) {
@@ -675,15 +669,10 @@ export default function AddMFFund() {
       is_popular: form.is_popular,
       fund_objective: form.fund_objective.trim(),
       investment_strategy: form.investment_strategy.trim(),
-      top_holdings: form.top_holdings
-        .split(/\r?\n|,/)
-        .map((item) => item.trim())
-        .filter(Boolean),
+
       asset_allocation: {
         domestic_equity_pct: toNumberOrNull(form.domestic_equity_pct),
-        international_equity_pct: toNumberOrNull(
-          form.international_equity_pct,
-        ),
+        international_equity_pct: toNumberOrNull(form.international_equity_pct),
         debt_pct: toNumberOrNull(form.debt_pct),
         other_pct: toNumberOrNull(form.other_pct),
         gold_pct: toNumberOrNull(form.gold_pct),
@@ -834,8 +823,16 @@ export default function AddMFFund() {
               "Scheme Code",
               "fund_overview.scheme_code",
             )}
-            {renderInputField("isin_number", "ISIN", "fund_overview.isin_number")}
-            {renderInputField("fund_name", "Scheme Name", "fund_overview.fund_name")}
+            {renderInputField(
+              "isin_number",
+              "ISIN",
+              "fund_overview.isin_number",
+            )}
+            {renderInputField(
+              "fund_name",
+              "Scheme Name",
+              "fund_overview.fund_name",
+            )}
 
             <div ref={amcWrapperRef} className="relative">
               {renderFieldLabel("AMC Name", "fund_overview.amc_name")}
@@ -1145,7 +1142,12 @@ export default function AddMFFund() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            {renderTextAreaField("exit_load", "Exit Load", 3, "fund_overview.exit_load")}
+            {renderTextAreaField(
+              "exit_load",
+              "Exit Load",
+              3,
+              "fund_overview.exit_load",
+            )}
             {renderTextAreaField(
               "fund_objective",
               "Investment Objective",
@@ -1169,7 +1171,11 @@ export default function AddMFFund() {
               "Inception Returns",
               "fund_performance.inception_return",
             )}
-            {renderInputField("return_1d", "1 Day", "fund_performance.return_1d")}
+            {renderInputField(
+              "return_1d",
+              "1 Day",
+              "fund_performance.return_1d",
+            )}
             {FUND_TRAILING_FIELDS.map((field) => (
               <div key={field.key}>
                 {renderFieldLabel(field.label, `fund_performance.${field.key}`)}
@@ -1297,16 +1303,6 @@ export default function AddMFFund() {
           </div>
         </section>
 
-        <section>
-          {renderSectionTitle("top_holdings", "Top Holdings")}
-          {renderTextAreaField(
-            "top_holdings",
-            "Top Holdings",
-            4,
-            "top_holdings.top_holdings",
-          )}
-        </section>
-
         {!isViewMode ? (
           <MFFormActions
             onReset={resetForm}
@@ -1328,7 +1324,3 @@ export default function AddMFFund() {
     </MFFormContainer>
   );
 }
-
-
-
-
