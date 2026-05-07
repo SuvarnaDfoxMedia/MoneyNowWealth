@@ -76,7 +76,34 @@ export const addBenchmarkReturn = async (req: Request, res: Response) => {
 
 export const getBenchmarkReturns = async (req: Request, res: Response) => {
   try {
-    const data = await mfBenchmarkService.getBenchmarkReturns(req.params.benchmarkId);
+    const data = await mfBenchmarkService.getBenchmarkReturns(req.params.benchmarkId, req.query);
+    return sendSuccess(res, "Benchmark returns fetched successfully", data);
+  } catch (error: any) {
+    return sendError(res, error.message || "Failed to fetch benchmark returns", 500);
+  }
+};
+
+export const getBenchmarkReturnsList = async (req: Request, res: Response) => {
+  try {
+    const data = await mfBenchmarkService.getBenchmarkReturnsList(req.query);
+    return sendSuccess(res, "Benchmark returns fetched successfully", data);
+  } catch (error: any) {
+    return sendError(res, error.message || "Failed to fetch benchmark returns", 500);
+  }
+};
+
+export const getBenchmarkFilters = async (req: Request, res: Response) => {
+  try {
+    const data = await mfBenchmarkService.getBenchmarkFilters(req.query);
+    return sendSuccess(res, "Benchmark filters fetched successfully", data);
+  } catch (error: any) {
+    return sendError(res, error.message || "Failed to fetch benchmark filters", 500);
+  }
+};
+
+export const getBenchmarkReturnsByFilters = async (req: Request, res: Response) => {
+  try {
+    const data = await mfBenchmarkService.getBenchmarkReturnsByFilters(req.query);
     return sendSuccess(res, "Benchmark returns fetched successfully", data);
   } catch (error: any) {
     return sendError(res, error.message || "Failed to fetch benchmark returns", 500);

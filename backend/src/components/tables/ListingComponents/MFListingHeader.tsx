@@ -1,15 +1,6 @@
 import React from "react";
 import { FiPlus, FiFileText } from "react-icons/fi";
-
-type MfImportEntity =
-  | "main-categories"
-  | "categories"
-  | "amcs"
-  | "funds"
-  | "nfo"
-  | "index-snapshots"
-  | "top-holdings"
-  | "full-workbook";
+import type { MfImportEntity } from "./MFImportExportActions";
 
 type EntityOption = {
   value: MfImportEntity;

@@ -7,7 +7,7 @@ import MFListingHeader from "./MFListingHeader";
 import { useDataTableStore } from "../../../store/dataTableStore";
 import { axiosInstance } from "../../../api/axios";
 import { toast } from "react-hot-toast";
-import MFImportExportActions from "./MFImportExportActions";
+import MFImportExportActions, { MfImportEntity } from "./MFImportExportActions";
 
 interface MFNfo {
   _id: string;
@@ -19,16 +19,6 @@ interface MFNfo {
   is_open: boolean;
   is_active: number;
 }
-
-type MfImportEntity =
-  | "main-categories"
-  | "categories"
-  | "amcs"
-  | "funds"
-  | "nfo"
-  | "index-snapshots"
-  | "top-holdings"
-  | "full-workbook";
 
 type EntityOption = {
   value: MfImportEntity;

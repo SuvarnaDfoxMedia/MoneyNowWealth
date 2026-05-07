@@ -13,6 +13,8 @@ const VALID_ENTITIES: MfImportEntity[] = [
   "categories",
   "amcs",
   "funds",
+  "benchmarks",
+  "benchmark-returns",
   "nfo",
   "index-snapshots",
   "top-holdings",

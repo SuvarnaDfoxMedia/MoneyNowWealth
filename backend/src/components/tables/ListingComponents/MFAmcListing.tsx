@@ -10,23 +10,13 @@ import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
 } from "./MFDeleteImpactModal";
-import MFImportExportActions from "./MFImportExportActions";
+import MFImportExportActions, { MfImportEntity } from "./MFImportExportActions";
 
 interface MFAmcRow {
   _id: string;
   name: string;
   is_active: number;
 }
-
-type MfImportEntity =
-  | "main-categories"
-  | "categories"
-  | "amcs"
-  | "funds"
-  | "nfo"
-  | "index-snapshots"
-  | "top-holdings"
-  | "full-workbook";
 
 type EntityOption = {
   value: MfImportEntity;

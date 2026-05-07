@@ -15,6 +15,8 @@ export type MfImportEntity =
   | "categories"
   | "amcs"
   | "funds"
+  | "benchmarks"
+  | "benchmark-returns"
   | "nfo"
   | "index-snapshots"
   | "top-holdings"
@@ -39,6 +41,8 @@ type ImportSummary = {
   categories: ImportSection;
   amcs: ImportSection;
   funds: ImportSection;
+  benchmarks: ImportSection;
+  benchmarkReturns: ImportSection;
   nfos: ImportSection;
   indexSnapshots: ImportSection;
   topHoldings: ImportSection;
@@ -112,6 +116,22 @@ const entityGuidance: Record<
       "Each fund must resolve to an existing AMC and category by name or id.",
       "The primary workbook format is `Scheme_Details` with trailing, YTD, annual year columns, and duplicate SheetJS-safe headers such as `YTD_1` and `2025_1`.",
       "Use the dedicated Top Holdings module for detailed holdings workbooks. The legacy `top_holdings` fund column is still normalized when present.",
+    ],
+  },
+  benchmarks: {
+    title: "Benchmark master import tips",
+    items: [
+      "Use one row per benchmark name in the template.",
+      "Include category_name and main_category_name for consistent benchmark tagging.",
+      "Import benchmark master before importing benchmark returns.",
+    ],
+  },
+  "benchmark-returns": {
+    title: "Benchmark returns import tips",
+    items: [
+      "benchmark_name and date are required for row matching.",
+      "Use one row per benchmark per date.",
+      "You can include trailing fields and annual year columns together.",
     ],
   },
   nfo: {

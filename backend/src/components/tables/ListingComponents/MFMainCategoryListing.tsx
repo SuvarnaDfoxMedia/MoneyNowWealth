@@ -10,7 +10,7 @@ import { toast } from "react-hot-toast";
 import MFDeleteImpactModal, {
   MFDeleteImpactSummary,
 } from "./MFDeleteImpactModal";
-import MFImportExportActions from "./MFImportExportActions";
+import MFImportExportActions, { MfImportEntity } from "./MFImportExportActions";
 
 interface MFMainCategory {
   _id: string;
@@ -19,16 +19,6 @@ interface MFMainCategory {
   sort_order?: number;
   is_active: number;
 }
-
-type MfImportEntity =
-  | "main-categories"
-  | "categories"
-  | "amcs"
-  | "funds"
-  | "nfo"
-  | "index-snapshots"
-  | "top-holdings"
-  | "full-workbook";
 
 type EntityOption = {
   value: MfImportEntity;

@@ -1,15 +1,30 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { toast } from "react-hot-toast";
 import { axiosApi } from "../../api/axios";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { FiCalendar } from "react-icons/fi";
 
-type BenchmarkOption = { _id: string; name: string; category?: string };
+type MainCategoryOption = { _id: string; name: string };
+type CategoryOption = { _id: string; name: string; main_category_id?: string };
+type FundOption = {
+  _id: string;
+  fund_name: string;
+  category_id?: string | null;
+  category_name?: string;
+  main_category_id?: string | null;
+  benchmark_id?: string;
+};
+type BenchmarkOption = {
+  _id: string;
+  name: string;
+  category?: string;
+  category_id?: string;
+  main_category_id?: string;
+};
 type ReturnRow = {
   _id: string;
+  benchmark_name?: string;
   date: string;
+  category_name?: string;
+  fund_name?: string;
   return_1d?: number | null;
   return_1w?: number | null;
   return_1m?: number | null;
@@ -24,123 +39,163 @@ type ReturnRow = {
   return_since_inception?: number | null;
 };
 
-const ANNUAL_YEARS = [
-  "2025",
-  "2024",
-  "2023",
-  "2022",
-  "2021",
-  "2020",
-  "2019",
-  "2018",
-  "2017",
-] as const;
-
 export default function MFBenchmarkReturnsManager() {
   const { role = "admin" } = useParams();
+  const [mainCategories, setMainCategories] = useState<MainCategoryOption[]>(
+    [],
+  );
   const [benchmarks, setBenchmarks] = useState<BenchmarkOption[]>([]);
+  const [selectedMainCategory, setSelectedMainCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedFund, setSelectedFund] = useState("");
   const [selectedBenchmark, setSelectedBenchmark] = useState("");
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [funds, setFunds] = useState<FundOption[]>([]);
   const [rows, setRows] = useState<ReturnRow[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    date: "",
-    return_1d: "",
-    return_1w: "",
-    return_1m: "",
-    return_3m: "",
-    return_6m: "",
-    return_ytd: "",
-    return_1y: "",
-    return_3y: "",
-    return_5y: "",
-    return_10y: "",
-    return_since_inception: "",
-    annual: Object.fromEntries(
-      ANNUAL_YEARS.map((year) => [year, ""]),
-    ) as Record<string, string>,
-  });
-  const selectedDate = form.date ? new Date(form.date) : null;
+  const [allMainCategories, setAllMainCategories] = useState<
+    MainCategoryOption[]
+  >([]);
+  const [allCategories, setAllCategories] = useState<CategoryOption[]>([]);
+  const [allFunds, setAllFunds] = useState<FundOption[]>([]);
+  const [allBenchmarks, setAllBenchmarks] = useState<BenchmarkOption[]>([]);
+  const [loadingFilters, setLoadingFilters] = useState(false);
+  const [loadingRows, setLoadingRows] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const response: any = await axiosApi.get(`/${role}/mf/benchmarks`, {
-        page: 1,
-        limit: 5000,
-        sortBy: "name",
-        sortOrder: "asc",
-      });
-      const items = Array.isArray(response?.data) ? response.data : [];
-      setBenchmarks(items);
-      if (items.length > 0) setSelectedBenchmark(items[0]._id);
+      const response: any = await axiosApi.get(`/${role}/mf/benchmark/filters`);
+      if (cancelled) return;
+      const payload = response?.data || {};
+      setAllMainCategories(
+        Array.isArray(payload?.mainCategories) ? payload.mainCategories : [],
+      );
+      setAllCategories(
+        Array.isArray(payload?.categories) ? payload.categories : [],
+      );
+      setAllFunds(Array.isArray(payload?.funds) ? payload.funds : []);
+      setAllBenchmarks(
+        Array.isArray(payload?.benchmarks) ? payload.benchmarks : [],
+      );
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [role]);
 
   useEffect(() => {
-    if (!selectedBenchmark) return;
+    let cancelled = false;
     (async () => {
-      const response: any = await axiosApi.get(
-        `/${role}/mf/benchmark-returns/${selectedBenchmark}`,
-      );
-      setRows(Array.isArray(response?.data) ? response.data : []);
+      setLoadingFilters(true);
+      try {
+        const response: any = await axiosApi.get(
+          `/${role}/mf/benchmark/filters`,
+          {
+            main_category_id: selectedMainCategory || undefined,
+            category_id: selectedCategory || undefined,
+            fund_id: selectedFund || undefined,
+          },
+        );
+        if (cancelled) return;
+        const payload = response?.data || {};
+        setMainCategories(
+          Array.isArray(payload?.mainCategories) ? payload.mainCategories : [],
+        );
+        setCategories(
+          Array.isArray(payload?.categories) ? payload.categories : [],
+        );
+        setFunds(Array.isArray(payload?.funds) ? payload.funds : []);
+        setBenchmarks(
+          Array.isArray(payload?.benchmarks) ? payload.benchmarks : [],
+        );
+      } finally {
+        if (!cancelled) setLoadingFilters(false);
+      }
     })();
-  }, [role, selectedBenchmark, saving]);
+    return () => {
+      cancelled = true;
+    };
+  }, [role, selectedMainCategory, selectedCategory, selectedFund]);
 
-  const onSave = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedBenchmark) return toast.error("Select a benchmark");
-    if (!form.date) return toast.error("Date is required");
-    setSaving(true);
-    try {
-      await axiosApi.create(`/${role}/mf/benchmark-returns/create`, {
-        benchmark_id: selectedBenchmark,
-        date: form.date,
-        return_1y: form.return_1y === "" ? null : Number(form.return_1y),
-        return_3y: form.return_3y === "" ? null : Number(form.return_3y),
-        return_5y: form.return_5y === "" ? null : Number(form.return_5y),
-        return_1d: form.return_1d === "" ? null : Number(form.return_1d),
-        return_1w: form.return_1w === "" ? null : Number(form.return_1w),
-        return_1m: form.return_1m === "" ? null : Number(form.return_1m),
-        return_3m: form.return_3m === "" ? null : Number(form.return_3m),
-        return_6m: form.return_6m === "" ? null : Number(form.return_6m),
-        return_ytd: form.return_ytd === "" ? null : Number(form.return_ytd),
-        return_10y: form.return_10y === "" ? null : Number(form.return_10y),
-        return_since_inception:
-          form.return_since_inception === ""
-            ? null
-            : Number(form.return_since_inception),
-        annual: Object.fromEntries(
-          ANNUAL_YEARS.map((year) => [
-            year,
-            form.annual[year] === "" ? null : Number(form.annual[year]),
-          ]),
-        ),
-      });
-      setForm({
-        date: "",
-        return_1d: "",
-        return_1w: "",
-        return_1m: "",
-        return_3m: "",
-        return_6m: "",
-        return_ytd: "",
-        return_1y: "",
-        return_3y: "",
-        return_5y: "",
-        return_10y: "",
-        return_since_inception: "",
-        annual: Object.fromEntries(
-          ANNUAL_YEARS.map((year) => [year, ""]),
-        ) as Record<string, string>,
-      });
-      toast.success("Benchmark return saved");
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Failed to save benchmark return",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingRows(true);
+      try {
+        const response: any = await axiosApi.get(
+          `/${role}/mf/benchmark/returns`,
+          {
+            main_category_id: selectedMainCategory || undefined,
+            category_id: selectedCategory || undefined,
+            fund_id: selectedFund || undefined,
+            benchmark_id: selectedBenchmark || undefined,
+          },
+        );
+        if (cancelled) return;
+        setRows(Array.isArray(response?.data) ? response.data : []);
+      } finally {
+        if (!cancelled) setLoadingRows(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    role,
+    selectedMainCategory,
+    selectedCategory,
+    selectedFund,
+    selectedBenchmark,
+  ]);
+
+  useEffect(() => {
+    setSelectedCategory("");
+    setSelectedFund("");
+    setSelectedBenchmark("");
+  }, [selectedMainCategory]);
+
+  useEffect(() => {
+    setSelectedFund("");
+    setSelectedBenchmark("");
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    setSelectedBenchmark("");
+  }, [selectedFund]);
+
+  const filteredCategories = selectedMainCategory
+    ? categories.filter(
+        (item) => String(item.main_category_id || "") === selectedMainCategory,
+      )
+    : categories;
+
+  const filteredFunds = selectedCategory
+    ? funds.filter(
+        (item) => String(item.category_id || "") === selectedCategory,
+      )
+    : selectedMainCategory
+      ? funds.filter(
+          (item) =>
+            String(item.main_category_id || "") === selectedMainCategory,
+        )
+      : funds;
+
+  const filteredBenchmarks = selectedFund
+    ? benchmarks.filter(
+        (item) =>
+          item._id ===
+          (funds.find((f) => f._id === selectedFund)?.benchmark_id || ""),
+      )
+    : selectedCategory
+      ? benchmarks.filter(
+          (item) => String(item.category_id || "") === selectedCategory,
+        )
+      : selectedMainCategory
+        ? benchmarks.filter(
+            (item) =>
+              String(item.main_category_id || "") === selectedMainCategory,
+          )
+        : benchmarks;
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
@@ -150,160 +205,91 @@ export default function MFBenchmarkReturnsManager() {
         </h1>
       </div>
 
-      <form
-        onSubmit={onSave}
-        className="mb-6 rounded-lg bg-white p-4 shadow-sm"
-      >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <select
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={selectedBenchmark}
-            onChange={(event) => setSelectedBenchmark(event.target.value)}
-          >
-            {benchmarks.map((item) => (
-              <option key={item._id} value={item._id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <div className="relative">
-            <DatePicker
-              selected={selectedDate}
-              onChange={(date) =>
-                setForm((prev) => ({
-                  ...prev,
-                  date: date
-                    ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-                    : "",
-                }))
-              }
-              dateFormat="dd/MM/yyyy"
-              className="h-11 w-full rounded-md border border-gray-300 px-3 pr-10"
-              placeholderText="dd/mm/yyyy"
-            />
-            <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+      <div className="mb-6 rounded-lg bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Benchmark
+            </label>
+            <select
+              className="h-11 w-full rounded-md border border-gray-300 px-3"
+              value={selectedBenchmark}
+              onChange={(event) => setSelectedBenchmark(event.target.value)}
+              disabled={loadingFilters}
+            >
+              <option value="">All Benchmarks</option>
+              {(allBenchmarks.length > 0 ? allBenchmarks : filteredBenchmarks).map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
           </div>
-          <input
-            placeholder="1D"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_1d}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_1d: event.target.value }))
-            }
-          />
-          <input
-            placeholder="1W"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_1w}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_1w: event.target.value }))
-            }
-          />
-          <input
-            placeholder="1M"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_1m}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_1m: event.target.value }))
-            }
-          />
-          <input
-            placeholder="3M"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_3m}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_3m: event.target.value }))
-            }
-          />
-          <input
-            placeholder="6M"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_6m}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_6m: event.target.value }))
-            }
-          />
-          <input
-            placeholder="YTD"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_ytd}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_ytd: event.target.value }))
-            }
-          />
-          <input
-            placeholder="1Y"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_1y}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_1y: event.target.value }))
-            }
-          />
-          <input
-            placeholder="3Y"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_3y}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_3y: event.target.value }))
-            }
-          />
-          <input
-            placeholder="5Y"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_5y}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_5y: event.target.value }))
-            }
-          />
-          <input
-            placeholder="10Y"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_10y}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, return_10y: event.target.value }))
-            }
-          />
-          <input
-            placeholder="Since inception"
-            className="h-11 rounded-md border border-gray-300 px-3"
-            value={form.return_since_inception}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                return_since_inception: event.target.value,
-              }))
-            }
-          />
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Main Category
+            </label>
+            <select
+              className="h-11 w-full rounded-md border border-gray-300 px-3"
+              value={selectedMainCategory}
+              onChange={(event) => setSelectedMainCategory(event.target.value)}
+              disabled={loadingFilters}
+            >
+              <option value="">All Main Categories</option>
+              {(allMainCategories.length > 0 ? allMainCategories : mainCategories).map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Category
+            </label>
+            <select
+              className="h-11 w-full rounded-md border border-gray-300 px-3"
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              disabled={loadingFilters}
+            >
+              <option value="">All Categories</option>
+              {(allCategories.length > 0 ? allCategories : filteredCategories).map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Fund
+            </label>
+            <select
+              className="h-11 w-full rounded-md border border-gray-300 px-3"
+              value={selectedFund}
+              onChange={(event) => setSelectedFund(event.target.value)}
+              disabled={loadingFilters}
+            >
+              <option value="">All Funds</option>
+              {(allFunds.length > 0 ? allFunds : filteredFunds).map((item) => (
+                <option key={item._id} value={item._id}>
+                  {item.fund_name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          {ANNUAL_YEARS.map((year) => (
-            <input
-              key={year}
-              placeholder={`Annual ${year}`}
-              className="h-11 rounded-md border border-gray-300 px-3"
-              value={form.annual[year]}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  annual: { ...prev.annual, [year]: event.target.value },
-                }))
-              }
-            />
-          ))}
-        </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="mt-4 rounded-md bg-[#043f79] px-4 py-2 text-white"
-        >
-          {saving ? "Saving..." : "Save Return"}
-        </button>
-      </form>
+      </div>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="min-w-full">
           <thead>
             <tr className="border-b bg-gray-50 text-left text-sm">
+              <th className="px-4 py-3">Benchmark</th>
+              <th className="px-4 py-3">Scheme</th>
+              <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">1D</th>
               <th className="px-4 py-3">1W</th>
@@ -321,6 +307,9 @@ export default function MFBenchmarkReturnsManager() {
           <tbody>
             {rows.map((row) => (
               <tr key={row._id} className="border-b text-sm">
+                <td className="px-4 py-3">{row.benchmark_name || "-"}</td>
+                <td className="px-4 py-3">{row.fund_name || "-"}</td>
+                <td className="px-4 py-3">{row.category_name || "-"}</td>
                 <td className="px-4 py-3">
                   {new Date(row.date).toLocaleDateString("en-GB")}
                 </td>
@@ -339,6 +328,26 @@ export default function MFBenchmarkReturnsManager() {
                 </td>
               </tr>
             ))}
+            {!loadingRows && rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={15}
+                  className="px-4 py-12 text-center text-sm text-gray-500"
+                >
+                  No benchmark data available for selected filters
+                </td>
+              </tr>
+            )}
+            {loadingRows && (
+              <tr>
+                <td
+                  colSpan={15}
+                  className="px-4 py-10 text-center text-sm text-gray-500"
+                >
+                  Loading benchmark data...
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -37,6 +37,8 @@ export type MfImportEntity =
   | "categories"
   | "amcs"
   | "funds"
+  | "benchmarks"
+  | "benchmark-returns"
   | "nfo"
   | "index-snapshots"
   | "top-holdings"
@@ -54,6 +56,8 @@ type ImportSummary = {
   categories: ImportSection;
   amcs: ImportSection;
   funds: ImportSection;
+  benchmarks: ImportSection;
+  benchmarkReturns: ImportSection;
   nfos: ImportSection;
   indexSnapshots: ImportSection;
   topHoldings: ImportSection;
@@ -91,6 +95,8 @@ type ImportRuntime = {
     categories: Set<string>;
     amcs: Set<string>;
     funds: Set<string>;
+    benchmarks: Set<string>;
+    benchmarkReturns: Set<string>;
     nfos: Set<string>;
     indexSnapshots: Set<string>;
   };
@@ -182,6 +188,14 @@ const SHEETS: Record<Exclude<MfImportEntity, "full-workbook">, SheetDefinition> 
   funds: {
     key: "funds",
     aliases: ["Scheme_Details", "Funds", "Popular_Funds"],
+  },
+  benchmarks: {
+    key: "benchmarks",
+    aliases: ["Benchmarks", "Benchmark_Master", "Benchmark Master"],
+  },
+  "benchmark-returns": {
+    key: "benchmarkReturns",
+    aliases: ["Benchmark_Returns", "Benchmark Returns"],
   },
   nfo: {
     key: "nfos",
@@ -316,6 +330,31 @@ const NFO_HEADERS = [
   "is_active",
 ];
 
+const BENCHMARK_HEADERS = [
+  "benchmark_name",
+  "category_name",
+  "main_category_name",
+  "type",
+  "is_active",
+];
+
+const BENCHMARK_RETURN_HEADERS = [
+  "benchmark_name",
+  "date",
+  "return_1d",
+  "return_1w",
+  "return_1m",
+  "return_3m",
+  "return_6m",
+  "return_ytd",
+  "return_1y",
+  "return_3y",
+  "return_5y",
+  "return_10y",
+  "return_since_inception",
+  ...MF_ANNUAL_YEARS.map((year) => `annual_${year}`),
+];
+
 const INDEX_SNAPSHOT_HEADERS = [
   "benchmark_index_name",
   "main_category_name",
@@ -384,6 +423,11 @@ const REQUIRED_HEADER_GROUPS: Record<
       "sub_category_name",
     ],
   ],
+  benchmarks: [["benchmark_name", "name", "benchmark", "benchmark_index_name"]],
+  "benchmark-returns": [
+    ["benchmark_name", "name", "benchmark", "benchmark_index_name"],
+    ["date", "last_updated_date", "as_on_date"],
+  ],
   nfo: [
     ["nfo_id", "nfoid", "code"],
     ["fund_name", "scheme_name", "nfo_name"],
@@ -423,6 +467,8 @@ const newSummary = (): ImportSummary => ({
   categories: newSection(),
   amcs: newSection(),
   funds: newSection(),
+  benchmarks: newSection(),
+  benchmarkReturns: newSection(),
   nfos: newSection(),
   indexSnapshots: newSection(),
   topHoldings: newSection(),
@@ -464,6 +510,8 @@ const newRuntime = async (): Promise<ImportRuntime> => {
       categories: new Set<string>(),
       amcs: new Set<string>(),
       funds: new Set<string>(),
+      benchmarks: new Set<string>(),
+      benchmarkReturns: new Set<string>(),
       nfos: new Set<string>(),
       indexSnapshots: new Set<string>(),
     },
@@ -595,9 +643,7 @@ const buildPreviewSheet = (
 
 const normalizeDateValue = (value: Date | null) => {
   if (!value) return null;
-  const normalized = new Date(value);
-  normalized.setHours(0, 0, 0, 0);
-  return normalized;
+  return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
 };
 
 const parseNumericValue = (value: unknown) => {
@@ -642,7 +688,10 @@ const fundAnnualAliases = Object.fromEntries(
 ) as Record<string, string[]>;
 
 const benchmarkAnnualAliases = Object.fromEntries(
-  MF_ANNUAL_YEARS.map((year) => [year, [`${year}_1`, `benchmark_${year}`, `${year}_benchmark`]]),
+  MF_ANNUAL_YEARS.map((year) => [
+    year,
+    [`bench_${year}`, `${year}_1`, `benchmark_${year}`, `${year}_benchmark`],
+  ]),
 ) as Record<string, string[]>;
 
 const sectionForEntity = (
@@ -1444,6 +1493,144 @@ const upsertAmcRow = async (
   }
 };
 
+const upsertBenchmarkRow = async (
+  row: Record<string, unknown>,
+  rowNumber: number,
+  sheetName: string,
+  summary: ImportSummary,
+  errors: ImportError[],
+  validateOnly: boolean,
+  runtime: ImportRuntime,
+) => {
+  const section = sectionForEntity(summary, "benchmarks");
+  const name = String(
+    valueByAliases(row, ["benchmark_name", "name", "benchmark", "benchmark_index_name"]) || "",
+  ).trim();
+  if (!name) return;
+  const key = normalizeText(name);
+  if (runtime.processedKeys.benchmarks.has(key)) {
+    section.skipped += 1;
+    return;
+  }
+  runtime.processedKeys.benchmarks.add(key);
+
+  try {
+    const categoryName = String(valueByAliases(row, ["category_name", "category"]) || "").trim();
+    const mainCategoryName = String(valueByAliases(row, ["main_category_name", "fund_type"]) || "").trim();
+    const category = await resolveCategory(row, runtime);
+    const existing = await MFBenchmark.findOne({
+      name: exactRegex(name),
+      is_deleted: false,
+    }).lean();
+    const nextData = {
+      name,
+      category: categoryName || category?.name || "",
+      type: mainCategoryName || "index",
+      category_id: category?._id || null,
+      main_category_id: category?.main_category_id || null,
+      is_active: toBoolean(valueByAliases(row, ["is_active"]), true) ? 1 : 0,
+      is_deleted: false,
+      deleted_at: null,
+    };
+    if (!existing) {
+      section.inserted += 1;
+      if (!validateOnly) await MFBenchmark.create(nextData);
+      return;
+    }
+    if (!hasChanges(existing as Record<string, any>, nextData)) {
+      section.skipped += 1;
+      return;
+    }
+    section.updated += 1;
+    if (!validateOnly) await MFBenchmark.updateOne({ _id: (existing as any)._id }, nextData);
+  } catch (error: any) {
+    addRowError(section, errors, sheetName, rowNumber, error?.message || "Failed to process benchmark row", name);
+  }
+};
+
+const upsertBenchmarkReturnRow = async (
+  row: Record<string, unknown>,
+  rowNumber: number,
+  sheetName: string,
+  summary: ImportSummary,
+  errors: ImportError[],
+  validateOnly: boolean,
+  runtime: ImportRuntime,
+) => {
+  const section = sectionForEntity(summary, "benchmarkReturns");
+  const benchmarkName = String(
+    valueByAliases(row, ["benchmark_name", "name", "benchmark", "benchmark_index_name"]) || "",
+  ).trim();
+  const rawDate = parseDate(row, ["date", "last_updated_date", "as_on_date"]);
+  if (!benchmarkName && !rawDate) return;
+  if (!benchmarkName || !rawDate) {
+    addRowError(section, errors, sheetName, rowNumber, "benchmark_name and date are required", benchmarkName);
+    return;
+  }
+
+  try {
+    const benchmark = await MFBenchmark.findOne({
+      name: exactRegex(benchmarkName),
+      is_deleted: false,
+    }).select("_id");
+    if (!benchmark?._id) {
+      addRowError(section, errors, sheetName, rowNumber, "Benchmark could not be resolved", benchmarkName);
+      return;
+    }
+    const date = new Date(rawDate);
+    const normalizedDate = normalizeDateValue(date);
+    if (!normalizedDate) {
+      addRowError(section, errors, sheetName, rowNumber, "Invalid date", benchmarkName);
+      return;
+    }
+    const dedupeKey = `${String(benchmark._id)}::${normalizedDate.toISOString().slice(0, 10)}`;
+    if (runtime.processedKeys.benchmarkReturns.has(dedupeKey)) {
+      section.skipped += 1;
+      return;
+    }
+    runtime.processedKeys.benchmarkReturns.add(dedupeKey);
+    const annual = Object.fromEntries(
+      MF_ANNUAL_YEARS.map((year) => [year, parseNumber(row, [`annual_${year}`, year])]),
+    );
+    const nextData = {
+      benchmark_id: benchmark._id,
+      date: normalizedDate,
+      return_1d: parseNumber(row, ["return_1d", "1d", "d1"]),
+      return_1w: parseNumber(row, ["return_1w", "1w", "w1"]),
+      return_1m: parseNumber(row, ["return_1m", "1m", "m1"]),
+      return_3m: parseNumber(row, ["return_3m", "3m", "m3"]),
+      return_6m: parseNumber(row, ["return_6m", "6m", "m6"]),
+      return_ytd: parseNumber(row, ["return_ytd", "ytd"]),
+      return_1y: parseNumber(row, ["return_1y", "1y", "y1"]),
+      return_3y: parseNumber(row, ["return_3y", "3y", "y3"]),
+      return_5y: parseNumber(row, ["return_5y", "5y", "y5"]),
+      return_10y: parseNumber(row, ["return_10y", "10y", "y10"]),
+      return_since_inception: parseNumber(row, ["return_since_inception", "since_inception"]),
+      annual,
+      is_deleted: false,
+      deleted_at: null,
+    };
+    const existing = await MFBenchmarkReturn.findOne({
+      benchmark_id: benchmark._id,
+      date: normalizedDate,
+      is_deleted: false,
+    }).lean();
+    if (!existing) {
+      section.inserted += 1;
+      if (!validateOnly) await MFBenchmarkReturn.create(nextData);
+      return;
+    }
+    if (!hasChanges(existing as Record<string, any>, nextData)) {
+      section.skipped += 1;
+      return;
+    }
+    section.updated += 1;
+    if (!validateOnly) await MFBenchmarkReturn.updateOne({ _id: (existing as any)._id }, nextData);
+  } catch (error: any) {
+    addRowError(section, errors, sheetName, rowNumber, error?.message || "Failed to process benchmark return row", benchmarkName);
+  }
+};
+
 const upsertFundRow = async (
   row: Record<string, unknown>,
   rowNumber: number,
@@ -1519,23 +1706,51 @@ const upsertFundRow = async (
       y3: parseNumber(row, ["benchmark_trailing_3y", "benchmark_return_3y"]),
       y5: parseNumber(row, ["benchmark_trailing_5y", "benchmark_return_5y"]),
       y10: parseNumber(row, ["benchmark_trailing_10y", "benchmark_return_10y"]),
-      ytd: parseNumber(row, ["ytd_1", "benchmark_ytd"]),
+      ytd: parseNumber(row, ["bench_ytd", "benchmark_ytd", "ytd_1"]),
     });
     const benchmarkAnnualValues = parseYearValues(row, benchmarkAnnualAliases);
+    const benchmarkCategoryName = String(
+      valueByAliases(row, ["category_name", "category"]) || category?.name || "",
+    ).trim();
+    const benchmarkTypeName = String(
+      valueByAliases(row, ["main_category_name", "fund_type"]) || "",
+    ).trim();
 
     let benchmarkId: Types.ObjectId | null = null;
     if (benchmarkIndexName) {
       const existingBenchmark = await MFBenchmark.findOne({
         name: exactRegex(benchmarkIndexName),
         is_deleted: false,
-      }).select("_id");
+      }).select("_id category type");
       if (existingBenchmark?._id) {
         benchmarkId = existingBenchmark._id as Types.ObjectId;
+        const shouldBackfillCategory =
+          (!String((existingBenchmark as any).category || "").trim() &&
+            benchmarkCategoryName) ||
+          (!String((existingBenchmark as any).type || "").trim() &&
+            benchmarkTypeName);
+
+        if (!validateOnly && shouldBackfillCategory) {
+          await MFBenchmark.updateOne(
+            { _id: benchmarkId },
+            {
+              $set: {
+                category:
+                  benchmarkCategoryName ||
+                  String((existingBenchmark as any).category || "").trim(),
+                type:
+                  benchmarkTypeName ||
+                  String((existingBenchmark as any).type || "").trim() ||
+                  "index",
+              },
+            },
+          );
+        }
       } else if (!validateOnly) {
         const createdBenchmark = await MFBenchmark.create({
           name: benchmarkIndexName,
-          type: "index",
-          category: "",
+          type: benchmarkTypeName || "index",
+          category: benchmarkCategoryName,
           is_active: 1,
           is_deleted: false,
         });
@@ -1606,25 +1821,30 @@ const upsertFundRow = async (
       if (!validateOnly) {
         const created = await MFFund.create(nextData);
         if (benchmarkId) {
-          await MFBenchmarkReturn.findOneAndUpdate(
-            { benchmark_id: benchmarkId, date: new Date(), is_deleted: false },
-            {
-              $set: {
-                return_1d: benchmarkTrailingValues?.d1 ?? null,
-                return_1w: benchmarkTrailingValues?.w1 ?? null,
-                return_1m: benchmarkTrailingValues?.m1 ?? null,
-                return_3m: benchmarkTrailingValues?.m3 ?? null,
-                return_6m: benchmarkTrailingValues?.m6 ?? null,
-                return_ytd: benchmarkTrailingValues?.ytd ?? null,
-                return_1y: benchmarkTrailingValues?.y1 ?? null,
-                return_3y: benchmarkTrailingValues?.y3 ?? null,
-                return_5y: benchmarkTrailingValues?.y5 ?? null,
-                return_10y: benchmarkTrailingValues?.y10 ?? null,
-                annual: benchmarkAnnualValues,
+          const normalizedToday = normalizeDateValue(new Date());
+          if (normalizedToday) {
+            await MFBenchmarkReturn.findOneAndUpdate(
+              { benchmark_id: benchmarkId, date: normalizedToday, is_deleted: false },
+              {
+                $set: {
+                  return_1d: benchmarkTrailingValues?.d1 ?? null,
+                  return_1w: benchmarkTrailingValues?.w1 ?? null,
+                  return_1m: benchmarkTrailingValues?.m1 ?? null,
+                  return_3m: benchmarkTrailingValues?.m3 ?? null,
+                  return_6m: benchmarkTrailingValues?.m6 ?? null,
+                  return_ytd: benchmarkTrailingValues?.ytd ?? null,
+                  return_1y: benchmarkTrailingValues?.y1 ?? null,
+                  return_3y: benchmarkTrailingValues?.y3 ?? null,
+                  return_5y: benchmarkTrailingValues?.y5 ?? null,
+                  return_10y: benchmarkTrailingValues?.y10 ?? null,
+                  annual: benchmarkAnnualValues,
+                  is_deleted: false,
+                  deleted_at: null,
+                },
               },
-            },
-            { upsert: true, setDefaultsOnInsert: true },
-          );
+              { upsert: true, setDefaultsOnInsert: true },
+            );
+          }
         }
         await recomputeCategoryAverageReturns(String(created.category_id));
       }
@@ -1639,25 +1859,30 @@ const upsertFundRow = async (
     section.updated += 1;
     if (!validateOnly) await MFFund.updateOne({ _id: (existing as any)._id }, nextData);
     if (!validateOnly && benchmarkId) {
-      await MFBenchmarkReturn.findOneAndUpdate(
-        { benchmark_id: benchmarkId, date: new Date(), is_deleted: false },
-        {
-          $set: {
-            return_1d: benchmarkTrailingValues?.d1 ?? null,
-            return_1w: benchmarkTrailingValues?.w1 ?? null,
-            return_1m: benchmarkTrailingValues?.m1 ?? null,
-            return_3m: benchmarkTrailingValues?.m3 ?? null,
-            return_6m: benchmarkTrailingValues?.m6 ?? null,
-            return_ytd: benchmarkTrailingValues?.ytd ?? null,
-            return_1y: benchmarkTrailingValues?.y1 ?? null,
-            return_3y: benchmarkTrailingValues?.y3 ?? null,
-            return_5y: benchmarkTrailingValues?.y5 ?? null,
-            return_10y: benchmarkTrailingValues?.y10 ?? null,
-            annual: benchmarkAnnualValues,
+      const normalizedToday = normalizeDateValue(new Date());
+      if (normalizedToday) {
+        await MFBenchmarkReturn.findOneAndUpdate(
+          { benchmark_id: benchmarkId, date: normalizedToday, is_deleted: false },
+          {
+            $set: {
+              return_1d: benchmarkTrailingValues?.d1 ?? null,
+              return_1w: benchmarkTrailingValues?.w1 ?? null,
+              return_1m: benchmarkTrailingValues?.m1 ?? null,
+              return_3m: benchmarkTrailingValues?.m3 ?? null,
+              return_6m: benchmarkTrailingValues?.m6 ?? null,
+              return_ytd: benchmarkTrailingValues?.ytd ?? null,
+              return_1y: benchmarkTrailingValues?.y1 ?? null,
+              return_3y: benchmarkTrailingValues?.y3 ?? null,
+              return_5y: benchmarkTrailingValues?.y5 ?? null,
+              return_10y: benchmarkTrailingValues?.y10 ?? null,
+              annual: benchmarkAnnualValues,
+              is_deleted: false,
+              deleted_at: null,
+            },
           },
-        },
-        { upsert: true, setDefaultsOnInsert: true },
-      );
+          { upsert: true, setDefaultsOnInsert: true },
+        );
+      }
     }
     if (!validateOnly) {
       const affectedCategoryIds = [
@@ -1815,6 +2040,65 @@ const upsertIndexSnapshotRow = async (
       return;
     }
 
+    let benchmarkId: Types.ObjectId | null = null;
+    const existingBenchmark = await MFBenchmark.findOne({
+      name: exactRegex(benchmarkIndexName),
+      is_deleted: false,
+    }).select("_id name type category category_id main_category_id");
+
+    if (!existingBenchmark) {
+      if (!validateOnly) {
+        const createdBenchmark = await MFBenchmark.create({
+          name: benchmarkIndexName,
+          category: String(category.name || "").trim(),
+          category_id: category._id,
+          main_category_id: mainCategory._id,
+          type: String(mainCategory.name || "index").trim() || "index",
+          is_active: 1,
+          is_deleted: false,
+        });
+        benchmarkId = createdBenchmark._id as Types.ObjectId;
+      }
+    } else {
+      benchmarkId = existingBenchmark._id as Types.ObjectId;
+      const benchmarkUpdate: Record<string, unknown> = {};
+      if (String((existingBenchmark as any).category_id || "") !== String(category._id)) {
+        benchmarkUpdate.category_id = category._id;
+      }
+      if (String((existingBenchmark as any).main_category_id || "") !== String(mainCategory._id)) {
+        benchmarkUpdate.main_category_id = mainCategory._id;
+      }
+      if (!String((existingBenchmark as any).category || "").trim()) {
+        benchmarkUpdate.category = String(category.name || "").trim();
+      }
+      if (!String((existingBenchmark as any).type || "").trim()) {
+        benchmarkUpdate.type = String(mainCategory.name || "index").trim() || "index";
+      }
+      if (!validateOnly && Object.keys(benchmarkUpdate).length > 0) {
+        await MFBenchmark.updateOne({ _id: existingBenchmark._id }, { $set: benchmarkUpdate });
+      }
+    }
+
+    if (!validateOnly && benchmarkId) {
+      const normalizedDate = normalizeDateValue(lastUpdatedDate);
+      if (normalizedDate) {
+        await MFBenchmarkReturn.findOneAndUpdate(
+          { benchmark_id: benchmarkId, date: normalizedDate, is_deleted: false },
+          {
+            $set: {
+              return_1y: parseNumber(row, ["return_1y", "1y_return", "y1"]),
+              return_3y: parseNumber(row, ["return_3y", "3y_return", "y3"]),
+              return_5y: parseNumber(row, ["return_5y", "5y_return", "y5"]),
+              return_10y: parseNumber(row, ["return_10y", "10y_return", "y10"]),
+              is_deleted: false,
+              deleted_at: null,
+            },
+          },
+          { upsert: true, setDefaultsOnInsert: true },
+        );
+      }
+    }
+
     const dayStart = new Date(lastUpdatedDate);
     const dayEnd = new Date(lastUpdatedDate);
     dayEnd.setHours(23, 59, 59, 999);
@@ -1896,6 +2180,10 @@ const processRows = async (
         await upsertAmcRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
       } else if (entity === "funds") {
         await upsertFundRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
+      } else if (entity === "benchmarks") {
+        await upsertBenchmarkRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
+      } else if (entity === "benchmark-returns") {
+        await upsertBenchmarkReturnRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
       } else if (entity === "nfo") {
         await upsertNfoRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
       } else if (entity === "index-snapshots") {
@@ -1973,6 +2261,49 @@ const exportAmcRows = async () => {
   return items.map((item) => ({
     amc_name: prettyText(item.name),
     is_active: item.is_active === 1 ? "Yes" : "No",
+  }));
+};
+
+const exportBenchmarkRows = async () => {
+  const items = await MFBenchmark.find({ is_deleted: false })
+    .populate("category_id", "name")
+    .populate("main_category_id", "name")
+    .sort({ name: 1 })
+    .lean();
+  return items.map((item: any) => ({
+    benchmark_name: prettyText(item.name),
+    category_name: prettyText(item.category_id?.name || item.category || ""),
+    main_category_name: prettyText(item.main_category_id?.name || item.type || ""),
+    type: item.type || "",
+    is_active: item.is_active === 1 ? "Yes" : "No",
+  }));
+};
+
+const exportBenchmarkReturnRows = async () => {
+  const items = await MFBenchmarkReturn.find({ is_deleted: false })
+    .populate("benchmark_id", "name")
+    .sort({ date: -1 })
+    .lean();
+  return items.map((item: any) => ({
+    benchmark_name: prettyText(item.benchmark_id?.name || ""),
+    date: toIsoDate(item.date),
+    return_1d: item.return_1d ?? "",
+    return_1w: item.return_1w ?? "",
+    return_1m: item.return_1m ?? "",
+    return_3m: item.return_3m ?? "",
+    return_6m: item.return_6m ?? "",
+    return_ytd: item.return_ytd ?? "",
+    return_1y: item.return_1y ?? "",
+    return_3y: item.return_3y ?? "",
+    return_5y: item.return_5y ?? "",
+    return_10y: item.return_10y ?? "",
+    return_since_inception: item.return_since_inception ?? "",
+    ...Object.fromEntries(
+      MF_ANNUAL_YEARS.map((year) => [
+        `annual_${year}`,
+        mapToPlainYearValue(item.annual, year),
+      ]),
+    ),
   }));
 };
 
@@ -2315,6 +2646,15 @@ export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) =>
   } else if (entity === "funds") {
     appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true)), FUND_HEADERS);
     appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false)), FUND_HEADERS);
+  } else if (entity === "benchmarks") {
+    appendSheet(workbook, getPrimarySheetName("benchmarks"), await maybeRows(exportBenchmarkRows), BENCHMARK_HEADERS);
+  } else if (entity === "benchmark-returns") {
+    appendSheet(
+      workbook,
+      getPrimarySheetName("benchmark-returns"),
+      await maybeRows(exportBenchmarkReturnRows),
+      BENCHMARK_RETURN_HEADERS,
+    );
   } else if (entity === "nfo") {
     appendSheet(workbook, getPrimarySheetName("nfo"), await maybeRows(exportNfoRows), NFO_HEADERS);
   } else if (entity === "index-snapshots") {

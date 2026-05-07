@@ -16,6 +16,11 @@ import {
   toDuplicateFieldMessage,
 } from "./mfValidation";
 import { axiosApi } from "../../api/axios";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { FiCalendar } from "react-icons/fi";
+
+const ANNUAL_YEARS = ["2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"] as const;
 
 export default function AddMFBenchmark() {
   const { id, role = "admin" } = useParams();
@@ -37,6 +42,21 @@ export default function AddMFBenchmark() {
     is_active: 1,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [returnsForm, setReturnsForm] = useState({
+    date: null as Date | null,
+    return_1d: "",
+    return_1w: "",
+    return_1m: "",
+    return_3m: "",
+    return_6m: "",
+    return_ytd: "",
+    return_1y: "",
+    return_3y: "",
+    return_5y: "",
+    return_10y: "",
+    return_since_inception: "",
+    annual: Object.fromEntries(ANNUAL_YEARS.map((year) => [year, ""])) as Record<string, string>,
+  });
 
   useEffect(() => {
     (async () => {
@@ -63,6 +83,30 @@ export default function AddMFBenchmark() {
         type: d.type || "index",
         is_active: d.is_active ?? 1,
       });
+      const benchmarkId = d._id || id;
+      if (benchmarkId) {
+        const returnsRes: any = await axiosApi.get(`/${role}/mf/benchmark-returns/${benchmarkId}`);
+        const latest = Array.isArray(returnsRes?.data) ? returnsRes.data[0] : null;
+        if (latest) {
+          setReturnsForm({
+            date: latest.date ? new Date(latest.date) : null,
+            return_1d: latest.return_1d?.toString?.() || "",
+            return_1w: latest.return_1w?.toString?.() || "",
+            return_1m: latest.return_1m?.toString?.() || "",
+            return_3m: latest.return_3m?.toString?.() || "",
+            return_6m: latest.return_6m?.toString?.() || "",
+            return_ytd: latest.return_ytd?.toString?.() || "",
+            return_1y: latest.return_1y?.toString?.() || "",
+            return_3y: latest.return_3y?.toString?.() || "",
+            return_5y: latest.return_5y?.toString?.() || "",
+            return_10y: latest.return_10y?.toString?.() || "",
+            return_since_inception: latest.return_since_inception?.toString?.() || "",
+            annual: Object.fromEntries(
+              ANNUAL_YEARS.map((year) => [year, latest?.annual?.[year]?.toString?.() || ""]),
+            ) as Record<string, string>,
+          });
+        }
+      }
     })();
   }, [getOne, id]);
 
@@ -104,8 +148,43 @@ export default function AddMFBenchmark() {
         type: form.type.trim() || "index",
         is_active: form.is_active,
       };
-      if (id) await updateRecord(id, payload);
-      else await createRecord(payload);
+      const response: any = id ? await updateRecord(id, payload) : await createRecord(payload);
+      const benchmarkId = response?.data?._id || id;
+      const hasReturnValues = [
+        returnsForm.return_1d,
+        returnsForm.return_1w,
+        returnsForm.return_1m,
+        returnsForm.return_3m,
+        returnsForm.return_6m,
+        returnsForm.return_ytd,
+        returnsForm.return_1y,
+        returnsForm.return_3y,
+        returnsForm.return_5y,
+        returnsForm.return_10y,
+        returnsForm.return_since_inception,
+        ...ANNUAL_YEARS.map((year) => returnsForm.annual[year]),
+      ].some((value) => String(value || "").trim() !== "");
+      if (benchmarkId && returnsForm.date && hasReturnValues) {
+        await axiosApi.create(`/${role}/mf/benchmark-returns/create`, {
+          benchmark_id: benchmarkId,
+          date: `${returnsForm.date.getFullYear()}-${String(returnsForm.date.getMonth() + 1).padStart(2, "0")}-${String(returnsForm.date.getDate()).padStart(2, "0")}`,
+          return_1d: returnsForm.return_1d === "" ? null : Number(returnsForm.return_1d),
+          return_1w: returnsForm.return_1w === "" ? null : Number(returnsForm.return_1w),
+          return_1m: returnsForm.return_1m === "" ? null : Number(returnsForm.return_1m),
+          return_3m: returnsForm.return_3m === "" ? null : Number(returnsForm.return_3m),
+          return_6m: returnsForm.return_6m === "" ? null : Number(returnsForm.return_6m),
+          return_ytd: returnsForm.return_ytd === "" ? null : Number(returnsForm.return_ytd),
+          return_1y: returnsForm.return_1y === "" ? null : Number(returnsForm.return_1y),
+          return_3y: returnsForm.return_3y === "" ? null : Number(returnsForm.return_3y),
+          return_5y: returnsForm.return_5y === "" ? null : Number(returnsForm.return_5y),
+          return_10y: returnsForm.return_10y === "" ? null : Number(returnsForm.return_10y),
+          return_since_inception:
+            returnsForm.return_since_inception === "" ? null : Number(returnsForm.return_since_inception),
+          annual: Object.fromEntries(
+            ANNUAL_YEARS.map((year) => [year, returnsForm.annual[year] === "" ? null : Number(returnsForm.annual[year])]),
+          ),
+        });
+      }
       navigate(`/${role}/benchmark/master`);
     } catch (error: any) {
       const next: Record<string, string> = {};
@@ -196,6 +275,51 @@ export default function AddMFBenchmark() {
           />
           Active
         </label>
+        <div className="rounded-lg border border-gray-200 p-4">
+          <h3 className="mb-4 text-base font-semibold text-gray-800">Benchmark Returns</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <div className="relative">
+              <DatePicker
+                selected={returnsForm.date}
+                onChange={(date) => setReturnsForm((prev) => ({ ...prev, date: date as Date | null }))}
+                dateFormat="dd/MM/yyyy"
+                className={`${mfInputClass} pr-10`}
+                placeholderText="dd/mm/yyyy"
+              />
+              <FiCalendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            </div>
+            {[
+              "return_1d","return_1w","return_1m","return_3m","return_6m","return_ytd",
+              "return_1y","return_3y","return_5y","return_10y","return_since_inception",
+            ].map((key) => (
+              <input
+                key={key}
+                className={mfInputClass}
+                placeholder={key.replace("return_", "").toUpperCase().replace("_", " ")}
+                value={(returnsForm as any)[key]}
+                onChange={(event) =>
+                  setReturnsForm((prev) => ({ ...prev, [key]: event.target.value }))
+                }
+              />
+            ))}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+            {ANNUAL_YEARS.map((year) => (
+              <input
+                key={year}
+                className={mfInputClass}
+                placeholder={`Annual ${year}`}
+                value={returnsForm.annual[year]}
+                onChange={(event) =>
+                  setReturnsForm((prev) => ({
+                    ...prev,
+                    annual: { ...prev.annual, [year]: event.target.value },
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </div>
         <MFFormActions
           onReset={() =>
             setForm({

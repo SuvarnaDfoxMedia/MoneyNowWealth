@@ -64,9 +64,12 @@ import {
 } from "../controllers/mfTopHoldingController";
 import {
   addBenchmark,
+  getBenchmarkFilters,
   addBenchmarkReturn,
   deleteBenchmark,
   getBenchmarkById,
+  getBenchmarkReturnsByFilters,
+  getBenchmarkReturnsList,
   getBenchmarkReturns,
   getBenchmarks,
   updateBenchmark,
@@ -168,6 +171,9 @@ router.get(
 );
 router.get("/:role/mf/benchmarks", ...adminEditorMiddleware, getBenchmarks);
 router.get("/:role/mf/benchmarks/:id", ...adminEditorMiddleware, getBenchmarkById);
+router.get("/:role/mf/benchmark/filters", ...adminEditorMiddleware, getBenchmarkFilters);
+router.get("/:role/mf/benchmark/returns", ...adminEditorMiddleware, getBenchmarkReturnsByFilters);
+router.get("/:role/mf/benchmark-returns", ...adminEditorMiddleware, getBenchmarkReturnsList);
 router.get(
   "/:role/mf/benchmark-returns/:benchmarkId",
   ...adminEditorMiddleware,
