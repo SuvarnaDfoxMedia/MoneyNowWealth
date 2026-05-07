@@ -72,6 +72,7 @@ import MFNfoListing from "./components/tables/ListingComponents/MFNfoListing";
 import MFIndexSnapshotListing from "./components/tables/ListingComponents/MFIndexSnapshotListing";
 import MFAmcListing from "./components/tables/ListingComponents/MFAmcListing";
 import MFTopHoldingListing from "./components/tables/ListingComponents/MFTopHoldingListing";
+import MFBenchmarkListing from "./components/tables/ListingComponents/MFBenchmarkListing";
 import SeoListing from "./components/tables/ListingComponents/SeoListing";
 import AddMFMainCategory from "./components/mf/AddMFMainCategory";
 import AddMFCategory from "./components/mf/AddMFSubCategory";
@@ -79,6 +80,8 @@ import AddMFFund from "./components/mf/AddMFFund";
 import AddMFNfo from "./components/mf/AddMFNfo";
 import AddMFIndexSnapshot from "./components/mf/AddMFIndexSnapshot";
 import AddMFAmc from "./components/mf/AddMFAmc";
+import AddMFBenchmark from "./components/mf/AddMFBenchmark";
+import MFBenchmarkReturnsManager from "./components/mf/MFBenchmarkReturnsManager";
 import AddMFTopHolding from "./components/mf/AddMFTopHolding";
 import MFTopHoldingDetail from "./components/mf/MFTopHoldingDetail";
 import MFTopHoldingHistoryPage from "./components/mf/MFTopHoldingHistoryPage";
@@ -278,6 +281,14 @@ function AppRoutes() {
         <Route path="/:role/mf/amcs" element={<MFAmcListing />} />
         <Route path="/:role/mf/amcs/create" element={<AddMFAmc />} />
         <Route path="/:role/mf/amcs/edit/:id" element={<AddMFAmc />} />
+        <Route path="/:role/benchmark/master" element={<MFBenchmarkListing />} />
+        <Route path="/:role/benchmark/master/create" element={<AddMFBenchmark />} />
+        <Route path="/:role/benchmark/master/edit/:id" element={<AddMFBenchmark />} />
+        <Route path="/:role/benchmark/returns" element={<MFBenchmarkReturnsManager />} />
+        <Route path="/:role/mf/benchmarks" element={<Navigate to={`/${role}/benchmark/master`} replace />} />
+        <Route path="/:role/mf/benchmarks/create" element={<Navigate to={`/${role}/benchmark/master/create`} replace />} />
+        <Route path="/:role/mf/benchmarks/edit/:id" element={<Navigate to={`/${role}/benchmark/master`} replace />} />
+        <Route path="/:role/mf/benchmark-returns" element={<Navigate to={`/${role}/benchmark/returns`} replace />} />
         <Route
           path="/:role/mf/index-snapshots"
           element={<MFIndexSnapshotListing />}

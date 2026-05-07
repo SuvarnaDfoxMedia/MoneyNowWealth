@@ -9,6 +9,8 @@ import MFFund from "../models/mfFundModel";
 import MFNfo from "../models/mfNfoModel";
 import MFIndexSnapshot from "../models/mfIndexSnapshotModel";
 import MFTopHolding from "../models/mfTopHoldingModel";
+import MFBenchmarkReturn from "../models/mfBenchmarkReturnModel";
+import MFBenchmark from "../models/mfBenchmarkModel";
 import {
   buildTopHoldingSchemeIdentity,
   computeTopHoldingSnapshotHash,
@@ -1504,6 +1506,43 @@ const upsertFundRow = async (
       is_deleted: false,
     }).lean();
 
+    const benchmarkIndexName = String(
+      valueByAliases(row, ["benchmark_index_name", "benchmark"]) || "",
+    ).trim();
+    const benchmarkTrailingValues = buildNumericObject(BENCHMARK_TRAILING_KEYS, {
+      d1: parseNumber(row, ["benchmark_trailing_1d", "benchmark_1d"]),
+      w1: parseNumber(row, ["benchmark_trailing_1w"]),
+      m1: parseNumber(row, ["benchmark_trailing_1m", "benchmark_1m"]),
+      m3: parseNumber(row, ["benchmark_trailing_3m", "benchmark_3m"]),
+      m6: parseNumber(row, ["benchmark_trailing_6m", "benchmark_6m"]),
+      y1: parseNumber(row, ["benchmark_trailing_1y", "benchmark_return_1y"]),
+      y3: parseNumber(row, ["benchmark_trailing_3y", "benchmark_return_3y"]),
+      y5: parseNumber(row, ["benchmark_trailing_5y", "benchmark_return_5y"]),
+      y10: parseNumber(row, ["benchmark_trailing_10y", "benchmark_return_10y"]),
+      ytd: parseNumber(row, ["ytd_1", "benchmark_ytd"]),
+    });
+    const benchmarkAnnualValues = parseYearValues(row, benchmarkAnnualAliases);
+
+    let benchmarkId: Types.ObjectId | null = null;
+    if (benchmarkIndexName) {
+      const existingBenchmark = await MFBenchmark.findOne({
+        name: exactRegex(benchmarkIndexName),
+        is_deleted: false,
+      }).select("_id");
+      if (existingBenchmark?._id) {
+        benchmarkId = existingBenchmark._id as Types.ObjectId;
+      } else if (!validateOnly) {
+        const createdBenchmark = await MFBenchmark.create({
+          name: benchmarkIndexName,
+          type: "index",
+          category: "",
+          is_active: 1,
+          is_deleted: false,
+        });
+        benchmarkId = createdBenchmark._id as Types.ObjectId;
+      }
+    }
+
     const nextData = {
       scheme_code: schemeCode,
       fund_name: fundName,
@@ -1538,20 +1577,7 @@ const upsertFundRow = async (
       },
       fund_manager: String(valueByAliases(row, ["fund_manager", "manager"]) || "").trim(),
       launch_date: parseDate(row, ["launch_date", "inception_date"]),
-      benchmark_index_name: String(valueByAliases(row, ["benchmark_index_name", "benchmark"]) || "").trim(),
-      benchmark_returns_trailing: buildNumericObject(BENCHMARK_TRAILING_KEYS, {
-        d1: parseNumber(row, ["benchmark_trailing_1d", "benchmark_1d"]),
-        w1: parseNumber(row, ["benchmark_trailing_1w"]),
-        m1: parseNumber(row, ["benchmark_trailing_1m", "benchmark_1m"]),
-        m3: parseNumber(row, ["benchmark_trailing_3m", "benchmark_3m"]),
-        m6: parseNumber(row, ["benchmark_trailing_6m", "benchmark_6m"]),
-        y1: parseNumber(row, ["benchmark_trailing_1y", "benchmark_return_1y"]),
-        y3: parseNumber(row, ["benchmark_trailing_3y", "benchmark_return_3y"]),
-        y5: parseNumber(row, ["benchmark_trailing_5y", "benchmark_return_5y"]),
-        y10: parseNumber(row, ["benchmark_trailing_10y", "benchmark_return_10y"]),
-        ytd: parseNumber(row, ["ytd_1", "benchmark_ytd"]),
-      }),
-      benchmark_returns_annual: parseYearValues(row, benchmarkAnnualAliases),
+      benchmark_id: benchmarkId,
       min_investment: parseNumber(row, ["min_investment", "minimum_investment"]),
       sip_allowed: toBoolean(valueByAliases(row, ["sip_allowed"]), true),
       min_sip_investment: parseNumber(row, ["min_sip_investment", "minimum_sip_investment"]),
@@ -1579,6 +1605,27 @@ const upsertFundRow = async (
       section.inserted += 1;
       if (!validateOnly) {
         const created = await MFFund.create(nextData);
+        if (benchmarkId) {
+          await MFBenchmarkReturn.findOneAndUpdate(
+            { benchmark_id: benchmarkId, date: new Date(), is_deleted: false },
+            {
+              $set: {
+                return_1d: benchmarkTrailingValues?.d1 ?? null,
+                return_1w: benchmarkTrailingValues?.w1 ?? null,
+                return_1m: benchmarkTrailingValues?.m1 ?? null,
+                return_3m: benchmarkTrailingValues?.m3 ?? null,
+                return_6m: benchmarkTrailingValues?.m6 ?? null,
+                return_ytd: benchmarkTrailingValues?.ytd ?? null,
+                return_1y: benchmarkTrailingValues?.y1 ?? null,
+                return_3y: benchmarkTrailingValues?.y3 ?? null,
+                return_5y: benchmarkTrailingValues?.y5 ?? null,
+                return_10y: benchmarkTrailingValues?.y10 ?? null,
+                annual: benchmarkAnnualValues,
+              },
+            },
+            { upsert: true, setDefaultsOnInsert: true },
+          );
+        }
         await recomputeCategoryAverageReturns(String(created.category_id));
       }
       return;
@@ -1591,6 +1638,27 @@ const upsertFundRow = async (
 
     section.updated += 1;
     if (!validateOnly) await MFFund.updateOne({ _id: (existing as any)._id }, nextData);
+    if (!validateOnly && benchmarkId) {
+      await MFBenchmarkReturn.findOneAndUpdate(
+        { benchmark_id: benchmarkId, date: new Date(), is_deleted: false },
+        {
+          $set: {
+            return_1d: benchmarkTrailingValues?.d1 ?? null,
+            return_1w: benchmarkTrailingValues?.w1 ?? null,
+            return_1m: benchmarkTrailingValues?.m1 ?? null,
+            return_3m: benchmarkTrailingValues?.m3 ?? null,
+            return_6m: benchmarkTrailingValues?.m6 ?? null,
+            return_ytd: benchmarkTrailingValues?.ytd ?? null,
+            return_1y: benchmarkTrailingValues?.y1 ?? null,
+            return_3y: benchmarkTrailingValues?.y3 ?? null,
+            return_5y: benchmarkTrailingValues?.y5 ?? null,
+            return_10y: benchmarkTrailingValues?.y10 ?? null,
+            annual: benchmarkAnnualValues,
+          },
+        },
+        { upsert: true, setDefaultsOnInsert: true },
+      );
+    }
     if (!validateOnly) {
       const affectedCategoryIds = [
         String((existing as any).category_id || ""),
@@ -1914,6 +1982,7 @@ const exportFundRows = async (onlyPopular = false) => {
 
   const items = await MFFund.find(filter)
     .populate("amc_id", "name")
+    .populate("benchmark_id", "name")
     .populate({
       path: "category_id",
       select: "name main_category_id",
@@ -1921,6 +1990,23 @@ const exportFundRows = async (onlyPopular = false) => {
     })
     .sort({ fund_name: 1 })
     .lean();
+
+  const benchmarkIds = [...new Set(items.map((item: any) => String(item?.benchmark_id?._id || "")).filter(Boolean))];
+  const latestReturns = benchmarkIds.length
+    ? await MFBenchmarkReturn.aggregate([
+        {
+          $match: {
+            is_deleted: false,
+            benchmark_id: { $in: benchmarkIds.map((id) => new Types.ObjectId(id)) },
+          },
+        },
+        { $sort: { date: -1 } },
+        { $group: { _id: "$benchmark_id", doc: { $first: "$$ROOT" } } },
+      ])
+    : [];
+  const benchmarkReturnMap = new Map(
+    latestReturns.map((item: any) => [String(item._id), item.doc]),
+  );
 
   return items.map((item: any) => [
     item.scheme_code || "",
@@ -1951,17 +2037,23 @@ const exportFundRows = async (onlyPopular = false) => {
     item.risk_metrics?.turnover_ratio ?? "",
     item.fund_manager || "",
     toIsoDate(item.launch_date),
-    item.benchmark_index_name || "",
-    item.benchmark_returns_trailing?.w1 ?? item.benchmark_returns_trailing?.d1 ?? "",
-    item.benchmark_returns_trailing?.m1 ?? "",
-    item.benchmark_returns_trailing?.m3 ?? "",
-    item.benchmark_returns_trailing?.m6 ?? "",
-    item.benchmark_returns_trailing?.y1 ?? "",
-    item.benchmark_returns_trailing?.y3 ?? "",
-    item.benchmark_returns_trailing?.y5 ?? "",
-    item.benchmark_returns_trailing?.y10 ?? "",
-    item.benchmark_returns_trailing?.ytd ?? "",
-    ...MF_ANNUAL_YEARS.map((year) => mapToPlainYearValue(item.benchmark_returns_annual, year)),
+    item.benchmark_id?.name || item.benchmark_index_name || "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1w ??
+      benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1d ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1m ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_3m ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_6m ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1y ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_3y ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_5y ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_10y ?? "",
+    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_ytd ?? "",
+    ...MF_ANNUAL_YEARS.map((year) =>
+      mapToPlainYearValue(
+        benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.annual,
+        year,
+      ),
+    ),
     item.min_investment ?? "",
     item.sip_allowed ? "Yes" : "No",
     item.min_sip_investment ?? "",

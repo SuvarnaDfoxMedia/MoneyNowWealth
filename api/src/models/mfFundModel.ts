@@ -24,22 +24,6 @@ const fundReturnsSchema = new Schema(
   { _id: false },
 );
 
-const benchmarkTrailingSchema = new Schema(
-  {
-    d1: { type: Number, default: null },
-    w1: { type: Number, default: null },
-    m1: { type: Number, default: null },
-    m3: { type: Number, default: null },
-    m6: { type: Number, default: null },
-    y1: { type: Number, default: null },
-    y3: { type: Number, default: null },
-    y5: { type: Number, default: null },
-    y10: { type: Number, default: null },
-    ytd: { type: Number, default: null },
-  },
-  { _id: false },
-);
-
 const frontendVisibilitySchema = new Schema(
   {
     groups: {
@@ -97,22 +81,7 @@ export interface IMFFund extends Document {
   };
   fund_manager?: string;
   launch_date?: Date | null;
-  benchmark_index_name?: string;
-  benchmark_returns_trailing?: {
-    d1?: number | null;
-    w1?: number | null;
-    m1?: number | null;
-    m3?: number | null;
-    m6?: number | null;
-    y1?: number | null;
-    y3?: number | null;
-    y5?: number | null;
-    y10?: number | null;
-    ytd?: number | null;
-  };
-  benchmark_returns_annual?: {
-    [year: string]: number | null | undefined;
-  };
+  benchmark_id?: mongoose.Types.ObjectId | null;
   min_investment?: number | null;
   sip_allowed?: boolean;
   min_sip_investment?: number | null;
@@ -182,9 +151,7 @@ const mfFundSchema = new Schema<IMFFund>(
     },
     fund_manager: { type: String, trim: true, default: "" },
     launch_date: { type: Date, default: null },
-    benchmark_index_name: { type: String, trim: true, default: "" },
-    benchmark_returns_trailing: { type: benchmarkTrailingSchema, default: () => ({}) },
-    benchmark_returns_annual: yearValueMapField,
+    benchmark_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFBenchmark", default: null, index: true },
     min_investment: { type: Number, default: null },
     sip_allowed: { type: Boolean, default: true },
     min_sip_investment: { type: Number, default: null },

@@ -62,18 +62,30 @@ import {
   toggleTopHoldingStatus,
   updateTopHolding,
 } from "../controllers/mfTopHoldingController";
+import {
+  addBenchmark,
+  addBenchmarkReturn,
+  deleteBenchmark,
+  getBenchmarkById,
+  getBenchmarkReturns,
+  getBenchmarks,
+  updateBenchmark,
+} from "../controllers/mfBenchmarkController";
 import { exportExcel, importExcel } from "../controllers/mfImportController";
 import { getMfDiscover, getMfFilters, getMfHome } from "../controllers/mfDiscoveryController";
 import { uploadMfExcel } from "../middlewares/uploadMiddleware";
 import { handleValidationErrors } from "../middlewares/validationMiddleware";
 import {
   createAmcValidators,
+  createBenchmarkReturnValidators,
+  createBenchmarkValidators,
   createCategoryValidators,
   createFundValidators,
   createIndexSnapshotValidators,
   createMainCategoryValidators,
   createNfoValidators,
   updateAmcValidators,
+  updateBenchmarkValidators,
   updateCategoryValidators,
   updateFundValidators,
   updateIndexSnapshotValidators,
@@ -102,6 +114,9 @@ router.get("/mf/amcs", getAmcs);
 router.get("/mf/amcs/:id", getAmcById);
 
 router.get("/mf/index-snapshots", getIndexSnapshots);
+router.get("/mf/benchmarks", getBenchmarks);
+router.get("/mf/benchmarks/:id", getBenchmarkById);
+router.get("/mf/benchmark-returns/:benchmarkId", getBenchmarkReturns);
 router.get("/mf/top-holdings", getTopHoldings);
 router.get("/mf/top-holdings/history/:schemeId", getTopHoldingHistory);
 router.get("/mf/home", getMfHome);
@@ -150,6 +165,13 @@ router.get(
   "/:role/mf/index-snapshots",
   ...adminEditorMiddleware,
   getIndexSnapshots,
+);
+router.get("/:role/mf/benchmarks", ...adminEditorMiddleware, getBenchmarks);
+router.get("/:role/mf/benchmarks/:id", ...adminEditorMiddleware, getBenchmarkById);
+router.get(
+  "/:role/mf/benchmark-returns/:benchmarkId",
+  ...adminEditorMiddleware,
+  getBenchmarkReturns,
 );
 router.get(
   "/:role/mf/index-snapshots/:id",
@@ -261,6 +283,29 @@ router.put(
   updateIndexSnapshot,
 );
 router.delete("/:role/mf/index-snapshots/:id", ...adminEditorMiddleware, deleteIndexSnapshot);
+
+router.post(
+  "/:role/mf/benchmarks",
+  ...adminEditorMiddleware,
+  createBenchmarkValidators,
+  handleValidationErrors,
+  addBenchmark,
+);
+router.put(
+  "/:role/mf/benchmarks/:id",
+  ...adminEditorMiddleware,
+  updateBenchmarkValidators,
+  handleValidationErrors,
+  updateBenchmark,
+);
+router.delete("/:role/mf/benchmarks/:id", ...adminEditorMiddleware, deleteBenchmark);
+router.post(
+  "/:role/mf/benchmark-returns",
+  ...adminEditorMiddleware,
+  createBenchmarkReturnValidators,
+  handleValidationErrors,
+  addBenchmarkReturn,
+);
 
 router.post(
   "/:role/mf/main-categories/create",
@@ -380,6 +425,25 @@ router.delete(
   "/:role/mf/index-snapshots/delete/:id",
   ...adminEditorMiddleware,
   deleteIndexSnapshot,
+);
+router.post(
+  "/:role/mf/benchmarks/create",
+  ...adminEditorMiddleware,
+  createBenchmarkValidators,
+  handleValidationErrors,
+  addBenchmark,
+);
+router.put(
+  "/:role/mf/benchmarks/edit/:id",
+  ...adminEditorMiddleware,
+  updateBenchmarkValidators,
+  handleValidationErrors,
+  updateBenchmark,
+);
+router.delete(
+  "/:role/mf/benchmarks/delete/:id",
+  ...adminEditorMiddleware,
+  deleteBenchmark,
 );
 router.delete(
   "/:role/mf/top-holdings/:id",

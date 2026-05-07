@@ -41,18 +41,6 @@ const FUND_TRAILING_FIELDS = [
   { key: "ytd", label: "YTD" },
 ] as const;
 
-const BENCHMARK_TRAILING_FIELDS = [
-  { key: "w1", label: "1 Week" },
-  { key: "m1", label: "1 Month" },
-  { key: "m3", label: "3 Months" },
-  { key: "m6", label: "6 Months" },
-  { key: "y1", label: "1 Year" },
-  { key: "y3", label: "3 Years" },
-  { key: "y5", label: "5 Years" },
-  { key: "y10", label: "10 Years" },
-  { key: "ytd", label: "YTD" },
-] as const;
-
 const ANNUAL_YEARS = [
   "2025",
   "2024",
@@ -64,18 +52,6 @@ const ANNUAL_YEARS = [
   "2018",
   "2017",
   "2016",
-] as const;
-
-const BENCHMARK_ANNUAL_YEARS = [
-  "2025",
-  "2024",
-  "2023",
-  "2022",
-  "2021",
-  "2020",
-  "2019",
-  "2018",
-  "2017",
 ] as const;
 
 const emptyMap = <T extends readonly string[]>(keys: T) =>
@@ -115,13 +91,7 @@ const emptyForm = () => ({
   turnover_ratio: "",
   fund_manager: "",
   launch_date: null as Date | null,
-  benchmark_index_name: "",
-  benchmarkTrailing: emptyMap(
-    BENCHMARK_TRAILING_FIELDS.map(
-      (field) => field.key,
-    ) as unknown as readonly string[],
-  ),
-  benchmarkAnnual: emptyMap(BENCHMARK_ANNUAL_YEARS),
+  benchmark_id: "",
   min_investment: "",
   sip_allowed: true,
   min_sip_investment: "",
@@ -163,6 +133,12 @@ type AmcOption = {
   name: string;
 };
 
+type BenchmarkOption = {
+  _id: string;
+  name: string;
+  category?: string;
+};
+
 const toNumberOrNull = (value: string) => (value === "" ? null : Number(value));
 
 const formatNavDate = (value?: string | null) => {
@@ -195,6 +171,7 @@ export default function AddMFFund() {
   const [amcDropdownOpen, setAmcDropdownOpen] = useState(false);
   const [amcSearch, setAmcSearch] = useState("");
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [benchmarkOptions, setBenchmarkOptions] = useState<BenchmarkOption[]>([]);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const amcWrapperRef = useRef<HTMLDivElement>(null);
@@ -202,7 +179,7 @@ export default function AddMFFund() {
 
   useEffect(() => {
     (async () => {
-      const [categoryRes, amcRes] = await Promise.all([
+      const [categoryRes, amcRes, benchmarkRes] = await Promise.all([
         axiosApi.get(`/${role}/mf/categories`, {
           limit: 5000,
           page: 1,
@@ -215,11 +192,18 @@ export default function AddMFFund() {
           sortBy: "name",
           sortOrder: "asc",
         }),
+        axiosApi.get(`/${role}/mf/benchmarks`, {
+          limit: 5000,
+          page: 1,
+          sortBy: "name",
+          sortOrder: "asc",
+        }),
       ]);
       setCategoryOptions(
         Array.isArray(categoryRes?.data) ? categoryRes.data : [],
       );
       setAmcOptions(Array.isArray(amcRes?.data) ? amcRes.data : []);
+      setBenchmarkOptions(Array.isArray(benchmarkRes?.data) ? benchmarkRes.data : []);
     })();
   }, [role]);
 
@@ -287,29 +271,7 @@ export default function AddMFFund() {
         turnover_ratio: fund.risk_metrics?.turnover_ratio?.toString?.() || "",
         fund_manager: fund.fund_manager || "",
         launch_date: fund.launch_date ? new Date(fund.launch_date) : null,
-        benchmark_index_name: fund.benchmark_index_name || "",
-        benchmarkTrailing: {
-          ...emptyMap(
-            BENCHMARK_TRAILING_FIELDS.map(
-              (field) => field.key,
-            ) as unknown as readonly string[],
-          ),
-          ...Object.fromEntries(
-            BENCHMARK_TRAILING_FIELDS.map((field) => [
-              field.key,
-              fund.benchmark_returns_trailing?.[field.key]?.toString?.() || "",
-            ]),
-          ),
-        },
-        benchmarkAnnual: {
-          ...emptyMap(BENCHMARK_ANNUAL_YEARS),
-          ...Object.fromEntries(
-            BENCHMARK_ANNUAL_YEARS.map((year) => [
-              year,
-              fund.benchmark_returns_annual?.[year]?.toString?.() || "",
-            ]),
-          ),
-        },
+        benchmark_id: fund.benchmark?._id || fund.benchmark_id || "",
         min_investment: fund.min_investment?.toString?.() || "",
         sip_allowed: fund.sip_allowed ?? true,
         min_sip_investment: fund.min_sip_investment?.toString?.() || "",
@@ -405,9 +367,7 @@ export default function AddMFFund() {
   const setMapField = (
     group:
       | "returnsTrailing"
-      | "returnsAnnual"
-      | "benchmarkTrailing"
-      | "benchmarkAnnual",
+      | "returnsAnnual",
     key: string,
     value: string,
   ) => {
@@ -454,9 +414,6 @@ export default function AddMFFund() {
       nextErrors.amc_name = "AMC name must be under 120 characters";
     if (form.fund_manager.length > 200)
       nextErrors.fund_manager = "Fund manager must be under 200 characters";
-    if (form.benchmark_index_name.length > 200)
-      nextErrors.benchmark_index_name =
-        "Benchmark index name must be under 200 characters";
     if (form.exit_load.length > 500)
       nextErrors.exit_load = "Exit load must be under 500 characters";
     if (form.tax_type.length > 120)
@@ -525,28 +482,11 @@ export default function AddMFFund() {
       if (message) nextErrors[`returnsTrailing.${field.key}`] = message;
     }
 
-    for (const field of BENCHMARK_TRAILING_FIELDS) {
-      const message = validateNumber(
-        form.benchmarkTrailing[field.key],
-        `Benchmark ${field.label}`,
-      );
-      if (message) nextErrors[`benchmarkTrailing.${field.key}`] = message;
-    }
 
     for (const year of ANNUAL_YEARS) {
       const fundAnnualError = validateNumber(form.returnsAnnual[year], year);
       if (fundAnnualError)
         nextErrors[`returnsAnnual.${year}`] = fundAnnualError;
-    }
-
-    for (const year of BENCHMARK_ANNUAL_YEARS) {
-      const benchmarkAnnualError = validateNumber(
-        form.benchmarkAnnual[year],
-        `Benchmark ${year}`,
-      );
-      if (benchmarkAnnualError) {
-        nextErrors[`benchmarkAnnual.${year}`] = benchmarkAnnualError;
-      }
     }
 
     setErrors(nextErrors);
@@ -652,9 +592,7 @@ export default function AddMFFund() {
       },
       fund_manager: form.fund_manager.trim(),
       launch_date: form.launch_date ? form.launch_date.toISOString() : null,
-      benchmark_index_name: form.benchmark_index_name.trim(),
-      benchmark_returns_trailing: toNumberMap(form.benchmarkTrailing),
-      benchmark_returns_annual: toNumberMap(form.benchmarkAnnual),
+      benchmark_id: form.benchmark_id || null,
       min_investment: toNumberOrNull(form.min_investment),
       sip_allowed: form.sip_allowed,
       min_sip_investment: form.sip_allowed
@@ -990,6 +928,27 @@ export default function AddMFFund() {
                 value={selectedCategory?.main_category_id?.name || ""}
                 readOnly
               />
+            </div>
+
+            <div>
+              {renderFieldLabel("Benchmark", "fund_overview.benchmark_id")}
+              <select
+                className={inputClass(errors.benchmark_id)}
+                disabled={isViewMode}
+                value={form.benchmark_id}
+                onChange={(event) =>
+                  setField("benchmark_id", event.target.value)
+                }
+              >
+                <option value="">Select Benchmark</option>
+                {benchmarkOptions.map((option) => (
+                  <option key={option._id} value={option._id}>
+                    {option.name}
+                    {option.category ? ` (${option.category})` : ""}
+                  </option>
+                ))}
+              </select>
+              {error(errors.benchmark_id)}
             </div>
 
             <div>

@@ -135,7 +135,7 @@ const AppSidebar: React.FC = () => {
             path: `/${role}/mf/categories`,
             roles: ["admin", "editor"],
           },
-           {
+          {
             name: "AMCs",
             path: `/${role}/mf/amcs`,
             roles: ["admin", "editor"],
@@ -176,6 +176,23 @@ const AppSidebar: React.FC = () => {
           {
             name: "History",
             path: `/${role}/nav/history`,
+            roles: ["admin", "editor"],
+          },
+        ],
+      },
+      {
+        name: "Benchmark",
+        icon: <FiFileText />,
+        roles: ["admin", "editor"],
+        subItems: [
+          {
+            name: "Master",
+            path: `/${role}/benchmark/master`,
+            roles: ["admin", "editor"],
+          },
+          {
+            name: "Returns",
+            path: `/${role}/benchmark/returns`,
             roles: ["admin", "editor"],
           },
         ],

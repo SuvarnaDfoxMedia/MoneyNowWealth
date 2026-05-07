@@ -1,10 +1,5 @@
 import { body } from "express-validator";
-import {
-  BENCHMARK_TRAILING_KEYS,
-  CATEGORY_TRAILING_KEYS,
-  FUND_RETURN_KEYS,
-  MF_ANNUAL_YEARS,
-} from "../services/mfUtils";
+import { CATEGORY_TRAILING_KEYS, FUND_RETURN_KEYS, MF_ANNUAL_YEARS } from "../services/mfUtils";
 
 const requiredString = (field: string, label: string, min = 2, max = 120) =>
   body(field)
@@ -223,13 +218,7 @@ export const createFundValidators = [
   optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Acceptance date"),
-  optionalString("benchmark_index_name", "Benchmark index name", 200),
-  ...BENCHMARK_TRAILING_KEYS.map((key) =>
-    optionalNumber(`benchmark_returns_trailing.${key}`, `Benchmark ${key.toUpperCase()} return`),
-  ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`benchmark_returns_annual.${year}`, `Benchmark annual ${year} return`),
-  ),
+  optionalMongoId("benchmark_id", "Benchmark"),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
   optionalBoolean("sip_allowed", "sip_allowed"),
   optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
@@ -283,13 +272,7 @@ export const updateFundValidators = [
   optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Acceptance date"),
-  optionalString("benchmark_index_name", "Benchmark index name", 200),
-  ...BENCHMARK_TRAILING_KEYS.map((key) =>
-    optionalNumber(`benchmark_returns_trailing.${key}`, `Benchmark ${key.toUpperCase()} return`),
-  ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`benchmark_returns_annual.${year}`, `Benchmark annual ${year} return`),
-  ),
+  optionalMongoId("benchmark_id", "Benchmark"),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
   optionalBoolean("sip_allowed", "sip_allowed"),
   optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
@@ -370,4 +353,41 @@ export const updateIndexSnapshotValidators = [
   optionalNumber("returns.y10", "10Y return"),
   optionalIsoDate("last_updated_date", "Last updated date"),
   optionalIsActive(),
+];
+
+export const createBenchmarkValidators = [
+  requiredString("name", "Benchmark name", 2, 200),
+  optionalString("category", "Category", 120),
+  optionalMongoId("main_category_id", "Main category"),
+  optionalMongoId("category_id", "Category"),
+  optionalString("type", "Type", 50),
+  optionalIsActive(),
+];
+
+export const updateBenchmarkValidators = [
+  optionalString("name", "Benchmark name", 200),
+  optionalString("category", "Category", 120),
+  optionalMongoId("main_category_id", "Main category"),
+  optionalMongoId("category_id", "Category"),
+  optionalString("type", "Type", 50),
+  optionalIsActive(),
+];
+
+export const createBenchmarkReturnValidators = [
+  requiredMongoId("benchmark_id", "Benchmark"),
+  requiredIsoDate("date", "Date"),
+  optionalNumber("return_1d", "1D return"),
+  optionalNumber("return_1w", "1W return"),
+  optionalNumber("return_1m", "1M return"),
+  optionalNumber("return_3m", "3M return"),
+  optionalNumber("return_6m", "6M return"),
+  optionalNumber("return_ytd", "YTD return"),
+  optionalNumber("return_1y", "1Y return"),
+  optionalNumber("return_3y", "3Y return"),
+  optionalNumber("return_5y", "5Y return"),
+  optionalNumber("return_10y", "10Y return"),
+  ...MF_ANNUAL_YEARS.map((year) =>
+    optionalNumber(`annual.${year}`, `Annual ${year} return`),
+  ),
+  optionalNumber("return_since_inception", "Since inception return"),
 ];
