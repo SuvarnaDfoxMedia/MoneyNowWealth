@@ -20,15 +20,15 @@ import {
 } from "./mfValidation";
 
 const TRAILING_FIELDS = [
-  { key: "w1", label: "1 Week" },
-  { key: "m1", label: "1 Month" },
-  { key: "m3", label: "3 Months" },
-  { key: "m6", label: "6 Months" },
-  { key: "y1", label: "1 Year" },
-  { key: "y3", label: "3 Years" },
-  { key: "y5", label: "5 Years" },
-  { key: "y10", label: "10 Years" },
-  { key: "ytd", label: "YTD" },
+  { key: "1w", label: "1 Week" },
+  { key: "1m", label: "1 Month" },
+  { key: "3m", label: "3 Months" },
+  { key: "6m", label: "6 Months" },
+  { key: "1y", label: "1 Year" },
+  { key: "3y", label: "3 Years" },
+  { key: "5y", label: "5 Years" },
+  { key: "10y", label: "10 Years" },
+  { key: "since_launch", label: "Since Launch" },
 ] as const;
 
 const ANNUAL_YEARS = [
@@ -82,10 +82,6 @@ export default function AddMFCategory() {
     name: "",
     main_category_id: "",
     description: "",
-    benchmark_index_name: "",
-    benchmark_return_type: "Trailing",
-    benchmarkTrailing: emptyTrailingValues(),
-    benchmarkAnnual: emptyAnnualValues(),
     categoryAverageTrailing: emptyTrailingValues(),
     categoryAverageAnnual: emptyAnnualValues(),
     risk_level: "",
@@ -119,32 +115,12 @@ export default function AddMFCategory() {
         name: category.name || "",
         main_category_id: category.main_category_id?._id || "",
         description: category.description || "",
-        benchmark_index_name: category.benchmark_index_name || "",
-        benchmark_return_type: category.benchmark_return_type || "Trailing",
-        benchmarkTrailing: {
-          ...emptyTrailingValues(),
-          ...Object.fromEntries(
-            TRAILING_FIELDS.map((field) => [
-              field.key,
-              category.benchmark_returns?.[field.key]?.toString?.() || "",
-            ]),
-          ),
-        },
-        benchmarkAnnual: {
-          ...emptyAnnualValues(),
-          ...Object.fromEntries(
-            ANNUAL_YEARS.map((year) => [
-              year,
-              category.benchmark_returns?.annual?.[year]?.toString?.() || "",
-            ]),
-          ),
-        },
         categoryAverageTrailing: {
           ...emptyTrailingValues(),
           ...Object.fromEntries(
             TRAILING_FIELDS.map((field) => [
               field.key,
-              category.category_average_returns?.[field.key]?.toString?.() || "",
+              category.category_average_returns?.trailing?.[field.key]?.toString?.() || "",
             ]),
           ),
         },
@@ -153,7 +129,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             ANNUAL_YEARS.map((year) => [
               year,
-              category.category_average_returns?.annual?.[year]?.toString?.() ||
+              category.category_average_returns?.annual?.yearly_returns?.[year]?.toString?.() ||
                 "",
             ]),
           ),
@@ -195,7 +171,7 @@ export default function AddMFCategory() {
   };
 
   const setNestedNumberField = (
-    group: "benchmarkTrailing" | "benchmarkAnnual" | "categoryAverageTrailing" | "categoryAverageAnnual",
+    group: "categoryAverageTrailing" | "categoryAverageAnnual",
     key: string,
     value: string,
   ) => {
@@ -234,10 +210,6 @@ export default function AddMFCategory() {
     if (form.name.trim().length > 120) {
       nextErrors.name = "Name must be under 120 characters";
     }
-    if (form.benchmark_index_name.length > 200) {
-      nextErrors.benchmark_index_name =
-        "Benchmark index name must be under 200 characters";
-    }
     if (form.description.length > 5000) {
       nextErrors.description = "Description must be under 5000 characters";
     }
@@ -254,14 +226,6 @@ export default function AddMFCategory() {
     }
 
     for (const field of TRAILING_FIELDS) {
-      const benchmarkError = validateNumber(
-        form.benchmarkTrailing[field.key],
-        `Benchmark ${field.label}`,
-      );
-      if (benchmarkError) {
-        nextErrors[`benchmarkTrailing.${field.key}`] = benchmarkError;
-      }
-
       const categoryAverageError = validateNumber(
         form.categoryAverageTrailing[field.key],
         `Category average ${field.label}`,
@@ -273,14 +237,6 @@ export default function AddMFCategory() {
     }
 
     for (const year of ANNUAL_YEARS) {
-      const benchmarkError = validateNumber(
-        form.benchmarkAnnual[year],
-        `Benchmark ${year}`,
-      );
-      if (benchmarkError) {
-        nextErrors[`benchmarkAnnual.${year}`] = benchmarkError;
-      }
-
       const categoryAverageError = validateNumber(
         form.categoryAverageAnnual[year],
         `Category average ${year}`,
@@ -339,15 +295,12 @@ export default function AddMFCategory() {
       name: form.name.trim(),
       main_category_id: form.main_category_id,
       description: form.description.trim(),
-      benchmark_index_name: form.benchmark_index_name.trim(),
-      benchmark_return_type: form.benchmark_return_type,
-      benchmark_returns: {
-        ...toNumberMap(form.benchmarkTrailing),
-        annual: toNumberMap(form.benchmarkAnnual),
-      },
       category_average_returns: {
-        ...toNumberMap(form.categoryAverageTrailing),
-        annual: toNumberMap(form.categoryAverageAnnual),
+        trailing: toNumberMap(form.categoryAverageTrailing),
+        annual: {
+          ytd: null,
+          yearly_returns: toNumberMap(form.categoryAverageAnnual),
+        },
       },
       risk_level: form.risk_level.trim(),
       suggested_use_case: form.suggested_use_case.trim(),
@@ -379,10 +332,6 @@ export default function AddMFCategory() {
       name: "",
       main_category_id: "",
       description: "",
-      benchmark_index_name: "",
-      benchmark_return_type: "Trailing",
-      benchmarkTrailing: emptyTrailingValues(),
-      benchmarkAnnual: emptyAnnualValues(),
       categoryAverageTrailing: emptyTrailingValues(),
       categoryAverageAnnual: emptyAnnualValues(),
       risk_level: "",
@@ -507,91 +456,7 @@ export default function AddMFCategory() {
           {error(errors.description)}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Benchmark Index Name
-            </label>
-            <input
-              className={inputClass(errors.benchmark_index_name)}
-              placeholder="Benchmark index name"
-              value={form.benchmark_index_name}
-              onChange={(event) =>
-                setField("benchmark_index_name", event.target.value)
-              }
-            />
-            {error(errors.benchmark_index_name)}
-          </div>
-
-          <div>
-            <label className="mb-2 block font-medium text-gray-700">
-              Benchmark Return Type
-            </label>
-            <select
-              className={inputClass(errors.benchmark_return_type)}
-              value={form.benchmark_return_type}
-              onChange={(event) =>
-                setField("benchmark_return_type", event.target.value)
-              }
-            >
-              <option value="Trailing">Trailing</option>
-              <option value="Annual">Annual</option>
-            </select>
-            {error(errors.benchmark_return_type)}
-          </div>
-        </div>
-
         <div className="space-y-8">
-          <div>
-            <h3 className="mb-4 text-lg font-semibold text-[#043f79]">
-              Benchmark Returns
-            </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {TRAILING_FIELDS.map((field) => (
-                <div key={field.key}>
-                  <label className="mb-2 block font-medium text-gray-700">
-                    {field.label}
-                  </label>
-                  <input
-                    className={inputClass(errors[`benchmarkTrailing.${field.key}`])}
-                    placeholder={field.label}
-                    value={form.benchmarkTrailing[field.key]}
-                    onChange={(event) =>
-                      setNestedNumberField(
-                        "benchmarkTrailing",
-                        field.key,
-                        event.target.value,
-                      )
-                    }
-                  />
-                  {error(errors[`benchmarkTrailing.${field.key}`])}
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {ANNUAL_YEARS.map((year) => (
-                <div key={year}>
-                  <label className="mb-2 block font-medium text-gray-700">
-                    {year}
-                  </label>
-                  <input
-                    className={inputClass(errors[`benchmarkAnnual.${year}`])}
-                    placeholder={year}
-                    value={form.benchmarkAnnual[year]}
-                    onChange={(event) =>
-                      setNestedNumberField(
-                        "benchmarkAnnual",
-                        year,
-                        event.target.value,
-                      )
-                    }
-                  />
-                  {error(errors[`benchmarkAnnual.${year}`])}
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div>
             <div className="mb-2 flex items-center justify-between gap-4">
               <h3 className="text-lg font-semibold text-[#043f79]">

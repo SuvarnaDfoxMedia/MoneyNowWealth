@@ -195,6 +195,11 @@ const AppSidebar: React.FC = () => {
             path: `/${role}/benchmark/returns`,
             roles: ["admin", "editor"],
           },
+          {
+            name: "View Comparison",
+            path: `/${role}/benchmark/view-comparison`,
+            roles: ["admin", "editor"],
+          },
         ],
       },
       {

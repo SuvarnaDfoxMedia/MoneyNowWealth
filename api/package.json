@@ -8,6 +8,7 @@
         "build": "tsc",
         "start": "node dist/index.js",
         "migrate:rich-text-fonts": "tsx scripts/migrateRichTextFonts.ts",
+        "migrate:fund-benchmarks": "tsx scripts/migrateFundBenchmarks.ts",
         "repair:mf-indexes": "tsx scripts/repairLegacyMfIndexes.ts",
         "migrate:mf-top-holdings-history": "tsx scripts/migrateMfTopHoldingsHistory.ts"
     },

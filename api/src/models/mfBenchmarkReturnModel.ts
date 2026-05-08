@@ -3,18 +3,11 @@ import mongoose, { Document, Model, Schema } from "mongoose";
 export interface IMFBenchmarkReturn extends Document {
   benchmark_id: mongoose.Types.ObjectId;
   date: Date;
-  return_1d?: number | null;
-  return_1w?: number | null;
-  return_1m?: number | null;
-  return_3m?: number | null;
-  return_6m?: number | null;
-  return_ytd?: number | null;
-  return_1y?: number | null;
-  return_3y?: number | null;
-  return_5y?: number | null;
-  return_10y?: number | null;
-  annual?: Map<string, number | null> | Record<string, number | null>;
-  return_since_inception?: number | null;
+  trailing?: Record<string, number | null>;
+  annual?: {
+    ytd?: number | null;
+    yearly_returns?: Map<string, number | null> | Record<string, number | null>;
+  };
   is_deleted: boolean;
   deleted_at?: Date | null;
   created_at: Date;
@@ -30,18 +23,21 @@ const mfBenchmarkReturnSchema = new Schema<IMFBenchmarkReturn>(
       index: true,
     },
     date: { type: Date, required: true, index: true },
-    return_1d: { type: Number, default: null },
-    return_1w: { type: Number, default: null },
-    return_1m: { type: Number, default: null },
-    return_3m: { type: Number, default: null },
-    return_6m: { type: Number, default: null },
-    return_ytd: { type: Number, default: null },
-    return_1y: { type: Number, default: null },
-    return_3y: { type: Number, default: null },
-    return_5y: { type: Number, default: null },
-    return_10y: { type: Number, default: null },
-    annual: { type: Map, of: Number, default: () => ({}) },
-    return_since_inception: { type: Number, default: null },
+    trailing: {
+      "1w": { type: Number, default: null },
+      "1m": { type: Number, default: null },
+      "3m": { type: Number, default: null },
+      "6m": { type: Number, default: null },
+      "1y": { type: Number, default: null },
+      "3y": { type: Number, default: null },
+      "5y": { type: Number, default: null },
+      "10y": { type: Number, default: null },
+      since_launch: { type: Number, default: null },
+    },
+    annual: {
+      ytd: { type: Number, default: null },
+      yearly_returns: { type: Map, of: Number, default: () => ({}) },
+    },
     is_deleted: { type: Boolean, default: false, index: true },
     deleted_at: { type: Date, default: null },
   },

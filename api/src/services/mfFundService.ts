@@ -5,11 +5,8 @@ import MFCategory from "../models/mfCategoryModel";
 import MFBenchmark from "../models/mfBenchmarkModel";
 import MFBenchmarkReturn from "../models/mfBenchmarkReturnModel";
 import {
-  buildNumericObject,
   buildSort,
-  FUND_RETURN_KEYS,
   MF_ANNUAL_YEARS,
-  normalizeTopHoldings,
   normalizeYearValueMap,
   parsePagination,
   toBoolean,
@@ -62,8 +59,21 @@ const normalizeInvestmentFlags = (payload: any) => {
 };
 
 const normalizeFundReturns = (value: any) => ({
-  ...buildNumericObject(FUND_RETURN_KEYS, value),
-  annual: normalizeYearValueMap(value?.annual),
+  trailing: {
+    "1w": toNumberOrNull(value?.trailing?.["1w"] ?? value?.w1),
+    "1m": toNumberOrNull(value?.trailing?.["1m"] ?? value?.m1),
+    "3m": toNumberOrNull(value?.trailing?.["3m"] ?? value?.m3),
+    "6m": toNumberOrNull(value?.trailing?.["6m"] ?? value?.m6),
+    "1y": toNumberOrNull(value?.trailing?.["1y"] ?? value?.y1),
+    "3y": toNumberOrNull(value?.trailing?.["3y"] ?? value?.y3_cagr),
+    "5y": toNumberOrNull(value?.trailing?.["5y"] ?? value?.y5_cagr),
+    "10y": toNumberOrNull(value?.trailing?.["10y"] ?? value?.y10_cagr),
+    since_launch: toNumberOrNull(value?.trailing?.since_launch ?? value?.since_inception),
+  },
+  annual: {
+    ytd: toNumberOrNull(value?.annual?.ytd ?? value?.ytd),
+    yearly_returns: normalizeYearValueMap(value?.annual?.yearly_returns ?? value?.annual),
+  },
 });
 
 const normalizeVisibilityMap = (value: any) => {
@@ -97,17 +107,21 @@ const upsertLegacyBenchmarkReturn = async (benchmarkId: any, payload: any) => {
     { benchmark_id: benchmarkId, date, is_deleted: false },
     {
       $set: {
-        return_1d: toNumberOrNull(trailing?.d1),
-        return_1w: toNumberOrNull(trailing?.w1),
-        return_1m: toNumberOrNull(trailing?.m1),
-        return_3m: toNumberOrNull(trailing?.m3),
-        return_6m: toNumberOrNull(trailing?.m6),
-        return_ytd: toNumberOrNull(trailing?.ytd),
-        return_1y: toNumberOrNull(trailing?.y1),
-        return_3y: toNumberOrNull(trailing?.y3),
-        return_5y: toNumberOrNull(trailing?.y5),
-        return_10y: toNumberOrNull(trailing?.y10),
-        annual,
+        trailing: {
+          "1w": toNumberOrNull(trailing?.w1 ?? trailing?.["1w"]),
+          "1m": toNumberOrNull(trailing?.m1 ?? trailing?.["1m"]),
+          "3m": toNumberOrNull(trailing?.m3 ?? trailing?.["3m"]),
+          "6m": toNumberOrNull(trailing?.m6 ?? trailing?.["6m"]),
+          "1y": toNumberOrNull(trailing?.y1 ?? trailing?.["1y"]),
+          "3y": toNumberOrNull(trailing?.y3 ?? trailing?.["3y"]),
+          "5y": toNumberOrNull(trailing?.y5 ?? trailing?.["5y"]),
+          "10y": toNumberOrNull(trailing?.y10 ?? trailing?.["10y"]),
+          since_launch: toNumberOrNull(trailing?.since_launch ?? trailing?.since_inception),
+        },
+        annual: {
+          ytd: toNumberOrNull(trailing?.ytd ?? payload?.benchmark_returns_annual?.ytd),
+          yearly_returns: annual,
+        },
       },
     },
     { upsert: true, setDefaultsOnInsert: true },
@@ -131,9 +145,9 @@ const attachBenchmarkPayload = async (funds: any[]) => {
       benchmark_returns_trailing: {},
       comparison: {
         fund: {
-          return_1y: fund?.returns?.y1 ?? null,
-          return_3y: fund?.returns?.y3_cagr ?? null,
-          return_5y: fund?.returns?.y5_cagr ?? null,
+          return_1y: fund?.returns?.trailing?.["1y"] ?? fund?.returns?.y1 ?? null,
+          return_3y: fund?.returns?.trailing?.["3y"] ?? fund?.returns?.y3_cagr ?? null,
+          return_5y: fund?.returns?.trailing?.["5y"] ?? fund?.returns?.y5_cagr ?? null,
         },
         benchmark: null,
       },
@@ -173,18 +187,18 @@ const attachBenchmarkPayload = async (funds: any[]) => {
           category: benchmarkDoc?.category || "",
           type: benchmarkDoc?.type || "index",
           date: latest?.date || null,
-          return_1y: latest?.return_1y ?? null,
-          return_3y: latest?.return_3y ?? null,
-          return_5y: latest?.return_5y ?? null,
+          return_1y: latest?.trailing?.["1y"] ?? latest?.return_1y ?? null,
+          return_3y: latest?.trailing?.["3y"] ?? latest?.return_3y ?? null,
+          return_5y: latest?.trailing?.["5y"] ?? latest?.return_5y ?? null,
           return_1d: latest?.return_1d ?? null,
-          return_1w: latest?.return_1w ?? null,
-          return_1m: latest?.return_1m ?? null,
-          return_3m: latest?.return_3m ?? null,
-          return_6m: latest?.return_6m ?? null,
-          return_ytd: latest?.return_ytd ?? null,
-          return_10y: latest?.return_10y ?? null,
-          annual: latest?.annual ?? {},
-          return_since_inception: latest?.return_since_inception ?? null,
+          return_1w: latest?.trailing?.["1w"] ?? latest?.return_1w ?? null,
+          return_1m: latest?.trailing?.["1m"] ?? latest?.return_1m ?? null,
+          return_3m: latest?.trailing?.["3m"] ?? latest?.return_3m ?? null,
+          return_6m: latest?.trailing?.["6m"] ?? latest?.return_6m ?? null,
+          return_ytd: latest?.annual?.ytd ?? latest?.return_ytd ?? null,
+          return_10y: latest?.trailing?.["10y"] ?? latest?.return_10y ?? null,
+          annual: latest?.annual?.yearly_returns ?? latest?.annual ?? {},
+          return_since_inception: latest?.trailing?.since_launch ?? latest?.return_since_inception ?? null,
         }
       : null;
 
@@ -207,9 +221,9 @@ const attachBenchmarkPayload = async (funds: any[]) => {
       benchmark_returns_annual: benchmarkPayload?.annual || {},
       comparison: {
         fund: {
-          return_1y: fund?.returns?.y1 ?? null,
-          return_3y: fund?.returns?.y3_cagr ?? null,
-          return_5y: fund?.returns?.y5_cagr ?? null,
+          return_1y: fund?.returns?.trailing?.["1y"] ?? fund?.returns?.y1 ?? null,
+          return_3y: fund?.returns?.trailing?.["3y"] ?? fund?.returns?.y3_cagr ?? null,
+          return_5y: fund?.returns?.trailing?.["5y"] ?? fund?.returns?.y5_cagr ?? null,
         },
         benchmark: benchmarkPayload
           ? {
@@ -268,7 +282,6 @@ export const getFunds = async (query: any) => {
   if (query?.isPopular !== undefined) filter.is_popular = toBoolean(query.isPopular);
   if (query?.planType) filter.plan_type = query.planType;
   if (query?.optionType) filter.option_type = query.optionType;
-  if (query?.riskLevel) filter.riskometer_label = String(query.riskLevel).trim();
 
   if (query?.categoryId) {
     const rawCategoryId = String(query.categoryId);
@@ -331,7 +344,7 @@ export const getFunds = async (query: any) => {
   }
   let returnsMin = toNumberOrNull(query?.returnsMin);
   let returnsMax = toNumberOrNull(query?.returnsMax);
-  const returnsPeriod = String(query?.returnsPeriod || "y3_cagr");
+  const returnsPeriod = String(query?.returnsPeriod || "3y");
   if (query?.returnsRange && typeof query.returnsRange === "string") {
     const [minStr, maxStr] = query.returnsRange.split(",").map((x: string) => x.trim());
     if (returnsMin === null) returnsMin = toNumberOrNull(minStr);
@@ -343,12 +356,12 @@ export const getFunds = async (query: any) => {
     if (expenseMax === null) expenseMax = toNumberOrNull(maxStr);
   }
 
-  if (minY1 !== null) filter["returns.y1"] = { ...(filter["returns.y1"] || {}), $gte: minY1 };
-  if (minY3 !== null) filter["returns.y3_cagr"] = { ...(filter["returns.y3_cagr"] || {}), $gte: minY3 };
-  if (minY5 !== null) filter["returns.y5_cagr"] = { ...(filter["returns.y5_cagr"] || {}), $gte: minY5 };
-  if (minY10 !== null) filter["returns.y10_cagr"] = { ...(filter["returns.y10_cagr"] || {}), $gte: minY10 };
+  if (minY1 !== null) filter["returns.trailing.1y"] = { ...(filter["returns.trailing.1y"] || {}), $gte: minY1 };
+  if (minY3 !== null) filter["returns.trailing.3y"] = { ...(filter["returns.trailing.3y"] || {}), $gte: minY3 };
+  if (minY5 !== null) filter["returns.trailing.5y"] = { ...(filter["returns.trailing.5y"] || {}), $gte: minY5 };
+  if (minY10 !== null) filter["returns.trailing.10y"] = { ...(filter["returns.trailing.10y"] || {}), $gte: minY10 };
   if (returnsMin !== null || returnsMax !== null) {
-    const key = `returns.${returnsPeriod}`;
+    const key = `returns.trailing.${returnsPeriod}`;
     filter[key] = filter[key] || {};
     if (returnsMin !== null) filter[key].$gte = returnsMin;
     if (returnsMax !== null) filter[key].$lte = returnsMax;
@@ -377,14 +390,13 @@ export const getFunds = async (query: any) => {
   }
 
   const sortMap: Record<string, Record<string, 1 | -1>> = {
-    returns: { "returns.y3_cagr": -1 },
-    returns_y1: { "returns.y1": -1 },
-    returns_y3: { "returns.y3_cagr": -1 },
-    returns_y5: { "returns.y5_cagr": -1 },
-    returns_y10: { "returns.y10_cagr": -1 },
+    returns: { "returns.trailing.3y": -1 },
+    returns_y1: { "returns.trailing.1y": -1 },
+    returns_y3: { "returns.trailing.3y": -1 },
+    returns_y5: { "returns.trailing.5y": -1 },
+    returns_y10: { "returns.trailing.10y": -1 },
     expense_ratio: { expense_ratio: 1 },
     aum: { aum_cr: -1 },
-    risk: { riskometer_label: 1 },
     launch_date: { launch_date: -1 },
   };
   const sort = sortMap[query?.sort] || buildSort(query?.sortBy, query?.sortOrder, { created_at: -1 });
@@ -431,11 +443,11 @@ export const getPopularFunds = async (query: any) => {
   }
 
   const sortMap: Record<string, Record<string, 1 | -1>> = {
-    returns_y3: { "returns.y3_cagr": -1 },
+    returns_y3: { "returns.trailing.3y": -1 },
     aum: { aum_cr: -1 },
     expense_ratio: { expense_ratio: 1 },
   };
-  const sort = sortMap[query?.sort] || { "returns.y3_cagr": -1, aum_cr: -1 };
+  const sort = sortMap[query?.sort] || { "returns.trailing.3y": -1, aum_cr: -1 };
 
   const [data, total] = await Promise.all([
     MFFund.find(filter)
@@ -493,7 +505,6 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
   const categoryId = await resolveCategoryId(payload);
   const benchmarkId = await resolveBenchmarkId(payload);
 
-  const topHoldings = normalizeTopHoldings(payload.top_holdings);
   const investmentFlags = normalizeInvestmentFlags(payload);
   const normalizedSchemeCode = String(payload.scheme_code).trim();
   const normalizedFundName = String(payload.fund_name).trim();
@@ -555,21 +566,6 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
     ...investmentFlags,
     is_featured: toBoolean(payload.is_featured),
     is_popular: toBoolean(payload.is_popular),
-    top_holdings: topHoldings,
-    asset_allocation: {
-      domestic_equity_pct: toNumberOrNull(payload.asset_allocation?.domestic_equity_pct),
-      international_equity_pct: toNumberOrNull(payload.asset_allocation?.international_equity_pct),
-      equity_pct: toNumberOrNull(payload.asset_allocation?.equity_pct),
-      debt_pct: toNumberOrNull(payload.asset_allocation?.debt_pct),
-      other_pct: toNumberOrNull(payload.asset_allocation?.other_pct),
-      gold_pct: toNumberOrNull(payload.asset_allocation?.gold_pct ?? payload.asset_allocation?.["% Gold"]),
-      cash_pct: toNumberOrNull(payload.asset_allocation?.cash_pct ?? payload.asset_allocation?.["% Cash"]),
-    },
-    equity_allocation: {
-      large_cap_pct: toNumberOrNull(payload.equity_allocation?.large_cap_pct),
-      mid_cap_pct: toNumberOrNull(payload.equity_allocation?.mid_cap_pct),
-      small_cap_pct: toNumberOrNull(payload.equity_allocation?.small_cap_pct),
-    },
     frontend_visibility: normalizeFrontendVisibility(payload.frontend_visibility),
     is_active: payload.is_active ?? 1,
     is_deleted: false,
@@ -633,25 +629,6 @@ if (payload.amc_name || payload.amc_id) {
     };
   }
 
-  if (payload.asset_allocation) {
-    updateData.asset_allocation = {
-      domestic_equity_pct: toNumberOrNull(payload.asset_allocation.domestic_equity_pct),
-      international_equity_pct: toNumberOrNull(payload.asset_allocation.international_equity_pct),
-      equity_pct: toNumberOrNull(payload.asset_allocation.equity_pct),
-      debt_pct: toNumberOrNull(payload.asset_allocation.debt_pct),
-      other_pct: toNumberOrNull(payload.asset_allocation.other_pct),
-      gold_pct: toNumberOrNull(payload.asset_allocation.gold_pct ?? payload.asset_allocation["% Gold"]),
-      cash_pct: toNumberOrNull(payload.asset_allocation.cash_pct ?? payload.asset_allocation["% Cash"]),
-    };
-  }
-
-  if (payload.equity_allocation) {
-    updateData.equity_allocation = {
-      large_cap_pct: toNumberOrNull(payload.equity_allocation.large_cap_pct),
-      mid_cap_pct: toNumberOrNull(payload.equity_allocation.mid_cap_pct),
-      small_cap_pct: toNumberOrNull(payload.equity_allocation.small_cap_pct),
-    };
-  }
 
   if (payload.scheme_code !== undefined) updateData.scheme_code = String(payload.scheme_code || "").trim();
   if (payload.isin !== undefined || payload.isin_number !== undefined) {
@@ -678,9 +655,6 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.is_featured !== undefined) updateData.is_featured = toBoolean(payload.is_featured);
   if (payload.is_popular !== undefined) updateData.is_popular = toBoolean(payload.is_popular);
 
-  if (payload.top_holdings !== undefined) {
-    updateData.top_holdings = normalizeTopHoldings(payload.top_holdings);
-  }
 
   if (payload.frontend_visibility !== undefined) {
     updateData.frontend_visibility = normalizeFrontendVisibility(

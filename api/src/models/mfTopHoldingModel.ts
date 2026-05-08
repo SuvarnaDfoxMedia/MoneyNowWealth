@@ -42,15 +42,10 @@ export interface IMFTopHolding extends Document {
   bond_holdings?: number | null;
   assets_top_10_holdings_pct?: number | null;
   turnover_pct?: number | null;
-  domestic_equity_pct?: number | null;
-  international_equity_pct?: number | null;
-  debt_pct?: number | null;
-  other_pct?: number | null;
-  gold_pct?: number | null;
-  cash_pct?: number | null;
-  large_cap_pct?: number | null;
-  mid_cap_pct?: number | null;
-  small_cap_pct?: number | null;
+  asset_allocation?: Record<string, number | null>;
+  market_cap_allocation?: Record<string, number | null>;
+  snapshot_month?: number | null;
+  snapshot_year?: number | null;
   tax_type?: string;
   riskometer_label?: string;
   top_holdings_summary?: string[];
@@ -86,15 +81,21 @@ const mfTopHoldingSchema = new Schema<IMFTopHolding>(
     bond_holdings: { type: Number, default: null },
     assets_top_10_holdings_pct: { type: Number, default: null },
     turnover_pct: { type: Number, default: null },
-    domestic_equity_pct: { type: Number, default: null },
-    international_equity_pct: { type: Number, default: null },
-    debt_pct: { type: Number, default: null },
-    other_pct: { type: Number, default: null },
-    gold_pct: { type: Number, default: null },
-    cash_pct: { type: Number, default: null },
-    large_cap_pct: { type: Number, default: null },
-    mid_cap_pct: { type: Number, default: null },
-    small_cap_pct: { type: Number, default: null },
+    asset_allocation: {
+      domestic_equity_pct: { type: Number, default: null },
+      international_equity_pct: { type: Number, default: null },
+      debt_pct: { type: Number, default: null },
+      other_pct: { type: Number, default: null },
+      gold_pct: { type: Number, default: null },
+      cash_pct: { type: Number, default: null },
+    },
+    market_cap_allocation: {
+      large_cap_pct: { type: Number, default: null },
+      mid_cap_pct: { type: Number, default: null },
+      small_cap_pct: { type: Number, default: null },
+    },
+    snapshot_month: { type: Number, default: null, index: true },
+    snapshot_year: { type: Number, default: null, index: true },
     tax_type: { type: String, trim: true, default: "" },
     riskometer_label: { type: String, trim: true, default: "" },
     top_holdings_summary: [{ type: String, trim: true }],

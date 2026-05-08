@@ -5,10 +5,16 @@ export const MF_FUND_VISIBILITY_GROUPS = [
   { key: "fund_overview", label: "Fund Overview" },
   { key: "fund_performance", label: "Fund Performance" },
   { key: "risk_ratio", label: "Risk Ratio" },
-  { key: "asset_allocation", label: "Asset Allocation" },
-  { key: "equity_allocation", label: "Equity Allocation" },
-  { key: "top_holdings", label: "Top Holdings" },
 ] as const;
+
+const PERFORMANCE_ANNUAL_FIELDS = (() => {
+  const currentYear = new Date().getFullYear();
+  const fields: string[] = [];
+  for (let year = currentYear; year >= 2016; year -= 1) {
+    fields.push(`fund_performance.annual_${year}`);
+  }
+  return fields;
+})();
 
 export const MF_FUND_VISIBILITY_FIELD_KEYS = [
   "fund_overview.scheme_code",
@@ -32,28 +38,18 @@ export const MF_FUND_VISIBILITY_FIELD_KEYS = [
   "fund_overview.exit_load",
   "fund_overview.fund_objective",
   "fund_overview.investment_strategy",
-  "fund_overview.tax_type",
   "fund_performance.inception_return",
   "fund_performance.return_1d",
-  "fund_performance.w1",
-  "fund_performance.m1",
-  "fund_performance.m3",
-  "fund_performance.m6",
-  "fund_performance.y1",
-  "fund_performance.y3_cagr",
-  "fund_performance.y5_cagr",
-  "fund_performance.y10_cagr",
-  "fund_performance.ytd",
-  "fund_performance.annual_2025",
-  "fund_performance.annual_2024",
-  "fund_performance.annual_2023",
-  "fund_performance.annual_2022",
-  "fund_performance.annual_2021",
-  "fund_performance.annual_2020",
-  "fund_performance.annual_2019",
-  "fund_performance.annual_2018",
-  "fund_performance.annual_2017",
-  "fund_performance.annual_2016",
+  "fund_performance.1w",
+  "fund_performance.1m",
+  "fund_performance.3m",
+  "fund_performance.6m",
+  "fund_performance.1y",
+  "fund_performance.3y",
+  "fund_performance.5y",
+  "fund_performance.10y",
+  "fund_performance.since_launch",
+  ...PERFORMANCE_ANNUAL_FIELDS,
   "risk_ratio.sharpe_3y",
   "risk_ratio.sharpe_5y",
   "risk_ratio.std_dev_3y",
@@ -65,17 +61,6 @@ export const MF_FUND_VISIBILITY_FIELD_KEYS = [
   "risk_ratio.max_drawdown_5y",
   "risk_ratio.max_drawdown_10y",
   "risk_ratio.turnover_ratio",
-  "risk_ratio.riskometer_label",
-  "asset_allocation.domestic_equity_pct",
-  "asset_allocation.international_equity_pct",
-  "asset_allocation.debt_pct",
-  "asset_allocation.other_pct",
-  "asset_allocation.gold_pct",
-  "asset_allocation.cash_pct",
-  "equity_allocation.large_cap_pct",
-  "equity_allocation.mid_cap_pct",
-  "equity_allocation.small_cap_pct",
-  "top_holdings.top_holdings",
 ] as const;
 
 export type MFFundVisibilityState = {

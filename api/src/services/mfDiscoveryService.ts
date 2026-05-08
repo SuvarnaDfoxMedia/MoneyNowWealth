@@ -37,9 +37,9 @@ export const getMfHomeData = async (query: any) => {
         is_featured: true,
       })
         .select(
-          "fund_name plan_type option_type returns expense_ratio aum_cr riskometer_label amc_id category_id is_popular",
+          "fund_name plan_type option_type returns expense_ratio aum_cr amc_id category_id is_popular",
         )
-        .sort({ "returns.y1": -1, created_at: -1 })
+        .sort({ "returns.trailing.1y": -1, created_at: -1 })
         .limit(featuredLimit)
         .populate("amc_id", "name")
         .populate({
@@ -76,8 +76,8 @@ export const getMfHomeData = async (query: any) => {
         ),
 
       MFCategory.find(buildActiveFilter())
-        .select("name benchmark_returns main_category_id risk_level")
-        .sort({ "benchmark_returns.y3": -1, "benchmark_returns.y1": -1, name: 1 })
+        .select("name category_average_returns main_category_id risk_level")
+        .sort({ "category_average_returns.trailing.3y": -1, "category_average_returns.trailing.1y": -1, name: 1 })
         .limit(categoryLimit)
         .populate("main_category_id", "name")
         .lean(),
@@ -122,21 +122,20 @@ export const getMfFiltersData = async (query: any) => {
   const fundFilter: any = { ...buildActiveFilter() };
   if (categoryIds.length > 0) fundFilter.category_id = { $in: categoryIds };
 
-  const [mainCategories, amcs, planTypes, optionTypes, riskLabels, stats] = await Promise.all([
+  const [mainCategories, amcs, planTypes, optionTypes, stats] = await Promise.all([
     MFMainCategory.find(buildActiveFilter()).select("name").sort({ sort_order: 1, name: 1 }).lean(),
     MFAmc.find(buildActiveFilter()).select("name").sort({ name: 1 }).lean(),
     MFFund.distinct("plan_type", fundFilter),
     MFFund.distinct("option_type", fundFilter),
-    MFFund.distinct("riskometer_label", fundFilter),
     MFFund.aggregate([
       { $match: fundFilter },
       {
         $group: {
           _id: null,
-          minY1: { $min: "$returns.y1" },
-          maxY1: { $max: "$returns.y1" },
-          minY3: { $min: "$returns.y3_cagr" },
-          maxY3: { $max: "$returns.y3_cagr" },
+          minY1: { $min: "$returns.trailing.1y" },
+          maxY1: { $max: "$returns.trailing.1y" },
+          minY3: { $min: "$returns.trailing.3y" },
+          maxY3: { $max: "$returns.trailing.3y" },
           minExpense: { $min: "$expense_ratio" },
           maxExpense: { $max: "$expense_ratio" },
           minAum: { $min: "$aum_cr" },
@@ -156,7 +155,7 @@ export const getMfFiltersData = async (query: any) => {
       amcs,
       planTypes: (planTypes || []).filter((x) => typeof x === "string" && x !== ""),
       optionTypes: (optionTypes || []).filter((x) => typeof x === "string" && x !== ""),
-      riskLabels: (riskLabels || []).filter((x) => typeof x === "string" && x !== ""),
+      riskLabels: [],
       ranges: {
         y1: { min: range.minY1 ?? null, max: range.maxY1 ?? null },
         y3: { min: range.minY3 ?? null, max: range.maxY3 ?? null },
@@ -175,23 +174,23 @@ export const getMfDiscoverData = async (query: any) => {
 
   const [popularFunds, topPerformers, newFunds, categories] = await Promise.all([
     MFFund.find({ ...buildActiveFilter(), is_popular: true })
-      .select("fund_name returns expense_ratio aum_cr riskometer_label amc_id category_id")
-      .sort({ "returns.y3_cagr": -1, aum_cr: -1 })
+      .select("fund_name returns expense_ratio aum_cr amc_id category_id")
+      .sort({ "returns.trailing.3y": -1, aum_cr: -1 })
       .limit(popularLimit)
       .populate("amc_id", "name")
       .populate({ path: "category_id", select: "name main_category_id", populate: { path: "main_category_id", select: "name" } })
       .lean(),
 
     MFFund.find(buildActiveFilter())
-      .select("fund_name returns expense_ratio aum_cr riskometer_label amc_id category_id")
-      .sort({ "returns.y3_cagr": -1 })
+      .select("fund_name returns expense_ratio aum_cr amc_id category_id")
+      .sort({ "returns.trailing.3y": -1 })
       .limit(topLimit)
       .populate("amc_id", "name")
       .populate({ path: "category_id", select: "name main_category_id", populate: { path: "main_category_id", select: "name" } })
       .lean(),
 
     MFFund.find(buildActiveFilter())
-      .select("fund_name returns expense_ratio aum_cr riskometer_label amc_id category_id launch_date")
+      .select("fund_name returns expense_ratio aum_cr amc_id category_id launch_date")
       .sort({ launch_date: -1, created_at: -1 })
       .limit(newLimit)
       .populate("amc_id", "name")
@@ -199,7 +198,7 @@ export const getMfDiscoverData = async (query: any) => {
       .lean(),
 
     MFCategory.find(buildActiveFilter())
-      .select("name description main_category_id benchmark_index_name risk_level")
+      .select("name description main_category_id category_average_returns risk_level")
       .sort({ name: 1 })
       .limit(categoryLimit)
       .populate("main_category_id", "name")

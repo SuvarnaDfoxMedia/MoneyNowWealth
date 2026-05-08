@@ -121,6 +121,21 @@ export const normalizeYearValueMap = (value: NumericMap) => {
   }, {});
 };
 
+export const normalizeAnnualReturns = (value: any) => {
+  const annualRoot = value?.annual ?? value ?? {};
+  const ytd = toNumberOrNull(annualRoot?.ytd);
+  const yearly_returns = normalizeYearValueMap(
+    annualRoot?.yearly_returns ?? annualRoot?.years ?? annualRoot,
+  );
+  return {
+    ytd,
+    yearly_returns,
+  };
+};
+
+export const detectYearColumns = (row: Record<string, unknown>) =>
+  Object.keys(row || {}).filter((key) => /(?:^|_)(19|20)\d{2}$/.test(String(key)));
+
 export const mapToPlainObject = (value: NumericMap) =>
   value instanceof Map ? Object.fromEntries(value.entries()) : { ...(value || {}) };
 

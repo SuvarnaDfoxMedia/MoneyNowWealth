@@ -82,6 +82,7 @@ import AddMFIndexSnapshot from "./components/mf/AddMFIndexSnapshot";
 import AddMFAmc from "./components/mf/AddMFAmc";
 import AddMFBenchmark from "./components/mf/AddMFBenchmark";
 import MFBenchmarkReturnsManager from "./components/mf/MFBenchmarkReturnsManager";
+import MFBenchmarkViewComparisonPage from "./components/mf/MFBenchmarkViewComparisonPage";
 import AddMFTopHolding from "./components/mf/AddMFTopHolding";
 import MFTopHoldingDetail from "./components/mf/MFTopHoldingDetail";
 import MFTopHoldingHistoryPage from "./components/mf/MFTopHoldingHistoryPage";
@@ -285,6 +286,7 @@ function AppRoutes() {
         <Route path="/:role/benchmark/master/create" element={<AddMFBenchmark />} />
         <Route path="/:role/benchmark/master/edit/:id" element={<AddMFBenchmark />} />
         <Route path="/:role/benchmark/returns" element={<MFBenchmarkReturnsManager />} />
+        <Route path="/:role/benchmark/view-comparison" element={<MFBenchmarkViewComparisonPage />} />
         <Route path="/:role/mf/benchmarks" element={<Navigate to={`/${role}/benchmark/master`} replace />} />
         <Route path="/:role/mf/benchmarks/create" element={<Navigate to={`/${role}/benchmark/master/create`} replace />} />
         <Route path="/:role/mf/benchmarks/edit/:id" element={<Navigate to={`/${role}/benchmark/master`} replace />} />

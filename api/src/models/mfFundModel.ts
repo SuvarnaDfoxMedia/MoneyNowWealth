@@ -1,25 +1,31 @@
 import mongoose, { Document, Schema, Model } from "mongoose";
 
-const yearValueMapField = {
-  type: Map,
-  of: Number,
-  default: () => ({}),
-};
-
+const yearValueMapField = { type: Map, of: Number, default: () => ({}) };
+const trailingReturnsSchema = new Schema(
+  {
+    "1w": { type: Number, default: null },
+    "1m": { type: Number, default: null },
+    "3m": { type: Number, default: null },
+    "6m": { type: Number, default: null },
+    "1y": { type: Number, default: null },
+    "3y": { type: Number, default: null },
+    "5y": { type: Number, default: null },
+    "10y": { type: Number, default: null },
+    since_launch: { type: Number, default: null },
+  },
+  { _id: false },
+);
+const annualReturnsSchema = new Schema(
+  {
+    ytd: { type: Number, default: null },
+    yearly_returns: yearValueMapField,
+  },
+  { _id: false },
+);
 const fundReturnsSchema = new Schema(
   {
-    d1: { type: Number, default: null },
-    w1: { type: Number, default: null },
-    m1: { type: Number, default: null },
-    m3: { type: Number, default: null },
-    m6: { type: Number, default: null },
-    y1: { type: Number, default: null },
-    y3_cagr: { type: Number, default: null },
-    y5_cagr: { type: Number, default: null },
-    y10_cagr: { type: Number, default: null },
-    ytd: { type: Number, default: null },
-    since_inception: { type: Number, default: null },
-    annual: yearValueMapField,
+    trailing: { type: trailingReturnsSchema, default: () => ({}) },
+    annual: { type: annualReturnsSchema, default: () => ({}) },
   },
   { _id: false },
 );
@@ -53,18 +59,11 @@ export interface IMFFund extends Document {
   aum_cr?: number | null;
   expense_ratio?: number | null;
   returns?: {
-    d1?: number | null;
-    w1?: number | null;
-    m1?: number | null;
-    m3?: number | null;
-    m6?: number | null;
-    y1?: number | null;
-    y3_cagr?: number | null;
-    y5_cagr?: number | null;
-    y10_cagr?: number | null;
-    ytd?: number | null;
-    since_inception?: number | null;
-    annual?: Map<string, number | null> | Record<string, number | null>;
+    trailing?: Record<string, number | null>;
+    annual?: {
+      ytd?: number | null;
+      yearly_returns?: Map<string, number | null> | Record<string, number | null>;
+    };
   };
   risk_metrics?: {
     sharpe_3y?: number | null;
@@ -92,23 +91,6 @@ export interface IMFFund extends Document {
   is_popular?: boolean;
   fund_objective?: string;
   investment_strategy?: string;
-  top_holdings?: string[];
-  asset_allocation?: {
-    domestic_equity_pct?: number | null;
-    international_equity_pct?: number | null;
-    equity_pct?: number | null;
-    debt_pct?: number | null;
-    other_pct?: number | null;
-    gold_pct?: number | null;
-    cash_pct?: number | null;
-  };
-  equity_allocation?: {
-    large_cap_pct?: number | null;
-    mid_cap_pct?: number | null;
-    small_cap_pct?: number | null;
-  };
-  tax_type?: string;
-  riskometer_label?: string;
   frontend_visibility?: {
     groups?: Map<string, boolean> | Record<string, boolean>;
     fields?: Map<string, boolean> | Record<string, boolean>;
@@ -162,23 +144,6 @@ const mfFundSchema = new Schema<IMFFund>(
     is_popular: { type: Boolean, default: false, index: true },
     fund_objective: { type: String, trim: true, default: "" },
     investment_strategy: { type: String, trim: true, default: "" },
-    top_holdings: [{ type: String, trim: true }],
-    asset_allocation: {
-      domestic_equity_pct: { type: Number, default: null },
-      international_equity_pct: { type: Number, default: null },
-      equity_pct: { type: Number, default: null },
-      debt_pct: { type: Number, default: null },
-      other_pct: { type: Number, default: null },
-      gold_pct: { type: Number, default: null },
-      cash_pct: { type: Number, default: null },
-    },
-    equity_allocation: {
-      large_cap_pct: { type: Number, default: null },
-      mid_cap_pct: { type: Number, default: null },
-      small_cap_pct: { type: Number, default: null },
-    },
-    tax_type: { type: String, trim: true, default: "" },
-    riskometer_label: { type: String, trim: true, default: "" },
     frontend_visibility: {
       type: frontendVisibilitySchema,
       default: () => ({ groups: {}, fields: {} }),
@@ -197,9 +162,9 @@ mfFundSchema.index({ category_id: 1, is_active: 1, is_deleted: 1 });
 mfFundSchema.index({ amc_id: 1, is_active: 1, is_deleted: 1 });
 mfFundSchema.index({ scheme_code: 1, is_deleted: 1 });
 mfFundSchema.index({ isin: 1, is_deleted: 1 });
-mfFundSchema.index({ "returns.y1": -1, "returns.y3_cagr": -1 });
+mfFundSchema.index({ "returns.trailing.1y": -1, "returns.trailing.3y": -1 });
 mfFundSchema.index({ expense_ratio: 1, aum_cr: -1 });
-mfFundSchema.index({ category_id: 1, "returns.y3_cagr": -1 });
+mfFundSchema.index({ category_id: 1, "returns.trailing.3y": -1 });
 mfFundSchema.index({ is_popular: 1, is_active: 1 });
 mfFundSchema.index({ is_featured: 1, is_active: 1 });
 mfFundSchema.index({ fund_name: "text", fund_manager: "text", fund_objective: "text" });

@@ -30,15 +30,15 @@ import {
 } from "./MFFundVisibilityControls";
 
 const FUND_TRAILING_FIELDS = [
-  { key: "w1", label: "1 Week" },
-  { key: "m1", label: "1 Month" },
-  { key: "m3", label: "3 Months" },
-  { key: "m6", label: "6 Months" },
-  { key: "y1", label: "1 Year" },
-  { key: "y3_cagr", label: "3 Years" },
-  { key: "y5_cagr", label: "5 Years" },
-  { key: "y10_cagr", label: "10 Years" },
-  { key: "ytd", label: "YTD" },
+  { key: "1w", label: "1 Week" },
+  { key: "1m", label: "1 Month" },
+  { key: "3m", label: "3 Months" },
+  { key: "6m", label: "6 Months" },
+  { key: "1y", label: "1 Year" },
+  { key: "3y", label: "3 Years" },
+  { key: "5y", label: "5 Years" },
+  { key: "10y", label: "10 Years" },
+  { key: "since_launch", label: "Since Launch" },
 ] as const;
 
 const ANNUAL_YEARS = [
@@ -101,17 +101,6 @@ const emptyForm = () => ({
   fund_objective: "",
   investment_strategy: "",
 
-  domestic_equity_pct: "",
-  international_equity_pct: "",
-  debt_pct: "",
-  other_pct: "",
-  gold_pct: "",
-  cash_pct: "",
-  large_cap_pct: "",
-  mid_cap_pct: "",
-  small_cap_pct: "",
-  tax_type: "",
-  riskometer_label: "",
   frontend_visibility: emptyMFFundVisibility(),
   is_featured: false,
   is_popular: false,
@@ -231,7 +220,7 @@ export default function AddMFFund() {
         aum: fund.aum?.toString?.() || fund.aum_cr?.toString?.() || "",
         expense_ratio: fund.expense_ratio?.toString?.() || "",
         inception_return:
-          fund.returns?.since_inception?.toString?.() ||
+          fund.returns?.trailing?.since_launch?.toString?.() ||
           fund.inception_return?.toString?.() ||
           "",
         return_1d: fund.returns?.d1?.toString?.() || "",
@@ -244,7 +233,7 @@ export default function AddMFFund() {
           ...Object.fromEntries(
             FUND_TRAILING_FIELDS.map((field) => [
               field.key,
-              fund.returns?.[field.key]?.toString?.() || "",
+              fund.returns?.trailing?.[field.key]?.toString?.() || "",
             ]),
           ),
         },
@@ -253,7 +242,7 @@ export default function AddMFFund() {
           ...Object.fromEntries(
             ANNUAL_YEARS.map((year) => [
               year,
-              fund.returns?.annual?.[year]?.toString?.() || "",
+              fund.returns?.annual?.yearly_returns?.[year]?.toString?.() || "",
             ]),
           ),
         },
@@ -281,28 +270,6 @@ export default function AddMFFund() {
         fund_objective: fund.fund_objective || "",
         investment_strategy: fund.investment_strategy || "",
 
-        domestic_equity_pct:
-          fund.asset_allocation?.domestic_equity_pct?.toString?.() || "",
-        international_equity_pct:
-          fund.asset_allocation?.international_equity_pct?.toString?.() || "",
-        debt_pct: fund.asset_allocation?.debt_pct?.toString?.() || "",
-        other_pct: fund.asset_allocation?.other_pct?.toString?.() || "",
-        gold_pct: fund.asset_allocation?.gold_pct?.toString?.() || "",
-        cash_pct: fund.asset_allocation?.cash_pct?.toString?.() || "",
-        large_cap_pct:
-          fund.equity_allocation?.large_cap_pct?.toString?.() ||
-          fund.asset_allocation?.large_cap_pct?.toString?.() ||
-          "",
-        mid_cap_pct:
-          fund.equity_allocation?.mid_cap_pct?.toString?.() ||
-          fund.asset_allocation?.mid_cap_pct?.toString?.() ||
-          "",
-        small_cap_pct:
-          fund.equity_allocation?.small_cap_pct?.toString?.() ||
-          fund.asset_allocation?.small_cap_pct?.toString?.() ||
-          "",
-        tax_type: fund.tax_type || "",
-        riskometer_label: fund.riskometer_label || "",
         frontend_visibility: normalizeMFFundVisibility(
           fund.frontend_visibility,
         ),
@@ -416,11 +383,6 @@ export default function AddMFFund() {
       nextErrors.fund_manager = "Fund manager must be under 200 characters";
     if (form.exit_load.length > 500)
       nextErrors.exit_load = "Exit load must be under 500 characters";
-    if (form.tax_type.length > 120)
-      nextErrors.tax_type = "Tax type must be under 120 characters";
-    if (form.riskometer_label.length > 120)
-      nextErrors.riskometer_label =
-        "Riskometer label must be under 120 characters";
     if (form.fund_objective.length > 5000)
       nextErrors.fund_objective =
         "Fund objective must be under 5000 characters";
@@ -453,15 +415,6 @@ export default function AddMFFund() {
         0,
         1_000_000_000,
       ],
-      ["domestic_equity_pct", "Domestic equity allocation", 0, 100],
-      ["international_equity_pct", "International equity allocation", 0, 100],
-      ["debt_pct", "Debt allocation", 0, 100],
-      ["other_pct", "Other allocation", 0, 100],
-      ["gold_pct", "Gold allocation", 0, 100],
-      ["cash_pct", "Cash allocation", 0, 100],
-      ["large_cap_pct", "Large cap allocation", 0, 100],
-      ["mid_cap_pct", "Mid cap allocation", 0, 100],
-      ["small_cap_pct", "Small cap allocation", 0, 100],
     ];
 
     for (const [field, label, min, max] of numericRules) {
@@ -572,10 +525,15 @@ export default function AddMFFund() {
       aum: toNumberOrNull(form.aum),
       expense_ratio: toNumberOrNull(form.expense_ratio),
       returns: {
-        since_inception: toNumberOrNull(form.inception_return),
+        trailing: {
+          since_launch: toNumberOrNull(form.inception_return),
+          ...toNumberMap(form.returnsTrailing),
+        },
         d1: toNumberOrNull(form.return_1d),
-        ...toNumberMap(form.returnsTrailing),
-        annual: toNumberMap(form.returnsAnnual),
+        annual: {
+          ytd: null,
+          yearly_returns: toNumberMap(form.returnsAnnual),
+        },
       },
       risk_metrics: {
         sharpe_3y: toNumberOrNull(form.sharpe_3y),
@@ -608,21 +566,6 @@ export default function AddMFFund() {
       fund_objective: form.fund_objective.trim(),
       investment_strategy: form.investment_strategy.trim(),
 
-      asset_allocation: {
-        domestic_equity_pct: toNumberOrNull(form.domestic_equity_pct),
-        international_equity_pct: toNumberOrNull(form.international_equity_pct),
-        debt_pct: toNumberOrNull(form.debt_pct),
-        other_pct: toNumberOrNull(form.other_pct),
-        gold_pct: toNumberOrNull(form.gold_pct),
-        cash_pct: toNumberOrNull(form.cash_pct),
-      },
-      equity_allocation: {
-        large_cap_pct: toNumberOrNull(form.large_cap_pct),
-        mid_cap_pct: toNumberOrNull(form.mid_cap_pct),
-        small_cap_pct: toNumberOrNull(form.small_cap_pct),
-      },
-      tax_type: form.tax_type.trim(),
-      riskometer_label: form.riskometer_label.trim(),
       frontend_visibility: syncMFFundVisibilityGroups(form.frontend_visibility),
       is_active: form.is_active,
     };
@@ -1097,7 +1040,6 @@ export default function AddMFFund() {
               {error(errors.min_lumpsum_investment)}
             </div>
 
-            {renderInputField("tax_type", "Tax Type", "fund_overview.tax_type")}
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1209,58 +1151,7 @@ export default function AddMFFund() {
               </div>
             ))}
           </div>
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              {renderFieldLabel("Riskometer", "risk_ratio.riskometer_label")}
-              <input
-                className={inputClass(errors.riskometer_label)}
-                disabled={isViewMode}
-                value={form.riskometer_label}
-                onChange={(event) =>
-                  setField("riskometer_label", event.target.value)
-                }
-              />
-              {error(errors.riskometer_label)}
-            </div>
-          </div>
         </div>
-
-        <section>
-          {renderSectionTitle("asset_allocation", "Asset Allocation")}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              ["domestic_equity_pct", "Domestic Equity (%)"],
-              ["international_equity_pct", "International Equity (%)"],
-              ["debt_pct", "Debt (%)"],
-              ["other_pct", "Others (%)"],
-              ["gold_pct", "Gold (%)"],
-              ["cash_pct", "Cash (%)"],
-            ].map(([key, label]) =>
-              renderInputField(
-                key as keyof FundFormState,
-                label,
-                `asset_allocation.${key}`,
-              ),
-            )}
-          </div>
-        </section>
-
-        <section>
-          {renderSectionTitle("equity_allocation", "Equity Allocation")}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              ["large_cap_pct", "Large Cap (%)"],
-              ["mid_cap_pct", "Mid Cap (%)"],
-              ["small_cap_pct", "Small Cap (%)"],
-            ].map(([key, label]) =>
-              renderInputField(
-                key as keyof FundFormState,
-                label,
-                `equity_allocation.${key}`,
-              ),
-            )}
-          </div>
-        </section>
 
         {!isViewMode ? (
           <MFFormActions

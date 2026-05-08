@@ -21,8 +21,23 @@ const exactCaseInsensitive = (value: string) => ({
 });
 
 const normalizeCategoryReturns = (value: any) => ({
-  ...buildNumericObject(CATEGORY_TRAILING_KEYS, value),
-  annual: normalizeYearValueMap(value?.annual),
+  trailing: {
+    "1w": toNumberOrNull(value?.trailing?.["1w"] ?? value?.w1),
+    "1m": toNumberOrNull(value?.trailing?.["1m"] ?? value?.m1),
+    "3m": toNumberOrNull(value?.trailing?.["3m"] ?? value?.m3),
+    "6m": toNumberOrNull(value?.trailing?.["6m"] ?? value?.m6),
+    "1y": toNumberOrNull(value?.trailing?.["1y"] ?? value?.y1),
+    "3y": toNumberOrNull(value?.trailing?.["3y"] ?? value?.y3),
+    "5y": toNumberOrNull(value?.trailing?.["5y"] ?? value?.y5),
+    "10y": toNumberOrNull(value?.trailing?.["10y"] ?? value?.y10),
+    since_launch: toNumberOrNull(
+      value?.trailing?.since_launch ?? value?.since_launch ?? value?.since_inception,
+    ),
+  },
+  annual: {
+    ytd: toNumberOrNull(value?.annual?.ytd ?? value?.ytd),
+    yearly_returns: normalizeYearValueMap(value?.annual?.yearly_returns ?? value?.annual),
+  },
 });
 
 const fundReturnToCategoryKey: Record<string, string> = {
@@ -232,9 +247,6 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
     main_category_id: mainCategoryId,
     // Legacy short_description support
     description: payload.description || payload.short_description || "",
-    benchmark_return_type:
-      payload.benchmark_return_type === "Annual" ? "Annual" : "Trailing",
-    benchmark_returns: normalizeCategoryReturns(payload.benchmark_returns),
     category_average_returns: normalizeCategoryReturns(payload.category_average_returns),
     suggested_use_case_note: payload.suggested_use_case_note || "",
     is_active: payload.is_active ?? 1,
@@ -273,15 +285,6 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
       is_deleted: false,
     }).select("_id");
     if (exists) throw new Error("Category already exists");
-  }
-
-  if (payload.benchmark_returns) {
-    updateData.benchmark_returns = normalizeCategoryReturns(payload.benchmark_returns);
-  }
-
-  if (payload.benchmark_return_type !== undefined) {
-    updateData.benchmark_return_type =
-      payload.benchmark_return_type === "Annual" ? "Annual" : "Trailing";
   }
 
   if (payload.category_average_returns) {

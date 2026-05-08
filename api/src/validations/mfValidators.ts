@@ -1,5 +1,16 @@
 import { body } from "express-validator";
-import { CATEGORY_TRAILING_KEYS, FUND_RETURN_KEYS, MF_ANNUAL_YEARS } from "../services/mfUtils";
+import { CATEGORY_TRAILING_KEYS, FUND_RETURN_KEYS } from "../services/mfUtils";
+const CATEGORY_TRAILING_TO_NESTED_KEY: Record<string, string> = {
+  w1: "1w",
+  m1: "1m",
+  m3: "3m",
+  m6: "6m",
+  y1: "1y",
+  y3: "3y",
+  y5: "5y",
+  y10: "10y",
+  ytd: "ytd",
+};
 
 const requiredString = (field: string, label: string, min = 2, max = 120) =>
   body(field)
@@ -97,6 +108,27 @@ const validateDateOrder = (startField: string, endField: string, label: string) 
     return true;
   });
 
+const optionalDynamicYearMap = (field: string, label: string, min = -1000, max = 1000) =>
+  body(field)
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === undefined || value === "") return true;
+      if (typeof value !== "object" || Array.isArray(value)) {
+        throw new Error(`${label} must be an object`);
+      }
+      for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+        if (!/^\d{4}$/.test(String(key))) {
+          throw new Error(`${label} contains invalid year key: ${key}`);
+        }
+        if (raw === null || raw === undefined || raw === "") continue;
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < min || n > max) {
+          throw new Error(`${label} year ${key} must be between ${min} and ${max}`);
+        }
+      }
+      return true;
+    });
+
 export const createMainCategoryValidators = [
   requiredString("name", "Name", 2, 120),
   optionalString("description", "Description", 5000),
@@ -115,29 +147,15 @@ export const createCategoryValidators = [
   requiredString("name", "Name", 2, 120),
   requiredMongoId("main_category_id", "Main category"),
   optionalString("description", "Description", 5000),
-  optionalString("benchmark_index_name", "Benchmark index name", 200),
-  body("benchmark_return_type")
-    .optional({ nullable: true, checkFalsy: true })
-    .isIn(["Annual", "Trailing"])
-    .withMessage("Benchmark return type must be Annual or Trailing"),
   ...CATEGORY_TRAILING_KEYS.map((key) =>
     optionalNumber(
-      `benchmark_returns.${key}`,
-      `Benchmark ${key.toUpperCase()} return`,
-    ),
-  ),
-  ...CATEGORY_TRAILING_KEYS.map((key) =>
-    optionalNumber(
-      `category_average_returns.${key}`,
+      `category_average_returns.trailing.${CATEGORY_TRAILING_TO_NESTED_KEY[key]}`,
       `Category average ${key.toUpperCase()} return`,
     ),
   ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`benchmark_returns.annual.${year}`, `Benchmark ${year} return`),
-  ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`category_average_returns.annual.${year}`, `Category average ${year} return`),
-  ),
+  optionalDynamicYearMap("category_average_returns.annual.yearly_returns", "Category annual returns"),
+  optionalNumber("category_average_returns.trailing.since_launch", "Category average since launch return"),
+  optionalNumber("category_average_returns.annual.ytd", "Category average YTD return"),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
   optionalString("suggested_use_case_note", "Suggested use case note", 5000),
@@ -148,29 +166,15 @@ export const updateCategoryValidators = [
   optionalString("name", "Name", 120),
   optionalMongoId("main_category_id", "Main category"),
   optionalString("description", "Description", 5000),
-  optionalString("benchmark_index_name", "Benchmark index name", 200),
-  body("benchmark_return_type")
-    .optional({ nullable: true, checkFalsy: true })
-    .isIn(["Annual", "Trailing"])
-    .withMessage("Benchmark return type must be Annual or Trailing"),
   ...CATEGORY_TRAILING_KEYS.map((key) =>
     optionalNumber(
-      `benchmark_returns.${key}`,
-      `Benchmark ${key.toUpperCase()} return`,
-    ),
-  ),
-  ...CATEGORY_TRAILING_KEYS.map((key) =>
-    optionalNumber(
-      `category_average_returns.${key}`,
+      `category_average_returns.trailing.${CATEGORY_TRAILING_TO_NESTED_KEY[key]}`,
       `Category average ${key.toUpperCase()} return`,
     ),
   ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`benchmark_returns.annual.${year}`, `Benchmark ${year} return`),
-  ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`category_average_returns.annual.${year}`, `Category average ${year} return`),
-  ),
+  optionalDynamicYearMap("category_average_returns.annual.yearly_returns", "Category annual returns"),
+  optionalNumber("category_average_returns.trailing.since_launch", "Category average since launch return"),
+  optionalNumber("category_average_returns.annual.ytd", "Category average YTD return"),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
   optionalString("suggested_use_case_note", "Suggested use case note", 5000),
@@ -207,9 +211,7 @@ export const createFundValidators = [
   ...FUND_RETURN_KEYS.map((key) =>
     optionalNumber(`returns.${key}`, `Return ${key.toUpperCase()}`),
   ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`returns.annual.${year}`, `Return ${year}`),
-  ),
+  optionalDynamicYearMap("returns.annual.yearly_returns", "Fund annual returns"),
   optionalNumber("risk_metrics.sharpe_3y", "Sharpe (3Y)"),
   optionalNumber("risk_metrics.std_dev_3y", "Std Dev (3Y)"),
   optionalNumber("risk_metrics.beta_3y", "Beta (3Y)"),
@@ -227,18 +229,6 @@ export const createFundValidators = [
   optionalString("exit_load", "Exit load", 500),
   optionalBoolean("is_featured", "is_featured"),
   optionalBoolean("is_popular", "is_popular"),
-  body("top_holdings")
-    .optional({ nullable: true })
-    .custom((value) => {
-      if (Array.isArray(value)) return value.every((v) => typeof v === "string");
-      if (typeof value === "string") return true;
-      throw new Error("top_holdings must be an array of strings or a comma/newline-separated string");
-    }),
-  optionalNumber("asset_allocation.equity_pct", "Equity allocation", 0, 100),
-  optionalNumber("asset_allocation.debt_pct", "Debt allocation", 0, 100),
-  optionalNumber("asset_allocation.other_pct", "Other allocation", 0, 100),
-  optionalString("tax_type", "Tax type", 120),
-  optionalString("riskometer_label", "Risk label", 120),
   optionalIsActive(),
 ];
 
@@ -261,9 +251,7 @@ export const updateFundValidators = [
   ...FUND_RETURN_KEYS.map((key) =>
     optionalNumber(`returns.${key}`, `Return ${key.toUpperCase()}`),
   ),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`returns.annual.${year}`, `Return ${year}`),
-  ),
+  optionalDynamicYearMap("returns.annual.yearly_returns", "Fund annual returns"),
   optionalNumber("risk_metrics.sharpe_3y", "Sharpe (3Y)"),
   optionalNumber("risk_metrics.std_dev_3y", "Std Dev (3Y)"),
   optionalNumber("risk_metrics.beta_3y", "Beta (3Y)"),
@@ -281,18 +269,6 @@ export const updateFundValidators = [
   optionalString("exit_load", "Exit load", 500),
   optionalBoolean("is_featured", "is_featured"),
   optionalBoolean("is_popular", "is_popular"),
-  body("top_holdings")
-    .optional({ nullable: true })
-    .custom((value) => {
-      if (Array.isArray(value)) return value.every((v) => typeof v === "string");
-      if (typeof value === "string") return true;
-      throw new Error("top_holdings must be an array of strings or a comma/newline-separated string");
-    }),
-  optionalNumber("asset_allocation.equity_pct", "Equity allocation", 0, 100),
-  optionalNumber("asset_allocation.debt_pct", "Debt allocation", 0, 100),
-  optionalNumber("asset_allocation.other_pct", "Other allocation", 0, 100),
-  optionalString("tax_type", "Tax type", 120),
-  optionalString("riskometer_label", "Risk label", 120),
   optionalIsActive(),
 ];
 
@@ -386,8 +362,6 @@ export const createBenchmarkReturnValidators = [
   optionalNumber("return_3y", "3Y return"),
   optionalNumber("return_5y", "5Y return"),
   optionalNumber("return_10y", "10Y return"),
-  ...MF_ANNUAL_YEARS.map((year) =>
-    optionalNumber(`annual.${year}`, `Annual ${year} return`),
-  ),
+  optionalDynamicYearMap("annual.yearly_returns", "Benchmark annual returns"),
   optionalNumber("return_since_inception", "Since inception return"),
 ];

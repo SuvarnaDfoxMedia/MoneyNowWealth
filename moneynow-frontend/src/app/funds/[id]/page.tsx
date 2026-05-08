@@ -33,6 +33,8 @@ interface FundDetail {
     y10?: number | null;
   };
   returns?: {
+    trailing?: Record<string, number | null>;
+    annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
     d1?: number | null;
     m1?: number | null;
     m3?: number | null;
@@ -43,6 +45,9 @@ interface FundDetail {
     y10_cagr?: number | null;
   };
 }
+
+const getFundTrailing = (fund: FundDetail | null | undefined, key: string, legacyKey?: string) =>
+  fund?.returns?.trailing?.[key] ?? (legacyKey ? (fund?.returns as any)?.[legacyKey] : null);
 
 export default function FundDetailPage() {
   const params = useParams();
@@ -94,13 +99,13 @@ export default function FundDetailPage() {
             <h2 className="text-[16px] font-semibold mb-3">Performance</h2>
             <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-8 gap-4 text-[13px] text-[#495057]">
               <div>1D Return: {fund.returns?.d1 ?? 0}</div>
-              <div>1M Return: {fund.returns?.m1 ?? 0}</div>
-              <div>3M Return: {fund.returns?.m3 ?? 0}</div>
-              <div>6M Return: {fund.returns?.m6 ?? 0}</div>
-              <div>1Y Return: {fund.returns?.y1 ?? "-"}</div>
-              <div>3Y CAGR: {fund.returns?.y3_cagr ?? "-"}</div>
-              <div>5Y CAGR: {fund.returns?.y5_cagr ?? "-"}</div>
-              <div>10Y CAGR: {fund.returns?.y10_cagr ?? "-"}</div>
+              <div>1M Return: {getFundTrailing(fund, "1m", "m1") ?? 0}</div>
+              <div>3M Return: {getFundTrailing(fund, "3m", "m3") ?? 0}</div>
+              <div>6M Return: {getFundTrailing(fund, "6m", "m6") ?? 0}</div>
+              <div>1Y Return: {getFundTrailing(fund, "1y", "y1") ?? "-"}</div>
+              <div>3Y CAGR: {getFundTrailing(fund, "3y", "y3_cagr") ?? "-"}</div>
+              <div>5Y CAGR: {getFundTrailing(fund, "5y", "y5_cagr") ?? "-"}</div>
+              <div>10Y CAGR: {getFundTrailing(fund, "10y", "y10_cagr") ?? "-"}</div>
             </div>
           </div>
 
