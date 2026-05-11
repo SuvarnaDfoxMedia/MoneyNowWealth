@@ -248,6 +248,7 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
     // Legacy short_description support
     description: payload.description || payload.short_description || "",
     category_average_returns: normalizeCategoryReturns(payload.category_average_returns),
+    category_returns: normalizeCategoryReturns(payload.category_returns),
     suggested_use_case_note: payload.suggested_use_case_note || "",
     is_active: payload.is_active ?? 1,
     is_deleted: false,
@@ -289,6 +290,9 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
 
   if (payload.category_average_returns) {
     updateData.category_average_returns = normalizeCategoryReturns(payload.category_average_returns);
+  }
+  if (payload.category_returns) {
+    updateData.category_returns = normalizeCategoryReturns(payload.category_returns);
   }
 
   if (payload.description || payload.short_description) {

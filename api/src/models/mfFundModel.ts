@@ -24,6 +24,8 @@ const annualReturnsSchema = new Schema(
 );
 const fundReturnsSchema = new Schema(
   {
+    d1: { type: Number, default: null },
+    since_inception: { type: Number, default: null },
     trailing: { type: trailingReturnsSchema, default: () => ({}) },
     annual: { type: annualReturnsSchema, default: () => ({}) },
   },
@@ -59,6 +61,8 @@ export interface IMFFund extends Document {
   aum_cr?: number | null;
   expense_ratio?: number | null;
   returns?: {
+    d1?: number | null;
+    since_inception?: number | null;
     trailing?: Record<string, number | null>;
     annual?: {
       ytd?: number | null;
@@ -91,6 +95,17 @@ export interface IMFFund extends Document {
   is_popular?: boolean;
   fund_objective?: string;
   investment_strategy?: string;
+  domestic_equity_pct?: number | null;
+  international_equity_pct?: number | null;
+  debt_pct?: number | null;
+  other_pct?: number | null;
+  gold_pct?: number | null;
+  cash_pct?: number | null;
+  large_cap_pct?: number | null;
+  mid_cap_pct?: number | null;
+  small_cap_pct?: number | null;
+  tax_type?: string;
+  riskometer_label?: string;
   frontend_visibility?: {
     groups?: Map<string, boolean> | Record<string, boolean>;
     fields?: Map<string, boolean> | Record<string, boolean>;
@@ -144,6 +159,17 @@ const mfFundSchema = new Schema<IMFFund>(
     is_popular: { type: Boolean, default: false, index: true },
     fund_objective: { type: String, trim: true, default: "" },
     investment_strategy: { type: String, trim: true, default: "" },
+    domestic_equity_pct: { type: Number, default: null },
+    international_equity_pct: { type: Number, default: null },
+    debt_pct: { type: Number, default: null },
+    other_pct: { type: Number, default: null },
+    gold_pct: { type: Number, default: null },
+    cash_pct: { type: Number, default: null },
+    large_cap_pct: { type: Number, default: null },
+    mid_cap_pct: { type: Number, default: null },
+    small_cap_pct: { type: Number, default: null },
+    tax_type: { type: String, trim: true, default: "" },
+    riskometer_label: { type: String, trim: true, default: "" },
     frontend_visibility: {
       type: frontendVisibilitySchema,
       default: () => ({ groups: {}, fields: {} }),

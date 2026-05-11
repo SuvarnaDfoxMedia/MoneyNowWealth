@@ -72,6 +72,7 @@ const emptyForm = () => ({
   expense_ratio: "",
   inception_return: "",
   return_1d: "",
+  return_ytd: "",
   returnsTrailing: emptyMap(
     FUND_TRAILING_FIELDS.map(
       (field) => field.key,
@@ -91,7 +92,6 @@ const emptyForm = () => ({
   turnover_ratio: "",
   fund_manager: "",
   launch_date: null as Date | null,
-  benchmark_id: "",
   min_investment: "",
   sip_allowed: true,
   min_sip_investment: "",
@@ -100,6 +100,17 @@ const emptyForm = () => ({
   exit_load: "",
   fund_objective: "",
   investment_strategy: "",
+  domestic_equity_pct: "",
+  international_equity_pct: "",
+  debt_pct: "",
+  other_pct: "",
+  gold_pct: "",
+  cash_pct: "",
+  large_cap_pct: "",
+  mid_cap_pct: "",
+  small_cap_pct: "",
+  tax_type: "",
+  riskometer_label: "",
 
   frontend_visibility: emptyMFFundVisibility(),
   is_featured: false,
@@ -120,12 +131,6 @@ type CategoryOption = {
 type AmcOption = {
   _id: string;
   name: string;
-};
-
-type BenchmarkOption = {
-  _id: string;
-  name: string;
-  category?: string;
 };
 
 const toNumberOrNull = (value: string) => (value === "" ? null : Number(value));
@@ -160,7 +165,6 @@ export default function AddMFFund() {
   const [amcDropdownOpen, setAmcDropdownOpen] = useState(false);
   const [amcSearch, setAmcSearch] = useState("");
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
-  const [benchmarkOptions, setBenchmarkOptions] = useState<BenchmarkOption[]>([]);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const amcWrapperRef = useRef<HTMLDivElement>(null);
@@ -168,7 +172,7 @@ export default function AddMFFund() {
 
   useEffect(() => {
     (async () => {
-      const [categoryRes, amcRes, benchmarkRes] = await Promise.all([
+      const [categoryRes, amcRes] = await Promise.all([
         axiosApi.get(`/${role}/mf/categories`, {
           limit: 5000,
           page: 1,
@@ -181,18 +185,11 @@ export default function AddMFFund() {
           sortBy: "name",
           sortOrder: "asc",
         }),
-        axiosApi.get(`/${role}/mf/benchmarks`, {
-          limit: 5000,
-          page: 1,
-          sortBy: "name",
-          sortOrder: "asc",
-        }),
       ]);
       setCategoryOptions(
         Array.isArray(categoryRes?.data) ? categoryRes.data : [],
       );
       setAmcOptions(Array.isArray(amcRes?.data) ? amcRes.data : []);
-      setBenchmarkOptions(Array.isArray(benchmarkRes?.data) ? benchmarkRes.data : []);
     })();
   }, [role]);
 
@@ -221,9 +218,14 @@ export default function AddMFFund() {
         expense_ratio: fund.expense_ratio?.toString?.() || "",
         inception_return:
           fund.returns?.trailing?.since_launch?.toString?.() ||
+          fund.returns?.since_inception?.toString?.() ||
           fund.inception_return?.toString?.() ||
           "",
         return_1d: fund.returns?.d1?.toString?.() || "",
+        return_ytd:
+          fund.returns?.annual?.ytd?.toString?.() ||
+          fund.returns?.ytd?.toString?.() ||
+          "",
         returnsTrailing: {
           ...emptyMap(
             FUND_TRAILING_FIELDS.map(
@@ -233,7 +235,17 @@ export default function AddMFFund() {
           ...Object.fromEntries(
             FUND_TRAILING_FIELDS.map((field) => [
               field.key,
-              fund.returns?.trailing?.[field.key]?.toString?.() || "",
+              fund.returns?.trailing?.[field.key]?.toString?.() ||
+                (field.key === "1w" ? fund.returns?.w1?.toString?.() : "") ||
+                (field.key === "1m" ? fund.returns?.m1?.toString?.() : "") ||
+                (field.key === "3m" ? fund.returns?.m3?.toString?.() : "") ||
+                (field.key === "6m" ? fund.returns?.m6?.toString?.() : "") ||
+                (field.key === "1y" ? fund.returns?.y1?.toString?.() : "") ||
+                (field.key === "3y" ? fund.returns?.y3_cagr?.toString?.() : "") ||
+                (field.key === "5y" ? fund.returns?.y5_cagr?.toString?.() : "") ||
+                (field.key === "10y" ? fund.returns?.y10_cagr?.toString?.() : "") ||
+                (field.key === "since_launch" ? fund.returns?.since_inception?.toString?.() : "") ||
+                "",
             ]),
           ),
         },
@@ -242,7 +254,9 @@ export default function AddMFFund() {
           ...Object.fromEntries(
             ANNUAL_YEARS.map((year) => [
               year,
-              fund.returns?.annual?.yearly_returns?.[year]?.toString?.() || "",
+              fund.returns?.annual?.yearly_returns?.[year]?.toString?.() ||
+                fund.returns?.annual?.[year]?.toString?.() ||
+                "",
             ]),
           ),
         },
@@ -260,7 +274,6 @@ export default function AddMFFund() {
         turnover_ratio: fund.risk_metrics?.turnover_ratio?.toString?.() || "",
         fund_manager: fund.fund_manager || "",
         launch_date: fund.launch_date ? new Date(fund.launch_date) : null,
-        benchmark_id: fund.benchmark?._id || fund.benchmark_id || "",
         min_investment: fund.min_investment?.toString?.() || "",
         sip_allowed: fund.sip_allowed ?? true,
         min_sip_investment: fund.min_sip_investment?.toString?.() || "",
@@ -269,6 +282,18 @@ export default function AddMFFund() {
         exit_load: fund.exit_load || "",
         fund_objective: fund.fund_objective || "",
         investment_strategy: fund.investment_strategy || "",
+        domestic_equity_pct: fund.domestic_equity_pct?.toString?.() || "",
+        international_equity_pct:
+          fund.international_equity_pct?.toString?.() || "",
+        debt_pct: fund.debt_pct?.toString?.() || "",
+        other_pct: fund.other_pct?.toString?.() || "",
+        gold_pct: fund.gold_pct?.toString?.() || "",
+        cash_pct: fund.cash_pct?.toString?.() || "",
+        large_cap_pct: fund.large_cap_pct?.toString?.() || "",
+        mid_cap_pct: fund.mid_cap_pct?.toString?.() || "",
+        small_cap_pct: fund.small_cap_pct?.toString?.() || "",
+        tax_type: fund.tax_type || "",
+        riskometer_label: fund.riskometer_label || "",
 
         frontend_visibility: normalizeMFFundVisibility(
           fund.frontend_visibility,
@@ -396,6 +421,7 @@ export default function AddMFFund() {
       ["expense_ratio", "Expense ratio", 0, 100],
       ["inception_return", "Inception returns", -1000, 1000],
       ["return_1d", "1 Day return", -1000, 1000],
+      ["return_ytd", "YTD return", -1000, 1000],
       ["sharpe_3y", "Sharpe (3Y)", -1000, 1000],
       ["sharpe_5y", "Sharpe (5Y)", -1000, 1000],
       ["std_dev_3y", "Std Dev (3Y)", 0, 1000],
@@ -407,6 +433,15 @@ export default function AddMFFund() {
       ["max_drawdown_5y", "Max Drawdown (5Y)", -1000, 1000],
       ["max_drawdown_10y", "Max Drawdown (10Y)", -1000, 1000],
       ["turnover_ratio", "Turnover ratio", 0, 1000],
+      ["domestic_equity_pct", "Domestic equity %", 0, 100],
+      ["international_equity_pct", "International equity %", 0, 100],
+      ["debt_pct", "Debt %", 0, 100],
+      ["other_pct", "Other %", 0, 100],
+      ["gold_pct", "Gold %", 0, 100],
+      ["cash_pct", "Cash %", 0, 100],
+      ["large_cap_pct", "Large cap %", 0, 100],
+      ["mid_cap_pct", "Mid cap %", 0, 100],
+      ["small_cap_pct", "Small cap %", 0, 100],
       ["min_investment", "Minimum investment", 0, 1_000_000_000],
       ["min_sip_investment", "Minimum SIP investment", 0, 1_000_000_000],
       [
@@ -531,7 +566,7 @@ export default function AddMFFund() {
         },
         d1: toNumberOrNull(form.return_1d),
         annual: {
-          ytd: null,
+          ytd: toNumberOrNull(form.return_ytd),
           yearly_returns: toNumberMap(form.returnsAnnual),
         },
       },
@@ -550,7 +585,6 @@ export default function AddMFFund() {
       },
       fund_manager: form.fund_manager.trim(),
       launch_date: form.launch_date ? form.launch_date.toISOString() : null,
-      benchmark_id: form.benchmark_id || null,
       min_investment: toNumberOrNull(form.min_investment),
       sip_allowed: form.sip_allowed,
       min_sip_investment: form.sip_allowed
@@ -565,6 +599,17 @@ export default function AddMFFund() {
       is_popular: form.is_popular,
       fund_objective: form.fund_objective.trim(),
       investment_strategy: form.investment_strategy.trim(),
+      domestic_equity_pct: toNumberOrNull(form.domestic_equity_pct),
+      international_equity_pct: toNumberOrNull(form.international_equity_pct),
+      debt_pct: toNumberOrNull(form.debt_pct),
+      other_pct: toNumberOrNull(form.other_pct),
+      gold_pct: toNumberOrNull(form.gold_pct),
+      cash_pct: toNumberOrNull(form.cash_pct),
+      large_cap_pct: toNumberOrNull(form.large_cap_pct),
+      mid_cap_pct: toNumberOrNull(form.mid_cap_pct),
+      small_cap_pct: toNumberOrNull(form.small_cap_pct),
+      tax_type: form.tax_type.trim(),
+      riskometer_label: form.riskometer_label.trim(),
 
       frontend_visibility: syncMFFundVisibilityGroups(form.frontend_visibility),
       is_active: form.is_active,
@@ -874,27 +919,6 @@ export default function AddMFFund() {
             </div>
 
             <div>
-              {renderFieldLabel("Benchmark", "fund_overview.benchmark_id")}
-              <select
-                className={inputClass(errors.benchmark_id)}
-                disabled={isViewMode}
-                value={form.benchmark_id}
-                onChange={(event) =>
-                  setField("benchmark_id", event.target.value)
-                }
-              >
-                <option value="">Select Benchmark</option>
-                {benchmarkOptions.map((option) => (
-                  <option key={option._id} value={option._id}>
-                    {option.name}
-                    {option.category ? ` (${option.category})` : ""}
-                  </option>
-                ))}
-              </select>
-              {error(errors.benchmark_id)}
-            </div>
-
-            <div>
               {renderFieldLabel("Plan Type", "fund_overview.plan_type")}
               <select
                 className={inputClass(errors.plan_type)}
@@ -1077,6 +1101,11 @@ export default function AddMFFund() {
               "1 Day",
               "fund_performance.return_1d",
             )}
+            {renderInputField(
+              "return_ytd",
+              "YTD",
+              "fund_performance.return_ytd",
+            )}
             {FUND_TRAILING_FIELDS.map((field) => (
               <div key={field.key}>
                 {renderFieldLabel(field.label, `fund_performance.${field.key}`)}
@@ -1113,6 +1142,41 @@ export default function AddMFFund() {
                   }
                 />
                 {error(errors[`returnsAnnual.${year}`])}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          {renderSectionTitle("allocation", "Allocation")}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["domestic_equity_pct", "Domestic Equity %"],
+              ["international_equity_pct", "International Equity %"],
+              ["debt_pct", "Debt %"],
+              ["other_pct", "Other %"],
+              ["gold_pct", "Gold %"],
+              ["cash_pct", "Cash %"],
+              ["large_cap_pct", "Large Cap %"],
+              ["mid_cap_pct", "Mid Cap %"],
+              ["small_cap_pct", "Small Cap %"],
+              ["tax_type", "Tax Type"],
+              ["riskometer_label", "Riskometer Label"],
+            ].map(([key, label]) => (
+              <div key={key}>
+                {renderFieldLabel(label, `allocation.${key}`)}
+                <input
+                  className={inputClass(errors[key])}
+                  disabled={isViewMode}
+                  value={String(form[key as keyof FundFormState] ?? "")}
+                  onChange={(event) =>
+                    setField(
+                      key as keyof FundFormState,
+                      event.target.value as never,
+                    )
+                  }
+                />
+                {error(errors[key])}
               </div>
             ))}
           </div>

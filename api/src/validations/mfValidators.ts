@@ -153,9 +153,18 @@ export const createCategoryValidators = [
       `Category average ${key.toUpperCase()} return`,
     ),
   ),
+  ...CATEGORY_TRAILING_KEYS.map((key) =>
+    optionalNumber(
+      `category_returns.trailing.${CATEGORY_TRAILING_TO_NESTED_KEY[key]}`,
+      `Category ${key.toUpperCase()} return`,
+    ),
+  ),
   optionalDynamicYearMap("category_average_returns.annual.yearly_returns", "Category annual returns"),
+  optionalDynamicYearMap("category_returns.annual.yearly_returns", "Category annual returns"),
   optionalNumber("category_average_returns.trailing.since_launch", "Category average since launch return"),
   optionalNumber("category_average_returns.annual.ytd", "Category average YTD return"),
+  optionalNumber("category_returns.trailing.since_launch", "Category since launch return"),
+  optionalNumber("category_returns.annual.ytd", "Category YTD return"),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
   optionalString("suggested_use_case_note", "Suggested use case note", 5000),
@@ -172,9 +181,18 @@ export const updateCategoryValidators = [
       `Category average ${key.toUpperCase()} return`,
     ),
   ),
+  ...CATEGORY_TRAILING_KEYS.map((key) =>
+    optionalNumber(
+      `category_returns.trailing.${CATEGORY_TRAILING_TO_NESTED_KEY[key]}`,
+      `Category ${key.toUpperCase()} return`,
+    ),
+  ),
   optionalDynamicYearMap("category_average_returns.annual.yearly_returns", "Category annual returns"),
+  optionalDynamicYearMap("category_returns.annual.yearly_returns", "Category annual returns"),
   optionalNumber("category_average_returns.trailing.since_launch", "Category average since launch return"),
   optionalNumber("category_average_returns.annual.ytd", "Category average YTD return"),
+  optionalNumber("category_returns.trailing.since_launch", "Category since launch return"),
+  optionalNumber("category_returns.annual.ytd", "Category YTD return"),
   optionalString("risk_level", "Risk level", 200),
   optionalString("suggested_use_case", "Suggested use case", 500),
   optionalString("suggested_use_case_note", "Suggested use case note", 5000),
@@ -220,7 +238,6 @@ export const createFundValidators = [
   optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Acceptance date"),
-  optionalMongoId("benchmark_id", "Benchmark"),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
   optionalBoolean("sip_allowed", "sip_allowed"),
   optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
@@ -260,7 +277,6 @@ export const updateFundValidators = [
   optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
   optionalString("fund_manager", "Fund manager", 200),
   optionalIsoDate("launch_date", "Acceptance date"),
-  optionalMongoId("benchmark_id", "Benchmark"),
   optionalNonNegativeNumber("min_investment", "Minimum investment"),
   optionalBoolean("sip_allowed", "sip_allowed"),
   optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
@@ -332,7 +348,15 @@ export const updateIndexSnapshotValidators = [
 ];
 
 export const createBenchmarkValidators = [
-  requiredString("name", "Benchmark name", 2, 200),
+  body("name")
+    .custom((value, { req }) => {
+      const candidate = String(value || req.body?.benchmark_index_name || "").trim();
+      if (!candidate) throw new Error("Benchmark name is required");
+      if (candidate.length < 2 || candidate.length > 200) {
+        throw new Error("Benchmark name must be between 2 and 200 characters");
+      }
+      return true;
+    }),
   optionalString("category", "Category", 120),
   optionalMongoId("main_category_id", "Main category"),
   optionalMongoId("category_id", "Category"),
@@ -342,6 +366,7 @@ export const createBenchmarkValidators = [
 
 export const updateBenchmarkValidators = [
   optionalString("name", "Benchmark name", 200),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
   optionalString("category", "Category", 120),
   optionalMongoId("main_category_id", "Main category"),
   optionalMongoId("category_id", "Category"),
@@ -352,16 +377,25 @@ export const updateBenchmarkValidators = [
 export const createBenchmarkReturnValidators = [
   requiredMongoId("benchmark_id", "Benchmark"),
   requiredIsoDate("date", "Date"),
-  optionalNumber("return_1d", "1D return"),
-  optionalNumber("return_1w", "1W return"),
-  optionalNumber("return_1m", "1M return"),
-  optionalNumber("return_3m", "3M return"),
-  optionalNumber("return_6m", "6M return"),
-  optionalNumber("return_ytd", "YTD return"),
-  optionalNumber("return_1y", "1Y return"),
-  optionalNumber("return_3y", "3Y return"),
-  optionalNumber("return_5y", "5Y return"),
-  optionalNumber("return_10y", "10Y return"),
+  optionalNumber("trailing.1w", "1W return"),
+  optionalNumber("trailing.1m", "1M return"),
+  optionalNumber("trailing.3m", "3M return"),
+  optionalNumber("trailing.6m", "6M return"),
+  optionalNumber("trailing.1y", "1Y return"),
+  optionalNumber("trailing.3y", "3Y return"),
+  optionalNumber("trailing.5y", "5Y return"),
+  optionalNumber("trailing.10y", "10Y return"),
+  optionalNumber("trailing.since_launch", "Since launch return"),
+  optionalNumber("annual.ytd", "YTD return"),
+  optionalNumber("benchmark_trailing_1w", "1W return"),
+  optionalNumber("benchmark_trailing_1m", "1M return"),
+  optionalNumber("benchmark_trailing_3m", "3M return"),
+  optionalNumber("benchmark_trailing_6m", "6M return"),
+  optionalNumber("benchmark_trailing_1y", "1Y return"),
+  optionalNumber("benchmark_trailing_3y", "3Y return"),
+  optionalNumber("benchmark_trailing_5y", "5Y return"),
+  optionalNumber("benchmark_trailing_10y", "10Y return"),
+  optionalNumber("since_launch", "Since launch return"),
+  optionalNumber("bench_YTD", "YTD return"),
   optionalDynamicYearMap("annual.yearly_returns", "Benchmark annual returns"),
-  optionalNumber("return_since_inception", "Since inception return"),
 ];

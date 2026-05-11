@@ -12,8 +12,6 @@ import { toast } from "react-hot-toast";
 interface MFBenchmarkRow {
   _id: string;
   name: string;
-  category?: string;
-  type?: string;
   is_active: number;
 }
 
@@ -115,8 +113,6 @@ export default function MFBenchmarkListing() {
   const columns: TableColumn<MFBenchmarkRow>[] = [
     { key: "index", label: "#", render: (_, i) => (page - 1) * recordsPerPage + i + 1 },
     { key: "name", label: "Name", sortable: true },
-    { key: "category", label: "Category", render: (row) => row.category || "-" },
-    { key: "type", label: "Type", render: (row) => row.type || "index" },
     {
       key: "actions",
       label: "Actions",
@@ -138,8 +134,7 @@ export default function MFBenchmarkListing() {
       <MFListingHeader
         title="Benchmark Master"
         templateOptions={[
-          { value: "benchmarks", label: "Benchmark Master" },
-          { value: "benchmark-returns", label: "Benchmark Returns" },
+          { value: "benchmarks", label: "Benchmark Master + Returns" },
         ]}
         selectedEntity={selectedEntity}
         onEntityChange={setSelectedEntity}
@@ -159,8 +154,7 @@ export default function MFBenchmarkListing() {
           <MFImportExportActions
             role={role}
             options={[
-              { value: "benchmarks", label: "Benchmark Master" },
-              { value: "benchmark-returns", label: "Benchmark Returns" },
+              { value: "benchmarks", label: "Benchmark Master + Returns" },
             ]}
             selectedEntity={selectedEntity}
             onEntityChange={setSelectedEntity}

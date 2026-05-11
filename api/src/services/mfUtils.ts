@@ -39,18 +39,10 @@ export const BENCHMARK_TRAILING_KEYS = [
   "ytd",
 ] as const;
 
-export const MF_ANNUAL_YEARS = [
-  "2025",
-  "2024",
-  "2023",
-  "2022",
-  "2021",
-  "2020",
-  "2019",
-  "2018",
-  "2017",
-  "2016",
-] as const;
+const buildAnnualYears = (startYear = new Date().getFullYear() - 1, count = 10) =>
+  Array.from({ length: count }, (_, index) => String(startYear - index));
+
+export const MF_ANNUAL_YEARS = buildAnnualYears();
 
 type NumericMap = Record<string, unknown> | Map<string, unknown> | null | undefined;
 

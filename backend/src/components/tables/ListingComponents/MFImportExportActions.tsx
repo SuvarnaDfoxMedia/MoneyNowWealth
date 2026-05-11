@@ -97,7 +97,7 @@ const entityGuidance: Record<
     items: [
       "Each category must map to an existing main category name or id.",
       "If you are creating dependencies together, use the full workbook template or import main categories first.",
-      "Use the new workbook columns for trailing, YTD, and annual benchmark returns.",
+      "Use the workbook columns for category trailing, YTD, and annual returns.",
       "Category averages are recalculated from active scheme data when funds are imported or updated.",
     ],
   },
@@ -122,8 +122,8 @@ const entityGuidance: Record<
     title: "Benchmark master import tips",
     items: [
       "Use one row per benchmark name in the template.",
-      "Include category_name and main_category_name for consistent benchmark tagging.",
-      "Import benchmark master before importing benchmark returns.",
+      "A single benchmark sheet can carry both benchmark master and return columns.",
+      "If date is missing, import uses the upload date for benchmark returns.",
     ],
   },
   "benchmark-returns": {

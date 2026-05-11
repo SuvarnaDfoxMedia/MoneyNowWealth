@@ -4,7 +4,18 @@ import Chart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
 import { axiosApi } from "../../api/axios";
 
-type CategoryOption = { _id: string; name: string };
+type CategoryOption = {
+  _id: string;
+  name: string;
+  category_returns?: {
+    trailing?: Record<string, number | null>;
+    annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
+  };
+  category_average_returns?: {
+    trailing?: Record<string, number | null>;
+    annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
+  };
+};
 type FundOption = {
   _id: string;
   fund_name: string;
@@ -51,6 +62,8 @@ type ComparisonMode =
   | "benchmark-vs-benchmark"
   | "benchmark-vs-category"
   | "benchmark-vs-funds"
+  | "category-vs-category"
+  | "category-vs-fund"
   | "funds-vs-funds";
 
 type SeriesPoint = {
@@ -148,6 +161,24 @@ const fromFund = (label: string, fund?: FundOption): SeriesPoint => ({
   si: asNumber(fund?.returns?.trailing?.since_launch ?? fund?.returns?.since_inception),
 });
 
+const fromCategory = (label: string, category?: CategoryOption): SeriesPoint => {
+  const source = category?.category_returns || category?.category_average_returns || {};
+  return {
+    label,
+    d1: null,
+    w1: asNumber(source?.trailing?.["1w"]),
+    m1: asNumber(source?.trailing?.["1m"]),
+    m3: asNumber(source?.trailing?.["3m"]),
+    m6: asNumber(source?.trailing?.["6m"]),
+    ytd: asNumber(source?.annual?.ytd),
+    y1: asNumber(source?.trailing?.["1y"]),
+    y3: asNumber(source?.trailing?.["3y"]),
+    y5: asNumber(source?.trailing?.["5y"]),
+    y10: asNumber(source?.trailing?.["10y"]),
+    si: asNumber(source?.trailing?.since_launch),
+  };
+};
+
 const latestByBenchmark = (rows: BenchmarkReturnRow[]) => {
   const map = new Map<string, BenchmarkReturnRow>();
   rows.forEach((row) => {
@@ -184,6 +215,9 @@ export default function MFBenchmarkViewComparisonPage() {
   const [benchmarkA, setBenchmarkA] = useState("");
   const [benchmarkB, setBenchmarkB] = useState("");
   const [categoryName, setCategoryName] = useState("");
+  const [categoryA, setCategoryA] = useState("");
+  const [categoryB, setCategoryB] = useState("");
+  const [categoryForFund, setCategoryForFund] = useState("");
   const [fundId, setFundId] = useState("");
   const [fundA, setFundA] = useState("");
   const [fundB, setFundB] = useState("");
@@ -194,17 +228,21 @@ export default function MFBenchmarkViewComparisonPage() {
     (async () => {
       setLoading(true);
       try {
-        const [filterRes, fundsRes, returnsRes] = await Promise.all([
+        const [filterRes, categoriesRes, fundsRes, returnsRes] = await Promise.all([
           axiosApi.get<any>(`/${role}/mf/benchmark/filters`),
+          axiosApi.get<any>(`/${role}/mf/categories`, { page: 1, limit: 5000 }),
           axiosApi.get<any>(`/${role}/mf/funds`, { page: 1, limit: 5000 }),
           axiosApi.get<any>(`/${role}/mf/benchmark/returns`, { page: 1, limit: 5000 }),
         ]);
         if (cancelled) return;
         const filterData = filterRes?.data || {};
         setBenchmarks(Array.isArray(filterData.benchmarks) ? filterData.benchmarks : []);
-        setCategories(Array.isArray(filterData.categories) ? filterData.categories : []);
+        setCategories(Array.isArray(categoriesRes?.data) ? categoriesRes.data : []);
         setFunds(Array.isArray(fundsRes?.data) ? fundsRes.data : []);
-        setReturnsRows(Array.isArray(returnsRes?.data) ? returnsRes.data : []);
+        const returnsPayload = returnsRes?.data || {};
+        setReturnsRows(
+          Array.isArray(returnsPayload?.data) ? returnsPayload.data : [],
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -218,6 +256,8 @@ export default function MFBenchmarkViewComparisonPage() {
     { id: "benchmark-vs-benchmark", label: "Benchmark vs Benchmark" },
     { id: "benchmark-vs-category", label: "Benchmark vs Category" },
     { id: "benchmark-vs-funds", label: "Benchmark vs Funds" },
+    { id: "category-vs-category", label: "Category vs Category" },
+    { id: "category-vs-fund", label: "Category vs Fund" },
     { id: "funds-vs-funds", label: "Funds vs Funds" },
   ];
 
@@ -229,14 +269,6 @@ export default function MFBenchmarkViewComparisonPage() {
     () => new Map(categories.map((item) => [item._id, item])),
     [categories],
   );
-  const benchmarkCategories = useMemo(() => {
-    const values = new Set<string>();
-    benchmarks.forEach((item: any) => {
-      const name = String(item?.category || "").trim();
-      if (name) values.add(name);
-    });
-    return [...values].sort((a, b) => a.localeCompare(b));
-  }, [benchmarks]);
   const fundById = useMemo(() => new Map(funds.map((item) => [item._id, item])), [funds]);
 
   const latestRows = useMemo(() => latestByBenchmark(returnsRows), [returnsRows]);
@@ -292,18 +324,10 @@ export default function MFBenchmarkViewComparisonPage() {
     }
     if (mode === "benchmark-vs-category") {
       const rowA = findBenchmarkRow(benchmarkA);
-      const categoryBenchmarkIds = benchmarks
-        .filter((item: any) => normalize(String(item?.category || "")) === normalize(categoryName))
-        .map((item) => item._id);
-      const categoryRows = latestRows.filter((item) =>
-        categoryBenchmarkIds.includes(extractId(item.benchmark_id)),
-      );
+      const selectedCategory = categoryById.get(categoryName);
       return {
         left: fromBenchmarkRow(benchmarkById.get(benchmarkA)?.name || "Benchmark", rowA),
-        right: averageSeries(
-          categoryName || "Category Avg",
-          categoryRows.map((row) => fromBenchmarkRow("x", row)),
-        ),
+        right: fromCategory(selectedCategory?.name || "Category", selectedCategory),
       };
     }
     if (mode === "benchmark-vs-funds") {
@@ -314,13 +338,29 @@ export default function MFBenchmarkViewComparisonPage() {
         right: fromFund(rightFund?.fund_name || "Fund", rightFund),
       };
     }
+    if (mode === "category-vs-category") {
+      const leftCategory = categoryById.get(categoryA);
+      const rightCategory = categoryById.get(categoryB);
+      return {
+        left: fromCategory(leftCategory?.name || "Category A", leftCategory),
+        right: fromCategory(rightCategory?.name || "Category B", rightCategory),
+      };
+    }
+    if (mode === "category-vs-fund") {
+      const leftCategory = categoryById.get(categoryForFund);
+      const rightFund = fundDetailsById[fundId] || fundById.get(fundId);
+      return {
+        left: fromCategory(leftCategory?.name || "Category", leftCategory),
+        right: fromFund(rightFund?.fund_name || "Fund", rightFund),
+      };
+    }
     const leftFund = fundDetailsById[fundA] || fundById.get(fundA);
     const rightFund = fundDetailsById[fundB] || fundById.get(fundB);
     return {
       left: fromFund(leftFund?.fund_name || "Fund A", leftFund),
       right: fromFund(rightFund?.fund_name || "Fund B", rightFund),
     };
-  }, [mode, latestRows, benchmarkA, benchmarkB, categoryName, fundId, fundA, fundB, benchmarkById, categoryById, fundById, fundDetailsById, benchmarks]);
+  }, [mode, latestRows, benchmarkA, benchmarkB, categoryName, fundId, fundA, fundB, categoryA, categoryB, categoryForFund, benchmarkById, categoryById, fundById, fundDetailsById, benchmarks, funds]);
 
   const chartOptions: ApexOptions = useMemo(
     () => ({
@@ -403,13 +443,57 @@ export default function MFBenchmarkViewComparisonPage() {
               {mode === "benchmark-vs-category" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <SelectField label="Benchmark" value={benchmarkA} onChange={setBenchmarkA} options={benchmarks.map((item) => ({ value: item._id, label: item.name }))} />
-                  <SelectField label="Category" value={categoryName} onChange={setCategoryName} options={benchmarkCategories.map((item) => ({ value: item, label: item }))} />
+                  <SelectField label="Category" value={categoryName} onChange={setCategoryName} options={categories.map((item) => ({ value: item._id, label: item.name }))} />
                 </div>
               )}
               {mode === "benchmark-vs-funds" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <SelectField label="Benchmark" value={benchmarkA} onChange={setBenchmarkA} options={benchmarks.map((item) => ({ value: item._id, label: item.name }))} />
                   <SelectField label="Fund" value={fundId} onChange={setFundId} options={funds.map((item) => ({ value: item._id, label: item.fund_name }))} />
+                </div>
+              )}
+              {mode === "category-vs-category" && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <SelectField
+                    label="Category A"
+                    value={categoryA}
+                    onChange={setCategoryA}
+                    options={categories.map((item) => ({
+                      value: item._id,
+                      label: item.name,
+                    }))}
+                  />
+                  <SelectField
+                    label="Category B"
+                    value={categoryB}
+                    onChange={setCategoryB}
+                    options={categories.map((item) => ({
+                      value: item._id,
+                      label: item.name,
+                    }))}
+                  />
+                </div>
+              )}
+              {mode === "category-vs-fund" && (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <SelectField
+                    label="Category"
+                    value={categoryForFund}
+                    onChange={setCategoryForFund}
+                    options={categories.map((item) => ({
+                      value: item._id,
+                      label: item.name,
+                    }))}
+                  />
+                  <SelectField
+                    label="Fund"
+                    value={fundId}
+                    onChange={setFundId}
+                    options={funds.map((item) => ({
+                      value: item._id,
+                      label: item.fund_name,
+                    }))}
+                  />
                 </div>
               )}
               {mode === "funds-vs-funds" && (

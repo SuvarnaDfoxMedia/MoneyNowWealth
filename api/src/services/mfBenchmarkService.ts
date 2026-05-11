@@ -6,7 +6,6 @@ import MFCategory from "../models/mfCategoryModel";
 import mongoose from "mongoose";
 import {
   buildSort,
-  MF_ANNUAL_YEARS,
   parsePagination,
   toDateOrNull,
   toNumberOrNull,
@@ -26,6 +25,29 @@ const normalizeDateValue = (value: Date | null) => {
 };
 
 const isObjectId = (value: unknown) => /^[a-f\d]{24}$/i.test(String(value || ""));
+
+const normalizeYearlyReturns = (input: any) => {
+  const source = input?.annual?.yearly_returns ?? input?.annual ?? input ?? {};
+  const entries = source instanceof Map ? Array.from(source.entries()) : Object.entries(source);
+  const out: Record<string, number | null> = {};
+  for (const [key, raw] of entries) {
+    if (!/^\d{4}$/.test(String(key))) continue;
+    out[String(key)] = toNumberOrNull(raw);
+  }
+  return out;
+};
+
+const normalizeBenchmarkTrailing = (payload: any) => ({
+  "1w": toNumberOrNull(payload?.trailing?.["1w"] ?? payload?.return_1w ?? payload?.benchmark_trailing_1w),
+  "1m": toNumberOrNull(payload?.trailing?.["1m"] ?? payload?.return_1m ?? payload?.benchmark_trailing_1m),
+  "3m": toNumberOrNull(payload?.trailing?.["3m"] ?? payload?.return_3m ?? payload?.benchmark_trailing_3m),
+  "6m": toNumberOrNull(payload?.trailing?.["6m"] ?? payload?.return_6m ?? payload?.benchmark_trailing_6m),
+  "1y": toNumberOrNull(payload?.trailing?.["1y"] ?? payload?.return_1y ?? payload?.benchmark_trailing_1y),
+  "3y": toNumberOrNull(payload?.trailing?.["3y"] ?? payload?.return_3y ?? payload?.benchmark_trailing_3y),
+  "5y": toNumberOrNull(payload?.trailing?.["5y"] ?? payload?.return_5y ?? payload?.benchmark_trailing_5y),
+  "10y": toNumberOrNull(payload?.trailing?.["10y"] ?? payload?.return_10y ?? payload?.benchmark_trailing_10y),
+  since_launch: toNumberOrNull(payload?.trailing?.since_launch ?? payload?.since_launch ?? payload?.return_since_inception),
+});
 
 export const getBenchmarks = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
@@ -73,8 +95,8 @@ export const getBenchmarkById = async (id: string) => {
 };
 
 export const createBenchmark = async (payload: Partial<IMFBenchmark> & any) => {
-  if (!payload.name) throw new Error("name is required");
-  const name = String(payload.name).trim();
+  const name = String(payload.name || payload.benchmark_index_name || "").trim();
+  if (!name) throw new Error("name is required");
   const type = String(payload.type || "index").trim();
 
   const exists = await MFBenchmark.findOne({
@@ -148,26 +170,18 @@ export const createBenchmarkReturn = async (payload: any) => {
   const benchmark = await MFBenchmark.findOne({ _id: payload.benchmark_id, is_deleted: false }).select("_id");
   if (!benchmark) throw new Error("Benchmark not found");
 
-  const annual = Object.fromEntries(
-    MF_ANNUAL_YEARS.map((year) => [year, toNumberOrNull(payload?.annual?.[year])]),
-  );
+  const trailing = normalizeBenchmarkTrailing(payload);
+  const annual = {
+    ytd: toNumberOrNull(payload?.annual?.ytd ?? payload?.return_ytd ?? payload?.bench_YTD ?? payload?.bench_ytd),
+    yearly_returns: normalizeYearlyReturns(payload),
+  };
 
   const doc = await MFBenchmarkReturn.findOneAndUpdate(
     { benchmark_id: payload.benchmark_id, date, is_deleted: false },
     {
       $set: {
-        return_1y: toNumberOrNull(payload.return_1y),
-        return_3y: toNumberOrNull(payload.return_3y),
-        return_5y: toNumberOrNull(payload.return_5y),
-        return_1d: toNumberOrNull(payload.return_1d),
-        return_1w: toNumberOrNull(payload.return_1w),
-        return_1m: toNumberOrNull(payload.return_1m),
-        return_3m: toNumberOrNull(payload.return_3m),
-        return_6m: toNumberOrNull(payload.return_6m),
-        return_ytd: toNumberOrNull(payload.return_ytd),
-        return_10y: toNumberOrNull(payload.return_10y),
+        trailing,
         annual,
-        return_since_inception: toNumberOrNull(payload.return_since_inception),
       },
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
@@ -238,6 +252,16 @@ export const getBenchmarkReturns = async (benchmarkId: string, query: any = {}) 
 
   const rows = returnRows.map((row: any) => ({
     ...row,
+    return_1w: row?.trailing?.["1w"] ?? null,
+    return_1m: row?.trailing?.["1m"] ?? null,
+    return_3m: row?.trailing?.["3m"] ?? null,
+    return_6m: row?.trailing?.["6m"] ?? null,
+    return_1y: row?.trailing?.["1y"] ?? null,
+    return_3y: row?.trailing?.["3y"] ?? null,
+    return_5y: row?.trailing?.["5y"] ?? null,
+    return_10y: row?.trailing?.["10y"] ?? null,
+    return_since_inception: row?.trailing?.since_launch ?? null,
+    return_ytd: row?.annual?.ytd ?? null,
     fund_name: selectedFund?.fund_name || (selectedCategory ? "All Funds" : "All Funds"),
     category_name:
       selectedFund?.category_name || selectedCategory?.name || "All Categories",
@@ -251,134 +275,20 @@ export const getBenchmarkReturns = async (benchmarkId: string, query: any = {}) 
 };
 
 export const getBenchmarkReturnsList = async (query: any = {}) => {
-  const selectedMainCategoryId = isObjectId(query?.mainCategoryId)
-    ? String(query.mainCategoryId)
-    : "";
-  const selectedCategoryId = isObjectId(query?.categoryId)
-    ? String(query.categoryId)
-    : "";
-  const selectedFundId = isObjectId(query?.fundId) ? String(query.fundId) : "";
   const selectedBenchmarkId = isObjectId(query?.benchmarkId)
     ? String(query.benchmarkId)
     : "";
-
-  const [mainCategories, categories] = await Promise.all([
-    MFMainCategory.find({ is_deleted: false })
-      .select("_id name")
-      .sort({ sort_order: 1, name: 1 })
-      .lean(),
-    MFCategory.find({ is_deleted: false })
-      .select("_id name main_category_id")
-      .sort({ name: 1 })
-      .lean(),
-  ]);
-
-  const categoryMainMap = new Map<string, string>();
-  const mainCategoryOptions = mainCategories.map((item: any) => ({
-    _id: String(item._id),
-    name: item.name || "",
-  }));
-  categories.forEach((item: any) => {
-    categoryMainMap.set(String(item._id), String(item.main_category_id || ""));
-  });
-
-  let filteredCategories = categories as any[];
-  if (selectedMainCategoryId) {
-    filteredCategories = filteredCategories.filter(
-      (item: any) => String(item.main_category_id || "") === selectedMainCategoryId,
-    );
-  }
-
-  const categoryOptions = filteredCategories.map((item: any) => ({
-    _id: String(item._id),
-    name: item.name || "",
-    main_category_id: String(item.main_category_id || ""),
-  }));
-
-  const fundFilter: any = { is_deleted: false };
-  if (selectedCategoryId) {
-    fundFilter.category_id = selectedCategoryId;
-  }
-  if (selectedFundId) {
-    fundFilter._id = selectedFundId;
-  }
-
-  const allCandidateFunds = await MFFund.find(fundFilter)
-    .select("_id fund_name category_id benchmark_id")
-    .populate("category_id", "name main_category_id")
-    .sort({ fund_name: 1 })
-    .lean();
-
-  const funds = selectedMainCategoryId
-    ? allCandidateFunds.filter(
-        (item: any) =>
-          String(item?.category_id?.main_category_id || "") === selectedMainCategoryId,
-      )
-    : allCandidateFunds;
-
-  const fundOptions = funds.map((item: any) => {
-    const categoryId = String(item?.category_id?._id || item?.category_id || "");
-    const mainCategoryId = String(
-      item?.category_id?.main_category_id ||
-        categoryMainMap.get(categoryId) ||
-        "",
-    );
-    return {
-      _id: String(item._id),
-      fund_name: item.fund_name || "",
-      category_id: categoryId || null,
-      category_name: String(item?.category_id?.name || ""),
-      main_category_id: mainCategoryId || null,
-      benchmark_id: String(item?.benchmark_id || ""),
-    };
-  });
-
   const benchmarkFilter: any = { is_deleted: false };
   if (selectedBenchmarkId) {
     benchmarkFilter._id = new mongoose.Types.ObjectId(selectedBenchmarkId);
-  } else if (selectedFundId) {
-    const selectedFund = fundOptions.find((item) => item._id === selectedFundId);
-    if (selectedFund?.benchmark_id) {
-      benchmarkFilter._id = new mongoose.Types.ObjectId(selectedFund.benchmark_id);
-    }
-  } else if (selectedCategoryId) {
-    benchmarkFilter.category_id = new mongoose.Types.ObjectId(selectedCategoryId);
-  } else if (selectedMainCategoryId) {
-    benchmarkFilter.main_category_id = new mongoose.Types.ObjectId(selectedMainCategoryId);
   }
 
-  let benchmarks = await MFBenchmark.find(benchmarkFilter)
+  const benchmarks = await MFBenchmark.find(benchmarkFilter)
     .select("_id name category category_id main_category_id type")
     .populate("category_id", "name")
     .populate("main_category_id", "name")
     .sort({ name: 1 })
     .lean();
-
-  if (!selectedBenchmarkId) {
-    const fundBenchmarkIds = [
-      ...new Set(
-        fundOptions
-          .map((item) => String(item.benchmark_id || "").trim())
-          .filter(Boolean),
-      ),
-    ];
-    if (fundBenchmarkIds.length > 0) {
-      const mappedBenchmarks = await MFBenchmark.find({
-        _id: { $in: fundBenchmarkIds.map((id) => new mongoose.Types.ObjectId(id)) },
-        is_deleted: false,
-      })
-        .select("_id name category category_id main_category_id type")
-        .populate("category_id", "name")
-        .populate("main_category_id", "name")
-        .sort({ name: 1 })
-        .lean();
-      const merged = new Map<string, any>();
-      [...benchmarks, ...mappedBenchmarks].forEach((item: any) => {
-        merged.set(String(item._id), item);
-      });
-      benchmarks = [...merged.values()];
-    }
-  }
 
   const benchmarkOptions = benchmarks.map((item: any) => ({
     _id: String(item._id),
@@ -406,57 +316,19 @@ export const getBenchmarkReturnsList = async (query: any = {}) => {
     .limit(5000)
     .lean();
 
-  const selectedCategory =
-    selectedCategoryId
-      ? categoryOptions.find((item) => item._id === selectedCategoryId)
-      : null;
-
-  const benchmarkFundsMap = new Map<string, typeof fundOptions>();
-  fundOptions.forEach((fund) => {
-    const benchmarkId = String(fund.benchmark_id || "");
-    if (!benchmarkId) return;
-    const list = benchmarkFundsMap.get(benchmarkId) || [];
-    list.push(fund);
-    benchmarkFundsMap.set(benchmarkId, list);
-  });
-
-  const rows = returnRows.flatMap((row: any) => {
+  const rows = returnRows.map((row: any) => {
     const benchmarkDoc = row?.benchmark_id || {};
-    const benchmarkId = String(benchmarkDoc?._id || row?.benchmark_id || "");
-    const mappedFunds = benchmarkFundsMap.get(benchmarkId) || [];
-
-    if (mappedFunds.length === 0) {
-      return [
-        {
-          ...row,
-          benchmark_name: String(benchmarkDoc?.name || ""),
-          category_name:
-            selectedCategory?.name ||
-            String(benchmarkDoc?.category_id?.name || benchmarkDoc?.category || "") ||
-            "-",
-          fund_name: "-",
-        },
-      ];
-    }
-
-    return mappedFunds.map((fund) => ({
+    return {
       ...row,
-      _id: `${String(row._id)}::${fund._id}`,
       benchmark_name: String(benchmarkDoc?.name || ""),
-      category_name:
-        fund.category_name ||
-        selectedCategory?.name ||
-        String(benchmarkDoc?.category_id?.name || benchmarkDoc?.category || "") ||
-        "-",
-      fund_name: fund.fund_name || "-",
-    }));
+    };
   });
 
   return {
     rows,
-    mainCategories: mainCategoryOptions,
-    categories: categoryOptions,
-    funds: fundOptions,
+    mainCategories: [],
+    categories: [],
+    funds: [],
     benchmarks: benchmarkOptions,
   };
 };
@@ -476,115 +348,19 @@ const parseHierarchy = (query: any = {}) => ({
     : "",
 });
 
-const getMappedFundsForHierarchy = async (query: any = {}) => {
-  const { mainCategoryId, categoryId, fundId } = parseHierarchy(query);
+export const getBenchmarkFilters = async (query: any = {}) => {
+  const { benchmarkId } = parseHierarchy(query);
+  const benchmarkFilter: any = { is_deleted: false };
+  if (benchmarkId) {
+    benchmarkFilter._id = new mongoose.Types.ObjectId(benchmarkId);
+  }
 
-  const categoryFilter: any = { is_deleted: false };
-  if (mainCategoryId) categoryFilter.main_category_id = new mongoose.Types.ObjectId(mainCategoryId);
-  if (categoryId) categoryFilter._id = new mongoose.Types.ObjectId(categoryId);
-  const categories = await MFCategory.find(categoryFilter)
-    .select("_id name main_category_id")
+  const benchmarks = await MFBenchmark.find(benchmarkFilter)
+    .select("_id name category category_id main_category_id type")
+    .populate("category_id", "name")
+    .populate("main_category_id", "name")
     .sort({ name: 1 })
     .lean();
-
-  const categoryIds = categories.map((item: any) => item._id);
-  const fundFilter: any = { is_deleted: false, benchmark_id: { $ne: null } };
-  if (fundId) {
-    fundFilter._id = new mongoose.Types.ObjectId(fundId);
-  } else if (categoryId) {
-    fundFilter.category_id = new mongoose.Types.ObjectId(categoryId);
-  } else if (mainCategoryId) {
-    if (categoryIds.length === 0) return { categories, funds: [] as any[] };
-    fundFilter.category_id = { $in: categoryIds };
-  }
-
-  const funds = await MFFund.find(fundFilter)
-    .select("_id fund_name category_id benchmark_id")
-    .populate("category_id", "name main_category_id")
-    .sort({ fund_name: 1 })
-    .lean();
-
-  return { categories, funds };
-};
-
-export const getBenchmarkFilters = async (query: any = {}) => {
-  const { mainCategoryId, categoryId, fundId } = parseHierarchy(query);
-  const [allMainCategories, mapped] = await Promise.all([
-    MFMainCategory.find({ is_deleted: false })
-      .select("_id name")
-      .sort({ sort_order: 1, name: 1 })
-      .lean(),
-    getMappedFundsForHierarchy(query),
-  ]);
-
-  const categories = mapped.categories as any[];
-  const funds = mapped.funds as any[];
-
-  const benchmarkIds = [
-    ...new Set(
-      funds.map((item: any) => String(item.benchmark_id || "")).filter(Boolean),
-    ),
-  ];
-
-  if (fundId && funds.length === 0) {
-    return {
-      mainCategories: allMainCategories.map((item: any) => ({ _id: String(item._id), name: item.name || "" })),
-      categories: [],
-      funds: [],
-      benchmarks: [],
-    };
-  }
-
-  const benchmarkIdsWithReturns = benchmarkIds.length
-    ? await MFBenchmarkReturn.distinct("benchmark_id", {
-        benchmark_id: { $in: benchmarkIds.map((id) => new mongoose.Types.ObjectId(id)) },
-        is_deleted: false,
-      })
-    : [];
-
-  const benchmarks = benchmarkIdsWithReturns.length
-    ? await MFBenchmark.find({
-        _id: { $in: benchmarkIdsWithReturns },
-        is_deleted: false,
-      })
-        .select("_id name category category_id main_category_id type")
-        .populate("category_id", "name")
-        .populate("main_category_id", "name")
-        .sort({ name: 1 })
-        .lean()
-    : [];
-
-  const mainCategories = allMainCategories.map((item: any) => ({
-    _id: String(item._id),
-    name: item.name || "",
-  }));
-
-  const categoryOptions = categories
-    .filter((item: any) => {
-      if (mainCategoryId && String(item.main_category_id || "") !== mainCategoryId) return false;
-      if (categoryId && String(item._id) !== categoryId) return false;
-      return true;
-    })
-    .map((item: any) => ({
-      _id: String(item._id),
-      name: item.name || "",
-      main_category_id: String(item.main_category_id || ""),
-    }));
-
-  const fundOptions = funds
-    .filter((item: any) => {
-      if (categoryId && String(item?.category_id?._id || item?.category_id || "") !== categoryId) return false;
-      return true;
-    })
-    .map((item: any) => ({
-      _id: String(item._id),
-      fund_name: item.fund_name || "",
-      category_id: String(item?.category_id?._id || item?.category_id || ""),
-      category_name: String(item?.category_id?.name || ""),
-      main_category_id: String(item?.category_id?.main_category_id || ""),
-      benchmark_id: String(item?.benchmark_id || ""),
-    }));
-
   const benchmarkOptions = benchmarks.map((item: any) => ({
     _id: String(item._id),
     name: item.name || "",
@@ -594,78 +370,40 @@ export const getBenchmarkFilters = async (query: any = {}) => {
     type: item.type || "",
   }));
 
-  return {
-    mainCategories,
-    categories: categoryOptions,
-    funds: fundOptions,
-    benchmarks: benchmarkOptions,
-  };
+  return { mainCategories: [], categories: [], funds: [], benchmarks: benchmarkOptions };
 };
 
 export const getBenchmarkReturnsByFilters = async (query: any = {}) => {
-  const { benchmarkId, fundId, categoryId, mainCategoryId } = parseHierarchy(query);
-  const mapped = await getMappedFundsForHierarchy(query);
-  const funds = mapped.funds as any[];
-
-  let eligibleBenchmarkIds = [
-    ...new Set(funds.map((item: any) => String(item.benchmark_id || "")).filter(Boolean)),
-  ];
-
-  if (benchmarkId) {
-    eligibleBenchmarkIds = eligibleBenchmarkIds.filter((id) => id === benchmarkId);
-  }
-
-  if (mainCategoryId || categoryId || fundId || benchmarkId) {
-    if (eligibleBenchmarkIds.length === 0) return [];
-  }
-
+  const { benchmarkId } = parseHierarchy(query);
+  const { page, limit, skip } = parsePagination(query);
   const returnsFilter: any = { is_deleted: false };
-  if (eligibleBenchmarkIds.length > 0) {
-    returnsFilter.benchmark_id = {
-      $in: eligibleBenchmarkIds.map((id) => new mongoose.Types.ObjectId(id)),
-    };
+  if (benchmarkId) {
+    returnsFilter.benchmark_id = new mongoose.Types.ObjectId(benchmarkId);
   }
 
-  const returnRows = await MFBenchmarkReturn.find(returnsFilter)
-    .populate("benchmark_id", "name category category_id")
-    .sort({ date: -1, updated_at: -1 })
-    .limit(5000)
-    .lean();
+  const [returnRows, total] = await Promise.all([
+    MFBenchmarkReturn.find(returnsFilter)
+      .populate("benchmark_id", "name category category_id")
+      .sort({ date: -1, updated_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    MFBenchmarkReturn.countDocuments(returnsFilter),
+  ]);
 
-  const benchmarkFundsMap = new Map<string, any[]>();
-  funds.forEach((fund: any) => {
-    const bId = String(fund.benchmark_id || "");
-    if (!bId) return;
-    const list = benchmarkFundsMap.get(bId) || [];
-    list.push({
-      fund_name: fund.fund_name || "-",
-      category_name: String(fund?.category_id?.name || "-"),
-      fund_id: String(fund._id),
-    });
-    benchmarkFundsMap.set(bId, list);
-  });
-
-  return returnRows.flatMap((row: any) => {
+  const rows = returnRows.map((row: any) => {
     const benchmarkDoc = row?.benchmark_id || {};
-    const bId = String(benchmarkDoc?._id || row?.benchmark_id || "");
-    const mappedFunds = benchmarkFundsMap.get(bId) || [];
-
-    if (mappedFunds.length === 0) {
-      if (mainCategoryId || categoryId || fundId || benchmarkId) return [];
-      return [{
-        ...row,
-        benchmark_name: String(benchmarkDoc?.name || ""),
-        fund_name: "-",
-        category_name: String(benchmarkDoc?.category_id?.name || benchmarkDoc?.category || "-"),
-      }];
-    }
-
-    return mappedFunds.map((fundItem) => ({
+    return {
       ...row,
-      _id: `${String(row._id)}::${fundItem.fund_id}`,
       benchmark_name: String(benchmarkDoc?.name || ""),
-      fund_name: fundItem.fund_name,
-      category_name: fundItem.category_name,
-    }));
+    };
   });
+
+  return {
+    data: rows,
+    total,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+    limit,
+  };
 };

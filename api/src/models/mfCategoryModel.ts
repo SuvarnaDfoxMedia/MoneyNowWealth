@@ -38,6 +38,13 @@ export interface IMFCategory extends Document {
       yearly_returns?: Map<string, number | null> | Record<string, number | null>;
     };
   };
+  category_returns?: {
+    trailing?: Record<string, number | null>;
+    annual?: {
+      ytd?: number | null;
+      yearly_returns?: Map<string, number | null> | Record<string, number | null>;
+    };
+  };
   risk_level?: string;
   suggested_use_case?: string;
   suggested_use_case_note?: string;
@@ -58,6 +65,7 @@ const mfCategorySchema = new Schema<IMFCategory>(
       index: true,
     },
     description: { type: String, trim: true, default: "" },
+    category_returns: { type: categoryReturnsSchema, default: () => ({}) },
     category_average_returns: { type: categoryReturnsSchema, default: () => ({}) },
     risk_level: { type: String, trim: true, default: "" },
     suggested_use_case: { type: String, trim: true, default: "" },

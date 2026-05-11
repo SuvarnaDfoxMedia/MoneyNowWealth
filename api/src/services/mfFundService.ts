@@ -2,11 +2,8 @@ import mongoose from "mongoose";
 import MFFund, { IMFFund } from "../models/mfFundModel";
 import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
-import MFBenchmark from "../models/mfBenchmarkModel";
-import MFBenchmarkReturn from "../models/mfBenchmarkReturnModel";
 import {
   buildSort,
-  MF_ANNUAL_YEARS,
   normalizeYearValueMap,
   parsePagination,
   toBoolean,
@@ -59,6 +56,10 @@ const normalizeInvestmentFlags = (payload: any) => {
 };
 
 const normalizeFundReturns = (value: any) => ({
+  d1: toNumberOrNull(value?.d1 ?? value?.return_1d),
+  since_inception: toNumberOrNull(
+    value?.since_inception ?? value?.trailing?.since_launch ?? value?.inception_return,
+  ),
   trailing: {
     "1w": toNumberOrNull(value?.trailing?.["1w"] ?? value?.w1),
     "1m": toNumberOrNull(value?.trailing?.["1m"] ?? value?.m1),
@@ -87,190 +88,6 @@ const normalizeFrontendVisibility = (value: any) => ({
   groups: normalizeVisibilityMap(value?.groups),
   fields: normalizeVisibilityMap(value?.fields),
 });
-
-const upsertLegacyBenchmarkReturn = async (benchmarkId: any, payload: any) => {
-  if (!benchmarkId) return;
-  const trailing = payload?.benchmark_returns_trailing || {};
-  const annual = Object.fromEntries(
-    MF_ANNUAL_YEARS.map((year) => [year, toNumberOrNull(payload?.benchmark_returns_annual?.[year])]),
-  );
-  const hasTrailingValues = Object.values(trailing).some(
-    (value) => value !== null && value !== undefined && value !== "",
-  );
-  const hasAnnualValues = Object.values(annual).some(
-    (value) => value !== null && value !== undefined,
-  );
-  if (!hasTrailingValues && !hasAnnualValues) return;
-
-  const date = toDateOrNull(payload?.benchmark_date) || new Date();
-  await MFBenchmarkReturn.findOneAndUpdate(
-    { benchmark_id: benchmarkId, date, is_deleted: false },
-    {
-      $set: {
-        trailing: {
-          "1w": toNumberOrNull(trailing?.w1 ?? trailing?.["1w"]),
-          "1m": toNumberOrNull(trailing?.m1 ?? trailing?.["1m"]),
-          "3m": toNumberOrNull(trailing?.m3 ?? trailing?.["3m"]),
-          "6m": toNumberOrNull(trailing?.m6 ?? trailing?.["6m"]),
-          "1y": toNumberOrNull(trailing?.y1 ?? trailing?.["1y"]),
-          "3y": toNumberOrNull(trailing?.y3 ?? trailing?.["3y"]),
-          "5y": toNumberOrNull(trailing?.y5 ?? trailing?.["5y"]),
-          "10y": toNumberOrNull(trailing?.y10 ?? trailing?.["10y"]),
-          since_launch: toNumberOrNull(trailing?.since_launch ?? trailing?.since_inception),
-        },
-        annual: {
-          ytd: toNumberOrNull(trailing?.ytd ?? payload?.benchmark_returns_annual?.ytd),
-          yearly_returns: annual,
-        },
-      },
-    },
-    { upsert: true, setDefaultsOnInsert: true },
-  );
-};
-
-const attachBenchmarkPayload = async (funds: any[]) => {
-  if (!Array.isArray(funds) || funds.length === 0) return funds;
-
-  const benchmarkIds = [...new Set(
-    funds
-      .map((fund) => String(fund?.benchmark_id?._id || fund?.benchmark_id || ""))
-      .filter(Boolean),
-  )];
-
-  if (benchmarkIds.length === 0) {
-    return funds.map((fund) => ({
-      ...fund,
-      benchmark: null,
-      benchmark_index_name: "",
-      benchmark_returns_trailing: {},
-      comparison: {
-        fund: {
-          return_1y: fund?.returns?.trailing?.["1y"] ?? fund?.returns?.y1 ?? null,
-          return_3y: fund?.returns?.trailing?.["3y"] ?? fund?.returns?.y3_cagr ?? null,
-          return_5y: fund?.returns?.trailing?.["5y"] ?? fund?.returns?.y5_cagr ?? null,
-        },
-        benchmark: null,
-      },
-    }));
-  }
-
-  const latestReturns = await MFBenchmarkReturn.aggregate([
-    {
-      $match: {
-        is_deleted: false,
-        benchmark_id: {
-          $in: benchmarkIds.map((id) => new mongoose.Types.ObjectId(id)),
-        },
-      },
-    },
-    { $sort: { date: -1 } },
-    {
-      $group: {
-        _id: "$benchmark_id",
-        doc: { $first: "$$ROOT" },
-      },
-    },
-  ]);
-
-  const latestMap = new Map(
-    latestReturns.map((item: any) => [String(item._id), item.doc]),
-  );
-
-  return funds.map((fund) => {
-    const benchmarkDoc = fund?.benchmark_id;
-    const benchmarkId = String(benchmarkDoc?._id || benchmarkDoc || "");
-    const latest = latestMap.get(benchmarkId);
-    const benchmarkPayload = benchmarkId
-      ? {
-          _id: benchmarkId,
-          name: benchmarkDoc?.name || "",
-          category: benchmarkDoc?.category || "",
-          type: benchmarkDoc?.type || "index",
-          date: latest?.date || null,
-          return_1y: latest?.trailing?.["1y"] ?? latest?.return_1y ?? null,
-          return_3y: latest?.trailing?.["3y"] ?? latest?.return_3y ?? null,
-          return_5y: latest?.trailing?.["5y"] ?? latest?.return_5y ?? null,
-          return_1d: latest?.return_1d ?? null,
-          return_1w: latest?.trailing?.["1w"] ?? latest?.return_1w ?? null,
-          return_1m: latest?.trailing?.["1m"] ?? latest?.return_1m ?? null,
-          return_3m: latest?.trailing?.["3m"] ?? latest?.return_3m ?? null,
-          return_6m: latest?.trailing?.["6m"] ?? latest?.return_6m ?? null,
-          return_ytd: latest?.annual?.ytd ?? latest?.return_ytd ?? null,
-          return_10y: latest?.trailing?.["10y"] ?? latest?.return_10y ?? null,
-          annual: latest?.annual?.yearly_returns ?? latest?.annual ?? {},
-          return_since_inception: latest?.trailing?.since_launch ?? latest?.return_since_inception ?? null,
-        }
-      : null;
-
-    return {
-      ...fund,
-      benchmark: benchmarkPayload,
-      benchmark_index_name: benchmarkPayload?.name || "",
-      benchmark_returns_trailing: {
-        d1: benchmarkPayload?.return_1d ?? null,
-        w1: benchmarkPayload?.return_1w ?? null,
-        m1: benchmarkPayload?.return_1m ?? null,
-        m3: benchmarkPayload?.return_3m ?? null,
-        m6: benchmarkPayload?.return_6m ?? null,
-        ytd: benchmarkPayload?.return_ytd ?? null,
-        y1: benchmarkPayload?.return_1y ?? null,
-        y3: benchmarkPayload?.return_3y ?? null,
-        y5: benchmarkPayload?.return_5y ?? null,
-        y10: benchmarkPayload?.return_10y ?? null,
-      },
-      benchmark_returns_annual: benchmarkPayload?.annual || {},
-      comparison: {
-        fund: {
-          return_1y: fund?.returns?.trailing?.["1y"] ?? fund?.returns?.y1 ?? null,
-          return_3y: fund?.returns?.trailing?.["3y"] ?? fund?.returns?.y3_cagr ?? null,
-          return_5y: fund?.returns?.trailing?.["5y"] ?? fund?.returns?.y5_cagr ?? null,
-        },
-        benchmark: benchmarkPayload
-          ? {
-              name: benchmarkPayload.name,
-              return_1y: benchmarkPayload.return_1y,
-              return_3y: benchmarkPayload.return_3y,
-              return_5y: benchmarkPayload.return_5y,
-            }
-          : null,
-      },
-    };
-  });
-};
-
-const resolveBenchmarkId = async (payload: any) => {
-  if (!payload.benchmark_id && !payload.benchmark_index_name) return null;
-  if (payload.benchmark_id) {
-    if (!/^[a-f\d]{24}$/i.test(String(payload.benchmark_id))) {
-      throw new Error("benchmark_id must be a valid id");
-    }
-    const benchmark = await MFBenchmark.findOne({
-      _id: payload.benchmark_id,
-      is_deleted: false,
-    }).select("_id");
-    if (!benchmark) throw new Error("Benchmark not found");
-    return benchmark._id;
-  }
-
-  const legacyName = String(payload.benchmark_index_name || "").trim();
-  if (!legacyName) return null;
-  const type = String(payload.benchmark_type || "index").trim();
-  const category = String(payload.benchmark_category || "").trim();
-  const existing = await MFBenchmark.findOne({
-    is_deleted: false,
-    name: exactCaseInsensitive(legacyName),
-    type: exactCaseInsensitive(type),
-  }).select("_id");
-  if (existing) return existing._id;
-  const created = await MFBenchmark.create({
-    name: legacyName,
-    type,
-    category,
-    is_active: 1,
-    is_deleted: false,
-  });
-  return created._id;
-};
 
 export const getFunds = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
@@ -403,7 +220,6 @@ export const getFunds = async (query: any) => {
   const [data, total] = await Promise.all([
     MFFund.find(filter)
       .populate("amc_id", "name")
-      .populate("benchmark_id", "name category type")
       .populate({ path: "category_id", select: "name main_category_id", populate: { path: "main_category_id", select: "name" } })
       .sort(sort)
       .skip(skip)
@@ -412,11 +228,9 @@ export const getFunds = async (query: any) => {
     MFFund.countDocuments(filter),
   ]);
 
-  const enrichedData = await attachBenchmarkPayload(data as any[]);
-
-  return {
+    return {
     success: true,
-    data: enrichedData,
+    data,
     total,
     currentPage: page,
     totalPages: Math.ceil(total / limit),
@@ -452,7 +266,6 @@ export const getPopularFunds = async (query: any) => {
   const [data, total] = await Promise.all([
     MFFund.find(filter)
       .populate("amc_id", "name")
-      .populate("benchmark_id", "name category type")
       .populate({ path: "category_id", select: "name main_category_id", populate: { path: "main_category_id", select: "name" } })
       .sort(sort)
       .skip(skip)
@@ -461,11 +274,9 @@ export const getPopularFunds = async (query: any) => {
     MFFund.countDocuments(filter),
   ]);
 
-  const enrichedData = await attachBenchmarkPayload(data as any[]);
-
   return {
     success: true,
-    data: enrichedData,
+    data,
     total,
     currentPage: page,
     totalPages: Math.ceil(total / limit),
@@ -476,7 +287,6 @@ export const getPopularFunds = async (query: any) => {
 export const getFundById = async (id: string) => {
   const doc = await MFFund.findOne({ _id: id, is_deleted: false })
     .populate("amc_id", "name")
-    .populate("benchmark_id", "name category type")
     .populate({
       path: "category_id",
       select: "name main_category_id",
@@ -484,8 +294,7 @@ export const getFundById = async (id: string) => {
     })
     .lean();
   if (!doc) throw new Error("Fund not found");
-  const [enriched] = await attachBenchmarkPayload([doc as any]);
-  return enriched;
+  return doc;
 };
 
 export const createFund = async (payload: Partial<IMFFund> & any) => {
@@ -503,7 +312,6 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
 
   const amcId = await resolveAmcId(payload);
   const categoryId = await resolveCategoryId(payload);
-  const benchmarkId = await resolveBenchmarkId(payload);
 
   const investmentFlags = normalizeInvestmentFlags(payload);
   const normalizedSchemeCode = String(payload.scheme_code).trim();
@@ -561,18 +369,28 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
       turnover_ratio: toNumberOrNull(payload.risk_metrics?.turnover_ratio),
     },
     launch_date: toDateOrNull(payload.launch_date),
-    benchmark_id: benchmarkId,
+    benchmark_id: null,
     min_investment: toNumberOrNull(payload.min_investment),
     ...investmentFlags,
-    is_featured: toBoolean(payload.is_featured),
-    is_popular: toBoolean(payload.is_popular),
-    frontend_visibility: normalizeFrontendVisibility(payload.frontend_visibility),
+      is_featured: toBoolean(payload.is_featured),
+      is_popular: toBoolean(payload.is_popular),
+      domestic_equity_pct: toNumberOrNull(payload.domestic_equity_pct),
+      international_equity_pct: toNumberOrNull(payload.international_equity_pct),
+      debt_pct: toNumberOrNull(payload.debt_pct),
+      other_pct: toNumberOrNull(payload.other_pct),
+      gold_pct: toNumberOrNull(payload.gold_pct),
+      cash_pct: toNumberOrNull(payload.cash_pct),
+      large_cap_pct: toNumberOrNull(payload.large_cap_pct),
+      mid_cap_pct: toNumberOrNull(payload.mid_cap_pct),
+      small_cap_pct: toNumberOrNull(payload.small_cap_pct),
+      tax_type: String(payload.tax_type || "").trim(),
+      riskometer_label: String(payload.riskometer_label || "").trim(),
+      frontend_visibility: normalizeFrontendVisibility(payload.frontend_visibility),
     is_active: payload.is_active ?? 1,
     is_deleted: false,
   });
 
   await doc.save();
-  await upsertLegacyBenchmarkReturn(doc.benchmark_id, payload);
   await recomputeCategoryAverageReturns(String(categoryId));
   return doc;
 };
@@ -595,9 +413,7 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.category_id) {
     updateData.category_id = await resolveCategoryId(payload);
   }
-  if (payload.benchmark_id !== undefined) {
-    updateData.benchmark_id = await resolveBenchmarkId(payload);
-  }
+  if (payload.benchmark_id !== undefined) updateData.benchmark_id = null;
 
   if (payload.returns || payload.y1_return || payload.y3_cagr || payload.y5_cagr || payload.y10_cagr) {
     updateData.returns = normalizeFundReturns({
@@ -654,6 +470,17 @@ if (payload.amc_name || payload.amc_id) {
   }
   if (payload.is_featured !== undefined) updateData.is_featured = toBoolean(payload.is_featured);
   if (payload.is_popular !== undefined) updateData.is_popular = toBoolean(payload.is_popular);
+  if (payload.domestic_equity_pct !== undefined) updateData.domestic_equity_pct = toNumberOrNull(payload.domestic_equity_pct);
+  if (payload.international_equity_pct !== undefined) updateData.international_equity_pct = toNumberOrNull(payload.international_equity_pct);
+  if (payload.debt_pct !== undefined) updateData.debt_pct = toNumberOrNull(payload.debt_pct);
+  if (payload.other_pct !== undefined) updateData.other_pct = toNumberOrNull(payload.other_pct);
+  if (payload.gold_pct !== undefined) updateData.gold_pct = toNumberOrNull(payload.gold_pct);
+  if (payload.cash_pct !== undefined) updateData.cash_pct = toNumberOrNull(payload.cash_pct);
+  if (payload.large_cap_pct !== undefined) updateData.large_cap_pct = toNumberOrNull(payload.large_cap_pct);
+  if (payload.mid_cap_pct !== undefined) updateData.mid_cap_pct = toNumberOrNull(payload.mid_cap_pct);
+  if (payload.small_cap_pct !== undefined) updateData.small_cap_pct = toNumberOrNull(payload.small_cap_pct);
+  if (payload.tax_type !== undefined) updateData.tax_type = String(payload.tax_type || "").trim();
+  if (payload.riskometer_label !== undefined) updateData.riskometer_label = String(payload.riskometer_label || "").trim();
 
 
   if (payload.frontend_visibility !== undefined) {
@@ -683,7 +510,6 @@ if (payload.amc_name || payload.amc_id) {
 
   const doc = await MFFund.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   if (!doc) throw new Error("Fund not found");
-  await upsertLegacyBenchmarkReturn(doc.benchmark_id, payload);
   const affectedCategoryIds = [
     String(currentDoc.get("category_id") || ""),
     String(updateData.category_id || ""),

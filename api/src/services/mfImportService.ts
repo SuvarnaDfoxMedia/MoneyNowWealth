@@ -69,6 +69,12 @@ type ImportError = {
   message: string;
   identifier?: string;
 };
+type ImportSkip = {
+  sheet: string;
+  row: number;
+  reason: string;
+  identifier?: string;
+};
 
 type PreviewSheet = {
   sheet: string;
@@ -130,6 +136,13 @@ type StagedCategory = {
   name: string;
   main_category_id: Types.ObjectId;
   description: string;
+  category_returns: {
+    trailing: Record<string, number | null>;
+    annual: {
+      ytd: number | null;
+      yearly_returns: Record<string, number | null>;
+    };
+  };
   category_average_returns: {
     trailing: Record<string, number | null>;
     annual: {
@@ -213,6 +226,17 @@ const CATEGORY_HEADERS = [
   "category_name",
   "main_category_name",
   "description",
+  "category_trailing_1w",
+  "category_trailing_1m",
+  "category_trailing_3m",
+  "category_trailing_6m",
+  "category_trailing_1y",
+  "category_trailing_3y",
+  "category_trailing_5y",
+  "category_trailing_10y",
+  "since_launch",
+  "category_ytd",
+  ...MF_ANNUAL_YEARS.map((year) => `category_${year}`),
   "category_average_1w",
   "category_average_1m",
   "category_average_3m",
@@ -234,12 +258,15 @@ const AMC_HEADERS = ["amc_name", "is_active"];
 
 const FUND_HEADERS = [
   "scheme_code",
+  "isin_number",
   "fund_name",
   "amc_name",
   "category_name",
   "main_category_name",
   "plan_type",
   "option_type",
+  "nav_current",
+  "nav_date",
   "aum_cr",
   "expense_ratio",
   "return_1d",
@@ -255,24 +282,18 @@ const FUND_HEADERS = [
   "YTD",
   ...MF_ANNUAL_YEARS,
   "sharpe_3y",
+  "sharpe_5y",
   "std_dev_3y",
+  "std_dev_5y",
   "beta_3y",
+  "beta_5y",
   "alpha_3y",
+  "alpha_5y",
   "max_drawdown_5y",
+  "max_drawdown_10y",
   "turnover_ratio",
   "fund_manager",
   "launch_date",
-  "benchmark_name",
-  "benchmark_trailing_1w",
-  "benchmark_trailing_1m",
-  "benchmark_trailing_3m",
-  "benchmark_trailing_6m",
-  "benchmark_trailing_1y",
-  "benchmark_trailing_3y",
-  "benchmark_trailing_5y",
-  "benchmark_trailing_10y",
-  "YTD",
-  ...MF_ANNUAL_YEARS,
   "min_investment",
   "sip_allowed",
   "min_sip_investment",
@@ -283,9 +304,18 @@ const FUND_HEADERS = [
   "is_popular",
   "fund_objective",
   "investment_strategy",
+  "domestic_equity_pct",
+  "international_equity_pct",
+  "debt_pct",
+  "other_pct",
+  "gold_pct",
+  "cash_pct",
+  "large_cap_pct",
+  "mid_cap_pct",
+  "small_cap_pct",
+  "tax_type",
+  "riskometer_label",
   "is_active",
-  "",
-  "",
 ];
 
 const NFO_HEADERS = [
@@ -305,28 +335,37 @@ const NFO_HEADERS = [
 ];
 
 const BENCHMARK_HEADERS = [
-  "benchmark_name",
-  "category_name",
-  "main_category_name",
+  "benchmark_index_name",
+  "category",
+  "main_category",
   "type",
+  "benchmark_trailing_1w",
+  "benchmark_trailing_1m",
+  "benchmark_trailing_3m",
+  "benchmark_trailing_6m",
+  "benchmark_trailing_1y",
+  "benchmark_trailing_3y",
+  "benchmark_trailing_5y",
+  "benchmark_trailing_10y",
+  "since_launch",
+  "bench_YTD",
+  ...MF_ANNUAL_YEARS.map((year) => `bench_${year}`),
   "is_active",
 ];
 
-const BENCHMARK_RETURN_HEADERS = [
-  "benchmark_name",
+const BENCHMARK_RETURN_FIXED_HEADERS = [
+  "benchmark_index_name",
   "date",
-  "return_1d",
-  "return_1w",
-  "return_1m",
-  "return_3m",
-  "return_6m",
-  "return_ytd",
-  "return_1y",
-  "return_3y",
-  "return_5y",
-  "return_10y",
-  "return_since_inception",
-  ...MF_ANNUAL_YEARS.map((year) => `annual_${year}`),
+  "benchmark_trailing_1w",
+  "benchmark_trailing_1m",
+  "benchmark_trailing_3m",
+  "benchmark_trailing_6m",
+  "benchmark_trailing_1y",
+  "benchmark_trailing_3y",
+  "benchmark_trailing_5y",
+  "benchmark_trailing_10y",
+  "since_launch",
+  "bench_YTD",
 ];
 
 const INDEX_SNAPSHOT_HEADERS = [
@@ -397,9 +436,9 @@ const REQUIRED_HEADER_GROUPS: Record<
       "sub_category_name",
     ],
   ],
-  benchmarks: [["benchmark_name", "name", "benchmark", "benchmark_index_name"]],
+  benchmarks: [["benchmark_name", "name", "benchmark", "benchmark_index_name", "benchmark index name"]],
   "benchmark-returns": [
-    ["benchmark_name", "name", "benchmark", "benchmark_index_name"],
+    ["benchmark_name", "name", "benchmark", "benchmark_index_name", "benchmark index name"],
     ["date", "last_updated_date", "as_on_date"],
   ],
   nfo: [
@@ -505,7 +544,7 @@ const newRuntime = async (): Promise<ImportRuntime> => {
       .lean(),
     MFCategory.find({ is_deleted: false })
       .select(
-        "_id name main_category_id description category_average_returns risk_level suggested_use_case suggested_use_case_note is_active is_deleted deleted_at",
+        "_id name main_category_id description category_returns category_average_returns risk_level suggested_use_case suggested_use_case_note is_active is_deleted deleted_at",
       )
       .lean(),
     MFAmc.find({ is_deleted: false })
@@ -658,15 +697,51 @@ const categoryAnnualAliases = Object.fromEntries(
 ) as Record<string, string[]>;
 
 const fundAnnualAliases = Object.fromEntries(
-  MF_ANNUAL_YEARS.map((year) => [year, [year, `${year}_fund`, `${year}_0`]]),
+  MF_ANNUAL_YEARS.map((year) => [
+    year,
+    [year, `${year}_fund`, `${year}_0`, `annual_return_${year}`, `fund_return_${year}`],
+  ]),
 ) as Record<string, string[]>;
 
 const benchmarkAnnualAliases = Object.fromEntries(
-  MF_ANNUAL_YEARS.map((year) => [
-    year,
-    [`bench_${year}`, `${year}_1`, `benchmark_${year}`, `${year}_benchmark`],
-  ]),
+  MF_ANNUAL_YEARS.map((year) => [year, [`bench_${year}`, `${year}_1`, `benchmark_${year}`, `${year}_benchmark`]]),
 ) as Record<string, string[]>;
+
+const parseBenchmarkYearlyFromRow = (row: Record<string, unknown>) => {
+  const out: Record<string, number | null> = {};
+  for (const [rawKey, rawValue] of Object.entries(row || {})) {
+    const key = headerKey(rawKey);
+    const match = key.match(/^bench_(\d{4})$/i);
+    if (!match) continue;
+    out[match[1]] = parseNumericValue(rawValue);
+  }
+  const seeded = parseYearValues(row, benchmarkAnnualAliases);
+  for (const [year, value] of Object.entries(seeded)) {
+    if (out[year] === undefined) out[year] = value;
+  }
+  return out;
+};
+
+const parseFundYearlyFromRow = (row: Record<string, unknown>) => {
+  const out: Record<string, number | null> = {};
+  for (const [rawKey, rawValue] of Object.entries(row || {})) {
+    const key = headerKey(rawKey);
+    const annualMatch = key.match(/^annual_return_(\d{4})(?:_\d+)?$/i);
+    if (annualMatch) {
+      out[annualMatch[1]] = parseNumericValue(rawValue);
+      continue;
+    }
+    const plainYear = key.match(/^(\d{4})(?:_\d+)?$/);
+    if (plainYear) {
+      out[plainYear[1]] = parseNumericValue(rawValue);
+    }
+  }
+  const seeded = parseYearValues(row, fundAnnualAliases);
+  for (const [year, value] of Object.entries(seeded)) {
+    if (out[year] === undefined) out[year] = value;
+  }
+  return out;
+};
 
 const sectionForEntity = (
   summary: ImportSummary,
@@ -683,6 +758,16 @@ const addRowError = (
 ) => {
   summary.errors += 1;
   errors.push({ sheet, row, message, identifier });
+};
+
+const addRowSkip = (
+  skips: ImportSkip[],
+  sheet: string,
+  row: number,
+  reason: string,
+  identifier?: string,
+) => {
+  skips.push({ sheet, row, reason, identifier });
 };
 
 const validateRequiredHeaders = (
@@ -1007,6 +1092,7 @@ const importTopHoldingsWorkbook = async (
 ) => {
   const summary = newSummary();
   const errors: ImportError[] = [];
+  const skips: ImportSkip[] = [];
   const section = sectionForEntity(summary, "topHoldings");
   const parsed = parseTopHoldingsWorkbook(workbook);
   const previewRows: Record<string, unknown>[] = [];
@@ -1320,24 +1406,49 @@ const upsertCategoryRow = async (
       name,
       main_category_id: mainCategory._id,
       description: String(valueByAliases(row, ["description", "short_description"]) || "").trim(),
-      category_average_returns: {
+      category_returns: {
         trailing: {
-          "1w": parseNumber(row, ["category_average_1w"]),
-          "1m": parseNumber(row, ["category_average_1m"]),
-          "3m": parseNumber(row, ["category_average_3m"]),
-          "6m": parseNumber(row, ["category_average_6m"]),
-          "1y": parseNumber(row, ["category_average_y1", "category_average_1y"]),
-          "3y": parseNumber(row, ["category_average_y3", "category_average_3y"]),
-          "5y": parseNumber(row, ["category_average_y5", "category_average_5y"]),
-          "10y": parseNumber(row, ["category_average_y10", "category_average_10y"]),
-          since_launch: parseNumber(row, ["category_average_since_launch", "category_average_since_inception"]),
+          "1w": parseNumber(row, ["category_trailing_1w", "category_1w"]),
+          "1m": parseNumber(row, ["category_trailing_1m", "category_1m"]),
+          "3m": parseNumber(row, ["category_trailing_3m", "category_3m"]),
+          "6m": parseNumber(row, ["category_trailing_6m", "category_6m"]),
+          "1y": parseNumber(row, ["category_trailing_1y", "category_1y"]),
+          "3y": parseNumber(row, ["category_trailing_3y", "category_3y"]),
+          "5y": parseNumber(row, ["category_trailing_5y", "category_5y"]),
+          "10y": parseNumber(row, ["category_trailing_10y", "category_10y"]),
+          since_launch: parseNumber(row, ["since_launch", "category_since_launch"]),
         },
         annual: {
-          ytd: parseNumber(row, ["category_average_ytd"]),
+          ytd: parseNumber(row, ["category_ytd", "ytd"]),
           yearly_returns: parseYearValues(
             row,
             Object.fromEntries(
-              MF_ANNUAL_YEARS.map((year) => [year, [`category_average_${year}`]]),
+              MF_ANNUAL_YEARS.map((year) => [year, [`category_${year}`, year]]),
+            ) as Record<string, string[]>,
+          ),
+        },
+      },
+      category_average_returns: {
+        trailing: {
+          "1w": parseNumber(row, ["category_average_1w", "category_trailing_1w", "1_week"]),
+          "1m": parseNumber(row, ["category_average_1m", "category_trailing_1m", "1_month"]),
+          "3m": parseNumber(row, ["category_average_3m", "category_trailing_3m", "3_months"]),
+          "6m": parseNumber(row, ["category_average_6m", "category_trailing_6m", "6_months"]),
+          "1y": parseNumber(row, ["category_average_y1", "category_average_1y", "category_trailing_1y", "1_year"]),
+          "3y": parseNumber(row, ["category_average_y3", "category_average_3y", "category_trailing_3y", "3_years"]),
+          "5y": parseNumber(row, ["category_average_y5", "category_average_5y", "category_trailing_5y", "5_years"]),
+          "10y": parseNumber(row, ["category_average_y10", "category_average_10y", "category_trailing_10y", "10_years"]),
+          since_launch: parseNumber(row, ["category_average_since_launch", "category_average_since_inception"]),
+        },
+        annual: {
+          ytd: parseNumber(row, ["category_average_ytd", "category_ytd", "ytd"]),
+          yearly_returns: parseYearValues(
+            row,
+            Object.fromEntries(
+              MF_ANNUAL_YEARS.map((year) => [
+                year,
+                [`category_average_${year}`, `category_${year}`, year],
+              ]),
             ) as Record<string, string[]>,
           ),
         },
@@ -1474,7 +1585,8 @@ const upsertBenchmarkRow = async (
 
   try {
     const categoryName = String(valueByAliases(row, ["category_name", "category"]) || "").trim();
-    const mainCategoryName = String(valueByAliases(row, ["main_category_name", "fund_type"]) || "").trim();
+    const mainCategoryName = String(valueByAliases(row, ["main_category_name", "main_category", "fund_type"]) || "").trim();
+    const mainCategory = mainCategoryName ? await resolveMainCategory(row, runtime) : null;
     const category = await resolveCategory(row, runtime);
     const existing = await MFBenchmark.findOne({
       name: exactRegex(name),
@@ -1483,9 +1595,9 @@ const upsertBenchmarkRow = async (
     const nextData = {
       name,
       category: categoryName || category?.name || "",
-      type: mainCategoryName || "index",
+      type: String(valueByAliases(row, ["type"]) || "index").trim() || "index",
       category_id: category?._id || null,
-      main_category_id: category?.main_category_id || null,
+      main_category_id: category?.main_category_id || mainCategory?._id || null,
       is_active: toBoolean(valueByAliases(row, ["is_active"]), true) ? 1 : 0,
       is_deleted: false,
       deleted_at: null,
@@ -1514,12 +1626,16 @@ const upsertBenchmarkReturnRow = async (
   errors: ImportError[],
   validateOnly: boolean,
   runtime: ImportRuntime,
+  fallbackDate: Date,
+  allowMissingDate = false,
 ) => {
   const section = sectionForEntity(summary, "benchmarkReturns");
   const benchmarkName = String(
     valueByAliases(row, ["benchmark_name", "name", "benchmark", "benchmark_index_name"]) || "",
   ).trim();
-  const rawDate = parseDate(row, ["date", "last_updated_date", "as_on_date"]);
+  const rawDate =
+    parseDate(row, ["date", "last_updated_date", "as_on_date"]) ||
+    (allowMissingDate ? normalizeDateValue(fallbackDate) : null);
   if (!benchmarkName && !rawDate) return;
   if (!benchmarkName || !rawDate) {
     addRowError(section, errors, sheetName, rowNumber, "benchmark_name and date are required", benchmarkName);
@@ -1531,7 +1647,10 @@ const upsertBenchmarkReturnRow = async (
       name: exactRegex(benchmarkName),
       is_deleted: false,
     }).select("_id");
-    if (!benchmark?._id) {
+    const benchmarkExistsInCurrentWorkbook = runtime.processedKeys.benchmarks.has(
+      normalizeText(benchmarkName),
+    );
+    if (!benchmark?._id && !(validateOnly && benchmarkExistsInCurrentWorkbook)) {
       addRowError(section, errors, sheetName, rowNumber, "Benchmark could not be resolved", benchmarkName);
       return;
     }
@@ -1541,41 +1660,49 @@ const upsertBenchmarkReturnRow = async (
       addRowError(section, errors, sheetName, rowNumber, "Invalid date", benchmarkName);
       return;
     }
-    const dedupeKey = `${String(benchmark._id)}::${normalizedDate.toISOString().slice(0, 10)}`;
+    const benchmarkIdentity =
+      benchmark?._id
+        ? String(benchmark._id)
+        : `workbook:${normalizeText(benchmarkName)}`;
+    const dedupeKey = `${benchmarkIdentity}::${normalizedDate.toISOString().slice(0, 10)}`;
     if (runtime.processedKeys.benchmarkReturns.has(dedupeKey)) {
       section.skipped += 1;
       return;
     }
     runtime.processedKeys.benchmarkReturns.add(dedupeKey);
-    const annual = Object.fromEntries(
-      MF_ANNUAL_YEARS.map((year) => [year, parseNumber(row, [`annual_${year}`, year])]),
-    );
+    const yearlyReturns = parseBenchmarkYearlyFromRow(row);
     const nextData = {
-      benchmark_id: benchmark._id,
+      benchmark_id: benchmark?._id || null,
       date: normalizedDate,
-      return_1d: parseNumber(row, ["return_1d", "1d", "d1"]),
-      return_1w: parseNumber(row, ["return_1w", "1w", "w1"]),
-      return_1m: parseNumber(row, ["return_1m", "1m", "m1"]),
-      return_3m: parseNumber(row, ["return_3m", "3m", "m3"]),
-      return_6m: parseNumber(row, ["return_6m", "6m", "m6"]),
-      return_ytd: parseNumber(row, ["return_ytd", "ytd"]),
-      return_1y: parseNumber(row, ["return_1y", "1y", "y1"]),
-      return_3y: parseNumber(row, ["return_3y", "3y", "y3"]),
-      return_5y: parseNumber(row, ["return_5y", "5y", "y5"]),
-      return_10y: parseNumber(row, ["return_10y", "10y", "y10"]),
-      return_since_inception: parseNumber(row, ["return_since_inception", "since_inception"]),
-      annual,
+      trailing: {
+        "1w": parseNumber(row, ["benchmark_trailing_1w", "return_1w", "1w", "w1"]),
+        "1m": parseNumber(row, ["benchmark_trailing_1m", "return_1m", "1m", "m1"]),
+        "3m": parseNumber(row, ["benchmark_trailing_3m", "return_3m", "3m", "m3"]),
+        "6m": parseNumber(row, ["benchmark_trailing_6m", "return_6m", "6m", "m6"]),
+        "1y": parseNumber(row, ["benchmark_trailing_1y", "return_1y", "1y", "y1"]),
+        "3y": parseNumber(row, ["benchmark_trailing_3y", "return_3y", "3y", "y3"]),
+        "5y": parseNumber(row, ["benchmark_trailing_5y", "return_5y", "5y", "y5"]),
+        "10y": parseNumber(row, ["benchmark_trailing_10y", "return_10y", "10y", "y10"]),
+        since_launch: parseNumber(row, ["since_launch", "return_since_inception", "since_inception"]),
+      },
+      annual: {
+        ytd: parseNumber(row, ["bench_ytd", "bench_YTD", "return_ytd", "ytd"]),
+        yearly_returns: yearlyReturns,
+      },
       is_deleted: false,
       deleted_at: null,
     };
-    const existing = await MFBenchmarkReturn.findOne({
-      benchmark_id: benchmark._id,
-      date: normalizedDate,
-      is_deleted: false,
-    }).lean();
+    const existing =
+      benchmark?._id
+        ? await MFBenchmarkReturn.findOne({
+            benchmark_id: benchmark._id,
+            date: normalizedDate,
+            is_deleted: false,
+          }).lean()
+        : null;
     if (!existing) {
       section.inserted += 1;
-      if (!validateOnly) await MFBenchmarkReturn.create(nextData);
+      if (!validateOnly && benchmark?._id) await MFBenchmarkReturn.create(nextData);
       return;
     }
     if (!hasChanges(existing as Record<string, any>, nextData)) {
@@ -1595,6 +1722,7 @@ const upsertFundRow = async (
   sheetName: string,
   summary: ImportSummary,
   errors: ImportError[],
+  skips: ImportSkip[],
   validateOnly: boolean,
   runtime: ImportRuntime,
 ) => {
@@ -1604,6 +1732,7 @@ const upsertFundRow = async (
 
   if (!schemeCode && !fundName) {
     section.skipped += 1;
+    addRowSkip(skips, sheetName, rowNumber, "Both scheme_code and fund_name are empty");
     return;
   }
   if (!schemeCode) {
@@ -1617,6 +1746,7 @@ const upsertFundRow = async (
   const dedupeKey = normalizeText(schemeCode);
   if (runtime.processedKeys.funds.has(dedupeKey)) {
     section.skipped += 1;
+    addRowSkip(skips, sheetName, rowNumber, "Duplicate scheme_code within workbook", schemeCode);
     return;
   }
   runtime.processedKeys.funds.add(dedupeKey);
@@ -1649,7 +1779,7 @@ const upsertFundRow = async (
     }).lean();
 
     const benchmarkIndexName = String(
-      valueByAliases(row, ["benchmark_index_name", "benchmark"]) || "",
+      valueByAliases(row, ["benchmark_index_name", "benchmark", "benchmark_name"]) || "",
     ).trim();
     const benchmarkTrailingValues = buildNumericObject(BENCHMARK_TRAILING_KEYS, {
       d1: parseNumber(row, ["benchmark_trailing_1d", "benchmark_1d"]),
@@ -1713,36 +1843,66 @@ const upsertFundRow = async (
       }
     }
 
+    const fundTrailingValues = {
+      d1: parseNumber(row, ["return_1d", "1d_return", "returns_1d"]),
+      w1: parseNumber(row, ["fund_trailing_return_1w", "trailing_return_1w", "return_1w"]),
+      m1: parseNumber(row, ["fund_trailing_return_1m", "trailing_return_1m", "return_1m", "1m_return", "returns_1m"]),
+      m3: parseNumber(row, ["fund_trailing_return_3m", "trailing_return_3m", "return_3m", "3m_return", "returns_3m"]),
+      m6: parseNumber(row, ["fund_trailing_return_6m", "trailing_return_6m", "return_6m", "6m_return", "returns_6m"]),
+      y1: parseNumber(row, ["fund_trailing_return_1y", "trailing_return_1y", "return_1y", "1y_return", "returns_y1"]),
+      y3_cagr: parseNumber(row, ["fund_trailing_return_3y_cagr", "fund_trailing_return_3y", "return_3y_cagr", "return_3y", "3y_cagr", "returns_y3_cagr"]),
+      y5_cagr: parseNumber(row, ["fund_trailing_return_5y_cagr", "fund_trailing_return_5y", "return_5y_cagr", "return_5y", "5y_cagr", "returns_y5_cagr"]),
+      y10_cagr: parseNumber(row, ["fund_trailing_return_10y_cagr", "fund_trailing_return_10y", "return_10y_cagr", "return_10y", "10y_cagr", "returns_y10_cagr"]),
+      ytd: parseNumber(row, ["ytd", "tot_ret_ytd_mo-end", "tot_ret_ytd_mo_end"]),
+      since_inception: parseNumber(row, ["since_inception_returns", "since_inception_return", "since_inception", "since_launch", "inception_return"]),
+    };
+    const fundAnnualValues = parseFundYearlyFromRow(row);
+
     const nextData = {
       scheme_code: schemeCode,
+      isin: String(valueByAliases(row, ["isin", "isin_number", "isin_no"]) || "").trim(),
+      isin_number: String(valueByAliases(row, ["isin_number", "isin", "isin_no"]) || "").trim(),
       fund_name: fundName,
       amc_id: amc._id,
       category_id: category._id,
       plan_type: planType,
       option_type: optionType,
-      aum_cr: parseNumber(row, ["aum_cr", "aum", ""]),
+      nav_Current: parseNumber(row, ["nav_current", "nav", "nav_current_value"]),
+      nav_date: parseDate(row, ["nav_date", "nav_as_on", "as_on_date"]),
+      aum: parseNumber(row, ["aum", "aum_cr", "aum_in_cr"]),
+      aum_cr: parseNumber(row, ["aum_cr", "aum", "aum_in_cr"]),
       expense_ratio: parseNumber(row, ["expense_ratio", "expense"]),
       returns: {
-        ...buildNumericObject(FUND_RETURN_KEYS, {
-          d1: parseNumber(row, ["return_1d", "1d_return", "returns_1d"]),
-          w1: parseNumber(row, ["fund_trailing_return_1w", "return_1w"]),
-          m1: parseNumber(row, ["fund_trailing_return_1m", "return_1m", "1m_return", "returns_1m"]),
-          m3: parseNumber(row, ["fund_trailing_return_3m", "return_3m", "3m_return", "returns_3m"]),
-          m6: parseNumber(row, ["fund_trailing_return_6m", "return_6m", "6m_return", "returns_6m"]),
-          y1: parseNumber(row, ["fund_trailing_return_1y", "return_1y", "1y_return", "returns_y1"]),
-          y3_cagr: parseNumber(row, ["fund_trailing_return_3y_cagr", "return_3y_cagr", "3y_cagr", "returns_y3_cagr"]),
-          y5_cagr: parseNumber(row, ["fund_trailing_return_5y_cagr", "return_5y_cagr", "5y_cagr", "returns_y5_cagr"]),
-          y10_cagr: parseNumber(row, ["fund_trailing_return_10y_cagr", "return_10y_cagr", "10y_cagr", "returns_y10_cagr"]),
-          ytd: parseNumber(row, ["ytd"]),
-        }),
-        annual: parseYearValues(row, fundAnnualAliases),
+        ...buildNumericObject(FUND_RETURN_KEYS, fundTrailingValues),
+        d1: fundTrailingValues.d1,
+        since_inception: fundTrailingValues.since_inception,
+        trailing: {
+          "1w": fundTrailingValues.w1,
+          "1m": fundTrailingValues.m1,
+          "3m": fundTrailingValues.m3,
+          "6m": fundTrailingValues.m6,
+          "1y": fundTrailingValues.y1,
+          "3y": fundTrailingValues.y3_cagr,
+          "5y": fundTrailingValues.y5_cagr,
+          "10y": fundTrailingValues.y10_cagr,
+          since_launch: fundTrailingValues.since_inception,
+        },
+        annual: {
+          ytd: fundTrailingValues.ytd,
+          yearly_returns: fundAnnualValues,
+        },
       },
       risk_metrics: {
         sharpe_3y: parseNumber(row, ["sharpe_3y", "sharpe_ratio_3y"]),
+        sharpe_5y: parseNumber(row, ["sharpe_5y", "sharpe_ratio_5y"]),
         std_dev_3y: parseNumber(row, ["std_dev_3y", "std_dev"]),
+        std_dev_5y: parseNumber(row, ["std_dev_5y"]),
         beta_3y: parseNumber(row, ["beta_3y", "beta"]),
+        beta_5y: parseNumber(row, ["beta_5y"]),
         alpha_3y: parseNumber(row, ["alpha_3y", "alpha"]),
+        alpha_5y: parseNumber(row, ["alpha_5y"]),
         max_drawdown_5y: parseNumber(row, ["max_drawdown_5y", "max_drawdown"]),
+        max_drawdown_10y: parseNumber(row, ["max_drawdown_10y"]),
         turnover_ratio: parseNumber(row, ["turnover_ratio", "portfolio_turnover_ratio"]),
       },
       fund_manager: String(valueByAliases(row, ["fund_manager", "manager"]) || "").trim(),
@@ -1758,6 +1918,17 @@ const upsertFundRow = async (
       is_popular: isPopularFromSheet,
       fund_objective: String(valueByAliases(row, ["fund_objective", "objective"]) || "").trim(),
       investment_strategy: String(valueByAliases(row, ["investment_strategy", "strategy"]) || "").trim(),
+      domestic_equity_pct: parseNumber(row, ["domestic_equity_pct"]),
+      international_equity_pct: parseNumber(row, ["international_equity_pct"]),
+      debt_pct: parseNumber(row, ["debt_pct"]),
+      other_pct: parseNumber(row, ["other_pct"]),
+      gold_pct: parseNumber(row, ["gold_pct"]),
+      cash_pct: parseNumber(row, ["cash_pct"]),
+      large_cap_pct: parseNumber(row, ["large_cap_pct"]),
+      mid_cap_pct: parseNumber(row, ["mid_cap_pct"]),
+      small_cap_pct: parseNumber(row, ["small_cap_pct"]),
+      tax_type: String(valueByAliases(row, ["tax_type"]) || "").trim(),
+      riskometer_label: String(valueByAliases(row, ["riskometer_label"]) || "").trim(),
       is_active: toBoolean(valueByAliases(row, ["is_active"]), true) ? 1 : 0,
       is_deleted: false,
       deleted_at: null,
@@ -1804,6 +1975,7 @@ const upsertFundRow = async (
 
     if (!hasChanges(existing as Record<string, any>, nextData)) {
       section.skipped += 1;
+      addRowSkip(skips, sheetName, rowNumber, "No changes detected for existing fund", schemeCode);
       return;
     }
 
@@ -2102,9 +2274,11 @@ const processRows = async (
   entity: Exclude<MfImportEntity, "full-workbook">,
   summary: ImportSummary,
   errors: ImportError[],
+  skips: ImportSkip[],
   validateOnly: boolean,
   processedSheets: string[],
   runtime: ImportRuntime,
+  importDate: Date,
 ) => {
   const matchingSheets = resolveSheetNames(workbook, entity).sort((left, right) => {
     if (entity !== "funds") return 0;
@@ -2134,11 +2308,32 @@ const processRows = async (
       } else if (entity === "amcs") {
         await upsertAmcRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
       } else if (entity === "funds") {
-        await upsertFundRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
+        await upsertFundRow(row, rowNumber, sheetName, summary, errors, skips, validateOnly, runtime);
       } else if (entity === "benchmarks") {
         await upsertBenchmarkRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
+        await upsertBenchmarkReturnRow(
+          row,
+          rowNumber,
+          sheetName,
+          summary,
+          errors,
+          validateOnly,
+          runtime,
+          importDate,
+          true,
+        );
       } else if (entity === "benchmark-returns") {
-        await upsertBenchmarkReturnRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
+        await upsertBenchmarkReturnRow(
+          row,
+          rowNumber,
+          sheetName,
+          summary,
+          errors,
+          validateOnly,
+          runtime,
+          importDate,
+          false,
+        );
       } else if (entity === "nfo") {
         await upsertNfoRow(row, rowNumber, sheetName, summary, errors, validateOnly, runtime);
       } else if (entity === "index-snapshots") {
@@ -2191,6 +2386,19 @@ const exportCategoryRows = async () => {
     prettyText(item.name),
     prettyText(item.main_category_id?.name || ""),
     item.description || "",
+    item.category_returns?.trailing?.["1w"] ?? "",
+    item.category_returns?.trailing?.["1m"] ?? "",
+    item.category_returns?.trailing?.["3m"] ?? "",
+    item.category_returns?.trailing?.["6m"] ?? "",
+    item.category_returns?.trailing?.["1y"] ?? "",
+    item.category_returns?.trailing?.["3y"] ?? "",
+    item.category_returns?.trailing?.["5y"] ?? "",
+    item.category_returns?.trailing?.["10y"] ?? "",
+    item.category_returns?.trailing?.since_launch ?? "",
+    item.category_returns?.annual?.ytd ?? "",
+    ...MF_ANNUAL_YEARS.map((year) =>
+      mapToPlainYearValue(item.category_returns?.annual?.yearly_returns, year),
+    ),
     item.category_average_returns?.trailing?.["1w"] ?? "",
     item.category_average_returns?.trailing?.["1m"] ?? "",
     item.category_average_returns?.trailing?.["3m"] ?? "",
@@ -2225,10 +2433,55 @@ const exportBenchmarkRows = async () => {
     .populate("main_category_id", "name")
     .sort({ name: 1 })
     .lean();
+  const benchmarkIds = items.map((item: any) => item._id);
+  const latestReturns = benchmarkIds.length
+    ? await MFBenchmarkReturn.aggregate([
+        {
+          $match: {
+            is_deleted: false,
+            benchmark_id: { $in: benchmarkIds },
+          },
+        },
+        { $sort: { date: -1, updated_at: -1 } },
+        {
+          $group: {
+            _id: "$benchmark_id",
+            latest: { $first: "$$ROOT" },
+          },
+        },
+      ])
+    : [];
+  const returnByBenchmarkId = new Map<string, any>();
+  latestReturns.forEach((item: any) => {
+    returnByBenchmarkId.set(String(item._id), item.latest);
+  });
+
   return items.map((item: any) => ({
-    benchmark_name: prettyText(item.name),
-    category_name: prettyText(item.category_id?.name || item.category || ""),
-    main_category_name: prettyText(item.main_category_id?.name || item.type || ""),
+    ...(() => {
+      const row = returnByBenchmarkId.get(String(item._id));
+      const yearlyReturns = row?.annual?.yearly_returns || row?.annual || {};
+      return {
+        benchmark_trailing_1w: row?.trailing?.["1w"] ?? "",
+        benchmark_trailing_1m: row?.trailing?.["1m"] ?? "",
+        benchmark_trailing_3m: row?.trailing?.["3m"] ?? "",
+        benchmark_trailing_6m: row?.trailing?.["6m"] ?? "",
+        benchmark_trailing_1y: row?.trailing?.["1y"] ?? "",
+        benchmark_trailing_3y: row?.trailing?.["3y"] ?? "",
+        benchmark_trailing_5y: row?.trailing?.["5y"] ?? "",
+        benchmark_trailing_10y: row?.trailing?.["10y"] ?? "",
+        since_launch: row?.trailing?.since_launch ?? "",
+        bench_YTD: row?.annual?.ytd ?? "",
+        ...Object.fromEntries(
+          MF_ANNUAL_YEARS.map((year) => [
+            `bench_${year}`,
+            mapToPlainYearValue(yearlyReturns, year),
+          ]),
+        ),
+      };
+    })(),
+    benchmark_index_name: prettyText(item.name),
+    category: prettyText(item.category_id?.name || item.category || ""),
+    main_category: prettyText(item.main_category_id?.name || ""),
     type: item.type || "",
     is_active: item.is_active === 1 ? "Yes" : "No",
   }));
@@ -2239,27 +2492,39 @@ const exportBenchmarkReturnRows = async () => {
     .populate("benchmark_id", "name")
     .sort({ date: -1 })
     .lean();
-  return items.map((item: any) => ({
-    benchmark_name: prettyText(item.benchmark_id?.name || ""),
+  const yearSet = new Set<string>();
+  for (const item of items as any[]) {
+    const years = Object.keys(item?.annual?.yearly_returns || item?.annual || {});
+    years.filter((year) => /^\d{4}$/.test(year)).forEach((year) => yearSet.add(year));
+  }
+  if (yearSet.size === 0) {
+    MF_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
+  }
+  const dynamicYears = [...yearSet].sort((a, b) => Number(b) - Number(a));
+  const headers = [...BENCHMARK_RETURN_FIXED_HEADERS, ...dynamicYears.map((year) => `bench_${year}`)];
+
+  const rows = items.map((item: any) => ({
+    benchmark_index_name: prettyText(item.benchmark_id?.name || ""),
     date: toIsoDate(item.date),
-    return_1d: item.return_1d ?? "",
-    return_1w: item.return_1w ?? "",
-    return_1m: item.return_1m ?? "",
-    return_3m: item.return_3m ?? "",
-    return_6m: item.return_6m ?? "",
-    return_ytd: item.return_ytd ?? "",
-    return_1y: item.return_1y ?? "",
-    return_3y: item.return_3y ?? "",
-    return_5y: item.return_5y ?? "",
-    return_10y: item.return_10y ?? "",
-    return_since_inception: item.return_since_inception ?? "",
+    benchmark_trailing_1w: item?.trailing?.["1w"] ?? "",
+    benchmark_trailing_1m: item?.trailing?.["1m"] ?? "",
+    benchmark_trailing_3m: item?.trailing?.["3m"] ?? "",
+    benchmark_trailing_6m: item?.trailing?.["6m"] ?? "",
+    benchmark_trailing_1y: item?.trailing?.["1y"] ?? "",
+    benchmark_trailing_3y: item?.trailing?.["3y"] ?? "",
+    benchmark_trailing_5y: item?.trailing?.["5y"] ?? "",
+    benchmark_trailing_10y: item?.trailing?.["10y"] ?? "",
+    since_launch: item?.trailing?.since_launch ?? "",
+    bench_YTD: item?.annual?.ytd ?? "",
     ...Object.fromEntries(
-      MF_ANNUAL_YEARS.map((year) => [
-        `annual_${year}`,
-        mapToPlainYearValue(item.annual, year),
+      dynamicYears.map((year) => [
+        `bench_${year}`,
+        mapToPlainYearValue(item?.annual?.yearly_returns || item?.annual, year),
       ]),
     ),
   }));
+
+  return { rows, headers };
 };
 
 const exportFundRows = async (onlyPopular = false) => {
@@ -2277,69 +2542,46 @@ const exportFundRows = async (onlyPopular = false) => {
     .sort({ fund_name: 1 })
     .lean();
 
-  const benchmarkIds = [...new Set(items.map((item: any) => String(item?.benchmark_id?._id || "")).filter(Boolean))];
-  const latestReturns = benchmarkIds.length
-    ? await MFBenchmarkReturn.aggregate([
-        {
-          $match: {
-            is_deleted: false,
-            benchmark_id: { $in: benchmarkIds.map((id) => new Types.ObjectId(id)) },
-          },
-        },
-        { $sort: { date: -1 } },
-        { $group: { _id: "$benchmark_id", doc: { $first: "$$ROOT" } } },
-      ])
-    : [];
-  const benchmarkReturnMap = new Map(
-    latestReturns.map((item: any) => [String(item._id), item.doc]),
-  );
-
   return items.map((item: any) => [
     item.scheme_code || "",
+    item.isin_number || item.isin || "",
     prettyText(item.fund_name),
     prettyText(item.amc_id?.name || ""),
     prettyText(item.category_id?.name || ""),
     prettyText(item.category_id?.main_category_id?.name || ""),
     item.plan_type || "",
     item.option_type || "",
+    item.nav_Current ?? "",
+    toIsoDate(item.nav_date),
     item.aum_cr ?? "",
     item.expense_ratio ?? "",
     item.returns?.d1 ?? "",
-    item.returns?.w1 ?? "",
-    item.returns?.m1 ?? "",
-    item.returns?.m3 ?? "",
-    item.returns?.m6 ?? "",
-    item.returns?.y1 ?? "",
-    item.returns?.y3_cagr ?? "",
-    item.returns?.y5_cagr ?? "",
-    item.returns?.y10_cagr ?? "",
-    item.returns?.ytd ?? "",
-    ...MF_ANNUAL_YEARS.map((year) => mapToPlainYearValue(item.returns?.annual, year)),
+    item.returns?.trailing?.["1w"] ?? item.returns?.w1 ?? "",
+    item.returns?.trailing?.["1m"] ?? item.returns?.m1 ?? "",
+    item.returns?.trailing?.["3m"] ?? item.returns?.m3 ?? "",
+    item.returns?.trailing?.["6m"] ?? item.returns?.m6 ?? "",
+    item.returns?.trailing?.["1y"] ?? item.returns?.y1 ?? "",
+    item.returns?.trailing?.["3y"] ?? item.returns?.y3_cagr ?? "",
+    item.returns?.trailing?.["5y"] ?? item.returns?.y5_cagr ?? "",
+    item.returns?.trailing?.["10y"] ?? item.returns?.y10_cagr ?? "",
+    item.returns?.trailing?.since_launch ?? item.returns?.since_inception ?? "",
+    item.returns?.annual?.ytd ?? item.returns?.ytd ?? "",
+    ...MF_ANNUAL_YEARS.map((year) =>
+      mapToPlainYearValue(item.returns?.annual?.yearly_returns || item.returns?.annual, year),
+    ),
     item.risk_metrics?.sharpe_3y ?? "",
+    item.risk_metrics?.sharpe_5y ?? "",
     item.risk_metrics?.std_dev_3y ?? "",
+    item.risk_metrics?.std_dev_5y ?? "",
     item.risk_metrics?.beta_3y ?? "",
+    item.risk_metrics?.beta_5y ?? "",
     item.risk_metrics?.alpha_3y ?? "",
+    item.risk_metrics?.alpha_5y ?? "",
     item.risk_metrics?.max_drawdown_5y ?? "",
+    item.risk_metrics?.max_drawdown_10y ?? "",
     item.risk_metrics?.turnover_ratio ?? "",
     item.fund_manager || "",
     toIsoDate(item.launch_date),
-    item.benchmark_id?.name || item.benchmark_index_name || "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1w ??
-      benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1d ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1m ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_3m ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_6m ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_1y ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_3y ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_5y ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_10y ?? "",
-    benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.return_ytd ?? "",
-    ...MF_ANNUAL_YEARS.map((year) =>
-      mapToPlainYearValue(
-        benchmarkReturnMap.get(String(item?.benchmark_id?._id || ""))?.annual,
-        year,
-      ),
-    ),
     item.min_investment ?? "",
     item.sip_allowed ? "Yes" : "No",
     item.min_sip_investment ?? "",
@@ -2350,9 +2592,18 @@ const exportFundRows = async (onlyPopular = false) => {
     item.is_popular ? "Yes" : "No",
     item.fund_objective || "",
     item.investment_strategy || "",
+    item.domestic_equity_pct ?? "",
+    item.international_equity_pct ?? "",
+    item.debt_pct ?? "",
+    item.other_pct ?? "",
+    item.gold_pct ?? "",
+    item.cash_pct ?? "",
+    item.large_cap_pct ?? "",
+    item.mid_cap_pct ?? "",
+    item.small_cap_pct ?? "",
+    item.tax_type || "",
+    item.riskometer_label || "",
     item.is_active === 1 ? "Yes" : "No",
-    "",
-    "",
   ]);
 };
 
@@ -2444,9 +2695,11 @@ const runImportPipeline = async (
   workbook: XLSX.WorkBook,
   entity: MfImportEntity,
   validateOnly: boolean,
+  importDate: Date,
 ) => {
   const summary = newSummary();
   const errors: ImportError[] = [];
+  const skips: ImportSkip[] = [];
   const processedSheets: string[] = [];
   const runtime = await newRuntime();
 
@@ -2473,9 +2726,11 @@ const runImportPipeline = async (
           nextEntity,
           summary,
           errors,
+          skips,
           validateOnly,
           processedSheets,
           runtime,
+          importDate,
         );
       }
     }
@@ -2485,9 +2740,11 @@ const runImportPipeline = async (
       entity,
       summary,
       errors,
+      skips,
       validateOnly,
       processedSheets,
       runtime,
+      importDate,
     );
   }
 
@@ -2498,6 +2755,8 @@ const runImportPipeline = async (
     summary,
     errorCount: errors.length,
     errors: errors.slice(0, 500),
+    skipCount: skips.length,
+    skippedRows: skips.slice(0, 1000),
     previewSheets: processedSheets
       .slice(0, 3)
       .map((sheetName) => buildPreviewSheet(workbook, sheetName)),
@@ -2509,6 +2768,7 @@ export const importMfExcel = async ({
   entity,
   validateOnly = false,
 }: ImportOptions) => {
+  const importDate = new Date();
   const resolvedPath = path.resolve(filePath);
   if (!fs.existsSync(resolvedPath)) {
     throw new Error(`Excel file not found at path: ${resolvedPath}`);
@@ -2547,7 +2807,12 @@ export const importMfExcel = async ({
   }
 
   if (!validateOnly) {
-    const validationReport = await runImportPipeline(workbook, entity, true);
+    const validationReport = await runImportPipeline(
+      workbook,
+      entity,
+      true,
+      importDate,
+    );
     if (validationReport.errorCount > 0) {
       return {
         success: false,
@@ -2559,7 +2824,12 @@ export const importMfExcel = async ({
     }
   }
 
-  const report = await runImportPipeline(workbook, entity, validateOnly);
+  const report = await runImportPipeline(
+    workbook,
+    entity,
+    validateOnly,
+    importDate,
+  );
 
   return {
     success: true,
@@ -2598,11 +2868,14 @@ export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) =>
   } else if (entity === "benchmarks") {
     appendSheet(workbook, getPrimarySheetName("benchmarks"), await maybeRows(exportBenchmarkRows), BENCHMARK_HEADERS);
   } else if (entity === "benchmark-returns") {
+    const benchmarkReturnExport = includeRows
+      ? await exportBenchmarkReturnRows()
+      : { rows: [] as Array<Record<string, unknown>>, headers: BENCHMARK_RETURN_FIXED_HEADERS };
     appendSheet(
       workbook,
       getPrimarySheetName("benchmark-returns"),
-      await maybeRows(exportBenchmarkReturnRows),
-      BENCHMARK_RETURN_HEADERS,
+      benchmarkReturnExport.rows,
+      benchmarkReturnExport.headers,
     );
   } else if (entity === "nfo") {
     appendSheet(workbook, getPrimarySheetName("nfo"), await maybeRows(exportNfoRows), NFO_HEADERS);

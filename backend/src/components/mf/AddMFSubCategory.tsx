@@ -31,28 +31,16 @@ const TRAILING_FIELDS = [
   { key: "since_launch", label: "Since Launch" },
 ] as const;
 
-const ANNUAL_YEARS = [
-  "2025",
-  "2024",
-  "2023",
-  "2022",
-  "2021",
-  "2020",
-  "2019",
-  "2018",
-  "2017",
-] as const;
+const buildAnnualYears = (startYear = new Date().getFullYear() - 1, count = 9) =>
+  Array.from({ length: count }, (_, index) => String(startYear - index));
 
 type MainCategoryOption = {
   _id: string;
   name: string;
 };
 
-const emptyAnnualValues = () =>
-  Object.fromEntries(ANNUAL_YEARS.map((year) => [year, ""])) as Record<
-    (typeof ANNUAL_YEARS)[number],
-    string
-  >;
+const emptyAnnualValues = (years: string[]) =>
+  Object.fromEntries(years.map((year) => [year, ""])) as Record<string, string>;
 
 const emptyTrailingValues = () =>
   Object.fromEntries(TRAILING_FIELDS.map((field) => [field.key, ""])) as Record<
@@ -78,12 +66,16 @@ export default function AddMFCategory() {
   const [mainCategorySearch, setMainCategorySearch] = useState("");
   const mainCategoryWrapperRef = useRef<HTMLDivElement>(null);
 
+  const annualYears = useMemo(() => buildAnnualYears(), []);
+
   const [form, setForm] = useState({
     name: "",
     main_category_id: "",
     description: "",
+    categoryTrailing: emptyTrailingValues(),
+    categoryAnnual: emptyAnnualValues(annualYears),
     categoryAverageTrailing: emptyTrailingValues(),
-    categoryAverageAnnual: emptyAnnualValues(),
+    categoryAverageAnnual: emptyAnnualValues(annualYears),
     risk_level: "",
     suggested_use_case: "",
     suggested_use_case_note: "",
@@ -115,6 +107,24 @@ export default function AddMFCategory() {
         name: category.name || "",
         main_category_id: category.main_category_id?._id || "",
         description: category.description || "",
+        categoryTrailing: {
+          ...emptyTrailingValues(),
+          ...Object.fromEntries(
+            TRAILING_FIELDS.map((field) => [
+              field.key,
+              category.category_returns?.trailing?.[field.key]?.toString?.() || "",
+            ]),
+          ),
+        },
+        categoryAnnual: {
+          ...emptyAnnualValues(annualYears),
+          ...Object.fromEntries(
+            annualYears.map((year) => [
+              year,
+              category.category_returns?.annual?.yearly_returns?.[year]?.toString?.() || "",
+            ]),
+          ),
+        },
         categoryAverageTrailing: {
           ...emptyTrailingValues(),
           ...Object.fromEntries(
@@ -125,9 +135,9 @@ export default function AddMFCategory() {
           ),
         },
         categoryAverageAnnual: {
-          ...emptyAnnualValues(),
+          ...emptyAnnualValues(annualYears),
           ...Object.fromEntries(
-            ANNUAL_YEARS.map((year) => [
+            annualYears.map((year) => [
               year,
               category.category_average_returns?.annual?.yearly_returns?.[year]?.toString?.() ||
                 "",
@@ -140,7 +150,7 @@ export default function AddMFCategory() {
         is_active: category.is_active ?? 1,
       });
     })();
-  }, [getOne, id]);
+  }, [annualYears, getOne, id]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -171,7 +181,11 @@ export default function AddMFCategory() {
   };
 
   const setNestedNumberField = (
-    group: "categoryAverageTrailing" | "categoryAverageAnnual",
+    group:
+      | "categoryTrailing"
+      | "categoryAnnual"
+      | "categoryAverageTrailing"
+      | "categoryAverageAnnual",
     key: string,
     value: string,
   ) => {
@@ -226,6 +240,16 @@ export default function AddMFCategory() {
     }
 
     for (const field of TRAILING_FIELDS) {
+      const categoryError = validateNumber(
+        form.categoryTrailing[field.key],
+        `Category ${field.label}`,
+      );
+      if (categoryError) {
+        nextErrors[`categoryTrailing.${field.key}`] = categoryError;
+      }
+    }
+
+    for (const field of TRAILING_FIELDS) {
       const categoryAverageError = validateNumber(
         form.categoryAverageTrailing[field.key],
         `Category average ${field.label}`,
@@ -236,7 +260,17 @@ export default function AddMFCategory() {
       }
     }
 
-    for (const year of ANNUAL_YEARS) {
+    for (const year of annualYears) {
+      const categoryError = validateNumber(
+        form.categoryAnnual[year],
+        `Category ${year}`,
+      );
+      if (categoryError) {
+        nextErrors[`categoryAnnual.${year}`] = categoryError;
+      }
+    }
+
+    for (const year of annualYears) {
       const categoryAverageError = validateNumber(
         form.categoryAverageAnnual[year],
         `Category average ${year}`,
@@ -295,6 +329,13 @@ export default function AddMFCategory() {
       name: form.name.trim(),
       main_category_id: form.main_category_id,
       description: form.description.trim(),
+      category_returns: {
+        trailing: toNumberMap(form.categoryTrailing),
+        annual: {
+          ytd: null,
+          yearly_returns: toNumberMap(form.categoryAnnual),
+        },
+      },
       category_average_returns: {
         trailing: toNumberMap(form.categoryAverageTrailing),
         annual: {
@@ -332,8 +373,10 @@ export default function AddMFCategory() {
       name: "",
       main_category_id: "",
       description: "",
+      categoryTrailing: emptyTrailingValues(),
+      categoryAnnual: emptyAnnualValues(annualYears),
       categoryAverageTrailing: emptyTrailingValues(),
-      categoryAverageAnnual: emptyAnnualValues(),
+      categoryAverageAnnual: emptyAnnualValues(annualYears),
       risk_level: "",
       suggested_use_case: "",
       suggested_use_case_note: "",
@@ -460,6 +503,52 @@ export default function AddMFCategory() {
           <div>
             <div className="mb-2 flex items-center justify-between gap-4">
               <h3 className="text-lg font-semibold text-[#043f79]">
+                Category Returns
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {TRAILING_FIELDS.map((field) => (
+                <div key={`category-${field.key}`}>
+                  <label className="mb-2 block font-medium text-gray-700">
+                    {field.label}
+                  </label>
+                  <input
+                    className={inputClass(errors[`categoryTrailing.${field.key}`])}
+                    value={form.categoryTrailing[field.key]}
+                    onChange={(event) =>
+                      setNestedNumberField(
+                        "categoryTrailing",
+                        field.key,
+                        event.target.value,
+                      )
+                    }
+                  />
+                  {error(errors[`categoryTrailing.${field.key}`])}
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {annualYears.map((year) => (
+                <div key={`category-year-${year}`}>
+                  <label className="mb-2 block font-medium text-gray-700">
+                    {year}
+                  </label>
+                  <input
+                    className={inputClass(errors[`categoryAnnual.${year}`])}
+                    value={form.categoryAnnual[year]}
+                    onChange={(event) =>
+                      setNestedNumberField("categoryAnnual", year, event.target.value)
+                    }
+                  />
+                  {error(errors[`categoryAnnual.${year}`])}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <h3 className="text-lg font-semibold text-[#043f79]">
                 Category Average Returns
               </h3>
               <p className="text-sm text-gray-500">
@@ -492,7 +581,7 @@ export default function AddMFCategory() {
               ))}
             </div>
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {ANNUAL_YEARS.map((year) => (
+              {annualYears.map((year) => (
                 <div key={year}>
                   <label className="mb-2 block font-medium text-gray-700">
                     {year}
