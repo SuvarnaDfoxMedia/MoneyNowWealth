@@ -92,6 +92,12 @@ const AppSidebar: React.FC = () => {
         roles: ["admin"],
       },
       {
+        name: "Testimonials",
+        icon: <FiMessageSquare />,
+        path: `/${role}/testimonials`,
+        roles: ["admin", "editor"],
+      },
+      {
         name: "User Subscription",
         icon: <FiUsers />,
         path: `/${role}/user-subscription`,
@@ -488,3 +494,9 @@ const AppSidebar: React.FC = () => {
 };
 
 export default AppSidebar;
+
+
+
+
+
+

@@ -92,6 +92,7 @@ const emptyForm = () => ({
   turnover_ratio: "",
   fund_manager: "",
   launch_date: null as Date | null,
+  benchmark_id: "",
   min_investment: "",
   sip_allowed: true,
   min_sip_investment: "",
@@ -132,6 +133,11 @@ type AmcOption = {
   _id: string;
   name: string;
 };
+type BenchmarkOption = {
+  _id: string;
+  name: string;
+  category?: string;
+};
 
 const toNumberOrNull = (value: string) => (value === "" ? null : Number(value));
 
@@ -165,14 +171,18 @@ export default function AddMFFund() {
   const [amcDropdownOpen, setAmcDropdownOpen] = useState(false);
   const [amcSearch, setAmcSearch] = useState("");
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [benchmarkOptions, setBenchmarkOptions] = useState<BenchmarkOption[]>([]);
+  const [benchmarkDropdownOpen, setBenchmarkDropdownOpen] = useState(false);
+  const [benchmarkSearch, setBenchmarkSearch] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const amcWrapperRef = useRef<HTMLDivElement>(null);
   const categoryWrapperRef = useRef<HTMLDivElement>(null);
+  const benchmarkWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
-      const [categoryRes, amcRes] = await Promise.all([
+      const [categoryRes, amcRes, benchmarkRes] = await Promise.all([
         axiosApi.get(`/${role}/mf/categories`, {
           limit: 5000,
           page: 1,
@@ -185,11 +195,20 @@ export default function AddMFFund() {
           sortBy: "name",
           sortOrder: "asc",
         }),
+        axiosApi.get(`/${role}/mf/benchmarks`, {
+          limit: 5000,
+          page: 1,
+          sortBy: "name",
+          sortOrder: "asc",
+        }),
       ]);
       setCategoryOptions(
         Array.isArray(categoryRes?.data) ? categoryRes.data : [],
       );
       setAmcOptions(Array.isArray(amcRes?.data) ? amcRes.data : []);
+      setBenchmarkOptions(
+        Array.isArray(benchmarkRes?.data) ? benchmarkRes.data : [],
+      );
     })();
   }, [role]);
 
@@ -274,6 +293,7 @@ export default function AddMFFund() {
         turnover_ratio: fund.risk_metrics?.turnover_ratio?.toString?.() || "",
         fund_manager: fund.fund_manager || "",
         launch_date: fund.launch_date ? new Date(fund.launch_date) : null,
+        benchmark_id: fund.benchmark?._id || fund.benchmark_id || "",
         min_investment: fund.min_investment?.toString?.() || "",
         sip_allowed: fund.sip_allowed ?? true,
         min_sip_investment: fund.min_sip_investment?.toString?.() || "",
@@ -321,6 +341,13 @@ export default function AddMFFund() {
         setCategoryDropdownOpen(false);
         setCategorySearch("");
       }
+      if (
+        benchmarkWrapperRef.current &&
+        !benchmarkWrapperRef.current.contains(event.target as Node)
+      ) {
+        setBenchmarkDropdownOpen(false);
+        setBenchmarkSearch("");
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -341,6 +368,13 @@ export default function AddMFFund() {
         option.name.toLowerCase().includes(amcSearch.toLowerCase()),
       ),
     [amcOptions, amcSearch],
+  );
+  const filteredBenchmarks = useMemo(
+    () =>
+      benchmarkOptions.filter((option) =>
+        option.name.toLowerCase().includes(benchmarkSearch.toLowerCase()),
+      ),
+    [benchmarkOptions, benchmarkSearch],
   );
 
   const selectedCategory = useMemo(
@@ -585,6 +619,7 @@ export default function AddMFFund() {
       },
       fund_manager: form.fund_manager.trim(),
       launch_date: form.launch_date ? form.launch_date.toISOString() : null,
+      benchmark_id: form.benchmark_id || null,
       min_investment: toNumberOrNull(form.min_investment),
       sip_allowed: form.sip_allowed,
       min_sip_investment: form.sip_allowed
@@ -918,6 +953,75 @@ export default function AddMFFund() {
               />
             </div>
 
+            <div ref={benchmarkWrapperRef} className="relative">
+              {renderFieldLabel("Benchmark", "fund_overview.benchmark_id")}
+              <div
+                onClick={() => {
+                  if (!isViewMode) setBenchmarkDropdownOpen((prev) => !prev);
+                }}
+                className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-md border px-3 ${
+                  errors.benchmark_id ? "border-red-500" : "border-gray-300"
+                }`}
+              >
+                <span>
+                  {benchmarkOptions.find((item) => item._id === form.benchmark_id)
+                    ?.name || "Select Benchmark"}
+                </span>
+                <svg
+                  className={`h-4 w-4 transform transition-transform ${
+                    benchmarkDropdownOpen ? "rotate-180" : "rotate-0"
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+              {error(errors.benchmark_id)}
+              {benchmarkDropdownOpen ? (
+                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
+                  <div className="relative border-b border-gray-200">
+                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search benchmark..."
+                      value={benchmarkSearch}
+                      onChange={(event) => setBenchmarkSearch(event.target.value)}
+                      className="h-11 w-full rounded-none border-0 pl-9 pr-3 focus:outline-none"
+                    />
+                  </div>
+                  {filteredBenchmarks.map((option) => (
+                    <div
+                      key={option._id}
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, benchmark_id: option._id }));
+                        setErrors((prev) => ({ ...prev, benchmark_id: "" }));
+                        setBenchmarkDropdownOpen(false);
+                        setBenchmarkSearch("");
+                      }}
+                      className={`cursor-pointer p-2 hover:bg-blue-100 ${
+                        form.benchmark_id === option._id
+                          ? "bg-blue-50 font-medium"
+                          : ""
+                      }`}
+                    >
+                      {option.name}
+                      {option.category ? ` (${option.category})` : ""}
+                    </div>
+                  ))}
+                  {filteredBenchmarks.length === 0 ? (
+                    <p className="p-2 text-sm text-gray-400">No Benchmark found.</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
             <div>
               {renderFieldLabel("Plan Type", "fund_overview.plan_type")}
               <select
@@ -956,7 +1060,8 @@ export default function AddMFFund() {
                 readOnly
                 disabled
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                <FiCalendar className="h-3.5 w-3.5" />
                 {formatNavDate(form.nav_date)}
               </p>
             </div>

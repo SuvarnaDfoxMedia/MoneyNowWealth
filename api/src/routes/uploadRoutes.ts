@@ -17,7 +17,7 @@ const ensureDir = (dirPath: string) => {
 
 /* Create folders */
 const uploadBase = path.join(process.cwd(), "uploads");
-const folders = ["article", "thumbnail", "section", "hero"];
+const folders = ["article", "thumbnail", "section", "hero", "testimonial"];
 folders.forEach((folder) => ensureDir(path.join(uploadBase, folder)));
 
 /* ============================================================
@@ -58,6 +58,7 @@ const articleUpload = createUploader("article", "article-body");
 const heroUpload = createUploader("hero", "hero");
 const sectionUpload = createUploader("section", "section");
 const clusterUpload = createUploader("thumbnail", "cluster-thumb");
+const testimonialUpload = createUploader("testimonial", "testimonial");
 
 /* ============================================================
    Routes
@@ -196,6 +197,33 @@ router.post(
 );
 
 /* ----------------- Upload Cluster Thumbnail ------------------ */
+router.post(
+  "/upload-testimonial",
+  testimonialUpload.single("image"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, message: "No file uploaded" });
+      }
+
+      const filename = req.file.filename;
+      const url = buildPublicUrl(req, "testimonial", filename);
+
+      return res.json({
+        success: true,
+        filename,
+        url,
+        message: "Testimonial image uploaded successfully",
+      });
+    } catch (err: any) {
+      console.error("Upload failed:", err.message);
+      return res.status(500).json({ success: false, message: "Upload failed" });
+    }
+  },
+);
+
 router.post(
   "/upload-cluster-thumbnail",
   clusterUpload.single("thumbnail"),

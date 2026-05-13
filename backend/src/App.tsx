@@ -19,7 +19,7 @@ import ResetPassword from "./pages/AuthPages/ResetPassword";
 import Home from "./pages/Dashboard/Home";
 import UserDashBoard from "./pages/userPages/UserDashboard";
 
-import NewsletterLisging from "./components/tables/ListingComponents/NewsletterLisging";
+import NewsletterListing from "./components/tables/ListingComponents/NewsletterListing";
 import ContactEnquiryListing from "./components/tables/ListingComponents/ContactEnquiryListing";
 import PartnershipEnquiryListing from "./components/tables/ListingComponents/PartnershipEnquiryListing";
 import OneCroreJourneyEnquiryListing from "./components/tables/ListingComponents/OneCroreJourneyEnquiryListing";
@@ -30,20 +30,6 @@ import TopicListing from "./components/tables/ListingComponents/TopicListing";
 
 import ChangePasswordForm from "./components/header/ChangePasswordForm";
 
-import Calendar from "./pages/Calendar";
-import FormElements from "./pages/Forms/FormElements";
-import BasicTables from "./pages/Tables/BasicTables";
-import Blank from "./pages/Blank";
-
-import Alerts from "./pages/UiElements/Alerts";
-import Avatars from "./pages/UiElements/Avatars";
-import Badges from "./pages/UiElements/Badges";
-import Buttons from "./pages/UiElements/Buttons";
-import Images from "./pages/UiElements/Images";
-import Videos from "./pages/UiElements/Videos";
-
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
 
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
@@ -89,6 +75,7 @@ import MFTopHoldingHistoryPage from "./components/mf/MFTopHoldingHistoryPage";
 import NavDashboardPage from "./modules/nav/pages/NavDashboardPage";
 import NavHistoryPage from "./modules/nav/pages/NavHistoryPage";
 import FinancialWellnessEnquiryView from "./components/FinancialWellnessEnquiryView";
+import TestimonialsPage from "./pages/Testimonials/TestimonialsPage";
 
 export default function App() {
   return (
@@ -196,6 +183,9 @@ function AppRoutes() {
           path="/:role/user-subscription"
           element={<UserSubscriptionListing />}
         />
+
+        <Route path="/:role/testimonials" element={<TestimonialsPage />} />
+        <Route path="/testimonials" element={<TestimonialsPage />} />
 
         <Route path="/user/invoice/:id" element={<InvoicePage />} />
         <Route path="/:role/profile" element={<UserProfiles />} />
@@ -309,20 +299,7 @@ function AppRoutes() {
         {role === "admin" && (
           <>
             {/* get the list for subscribers */}
-            <Route path="/:role/newsletter" element={<NewsletterLisging />} />
-
-            <Route path="/form-elements" element={<FormElements />} />
-            <Route path="/basic-tables" element={<BasicTables />} />
-            <Route path="/blank" element={<Blank />} />
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/avatars" element={<Avatars />} />
-            <Route path="/badge" element={<Badges />} />
-            <Route path="/buttons" element={<Buttons />} />
-            <Route path="/images" element={<Images />} />
-            <Route path="/videos" element={<Videos />} />
-            <Route path="/line-chart" element={<LineChart />} />
-            <Route path="/bar-chart" element={<BarChart />} />
-            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/:role/newsletter" element={<NewsletterListing />} />
           </>
         )}
       </Route>
@@ -345,3 +322,7 @@ function AppRoutes() {
     </Routes>
   );
 }
+
+
+
+

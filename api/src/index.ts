@@ -39,6 +39,7 @@ import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
 import seoRoutes from "./routes/seoRoutes";
 import navRoutes from "./routes/navRoutes";
+import testimonialRoutes from "./routes/testimonialRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
 // Chatbot integration is temporarily disabled for lead review; keep code commented instead of deleting it.
 // import chatRoutes from "./routes/chatbot/chatRoutes";
@@ -197,6 +198,7 @@ app.use("/api", whoWeWorkWithEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
 app.use("/api", seoRoutes);
 app.use("/api", navRoutes);
+app.use("/api/testimonials", testimonialRoutes);
 // Chatbot integration is temporarily disabled for lead review; keep route mount commented instead of deleting it.
 // app.use("/api/chat", chatRoutes);
 
