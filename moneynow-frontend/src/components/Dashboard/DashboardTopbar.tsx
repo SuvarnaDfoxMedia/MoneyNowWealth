@@ -68,15 +68,15 @@ export default function DashboardTopbar() {
           <input
             type="text"
             placeholder="Search tools, calculators, insights..."
-            className="h-[40px] w-full rounded-xl border border-[#DEE5F1] bg-[#F7F9FD] pl-11 pr-4 text-[14px] text-[#10234A] outline-none placeholder:text-[#9AA7C4] focus:border-[#0A4A87]/50"
+            className="h-[40px] w-full rounded-md border border-[#DEE5F1] bg-[#F7F9FD] pl-11 pr-4 text-[14px] text-[#10234A] outline-none placeholder:text-[#9AA7C4] focus:border-[#0A4A87]/50"
           />
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="grid h-10 w-10 place-items-center rounded-xl text-[#4A5B83] transition-all duration-300 hover:bg-[#F2F6FD]">
+          <button className="grid h-10 w-10 place-items-center rounded-md text-[#4A5B83] transition-all duration-300 hover:bg-[#F2F6FD]">
             <Bell className="h-5 w-5" />
           </button>
-          <button className="h-[38px] rounded-xl bg-[#0A4A87] px-5 text-[13px] font-semibold text-white transition-all duration-300 hover:bg-[#083B6C]">
+          <button className="h-[38px] rounded-md bg-[#0A4A87] px-5 text-[14px]  font-semibold text-white transition-all duration-300 hover:bg-[#083B6C]">
             + Explore
           </button>
           {profile ? (
@@ -84,7 +84,7 @@ export default function DashboardTopbar() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((prev) => !prev)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#DEE5F1] px-2 py-1 transition-all duration-300 hover:bg-[#F2F6FD]"
+                className="inline-flex items-center gap-2 rounded-md border border-[#DEE5F1] px-2 py-1 transition-all duration-300 hover:bg-[#F2F6FD]"
               >
                 <div
                   className="h-[34px] w-[34px] overflow-hidden rounded-full border border-[#DEE5F1] bg-cover bg-center"
@@ -151,7 +151,7 @@ export default function DashboardTopbar() {
           ) : (
             <Link
               href="/auth/login"
-              className="h-[38px] rounded-xl border border-[#DEE5F1] px-4 text-[13px] font-semibold text-[#3D4E79] transition-all duration-300 hover:bg-[#F2F6FD] inline-flex items-center"
+              className="h-[38px] rounded-md border border-[#DEE5F1] px-4 text-[13px] font-semibold text-[#3D4E79] transition-all duration-300 hover:bg-[#F2F6FD] inline-flex items-center"
             >
               Login
             </Link>

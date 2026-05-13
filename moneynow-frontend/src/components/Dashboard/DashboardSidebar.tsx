@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Star } from "lucide-react";
 import DashboardIcon from "./DashboardIcon";
 import { sidebarMenuItems } from "@/lib/dashboard-data";
+import Image from "next/image";
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
@@ -18,27 +19,24 @@ export default function DashboardSidebar() {
       }}
     >
       <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
-        <div
-          className="flex h-[60px] items-center px-[22px]"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
-        >
-          <div
-            className="mr-3 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[12px] text-[14px] font-semibold text-white"
-            style={{ background: "linear-gradient(135deg,#7C5CFF,#5D8EFF)" }}
-          >
-            M
-          </div>
-          <h2 className="text-[18px] font-semibold leading-none text-white">MoneyNow</h2>
-        </div>
+       
+<div
+  className="flex h-[60px] items-center px-[22px]"
+  style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
+>
+  <Image
+    src="/images/moneynow-white-logo.png"
+    alt="MoneyNow Logo"
+    width={180}
+    height={40}
+    className="object-contain"
+    priority
+  />
+</div>
 
-        <div
-          className="px-[22px] pb-3 pt-[22px] text-[10px] tracking-[2px]"
-          style={{ color: "#8CA2CF" }}
-        >
-          WORKSPACE
-        </div>
+    
 
-        <nav className="px-3 pb-3">
+        <nav className="px-3 py-4">
         {sidebarMenuItems.map((item) => {
           const isActive =
             item.href === "/user/dashboard"
@@ -49,14 +47,14 @@ export default function DashboardSidebar() {
             <Link
               key={item.id}
               href={item.href}
-              className="mb-[8px] flex h-[42px] items-center rounded-[12px] px-[14px] text-[15px] no-underline transition-colors duration-200"
+              className="mb-[8px] flex h-[42px] items-center rounded-[10px] px-[14px] text-[15px] no-underline transition-colors duration-200"
               style={{
-                color: isActive ? "white" : "#D6E0FF",
+                color: isActive ? "white" : "#ffffff",
                 background: isActive ? "rgba(255,255,255,0.14)" : "transparent",
                 fontWeight: isActive ? 500 : 400,
               }}
             >
-              <DashboardIcon name={item.icon} className="mr-3 h-[18px] w-[18px] opacity-90" />
+              <DashboardIcon name={item.icon} className="mr-3 h-[18px] w-[18px] opacity-100" />
               {item.label}
             </Link>
           );
@@ -65,7 +63,7 @@ export default function DashboardSidebar() {
       </div>
 
       <div
-        className="mx-[14px] mb-[14px] shrink-0 rounded-[18px] p-4"
+        className="mx-[14px] mb-[14px] shrink-0 rounded-[12px] p-4"
         style={{ background: "#12316E", border: "1px solid #2E4F8A" }}
       >
         <div className="mb-[10px] flex items-center gap-2 text-[14px] font-semibold text-white">
@@ -75,7 +73,7 @@ export default function DashboardSidebar() {
           Unlock premium research &amp; advanced tools.
         </p>
         <button
-          className="mt-4 h-[40px] w-full rounded-[12px] border-none bg-white text-[13px] font-semibold"
+          className="mt-4 h-[40px] w-full rounded-[10px] border-none bg-white text-[13px] font-semibold"
           style={{ color: "#07112C" }}
         >
           Try EDGE Free

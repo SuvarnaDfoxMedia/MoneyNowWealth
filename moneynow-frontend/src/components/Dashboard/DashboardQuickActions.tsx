@@ -31,15 +31,15 @@ export default function DashboardQuickActions() {
   return (
     <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {actionsToRender.map((action) => (
-        <DashboardCard key={action.id} hover className="rounded-3xl px-5 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className={`grid h-11 w-11 place-items-center rounded-xl ${action.iconBg}`}>
-                <DashboardIcon name={action.icon} className={`h-5 w-5 ${action.iconColor}`} />
+        <DashboardCard key={action.id} hover className="rounded-xl px-4 py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-4">
+              <div className={`grid h-11 w-12 place-items-center rounded-md ${action.iconBg}`}>
+                <DashboardIcon name={action.icon} className={`h-4 w-5 ${action.iconColor}`} />
               </div>
               <div>
                 <h4 className="text-[16px] font-semibold leading-[1.2] text-[#040C20]">{action.title}</h4>
-                <p className="mt-1 text-[15px] text-[#6E7EA5]">{action.description}</p>
+                <p className="mt-2 text-[14px]  text-[#6E7EA5]">{action.description}</p>
               </div>
             </div>
             <button

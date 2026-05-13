@@ -79,6 +79,25 @@ export default function HeroBanner() {
               </span>
             </button>
 
+
+                        <button
+              className="
+              group flex items-center gap-3
+              bg-[#04407B] hover:bg-[#032F5A]
+              text-white
+              pl-5 pr-2 py-2 sm:pl-6
+              rounded-md font-medium
+              text-[14px] sm:text-[15px] lg:text-[16px]
+              transition-colors
+            "
+            >
+             Review Your Portfolio
+              <span className="bg-white p-1 rounded-sm text-[#04407B]">
+                <ArrowUpRight size={18} />
+              </span>
+            </button>
+
+
             {/* <button
               className="
               group flex items-center gap-3
