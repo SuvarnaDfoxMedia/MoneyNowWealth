@@ -2,9 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Dashboard/Sidebar";
 import { useFetchProfile } from "@/hooks/useProfile";
 import { useProfileStore } from "@/stores/profileStore";
+import DashboardLayoutShell from "@/components/Dashboard/DashboardLayout";
 
 export default function DashboardLayout({
   children,
@@ -28,7 +28,7 @@ export default function DashboardLayout({
         // Ignore logout cleanup failures and still redirect.
       } finally {
         clearProfile();
-        router.replace("/");
+        router.replace("/auth/login");
         router.refresh();
       }
     };
@@ -48,12 +48,5 @@ export default function DashboardLayout({
     return null;
   }
 
-  return (
-    <div className="min-h-screen font-inter bg-slate-50 px-6 py-6">
-      <div className="flex gap-6">
-        <Sidebar />
-        <main className="flex-1">{children}</main>
-      </div>
-    </div>
-  );
+  return <DashboardLayoutShell>{children}</DashboardLayoutShell>;
 }

@@ -19,20 +19,25 @@ export default function LayoutWrapper({
   const pathname = usePathname();
 
   const isAuthPage = pathname.startsWith("/auth");
+  const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isUserDashboard = pathname.startsWith("/user/dashboard");
   const isBlogPageOrCluster =
     pathname.startsWith("/blog") || pathname.startsWith("/cluster");
+  const shouldHideGlobalChrome =
+    isAuthPage || isUserDashboard || isDashboardRoute;
 
   return (
     <>
       {/* Chatbot is temporarily disabled across the project to avoid serving inactive assistant flows. */}
-      {/* {!isAuthPage && <ChatbotLayout />} */}
+      {/* {!shouldHideGlobalChrome && <ChatbotLayout />} */}
 
       {/* HEADER LOGIC */}
-      {!isAuthPage && (isBlogPageOrCluster ? <BlogNav /> : <Header />)}
+      {!shouldHideGlobalChrome &&
+        (isBlogPageOrCluster ? <BlogNav /> : <Header />)}
 
       <main className="flex-grow">{children}</main>
 
-      {!isAuthPage && <Footer />}
+      {!shouldHideGlobalChrome && <Footer />}
     </>
   );
 }
