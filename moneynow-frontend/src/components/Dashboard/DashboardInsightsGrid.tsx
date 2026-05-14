@@ -13,7 +13,7 @@ type InsightCard = {
   iconColor: string;
   badgeStyle: string;
   bulletColor: string;
-  glow: string;
+  glowColor: string; // Used for the top border gradient
   cta: string;
   ctaColor: string;
   items: string[];
@@ -24,20 +24,20 @@ export default function DashboardInsightsGrid() {
     {
       id: "insights",
       title: "Latest Insights",
-      description:
-        "How rate cuts could reshape your fixed income portfolio",
+      description: "How rate cuts could reshape your fixed income portfolio",
       badge: "NEW",
       icon: "Lightbulb",
       iconBg: "bg-[#F3EEFF]",
       iconColor: "text-[#7C3AED]",
       badgeStyle: "bg-[#F3EEFF] text-[#7C3AED]",
       bulletColor: "bg-[#7C3AED]",
-      glow: "rgba(124, 92, 255, 1)",
+      glowColor: "#7C3AED", 
       cta: "View all insights",
       ctaColor: "text-[#7C3AED]",
       items: [
         "Why mid caps are showing strength",
         "Top 5 SIP strategies for 2026",
+        "Decoding the new tax regime",
       ],
     },
     {
@@ -50,54 +50,58 @@ export default function DashboardInsightsGrid() {
       iconColor: "text-[#16A34A]",
       badgeStyle: "bg-[#E9FAF2] text-[#16A34A]",
       bulletColor: "bg-[#16A34A]",
-      glow: "rgba(22, 163, 74, 1)",
+      glowColor: "#16A34A",
       cta: "Open Calculators",
       ctaColor: "text-[#16A34A]",
-      items: ["SIP Calculator", "Goal Calculator"],
+      items: ["SIP Calculator", "Goal Calculator", "Retirement Calculator", "Lumpsum Calculator"],
     },
     {
       id: "research",
       title: "MF Research",
-      description:
-        "Curated mutual fund research from top analysts",
+      description: "Curated mutual fund research from top analysts",
       badge: "REPORTS",
       icon: "TrendingUp",
       iconBg: "bg-[#EEF4FF]",
       iconColor: "text-[#2563EB]",
       badgeStyle: "bg-[#EEF4FF] text-[#2563EB]",
       bulletColor: "bg-[#2563EB]",
-      glow: "rgba(37, 99, 235, 1)",
+      glowColor: "#2563EB",
       cta: "View Research",
       ctaColor: "text-[#2563EB]",
       items: [
         "Top Performing Large Cap Funds",
         "Best Debt Funds to Consider",
+        "Small Cap Funds Analysis",
+        "Monthly Market Outlook",
       ],
     },
     {
       id: "toolkit",
       title: "Wealth Toolkit",
-      description:
-        "Everything you need to track and grow your wealth",
+      description: "Everything you need to track and grow your wealth",
       badge: "PREMIUM",
       icon: "Hammer",
       iconBg: "bg-[#FFF4E6]",
       iconColor: "text-[#F97316]",
       badgeStyle: "bg-[#FFF4E6] text-[#F97316]",
       bulletColor: "bg-[#F97316]",
-      glow: "rgba(249, 115, 22, 1)",
+      glowColor: "#F97316",
       cta: "Open Toolkit",
       ctaColor: "text-[#F97316]",
-      items: ["SIP Tracker", "Goal Planner"],
+      items: ["SIP Tracker", "Goal Planner", "Risk Profiler", "Asset Allocation Guide"],
     },
   ];
 
-   const getGlow = (color: string) => ({
+
+const getGlowStyle = (hexColor: string) => ({
     background: `linear-gradient(
-      90deg,
-      ${color}22 0%,
-      ${color} 50%,
-      ${color}22 100%
+      90deg, 
+      transparent 0%, 
+      ${hexColor}33 20%, 
+      ${hexColor} 40%,   
+      ${hexColor} 60%,    
+      ${hexColor}33 80%, 
+      transparent 100%
     )`,
   });
 
@@ -106,17 +110,17 @@ export default function DashboardInsightsGrid() {
       {cards.map((card) => (
         <DashboardCard
           key={card.id}
-          className="relative flex h-full flex-col rounded-3xl border border-[#EEF2F7] bg-white p-6 shadow-sm transition hover:shadow-md overflow-hidden"
+          className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#EEF2F7] bg-white p-6 shadow-sm transition-all hover:shadow-md"
         >
           <div
-            className="absolute left-0 top-0 h-[2px] w-full"
-            style={getGlow(card.glow)}
+            className="absolute left-0 top-0 h-[2.0px] w-full"
+            style={getGlowStyle(card.glowColor)}
           />
 
-          {/* TOP HEADER */}
+          {/* HEADER */}
           <div className="flex items-center justify-between">
             <div
-              className={`grid h-12 w-12 place-items-center rounded-md ${card.iconBg}`}
+              className={`grid h-12 w-12 place-items-center rounded-xl ${card.iconBg}`}
             >
               <DashboardIcon
                 name={card.icon}
@@ -125,14 +129,14 @@ export default function DashboardInsightsGrid() {
             </div>
 
             <span
-              className={`rounded-full px-3 py-1 text-[12px] font-semibold uppercase tracking-wide ${card.badgeStyle}`}
+              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${card.badgeStyle}`}
             >
               {card.badge}
             </span>
           </div>
 
           {/* TITLE */}
-          <h3 className="mt-5 text-[18px] font-semibold text-[#0A1633]">
+          <h3 className="mt-5 text-[18px] font-bold text-[#0A1633]">
             {card.title}
           </h3>
 
@@ -141,30 +145,32 @@ export default function DashboardInsightsGrid() {
             {card.description}
           </p>
 
-          {/* LIST */}
-          <ul className="mt-4 mb-4 space-y-2">
+          {/* LIST ITEMS */}
+          <ul className="mb-6 mt-5 space-y-3">
             {card.items.map((item, idx) => (
               <li
                 key={idx}
-                className="flex items-start gap-2 text-[14px] text-[#475569]"
+                className="flex items-start gap-3 text-[14px] font-medium text-[#475569]"
               >
                 <span
-                  className={`mt-[6px] h-2 w-2 shrink-0 rounded-full ${card.bulletColor}`}
+                  className={`mt-[6px] h-[6px] w-[6px] shrink-0 rounded-full ${card.bulletColor}`}
                 />
-                {item}
+                <span>{item}</span>
               </li>
             ))}
           </ul>
 
-          {/* CTA FIXED */}
-          <div className="mt-auto flex items-center justify-between border-t border-[#EEF2F7] pt-4">
+          {/* FOOTER */}
+          <div className="mt-auto flex items-center justify-between border-t border-[#F1F5F9] pt-4">
             <button
-              className={`text-[14px] font-semibold ${card.ctaColor}`}
+              className={`text-[14px] font-bold transition-opacity hover:opacity-70 ${card.ctaColor}`}
             >
               {card.cta}
             </button>
 
-            <ArrowUpRight className={`h-4 w-4 ${card.ctaColor}`} />
+            <ArrowUpRight
+              className={`h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${card.ctaColor}`}
+            />
           </div>
         </DashboardCard>
       ))}
