@@ -26,8 +26,7 @@ export default function DashboardWelcomeSection() {
 
           {/* Heading */}
           <h1 className="mt-5 text-[30px] font-semibold leading-[1.15] tracking-[-0.6px] text-[#051338]">
-            Welcome to{" "}
-            <span className="text-[#0A4A87]">MoneyNow</span>
+            Welcome to <span className="text-[#0A4A87]">MoneyNow</span>
             {displayName ? `, ${displayName}!` : "!"}{" "}
             <span className="inline-block origin-[70%_70%] animate-wave pl-1">
               👋

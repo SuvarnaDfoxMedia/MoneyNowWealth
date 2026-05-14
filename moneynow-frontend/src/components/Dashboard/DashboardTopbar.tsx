@@ -68,7 +68,7 @@ export default function DashboardTopbar() {
           <input
             type="text"
             placeholder="Search tools, calculators, insights..."
-            className="h-[40px] w-full rounded-md border border-[#DEE5F1] bg-[#ffffff] pl-11 pr-4 text-[14px] text-[#10234A] outline-none placeholder:text-[#9AA7C4] focus:border-[#0A4A87]/50"
+            className="h-[40px] w-full rounded-md border border-[#DEE5F1] bg-[#F7F9FD] pl-11 pr-4 text-[14px] text-[#10234A] outline-none placeholder:text-[#9AA7C4] focus:border-[#0A4A87]/50"
           />
         </div>
 
