@@ -1,9 +1,17 @@
+"use client";
+
+import { useMemo } from "react";
 import DashboardProfileCompletionCard from "./DashboardProfileCompletionCard";
 import DashboardStatsSection from "./DashboardStatsSection";
 import DashboardOnboardingCards from "./DashboardOnboardingCards";
 import DashboardCard from "./DashboardCard";
+import { useProfileStore } from "@/stores/profileStore";
+import { getPreferredUserName } from "@/utils/profileHelpers";
 
 export default function DashboardWelcomeSection() {
+  const profile = useProfileStore((state) => state.profile);
+  const displayName = useMemo(() => getPreferredUserName(profile), [profile]);
+
   return (
     <DashboardCard className="mt-4 rounded-[24px] p-6 md:p-7">
       {/* Top Section */}
@@ -19,7 +27,8 @@ export default function DashboardWelcomeSection() {
           {/* Heading */}
           <h1 className="mt-5 text-[30px] font-semibold leading-[1.15] tracking-[-0.6px] text-[#051338]">
             Welcome to{" "}
-            <span className="text-[#0A4A87]">MoneyNow</span>, Gautami!{" "}
+            <span className="text-[#0A4A87]">MoneyNow</span>
+            {displayName ? `, ${displayName}!` : "!"}{" "}
             <span className="inline-block origin-[70%_70%] animate-wave pl-1">
               👋
             </span>

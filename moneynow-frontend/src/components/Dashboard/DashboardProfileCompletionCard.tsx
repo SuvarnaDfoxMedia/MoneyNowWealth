@@ -1,4 +1,9 @@
+"use client";
+
+import { useMemo } from "react";
 import DashboardCard from "./DashboardCard";
+import { useProfileStore } from "@/stores/profileStore";
+import { getProfileCompletion } from "@/utils/profileHelpers";
 
 function DashboardCircularProgress({
   value,
@@ -60,11 +65,14 @@ function DashboardCircularProgress({
 }
 
 export default function DashboardProfileCompletionCard() {
+  const profile = useProfileStore((state) => state.profile);
+  const completion = useMemo(() => getProfileCompletion(profile), [profile]);
+
   return (
     <DashboardCard className="flex min-h-[82px] items-center gap-4 rounded-[16px] border border-[#E5EAF1] bg-[#F8FAFC] px-4 py-3 shadow-none">
       {/* Progress */}
       <DashboardCircularProgress
-        value={33}
+        value={completion}
         size={46}
         strokeWidth={4.5}
       />
@@ -76,7 +84,7 @@ export default function DashboardProfileCompletionCard() {
         </h4>
 
         <p className="mt-[8px] text-[12px] font-medium leading-none text-[#74829A]">
-          Get started in 3 simple steps
+          {completion}% completed
         </p>
       </div>
     </DashboardCard>
