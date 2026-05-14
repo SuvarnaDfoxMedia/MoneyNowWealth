@@ -40,6 +40,9 @@ export const getProfileCompletion = (profile?: Partial<UserProfile> | null): num
 export const getPreferredUserName = (profile?: Partial<UserProfile> | null): string => {
   if (!profile) return "";
 
+   const firstName = String(profile.firstname ?? "").trim();
+  if (firstName) return firstName;
+
   const asRecord = profile as UnknownRecord;
 
   const firstLast = `${String(profile.firstname ?? "").trim()} ${String(profile.lastname ?? "").trim()}`.trim();
