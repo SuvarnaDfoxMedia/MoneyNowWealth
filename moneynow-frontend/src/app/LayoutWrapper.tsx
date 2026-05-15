@@ -22,7 +22,10 @@ export default function LayoutWrapper({
   const isDashboardRoute = pathname.startsWith("/dashboard");
   const isUserDashboard = pathname.startsWith("/user/dashboard");
   const isBlogPageOrCluster =
-    pathname.startsWith("/blog") || pathname.startsWith("/cluster");
+    pathname.startsWith("/blog") ||
+    pathname.startsWith("/cluster") ||
+    pathname.startsWith("/user/blog") ||
+    pathname.startsWith("/user/cluster");
   const shouldHideGlobalChrome =
     isAuthPage || isUserDashboard || isDashboardRoute;
 

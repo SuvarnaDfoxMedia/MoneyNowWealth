@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRefreshSignal } from "@/hooks/useRefreshSignal";
 import { API } from "@/app/api/axios";
 import { useContentAccess } from "@/hooks/useContentAccess";
+import { usePathname } from "next/navigation";
 
 interface Article {
   _id: string;
@@ -34,6 +35,8 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
   const hasLoadedRef = useRef(false);
   const { refreshTick } = useRefreshSignal();
   const { accessLevel } = useContentAccess();
+  const pathname = usePathname();
+  const blogBasePath = pathname.startsWith("/user/") ? "/user/blog" : "/blog";
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -97,7 +100,7 @@ const MostPopularBlogs: React.FC<Props> = ({ folder = "/hero" }) => {
 
             return (
               <Link
-                href={`/blog/${article.slug}`}
+                href={`${blogBasePath}/${article.slug}`}
                 key={article._id}
                 className="flex gap-2 items-start border-b border-[#F0F0F0] pb-[30px]"
               >

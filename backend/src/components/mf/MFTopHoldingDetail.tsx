@@ -30,6 +30,7 @@ type TopHoldingDetail = {
   holdings?: HoldingEntry[];
   top_holdings_summary?: string[];
   holdings_count?: number;
+  security_type_counts?: Record<string, number>;
   is_active?: number;
 };
 
@@ -76,6 +77,26 @@ export default function MFTopHoldingDetail() {
   const paginatedHoldings = sortedHoldings
     .slice(pageStart, page * recordsPerPage)
     .map((holding, index) => ({ ...holding, __index: pageStart + index }));
+
+  const securityTypeCounts = (() => {
+    const counts: Record<string, number> = {};
+    const source = record?.security_type_counts;
+    if (source && typeof source === "object" && Object.keys(source).length > 0) {
+      for (const [key, value] of Object.entries(source)) {
+        const normalized = String(key || "").trim();
+        if (!normalized) continue;
+        counts[normalized] = Number(value) || 0;
+      }
+      return counts;
+    }
+
+    for (const row of holdings) {
+      const key = String(row.security_type || "").trim();
+      if (!key) continue;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  })();
 
   const handleDelete = async () => {
     if (!id) return;
@@ -237,6 +258,35 @@ export default function MFTopHoldingDetail() {
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-medium uppercase text-gray-500">
+              Security Type Counts
+            </p>
+            {Object.keys(securityTypeCounts).length === 0 ? (
+              <p className="mt-2 text-sm text-gray-600">
+                No security type values available.
+              </p>
+            ) : (
+              <div className="mt-3 grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+                {Object.entries(securityTypeCounts)
+                  .sort(([left], [right]) => left.localeCompare(right))
+                  .map(([type, count]) => (
+                    <div
+                      key={type}
+                      className="rounded-md border border-gray-200 bg-gray-50 p-3"
+                    >
+                      <p className="text-xs font-medium uppercase text-gray-500">
+                        {type}
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">
+                        {count}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
 
           <DataTable

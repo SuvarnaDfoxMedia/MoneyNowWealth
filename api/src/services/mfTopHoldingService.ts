@@ -37,18 +37,8 @@ export const computeTopHoldingSnapshotHash = (payload: Record<string, unknown>) 
     bond_holdings: payload.bond_holdings ?? null,
     assets_top_10_holdings_pct: payload.assets_top_10_holdings_pct ?? null,
     turnover_pct: payload.turnover_pct ?? null,
-    domestic_equity_pct: payload.domestic_equity_pct ?? null,
-    international_equity_pct: payload.international_equity_pct ?? null,
-    debt_pct: payload.debt_pct ?? null,
-    other_pct: payload.other_pct ?? null,
-    gold_pct: payload.gold_pct ?? null,
-    cash_pct: payload.cash_pct ?? null,
-    large_cap_pct: payload.large_cap_pct ?? null,
-    mid_cap_pct: payload.mid_cap_pct ?? null,
-    small_cap_pct: payload.small_cap_pct ?? null,
-    tax_type: payload.tax_type ?? "",
-    riskometer_label: payload.riskometer_label ?? "",
     top_holdings_summary: payload.top_holdings_summary ?? [],
+    security_type_counts: payload.security_type_counts ?? {},
     holdings: payload.holdings ?? [],
   };
 
@@ -87,6 +77,24 @@ const normalizeHoldingsRows = (value: unknown) => {
     .sort((a, b) => (b.net_assets_pct || 0) - (a.net_assets_pct || 0));
 };
 
+const normalizeSecurityType = (raw: string) => String(raw || "").trim().toLowerCase();
+
+const buildSecurityTypeCounts = (holdings: Array<{ security_type?: string }>) => {
+  const counts: Record<string, number> = {};
+  for (const row of holdings) {
+    const key = normalizeSecurityType(row.security_type || "");
+    if (!key) continue;
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  return counts;
+};
+
+const countSecurityTypes = (counts: Record<string, number>, aliases: string[]) =>
+  Object.entries(counts).reduce((sum, [key, value]) => {
+    const isMatch = aliases.some((alias) => key.includes(alias));
+    return isMatch ? sum + (Number(value) || 0) : sum;
+  }, 0);
+
 const resolveFundReference = async (payload: any) => {
   const fundId = String(payload?.fund_id || "").trim();
   if (!/^[a-f\d]{24}$/i.test(fundId)) {
@@ -116,6 +124,9 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
   if (!fundName) throw new Error("fund_name is required");
 
   const holdings = normalizeHoldingsRows(payload?.holdings);
+  const securityTypeCounts = buildSecurityTypeCounts(holdings);
+  const stockHoldingsCount = countSecurityTypes(securityTypeCounts, ["equity", "stock", "share"]);
+  const bondHoldingsCount = countSecurityTypes(securityTypeCounts, ["bond", "debt", "fixed income"]);
   const schemeCode = String(fundRef.scheme_code || payload?.scheme_code || "").trim();
   const sourceIsin = String(payload?.source_isin || "").trim();
   const schemeIdentity = buildTopHoldingSchemeIdentity(schemeCode, sourceIsin);
@@ -129,22 +140,14 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
     source_isin: sourceIsin,
     portfolio_date: toDateOrNull(payload?.portfolio_date),
     prev_portfolio_date: toDateOrNull(payload?.prev_portfolio_date),
-    stock_holdings: toNumberOrNull(payload?.stock_holdings),
-    bond_holdings: toNumberOrNull(payload?.bond_holdings),
+    stock_holdings:
+      holdings.length > 0 ? stockHoldingsCount : toNumberOrNull(payload?.stock_holdings),
+    bond_holdings:
+      holdings.length > 0 ? bondHoldingsCount : toNumberOrNull(payload?.bond_holdings),
     assets_top_10_holdings_pct: toNumberOrNull(payload?.assets_top_10_holdings_pct),
     turnover_pct: toNumberOrNull(payload?.turnover_pct),
-    domestic_equity_pct: toNumberOrNull(payload?.domestic_equity_pct),
-    international_equity_pct: toNumberOrNull(payload?.international_equity_pct),
-    debt_pct: toNumberOrNull(payload?.debt_pct),
-    other_pct: toNumberOrNull(payload?.other_pct),
-    gold_pct: toNumberOrNull(payload?.gold_pct),
-    cash_pct: toNumberOrNull(payload?.cash_pct),
-    large_cap_pct: toNumberOrNull(payload?.large_cap_pct),
-    mid_cap_pct: toNumberOrNull(payload?.mid_cap_pct),
-    small_cap_pct: toNumberOrNull(payload?.small_cap_pct),
-    tax_type: String(payload?.tax_type || "").trim(),
-    riskometer_label: String(payload?.riskometer_label || "").trim(),
     top_holdings_summary: normalizeHoldingsSummary(payload?.top_holdings_summary),
+    security_type_counts: securityTypeCounts,
     holdings,
     holdings_count: holdings.length,
     is_latest: false,

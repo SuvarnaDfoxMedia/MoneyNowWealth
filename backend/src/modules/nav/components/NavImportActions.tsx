@@ -309,6 +309,24 @@ export default function NavImportActions({ role, onImported }: NavImportActionsP
                     ))}
                   </div>
 
+                  {(typeof report.totalRows === "number" ||
+                    typeof report.validRows === "number") && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <div className="rounded-lg bg-gray-50 p-3 text-sm">
+                        <p className="text-gray-500">Total rows</p>
+                        <p className="mt-1 font-semibold text-gray-800">
+                          {report.totalRows ?? "-"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-3 text-sm">
+                        <p className="text-gray-500">Valid rows</p>
+                        <p className="mt-1 font-semibold text-gray-800">
+                          {report.validRows ?? "-"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {report.errors.length > 0 ? (
                     <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -332,6 +350,28 @@ export default function NavImportActions({ role, onImported }: NavImportActionsP
                           </div>
                         ))}
                       </div>
+                    </div>
+                  ) : null}
+
+                  {Array.isArray(report.skippedRows) &&
+                  report.skippedRows.length > 0 ? (
+                    <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        Skipped rows
+                      </p>
+                      <div className="mt-3 max-h-56 space-y-2 overflow-auto text-sm text-gray-700">
+                        {report.skippedRows.slice(0, 50).map((item, index) => (
+                          <div key={`${item.row}-${item.reason}-${index}`}>
+                            Row {item.row}: {item.reason}
+                            {item.identifier ? ` (${item.identifier})` : ""}
+                          </div>
+                        ))}
+                      </div>
+                      {report.skippedRows.length > 50 ? (
+                        <p className="mt-3 text-xs text-gray-500">
+                          Showing first 50 skipped rows.
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

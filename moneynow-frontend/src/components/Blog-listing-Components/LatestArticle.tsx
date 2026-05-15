@@ -14,6 +14,7 @@ import { normalizeRichTextHtml } from "@/utils/normalizeRichTextHtml";
 import { useRefreshSignal } from "@/hooks/useRefreshSignal";
 import { API } from "@/app/api/axios";
 import { useContentAccess } from "@/hooks/useContentAccess";
+import { usePathname } from "next/navigation";
 
 interface Article {
   _id: string;
@@ -42,6 +43,8 @@ const FeaturedArticle = () => {
   const hasLoadedRef = useRef(false);
   const { refreshTick } = useRefreshSignal();
   const { accessLevel } = useContentAccess();
+  const pathname = usePathname();
+  const blogBasePath = pathname.startsWith("/user/") ? "/user/blog" : "/blog";
 
   useEffect(() => {
     const fetchFeaturedArticle = async () => {
@@ -98,14 +101,14 @@ const FeaturedArticle = () => {
 
       <div className="relative mb-[15px]">
         {article.cluster?.title && (
-          <Link href={`/blog/${article.slug}`}>
+          <Link href={`${blogBasePath}/${article.slug}`}>
             <span className="text-[18px] sm:text-[20px] font-inter text-[#043F79] font-bold cursor-pointer hover:underline">
               {article.cluster.title}
             </span>
           </Link>
         )}
 
-        <Link href={`/blog/${article.slug}`}>
+        <Link href={`${blogBasePath}/${article.slug}`}>
           <h3 className="text-[22px] md:text-[30px] font-semibold mt-1 mb-1 cursor-pointer hover:text-[#043F79]">
             {article.title}
           </h3>
@@ -119,7 +122,7 @@ const FeaturedArticle = () => {
         </p>
       </div>
 
-      <Link href={`/blog/${article.slug}`}>
+      <Link href={`${blogBasePath}/${article.slug}`}>
         <div className="cursor-pointer">
           <Image
             src={imageSrc}

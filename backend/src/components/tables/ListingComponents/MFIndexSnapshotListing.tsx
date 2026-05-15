@@ -13,7 +13,7 @@ interface MFIndexSnapshot {
   _id: string;
   benchmark_index_name: string;
   main_category_id?: { name?: string };
-  returns?: { y1?: number; y3?: number; y5?: number; y10?: number };
+  returns?: { d1?: number; w1?: number; m1?: number; m3?: number; m6?: number; y1?: number; y3?: number; y5?: number; y10?: number };
   last_updated_date: string;
   is_active: number;
 }
@@ -168,6 +168,11 @@ export default function MFIndexSnapshotListing() {
         label: "Main Category",
         render: (r) => r.main_category_id?.name || "-",
       },
+      { key: "d1", label: "1D", render: (r) => (r.returns?.d1 ?? "-") as any },
+      { key: "w1", label: "1W", render: (r) => (r.returns?.w1 ?? "-") as any },
+      { key: "m1", label: "1M", render: (r) => (r.returns?.m1 ?? "-") as any },
+      { key: "m3", label: "3M", render: (r) => (r.returns?.m3 ?? "-") as any },
+      { key: "m6", label: "6M", render: (r) => (r.returns?.m6 ?? "-") as any },
       { key: "y1", label: "1Y", render: (r) => (r.returns?.y1 ?? "-") as any },
       { key: "y3", label: "3Y", render: (r) => (r.returns?.y3 ?? "-") as any },
       {

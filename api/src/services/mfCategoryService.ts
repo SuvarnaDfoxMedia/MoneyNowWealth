@@ -247,7 +247,7 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
     main_category_id: mainCategoryId,
     // Legacy short_description support
     description: payload.description || payload.short_description || "",
-    category_average_returns: normalizeCategoryReturns(payload.category_average_returns),
+    category_average_returns: normalizeCategoryReturns({}),
     category_returns: normalizeCategoryReturns(payload.category_returns),
     suggested_use_case_note: payload.suggested_use_case_note || "",
     is_active: payload.is_active ?? 1,
@@ -255,6 +255,7 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
   });
 
   await doc.save();
+  await recomputeCategoryAverageReturns(String(doc._id));
   return doc;
 };
 
@@ -288,9 +289,6 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
     if (exists) throw new Error("Category already exists");
   }
 
-  if (payload.category_average_returns) {
-    updateData.category_average_returns = normalizeCategoryReturns(payload.category_average_returns);
-  }
   if (payload.category_returns) {
     updateData.category_returns = normalizeCategoryReturns(payload.category_returns);
   }
@@ -305,6 +303,7 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
 
   const doc = await MFCategory.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   if (!doc) throw new Error("Category not found");
+  await recomputeCategoryAverageReturns(String(doc._id));
   return doc;
 };
 

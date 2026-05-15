@@ -32,6 +32,12 @@ type UploadError = {
   identifier?: string;
 };
 
+type UploadSkip = {
+  row: number;
+  reason: string;
+  identifier?: string;
+};
+
 const REQUIRED_HEADER_GROUPS = [
   ["scheme_id", "schemeid", "scheme_code", "schemecode", "isin"],
   ["date", "nav_date", "as_on_date"],
@@ -278,6 +284,7 @@ const validateHeaders = (headers: string[]): UploadError[] => {
 
 const parseNavRows = async (rows: Record<string, unknown>[]) => {
   const errors: UploadError[] = [];
+  const skippedRows: UploadSkip[] = [];
   const validRows: NavRow[] = [];
   const seenKeyIndexes = new Map<string, number>();
   const schemeCache = new Map<string, Awaited<ReturnType<typeof resolveScheme>>>();
@@ -352,6 +359,11 @@ const parseNavRows = async (rows: Record<string, unknown>[]) => {
       if (existingIndex !== undefined) {
         validRows[existingIndex] = nextRow;
         skipped += 1;
+        skippedRows.push({
+          row: rowNumber,
+          reason: "Duplicate scheme/date row in uploaded file. Latest occurrence kept.",
+          identifier,
+        });
         continue;
       }
       seenKeyIndexes.set(dedupeKey, validRows.length);
@@ -365,7 +377,7 @@ const parseNavRows = async (rows: Record<string, unknown>[]) => {
     }
   }
 
-  return { validRows, errors, skipped };
+  return { validRows, errors, skipped, skippedRows };
 };
 
 const updateSchemeReturns = async (schemeId: string) => {
@@ -415,7 +427,7 @@ export const uploadNavWorkbook = async ({
   });
   const { headers, rows } = normalizeRows(workbook);
   const headerErrors = validateHeaders(headers);
-  const { validRows, errors, skipped } = await parseNavRows(rows);
+  const { validRows, errors, skipped, skippedRows } = await parseNavRows(rows);
   const allErrors = [...headerErrors, ...errors];
 
   if (headerErrors.length > 0 || allErrors.length > 0) {
@@ -427,6 +439,9 @@ export const uploadNavWorkbook = async ({
       updated: 0,
       skipped,
       rejected: allErrors.length,
+      totalRows: rows.length,
+      validRows: validRows.length,
+      skippedRows: skippedRows.slice(0, 1000),
       errors: allErrors.slice(0, 500),
     };
   }
@@ -476,6 +491,9 @@ export const uploadNavWorkbook = async ({
       updated,
       skipped,
       rejected: 0,
+      totalRows: rows.length,
+      validRows: validRows.length,
+      skippedRows: skippedRows.slice(0, 1000),
       errors: [],
     };
   }
@@ -490,6 +508,9 @@ export const uploadNavWorkbook = async ({
     updated,
     skipped,
     rejected: 0,
+    totalRows: rows.length,
+    validRows: validRows.length,
+    skippedRows: skippedRows.slice(0, 1000),
     errors: [],
   };
 };

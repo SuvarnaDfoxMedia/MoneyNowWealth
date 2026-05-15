@@ -55,6 +55,13 @@ type ImportReport = {
   processedSheets: string[];
   summary: ImportSummary;
   errorCount: number;
+  skipCount?: number;
+  skippedRows?: Array<{
+    sheet: string;
+    row: number;
+    reason: string;
+    identifier?: string;
+  }>;
   errors: Array<{
     sheet: string;
     row: number;
@@ -800,6 +807,28 @@ export default function MFImportExportActions({
                       ) : null}
                     </div>
                   )}
+
+                  {Array.isArray(report.skippedRows) &&
+                  report.skippedRows.length > 0 ? (
+                    <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <p className="text-sm font-medium text-gray-900">
+                        Skipped rows
+                      </p>
+                      <div className="mt-3 max-h-44 space-y-2 overflow-auto text-sm text-gray-700">
+                        {report.skippedRows.slice(0, 50).map((item, index) => (
+                          <div key={`${item.sheet}-${item.row}-${index}`}>
+                            {item.sheet} row {item.row}: {item.reason}
+                            {item.identifier ? ` (${item.identifier})` : ""}
+                          </div>
+                        ))}
+                      </div>
+                      {report.skippedRows.length > 50 ? (
+                        <p className="mt-3 text-xs text-gray-500">
+                          Showing the first 50 skipped rows.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

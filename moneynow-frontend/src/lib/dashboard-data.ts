@@ -54,13 +54,55 @@ export type LucideIconName =
   | "Plus";
 
 export const sidebarMenuItems: SidebarMenuItem[] = [
-  { id: "dashboard", label: "Dashboard", href: "/user/dashboard", icon: "LayoutGrid", active: true },
-  { id: "calculators", label: "Calculators", href: "/user/dashboard/calculators/advanced-sip", icon: "Calculator" },
-  { id: "newsletter", label: "Newsletter", href: "/user/dashboard/newsletter", icon: "ScrollText" },
-  { id: "subscription", label: "Subscription", href: "/user/dashboard/subscription", icon: "BriefcaseBusiness" },
-  { id: "toolkit", label: "Wealth Toolkit", href: "/wealth-toolkit", icon: "Wrench" },
-  { id: "learn", label: "Learn", href: "/blog-listing", icon: "GraduationCap" },
-  { id: "insights", label: "Insights", href: "/blog-listing", icon: "Lightbulb" },
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    href: "/user/dashboard",
+    icon: "LayoutGrid",
+    active: true,
+  },
+  {
+    id: "calculators",
+    label: "Calculators",
+    href: "/user/dashboard/calculators/advanced-sip",
+    icon: "Calculator",
+  },
+  {
+    id: "mf-research",
+    label: "MF Research",
+    href: "/mutual-funds",
+    icon: "ChartNoAxesColumn",
+  },
+  {
+    id: "newsletter",
+    label: "Newsletter",
+    href: "/user/dashboard/newsletter",
+    icon: "ScrollText",
+  },
+  {
+    id: "subscription",
+    label: "Subscription",
+    href: "/user/dashboard/subscription",
+    icon: "BriefcaseBusiness",
+  },
+  {
+    id: "toolkit",
+    label: "Wealth Toolkit",
+    href: "/wealth-toolkit",
+    icon: "Wrench",
+  },
+  {
+    id: "learn",
+    label: "Learn",
+    href: "/user/blog-listing",
+    icon: "GraduationCap",
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    href: "/blog-listing",
+    icon: "Lightbulb",
+  },
   // { id: "news", label: "News & Blogs", href: "/blog-listing", icon: "Newspaper" },
 ];
 
@@ -84,7 +126,8 @@ export const onboardingCards: OnboardingCardItem[] = [
   {
     id: "decisions",
     title: "Make confident decisions",
-    description: "Get insights and build your investment strategy with confidence.",
+    description:
+      "Get insights and build your investment strategy with confidence.",
     cta: "Learn How",
     icon: "Compass",
     iconBg: "bg-[#1762BA]",
