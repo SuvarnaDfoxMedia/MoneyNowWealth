@@ -113,7 +113,7 @@ const getGlowStyle = (hexColor: string) => ({
           className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#EEF2F7] bg-white p-6 shadow-sm transition-all hover:shadow-md"
         >
           <div
-            className="absolute left-0 top-0 h-[2.0px] w-full"
+            className="absolute left-0 top-0 h-[1.5px] w-full"
             style={getGlowStyle(card.glowColor)}
           />
 
