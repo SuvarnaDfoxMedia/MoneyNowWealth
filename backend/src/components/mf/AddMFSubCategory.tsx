@@ -31,7 +31,7 @@ const TRAILING_FIELDS = [
   { key: "since_launch", label: "Since Launch" },
 ] as const;
 
-const buildAnnualYears = (startYear = new Date().getFullYear(), count = 10) =>
+const buildAnnualYears = (startYear = new Date().getFullYear() - 1, count = 9) =>
   Array.from({ length: count }, (_, index) => String(startYear - index));
 
 type MainCategoryOption = {
@@ -47,6 +47,34 @@ const emptyTrailingValues = () =>
     (typeof TRAILING_FIELDS)[number]["key"],
     string
   >;
+
+const getLegacyTrailingValue = (source: any, key: string) => {
+  if (!source) return "";
+  if (source?.trailing?.[key] !== undefined && source?.trailing?.[key] !== null) {
+    return source.trailing[key]?.toString?.() || "";
+  }
+  const legacyMap: Record<string, string> = {
+    "1w": "w1",
+    "1m": "m1",
+    "3m": "m3",
+    "6m": "m6",
+    "1y": "y1",
+    "3y": "y3",
+    "5y": "y5",
+    "10y": "y10",
+    since_launch: "since_launch",
+  };
+  const legacyKey = legacyMap[key];
+  return legacyKey ? source?.[legacyKey]?.toString?.() || "" : "";
+};
+
+const getAnnualYearValue = (source: any, year: string) => {
+  const nested = source?.annual?.yearly_returns?.[year];
+  if (nested !== undefined && nested !== null) return nested?.toString?.() || "";
+  const flatAnnual = source?.annual?.[year];
+  if (flatAnnual !== undefined && flatAnnual !== null) return flatAnnual?.toString?.() || "";
+  return "";
+};
 
 export default function AddMFCategory() {
   const { id, role = "admin" } = useParams();
@@ -115,7 +143,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             TRAILING_FIELDS.map((field) => [
               field.key,
-              category.category_returns?.trailing?.[field.key]?.toString?.() || "",
+              getLegacyTrailingValue(category.category_returns, field.key),
             ]),
           ),
         },
@@ -124,7 +152,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             annualYears.map((year) => [
               year,
-              category.category_returns?.annual?.yearly_returns?.[year]?.toString?.() || "",
+              getAnnualYearValue(category.category_returns, year),
             ]),
           ),
         },
@@ -133,7 +161,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             TRAILING_FIELDS.map((field) => [
               field.key,
-              category.category_average_returns?.trailing?.[field.key]?.toString?.() || "",
+              getLegacyTrailingValue(category.category_average_returns, field.key),
             ]),
           ),
         },
@@ -142,8 +170,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             annualYears.map((year) => [
               year,
-              category.category_average_returns?.annual?.yearly_returns?.[year]?.toString?.() ||
-                "",
+              getAnnualYearValue(category.category_average_returns, year),
             ]),
           ),
         },

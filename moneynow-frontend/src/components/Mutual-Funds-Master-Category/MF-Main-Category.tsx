@@ -21,6 +21,19 @@ type TableRow = {
   is_featured?: boolean;
 };
 
+type FundReturnShape = {
+  trailing?: Record<string, number | null>;
+  y3_cagr?: number | null;
+  y5_cagr?: number | null;
+  y10_cagr?: number | null;
+};
+
+const getTrailingReturn = (
+  returns: FundReturnShape | undefined,
+  key: "3y" | "5y" | "10y",
+  legacyKey: "y3_cagr" | "y5_cagr" | "y10_cagr",
+) => returns?.trailing?.[key] ?? returns?.[legacyKey] ?? null;
+
 const parseReturn = (value: string) => {
   const numericValue = Number.parseFloat(String(value));
   return value === "-" || Number.isNaN(numericValue) ? -999 : numericValue;
@@ -137,9 +150,9 @@ export default function MFMainCategory() {
     if (isPopularTab) {
       return popularFunds.map((fund) => ({
         name: fund.fund_name,
-        y3: fund.returns?.y3_cagr?.toString?.() || "-",
-        y5: fund.returns?.y5_cagr?.toString?.() || "-",
-        y10: fund.returns?.y10_cagr?.toString?.() || "-",
+        y3: getTrailingReturn(fund.returns, "3y", "y3_cagr")?.toString?.() || "-",
+        y5: getTrailingReturn(fund.returns, "5y", "y5_cagr")?.toString?.() || "-",
+        y10: getTrailingReturn(fund.returns, "10y", "y10_cagr")?.toString?.() || "-",
       }));
     }
 

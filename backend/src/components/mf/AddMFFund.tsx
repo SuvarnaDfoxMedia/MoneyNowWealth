@@ -42,8 +42,8 @@ const FUND_TRAILING_FIELDS = [
 ] as const;
 
 const buildAnnualYears = (startYear: number) =>
-  Array.from({ length: 10 }, (_, index) => String(startYear - index));
-const DEFAULT_ANNUAL_YEARS = buildAnnualYears(new Date().getFullYear());
+  Array.from({ length: 9 }, (_, index) => String(startYear - index));
+const DEFAULT_ANNUAL_YEARS = buildAnnualYears(new Date().getFullYear() - 1);
 
 const emptyMap = <T extends readonly string[]>(keys: T) =>
   Object.fromEntries(keys.map((key) => [key, ""])) as Record<T[number], string>;
@@ -197,10 +197,8 @@ export default function AddMFFund() {
         .filter((year) => /^\d{4}$/.test(year))
         .map((year) => Number(year))
         .filter((year) => Number.isFinite(year));
-      const startYear =
-        importedYears.length > 0
-          ? Math.max(...importedYears)
-          : new Date().getFullYear();
+      const currentYear = new Date().getFullYear();
+      const startYear = currentYear - 1;
       const dynamicAnnualYears = buildAnnualYears(startYear);
       setAnnualYears(dynamicAnnualYears);
 

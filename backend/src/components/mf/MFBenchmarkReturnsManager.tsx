@@ -136,10 +136,18 @@ export default function MFBenchmarkReturnsManager() {
   }, [selectedBenchmark, recordsPerPage, setPage]);
 
   const annualYears = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const minYear = currentYear - 9;
     const years = new Set<string>();
     rows.forEach((row) => {
       Object.keys(row?.annual?.yearly_returns || {}).forEach((year) => {
-        if (/^\d{4}$/.test(year)) years.add(year);
+        if (
+          /^\d{4}$/.test(year) &&
+          Number(year) < currentYear &&
+          Number(year) >= minYear
+        ) {
+          years.add(year);
+        }
       });
     });
     return [...years].sort((a, b) => Number(b) - Number(a));

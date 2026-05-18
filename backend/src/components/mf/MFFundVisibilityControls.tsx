@@ -11,9 +11,9 @@ export const MF_FUND_VISIBILITY_GROUPS = [
 ] as const;
 
 const PERFORMANCE_ANNUAL_FIELDS = (() => {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear() - 1;
   const fields: string[] = [];
-  for (let year = currentYear; year >= 2016; year -= 1) {
+  for (let year = currentYear; year >= 2017; year -= 1) {
     fields.push(`fund_performance.annual_${year}`);
   }
   return fields;

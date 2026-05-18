@@ -175,3 +175,16 @@ export const deleteCategory = async (req: Request, res: Response) => {
     return sendError(res, error.message || "Failed to delete category", code);
   }
 };
+
+export const recomputeAllCategoryAverages = async (_req: Request, res: Response) => {
+  try {
+    const data = await mfCategoryService.recomputeAllCategoryAverageReturns();
+    return sendSuccess(res, "Category averages recomputed successfully", data);
+  } catch (error: any) {
+    return sendError(
+      res,
+      error.message || "Failed to recompute category averages",
+      500,
+    );
+  }
+};

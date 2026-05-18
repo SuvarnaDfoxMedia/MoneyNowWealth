@@ -28,6 +28,10 @@ import {
   toDateOrNull,
   toNumberOrNull,
 } from "./mfUtils";
+
+const EXPORT_ANNUAL_YEARS = MF_ANNUAL_YEARS.filter(
+  (year) => Number(year) < new Date().getFullYear(),
+).slice(0, 9);
 import { recomputeCategoryAverageReturns } from "./mfCategoryService";
 
 const XLSXModule: any = (XLSX as any).default || XLSX;
@@ -2387,12 +2391,21 @@ const exportCategoryRows = async () => {
     .lean();
 
   const yearSet = new Set<string>();
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 9;
   for (const item of items as any[]) {
     const years = Object.keys(item?.category_returns?.annual?.yearly_returns || {});
-    years.filter((year) => /^\d{4}$/.test(year)).forEach((year) => yearSet.add(year));
+    years
+      .filter(
+        (year) =>
+          /^\d{4}$/.test(year) &&
+          Number(year) < currentYear &&
+          Number(year) >= minYear,
+      )
+      .forEach((year) => yearSet.add(year));
   }
   if (yearSet.size === 0) {
-    MF_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
+    EXPORT_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
   }
   const annualYears = [...yearSet].sort((a, b) => Number(b) - Number(a));
 
@@ -2517,12 +2530,21 @@ const exportBenchmarkReturnRows = async () => {
     .sort({ date: -1 })
     .lean();
   const yearSet = new Set<string>();
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 9;
   for (const item of items as any[]) {
     const years = Object.keys(item?.annual?.yearly_returns || item?.annual || {});
-    years.filter((year) => /^\d{4}$/.test(year)).forEach((year) => yearSet.add(year));
+    years
+      .filter(
+        (year) =>
+          /^\d{4}$/.test(year) &&
+          Number(year) < currentYear &&
+          Number(year) >= minYear,
+      )
+      .forEach((year) => yearSet.add(year));
   }
   if (yearSet.size === 0) {
-    MF_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
+    EXPORT_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
   }
   const dynamicYears = [...yearSet].sort((a, b) => Number(b) - Number(a));
   const headers = [...BENCHMARK_RETURN_FIXED_HEADERS, ...dynamicYears.map((year) => `bench_${year}`)];
@@ -2553,14 +2575,17 @@ const exportBenchmarkReturnRows = async () => {
 
 const resolveFundAnnualYearsForExport = (items: any[]) => {
   const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 9;
   const importedYears = items.flatMap((item) =>
     Object.keys(item?.returns?.annual?.yearly_returns || item?.returns?.annual || {})
       .filter((year) => /^\d{4}$/.test(year))
       .map((year) => Number(year))
-      .filter((year) => Number.isFinite(year)),
+      .filter(
+        (year) => Number.isFinite(year) && year < currentYear && year >= minYear,
+      ),
   );
-  const startYear = importedYears.length > 0 ? Math.max(...importedYears) : currentYear;
-  return Array.from({ length: 10 }, (_, index) => String(startYear - index));
+  const startYear = importedYears.length > 0 ? Math.max(...importedYears) : currentYear - 1;
+  return Array.from({ length: 9 }, (_, index) => String(startYear - index));
 };
 
 const buildFundHeaders = (annualYears: string[]) => [
@@ -2625,7 +2650,7 @@ const buildFundHeaders = (annualYears: string[]) => [
   "is_active",
 ];
 
-const exportFundRows = async (onlyPopular = false, annualYears: string[] = MF_ANNUAL_YEARS) => {
+const exportFundRows = async (onlyPopular = false, annualYears: string[] = EXPORT_ANNUAL_YEARS) => {
   const filter: Record<string, unknown> = { is_deleted: false };
   if (onlyPopular) filter.is_popular = true;
 
@@ -2955,7 +2980,7 @@ export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) =>
     const allFundItems = includeRows
       ? await MFFund.find({ is_deleted: false }).select("returns.annual").lean()
       : [];
-    const annualYears = includeRows ? resolveFundAnnualYearsForExport(allFundItems as any[]) : MF_ANNUAL_YEARS;
+    const annualYears = includeRows ? resolveFundAnnualYearsForExport(allFundItems as any[]) : EXPORT_ANNUAL_YEARS;
     const fundHeaders = buildFundHeaders(annualYears);
     appendSheet(workbook, "Main_Categories", await maybeRows(exportMainCategoriesRows), MAIN_CATEGORY_HEADERS);
     const categoryExport = includeRows
@@ -2980,7 +3005,7 @@ export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) =>
     const allFundItems = includeRows
       ? await MFFund.find({ is_deleted: false }).select("returns.annual").lean()
       : [];
-    const annualYears = includeRows ? resolveFundAnnualYearsForExport(allFundItems as any[]) : MF_ANNUAL_YEARS;
+    const annualYears = includeRows ? resolveFundAnnualYearsForExport(allFundItems as any[]) : EXPORT_ANNUAL_YEARS;
     const fundHeaders = buildFundHeaders(annualYears);
     appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true, annualYears)), fundHeaders);
     appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false, annualYears)), fundHeaders);

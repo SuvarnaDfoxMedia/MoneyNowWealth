@@ -42,7 +42,11 @@ export const getArticles = async (query: any) => {
   const sortConfig: Record<string, 1 | -1> = {};
   if (sortField) {
     sortConfig[sortField] = sortOrder === "desc" ? -1 : 1;
+    if (sortField !== "created_at") {
+      sortConfig.created_at = -1;
+    }
   } else {
+    sortConfig.publish_date = -1;
     sortConfig.created_at = -1;
   }
 

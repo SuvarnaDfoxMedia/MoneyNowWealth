@@ -9,6 +9,7 @@ import {
   getCategoryByIdentifier,
   getMainCategories,
   getMainCategoryById,
+  recomputeAllCategoryAverages,
   toggleCategoryStatus,
   toggleMainCategoryStatus,
   updateCategory,
@@ -222,6 +223,11 @@ router.put(
   updateCategoryValidators,
   handleValidationErrors,
   updateCategory,
+);
+router.post(
+  "/:role/mf/categories/recompute-averages",
+  ...adminEditorMiddleware,
+  recomputeAllCategoryAverages,
 );
 router.delete("/:role/mf/categories/:id", ...adminEditorMiddleware, deleteCategory);
 

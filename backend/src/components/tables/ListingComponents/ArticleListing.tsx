@@ -96,6 +96,13 @@ export default function ArticleListing() {
     setPage,
   ]);
 
+  useEffect(() => {
+    if (!isMounted) return;
+    if (!sortField) {
+      setSort("publish_date", "desc");
+    }
+  }, [isMounted, sortField, setSort]);
+
   /* ------------------- Fetch Data ------------------- */
   const { data, isLoading, deleteRecord, toggleStatus, refetch, extractList } =
     useCommonCrud<Article>({

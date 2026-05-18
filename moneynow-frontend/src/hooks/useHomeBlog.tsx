@@ -110,15 +110,25 @@ export const useFetchCards = (
                 .join(" ") + "..."
             : "";
 
+          const articlePublishDate = article.publish_date
+            ? new Date(article.publish_date).getTime()
+            : 0;
+          const topicPublishDate = article.topic?.publish_date
+            ? new Date(article.topic.publish_date).getTime()
+            : 0;
+          const effectivePublishedAt =
+            articlePublishDate >= topicPublishDate
+              ? article.publish_date
+              : article.topic?.publish_date;
+
           return {
             slug: article.slug,
             imageSrc,
             category: article.cluster?.title || article.topic?.title || "General",
-            title: article.topic?.title || article.title,
+            title: article.title || article.topic?.title || "Untitled",
             description,
             published_at:
-              article.topic?.publish_date ||
-              article.publish_date ||
+              effectivePublishedAt ||
               article.created_at ||
               "",
             author: article.author || "Team Money Now",

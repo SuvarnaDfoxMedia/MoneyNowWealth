@@ -7,6 +7,18 @@ const formatReturn = (value?: number | null) =>
   value === null || value === undefined ? "-" : `${value}`;
 const formatAmount = (value?: number | null) =>
   value === null || value === undefined ? "-" : `Rs ${Number(value).toLocaleString("en-IN")}`;
+const getTrailingReturn = (
+  fund: {
+    returns?: {
+      trailing?: Record<string, number | null>;
+      y3_cagr?: number | null;
+      y5_cagr?: number | null;
+      y10_cagr?: number | null;
+    };
+  },
+  key: "3y" | "5y" | "10y",
+  legacyKey: "y3_cagr" | "y5_cagr" | "y10_cagr",
+) => fund.returns?.trailing?.[key] ?? fund.returns?.[legacyKey];
 
 export default function PopularFundsPage() {
   const { popularFunds, loading, error } = usePopularFunds({ limit: 20 });
@@ -60,13 +72,13 @@ export default function PopularFundsPage() {
                     {formatAmount(fund.min_sip_investment ?? fund.min_investment)}
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
-                    {formatReturn(fund.returns?.y3_cagr)}
+                    {formatReturn(getTrailingReturn(fund, "3y", "y3_cagr"))}
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057] border-r border-[#E4E4E4]">
-                    {formatReturn(fund.returns?.y5_cagr)}
+                    {formatReturn(getTrailingReturn(fund, "5y", "y5_cagr"))}
                   </td>
                   <td className="px-5 py-2 text-[13px] text-center text-[#495057]">
-                    {formatReturn(fund.returns?.y10_cagr)}
+                    {formatReturn(getTrailingReturn(fund, "10y", "y10_cagr"))}
                   </td>
                 </tr>
               ))

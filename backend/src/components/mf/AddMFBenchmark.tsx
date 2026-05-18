@@ -22,7 +22,7 @@ import { FiCalendar } from "react-icons/fi";
 
 const defaultAnnualYears = () => {
   const years: string[] = [];
-  const current = new Date().getFullYear();
+  const current = new Date().getFullYear() - 1;
   for (let year = current; year >= 2017; year -= 1) years.push(String(year));
   return years;
 };
@@ -72,7 +72,10 @@ export default function AddMFBenchmark() {
         const returnsRes: any = await axiosApi.get(`/${role}/mf/benchmark-returns/${benchmarkId}`);
         const latest = Array.isArray(returnsRes?.data) ? returnsRes.data[0] : null;
         if (latest) {
-          const incomingYears = Object.keys(latest?.annual?.yearly_returns || latest?.annual || {}).filter((year) => /^\d{4}$/.test(year));
+          const currentYear = new Date().getFullYear();
+          const minYear = currentYear - 9;
+          const incomingYears = Object.keys(latest?.annual?.yearly_returns || latest?.annual || {})
+            .filter((year) => /^\d{4}$/.test(year) && Number(year) < currentYear && Number(year) >= minYear);
           const mergedYears = [...new Set([...incomingYears, ...defaultAnnualYears()])].sort((a, b) => Number(b) - Number(a));
           setAnnualYears(mergedYears);
           setReturnsForm({
