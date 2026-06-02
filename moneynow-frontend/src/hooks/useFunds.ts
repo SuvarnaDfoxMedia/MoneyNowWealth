@@ -6,6 +6,7 @@ export interface MFFundRow {
   scheme_code?: string;
   fund_name: string;
   returns?: {
+    trailing?: Record<string, number | null>;
     d1?: number | null;
     m1?: number | null;
     m3?: number | null;

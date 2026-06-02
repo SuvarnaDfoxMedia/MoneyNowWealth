@@ -451,8 +451,8 @@ export const getAllClustersFirstTopicWithArticle = async (
 
       {
         $sort: {
-          "topic.article.created_at": -1,
           "topic.article.publish_date": -1,
+          "topic.article.created_at": -1,
         },
       },
 

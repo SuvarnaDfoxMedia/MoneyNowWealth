@@ -49,6 +49,7 @@ export interface IMFTopHolding extends Document {
   tax_type?: string;
   riskometer_label?: string;
   top_holdings_summary?: string[];
+  security_type_counts?: Record<string, number>;
   holdings: IMFTopHoldingEntry[];
   holdings_count: number;
   is_latest: boolean;
@@ -99,6 +100,11 @@ const mfTopHoldingSchema = new Schema<IMFTopHolding>(
     tax_type: { type: String, trim: true, default: "" },
     riskometer_label: { type: String, trim: true, default: "" },
     top_holdings_summary: [{ type: String, trim: true }],
+    security_type_counts: {
+      type: Map,
+      of: Number,
+      default: () => ({}),
+    },
     holdings: { type: [topHoldingEntrySchema], default: [] },
     holdings_count: { type: Number, default: 0, index: true },
     is_latest: { type: Boolean, default: false, index: true },

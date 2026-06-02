@@ -55,6 +55,13 @@ export type UploadReport = {
   updated: number;
   skipped: number;
   rejected: number;
+  totalRows?: number;
+  validRows?: number;
+  skippedRows?: Array<{
+    row: number;
+    reason: string;
+    identifier?: string;
+  }>;
   errors: Array<{
     row: number;
     message: string;

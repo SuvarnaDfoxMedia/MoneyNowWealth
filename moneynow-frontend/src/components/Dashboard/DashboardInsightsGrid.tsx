@@ -31,7 +31,7 @@ export default function DashboardInsightsGrid() {
       iconColor: "text-[#7C3AED]",
       badgeStyle: "bg-[#F3EEFF] text-[#7C3AED]",
       bulletColor: "bg-[#7C3AED]",
-      glowColor: "#7C3AED", 
+      glowColor: "#7C3AED",
       cta: "View all insights",
       ctaColor: "text-[#7C3AED]",
       items: [
@@ -53,7 +53,12 @@ export default function DashboardInsightsGrid() {
       glowColor: "#16A34A",
       cta: "Open Calculators",
       ctaColor: "text-[#16A34A]",
-      items: ["SIP Calculator", "Goal Calculator", "Retirement Calculator", "Lumpsum Calculator"],
+      items: [
+        "SIP Calculator",
+        "Goal Calculator",
+        "Retirement Calculator",
+        "Lumpsum Calculator",
+      ],
     },
     {
       id: "research",
@@ -88,12 +93,16 @@ export default function DashboardInsightsGrid() {
       glowColor: "#F97316",
       cta: "Open Toolkit",
       ctaColor: "text-[#F97316]",
-      items: ["SIP Tracker", "Goal Planner", "Risk Profiler", "Asset Allocation Guide"],
+      items: [
+        "SIP Tracker",
+        "Goal Planner",
+        "Risk Profiler",
+        "Asset Allocation Guide",
+      ],
     },
   ];
 
-
-const getGlowStyle = (hexColor: string) => ({
+  const getGlowStyle = (hexColor: string) => ({
     background: `linear-gradient(
       90deg, 
       transparent 0%, 

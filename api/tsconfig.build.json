@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/index.ts",
+    "src/config/**/*.ts",
+    "src/controllers/**/*.ts",
+    "src/cron/**/*.ts",
+    "src/db/**/*.ts",
+    "src/emails/**/*.ts",
+    "src/middlewares/**/*.ts",
+    "src/models/**/*.ts",
+    "src/plugins/**/*.ts",
+    "src/routes/**/*.ts",
+    "src/services/**/*.ts",
+    "src/types/**/*.ts",
+    "src/utils/**/*.ts",
+    "src/validations/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/utils/uploadFile.ts"
+  ]
+}

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useFetchCards, CardData } from "@/hooks/useHomeBlog";
+import { usePathname } from "next/navigation";
 
 const ResearchDesk = () => {
   const { cards, loading, error } = useFetchCards(
@@ -14,6 +15,8 @@ const ResearchDesk = () => {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCards, setVisibleCards] = useState(3);
+  const pathname = usePathname();
+  const blogBasePath = pathname.startsWith("/user/") ? "/user/blog" : "/blog";
 
   /* ---------------- Responsive visible cards ---------------- */
   useEffect(() => {
@@ -69,7 +72,7 @@ const ResearchDesk = () => {
                   style={{ width: `${100 / visibleCards}%` }}
                 >
                   {/* CLICKABLE CARD */}
-                  <Link href={`/blog/${slug}`} className="block group">
+                  <Link href={`${blogBasePath}/${slug}`} className="block group">
                     {item.imageSrc && (
                       <div className="relative w-full h-[250px] mb-[20px] rounded-[10px] overflow-hidden">
                         <Image

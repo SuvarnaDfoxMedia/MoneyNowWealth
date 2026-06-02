@@ -24,14 +24,16 @@ export default function DashboardSidebar() {
   className="flex h-[60px] items-center px-[22px]"
   style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
 >
-  <Image
-    src="/images/moneynow-white-logo.png"
-    alt="MoneyNow Logo"
-    width={180}
-    height={40}
-    className="object-contain"
-    priority
-  />
+  <Link href="/" aria-label="Go to home page">
+    <Image
+      src="/images/moneynow-white-logo.png"
+      alt="MoneyNow Logo"
+      width={180}
+      height={40}
+      className="object-contain"
+      priority
+    />
+  </Link>
 </div>
 
     

@@ -41,18 +41,9 @@ const FUND_TRAILING_FIELDS = [
   { key: "since_launch", label: "Since Launch" },
 ] as const;
 
-const ANNUAL_YEARS = [
-  "2025",
-  "2024",
-  "2023",
-  "2022",
-  "2021",
-  "2020",
-  "2019",
-  "2018",
-  "2017",
-  "2016",
-] as const;
+const buildAnnualYears = (startYear: number) =>
+  Array.from({ length: 9 }, (_, index) => String(startYear - index));
+const DEFAULT_ANNUAL_YEARS = buildAnnualYears(new Date().getFullYear() - 1);
 
 const emptyMap = <T extends readonly string[]>(keys: T) =>
   Object.fromEntries(keys.map((key) => [key, ""])) as Record<T[number], string>;
@@ -78,7 +69,7 @@ const emptyForm = () => ({
       (field) => field.key,
     ) as unknown as readonly string[],
   ),
-  returnsAnnual: emptyMap(ANNUAL_YEARS),
+  returnsAnnual: emptyMap(DEFAULT_ANNUAL_YEARS),
   sharpe_3y: "",
   sharpe_5y: "",
   std_dev_3y: "",
@@ -92,7 +83,6 @@ const emptyForm = () => ({
   turnover_ratio: "",
   fund_manager: "",
   launch_date: null as Date | null,
-  benchmark_id: "",
   min_investment: "",
   sip_allowed: true,
   min_sip_investment: "",
@@ -133,11 +123,6 @@ type AmcOption = {
   _id: string;
   name: string;
 };
-type BenchmarkOption = {
-  _id: string;
-  name: string;
-  category?: string;
-};
 
 const toNumberOrNull = (value: string) => (value === "" ? null : Number(value));
 
@@ -165,24 +150,21 @@ export default function AddMFFund() {
   const { formRef, scrollToFirstError } = useScrollToFirstError();
 
   const [form, setForm] = useState<FundFormState>(emptyForm);
+  const [annualYears, setAnnualYears] = useState<string[]>(DEFAULT_ANNUAL_YEARS);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [amcOptions, setAmcOptions] = useState<AmcOption[]>([]);
   const [amcDropdownOpen, setAmcDropdownOpen] = useState(false);
   const [amcSearch, setAmcSearch] = useState("");
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
-  const [benchmarkOptions, setBenchmarkOptions] = useState<BenchmarkOption[]>([]);
-  const [benchmarkDropdownOpen, setBenchmarkDropdownOpen] = useState(false);
-  const [benchmarkSearch, setBenchmarkSearch] = useState("");
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const amcWrapperRef = useRef<HTMLDivElement>(null);
   const categoryWrapperRef = useRef<HTMLDivElement>(null);
-  const benchmarkWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
-      const [categoryRes, amcRes, benchmarkRes] = await Promise.all([
+      const [categoryRes, amcRes] = await Promise.all([
         axiosApi.get(`/${role}/mf/categories`, {
           limit: 5000,
           page: 1,
@@ -195,20 +177,11 @@ export default function AddMFFund() {
           sortBy: "name",
           sortOrder: "asc",
         }),
-        axiosApi.get(`/${role}/mf/benchmarks`, {
-          limit: 5000,
-          page: 1,
-          sortBy: "name",
-          sortOrder: "asc",
-        }),
       ]);
       setCategoryOptions(
         Array.isArray(categoryRes?.data) ? categoryRes.data : [],
       );
       setAmcOptions(Array.isArray(amcRes?.data) ? amcRes.data : []);
-      setBenchmarkOptions(
-        Array.isArray(benchmarkRes?.data) ? benchmarkRes.data : [],
-      );
     })();
   }, [role]);
 
@@ -218,6 +191,16 @@ export default function AddMFFund() {
     (async () => {
       const res: any = await getOne(id);
       const fund = res?.data || {};
+      const importedYears = Object.keys(
+        fund?.returns?.annual?.yearly_returns || fund?.returns?.annual || {},
+      )
+        .filter((year) => /^\d{4}$/.test(year))
+        .map((year) => Number(year))
+        .filter((year) => Number.isFinite(year));
+      const currentYear = new Date().getFullYear();
+      const startYear = currentYear - 1;
+      const dynamicAnnualYears = buildAnnualYears(startYear);
+      setAnnualYears(dynamicAnnualYears);
 
       setForm({
         scheme_code: fund.scheme_code || "",
@@ -269,9 +252,9 @@ export default function AddMFFund() {
           ),
         },
         returnsAnnual: {
-          ...emptyMap(ANNUAL_YEARS),
+          ...emptyMap(dynamicAnnualYears),
           ...Object.fromEntries(
-            ANNUAL_YEARS.map((year) => [
+            dynamicAnnualYears.map((year) => [
               year,
               fund.returns?.annual?.yearly_returns?.[year]?.toString?.() ||
                 fund.returns?.annual?.[year]?.toString?.() ||
@@ -293,7 +276,6 @@ export default function AddMFFund() {
         turnover_ratio: fund.risk_metrics?.turnover_ratio?.toString?.() || "",
         fund_manager: fund.fund_manager || "",
         launch_date: fund.launch_date ? new Date(fund.launch_date) : null,
-        benchmark_id: fund.benchmark?._id || fund.benchmark_id || "",
         min_investment: fund.min_investment?.toString?.() || "",
         sip_allowed: fund.sip_allowed ?? true,
         min_sip_investment: fund.min_sip_investment?.toString?.() || "",
@@ -326,6 +308,11 @@ export default function AddMFFund() {
   }, [getOne, id]);
 
   useEffect(() => {
+    if (id) return;
+    setAnnualYears(DEFAULT_ANNUAL_YEARS);
+  }, [id]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         amcWrapperRef.current &&
@@ -340,13 +327,6 @@ export default function AddMFFund() {
       ) {
         setCategoryDropdownOpen(false);
         setCategorySearch("");
-      }
-      if (
-        benchmarkWrapperRef.current &&
-        !benchmarkWrapperRef.current.contains(event.target as Node)
-      ) {
-        setBenchmarkDropdownOpen(false);
-        setBenchmarkSearch("");
       }
     };
 
@@ -368,13 +348,6 @@ export default function AddMFFund() {
         option.name.toLowerCase().includes(amcSearch.toLowerCase()),
       ),
     [amcOptions, amcSearch],
-  );
-  const filteredBenchmarks = useMemo(
-    () =>
-      benchmarkOptions.filter((option) =>
-        option.name.toLowerCase().includes(benchmarkSearch.toLowerCase()),
-      ),
-    [benchmarkOptions, benchmarkSearch],
   );
 
   const selectedCategory = useMemo(
@@ -505,7 +478,7 @@ export default function AddMFFund() {
     }
 
 
-    for (const year of ANNUAL_YEARS) {
+    for (const year of annualYears) {
       const fundAnnualError = validateNumber(form.returnsAnnual[year], year);
       if (fundAnnualError)
         nextErrors[`returnsAnnual.${year}`] = fundAnnualError;
@@ -619,7 +592,6 @@ export default function AddMFFund() {
       },
       fund_manager: form.fund_manager.trim(),
       launch_date: form.launch_date ? form.launch_date.toISOString() : null,
-      benchmark_id: form.benchmark_id || null,
       min_investment: toNumberOrNull(form.min_investment),
       sip_allowed: form.sip_allowed,
       min_sip_investment: form.sip_allowed
@@ -953,75 +925,6 @@ export default function AddMFFund() {
               />
             </div>
 
-            <div ref={benchmarkWrapperRef} className="relative">
-              {renderFieldLabel("Benchmark", "fund_overview.benchmark_id")}
-              <div
-                onClick={() => {
-                  if (!isViewMode) setBenchmarkDropdownOpen((prev) => !prev);
-                }}
-                className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-md border px-3 ${
-                  errors.benchmark_id ? "border-red-500" : "border-gray-300"
-                }`}
-              >
-                <span>
-                  {benchmarkOptions.find((item) => item._id === form.benchmark_id)
-                    ?.name || "Select Benchmark"}
-                </span>
-                <svg
-                  className={`h-4 w-4 transform transition-transform ${
-                    benchmarkDropdownOpen ? "rotate-180" : "rotate-0"
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-              {error(errors.benchmark_id)}
-              {benchmarkDropdownOpen ? (
-                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
-                  <div className="relative border-b border-gray-200">
-                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search benchmark..."
-                      value={benchmarkSearch}
-                      onChange={(event) => setBenchmarkSearch(event.target.value)}
-                      className="h-11 w-full rounded-none border-0 pl-9 pr-3 focus:outline-none"
-                    />
-                  </div>
-                  {filteredBenchmarks.map((option) => (
-                    <div
-                      key={option._id}
-                      onClick={() => {
-                        setForm((prev) => ({ ...prev, benchmark_id: option._id }));
-                        setErrors((prev) => ({ ...prev, benchmark_id: "" }));
-                        setBenchmarkDropdownOpen(false);
-                        setBenchmarkSearch("");
-                      }}
-                      className={`cursor-pointer p-2 hover:bg-blue-100 ${
-                        form.benchmark_id === option._id
-                          ? "bg-blue-50 font-medium"
-                          : ""
-                      }`}
-                    >
-                      {option.name}
-                      {option.category ? ` (${option.category})` : ""}
-                    </div>
-                  ))}
-                  {filteredBenchmarks.length === 0 ? (
-                    <p className="p-2 text-sm text-gray-400">No Benchmark found.</p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
             <div>
               {renderFieldLabel("Plan Type", "fund_overview.plan_type")}
               <select
@@ -1206,11 +1109,6 @@ export default function AddMFFund() {
               "1 Day",
               "fund_performance.return_1d",
             )}
-            {renderInputField(
-              "return_ytd",
-              "YTD",
-              "fund_performance.return_ytd",
-            )}
             {FUND_TRAILING_FIELDS.map((field) => (
               <div key={field.key}>
                 {renderFieldLabel(field.label, `fund_performance.${field.key}`)}
@@ -1229,13 +1127,18 @@ export default function AddMFFund() {
                 {error(errors[`returnsTrailing.${field.key}`])}
               </div>
             ))}
+            {renderInputField(
+              "return_ytd",
+              "YTD",
+              "fund_performance.return_ytd",
+            )}
           </div>
 
           <h4 className="mb-4 mt-6 font-semibold text-gray-700">
             Annual Returns
           </h4>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {ANNUAL_YEARS.map((year) => (
+            {annualYears.map((year) => (
               <div key={year}>
                 {renderFieldLabel(year, `fund_performance.annual_${year}`)}
                 <input
@@ -1253,7 +1156,7 @@ export default function AddMFFund() {
         </section>
 
         <section>
-          {renderSectionTitle("allocation", "Allocation")}
+          {renderSectionTitle("asset_allocation", "Asset Allocation")}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
               ["domestic_equity_pct", "Domestic Equity %"],
@@ -1262,14 +1165,62 @@ export default function AddMFFund() {
               ["other_pct", "Other %"],
               ["gold_pct", "Gold %"],
               ["cash_pct", "Cash %"],
+            ].map(([key, label]) => (
+              <div key={key}>
+                {renderFieldLabel(label, `asset_allocation.${key}`)}
+                <input
+                  className={inputClass(errors[key])}
+                  disabled={isViewMode}
+                  value={String(form[key as keyof FundFormState] ?? "")}
+                  onChange={(event) =>
+                    setField(
+                      key as keyof FundFormState,
+                      event.target.value as never,
+                    )
+                  }
+                />
+                {error(errors[key])}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          {renderSectionTitle("equity_allocation", "Equity Allocation")}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
               ["large_cap_pct", "Large Cap %"],
               ["mid_cap_pct", "Mid Cap %"],
               ["small_cap_pct", "Small Cap %"],
-              ["tax_type", "Tax Type"],
-              ["riskometer_label", "Riskometer Label"],
             ].map(([key, label]) => (
               <div key={key}>
-                {renderFieldLabel(label, `allocation.${key}`)}
+                {renderFieldLabel(label, `equity_allocation.${key}`)}
+                <input
+                  className={inputClass(errors[key])}
+                  disabled={isViewMode}
+                  value={String(form[key as keyof FundFormState] ?? "")}
+                  onChange={(event) =>
+                    setField(
+                      key as keyof FundFormState,
+                      event.target.value as never,
+                    )
+                  }
+                />
+                {error(errors[key])}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          {renderSectionTitle("fund_overview_risk", "Fund Overview and Risk")}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["tax_type", "Tax Type"],
+              ["riskometer_label", "Risk-o-meter"],
+            ].map(([key, label]) => (
+              <div key={key}>
+                {renderFieldLabel(label, `fund_overview_risk.${key}`)}
                 <input
                   className={inputClass(errors[key])}
                   disabled={isViewMode}

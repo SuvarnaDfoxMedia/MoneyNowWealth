@@ -32,11 +32,18 @@ interface ApiFund {
   fund_name: string;
   is_featured?: boolean;
   returns?: {
+    trailing?: Record<string, number | null>;
     y3_cagr?: number | null;
     y5_cagr?: number | null;
     y10_cagr?: number | null;
   };
 }
+
+const getTrailingReturn = (
+  returns: ApiFund["returns"] | undefined,
+  key: "3y" | "5y" | "10y",
+  legacyKey: "y3_cagr" | "y5_cagr" | "y10_cagr",
+) => returns?.trailing?.[key] ?? returns?.[legacyKey] ?? null;
 
 const mapMainCategoryName = (name: string) => {
   const normalized = name.trim();
@@ -190,9 +197,9 @@ export const useFetchMFData = (
 
         const mappedFunds: FundData[] = funds.map((s) => ({
           name: s.fund_name,
-          y3: s.returns?.y3_cagr?.toString?.() || "-",
-          y5: s.returns?.y5_cagr?.toString?.() || "-",
-          y10: s.returns?.y10_cagr?.toString?.() || "-",
+          y3: getTrailingReturn(s.returns, "3y", "y3_cagr")?.toString?.() || "-",
+          y5: getTrailingReturn(s.returns, "5y", "y5_cagr")?.toString?.() || "-",
+          y10: getTrailingReturn(s.returns, "10y", "y10_cagr")?.toString?.() || "-",
           is_featured: !!s.is_featured,
         }));
 

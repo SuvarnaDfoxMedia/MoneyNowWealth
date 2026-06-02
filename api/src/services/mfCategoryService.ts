@@ -1,11 +1,10 @@
 import MFMainCategory, { IMFMainCategory } from "../models/mfMainCategoryModel";
 import MFCategory, { IMFCategory } from "../models/mfCategoryModel";
 import MFFund from "../models/mfFundModel";
+import mongoose from "mongoose";
 import {
   buildNumericObject,
   buildSort,
-  CATEGORY_TRAILING_KEYS,
-  FUND_RETURN_KEYS,
   mapToPlainObject,
   normalizeYearValueMap,
   parsePagination,
@@ -40,45 +39,60 @@ const normalizeCategoryReturns = (value: any) => ({
   },
 });
 
-const fundReturnToCategoryKey: Record<string, string> = {
-  w1: "w1",
-  m1: "m1",
-  m3: "m3",
-  m6: "m6",
-  y1: "y1",
-  y3_cagr: "y3",
-  y5_cagr: "y5",
-  y10_cagr: "y10",
-  ytd: "ytd",
-};
-
 export const recomputeCategoryAverageReturns = async (categoryId: string) => {
   const funds = await MFFund.find({
     category_id: categoryId,
     is_deleted: false,
-    is_active: 1,
+    is_active: { $in: [1, true] },
   })
     .select("returns")
     .lean();
 
+  const trailingFieldMap: Array<{
+    key: "1w" | "1m" | "3m" | "6m" | "1y" | "3y" | "5y" | "10y" | "since_launch";
+    fallback: string;
+  }> = [
+    { key: "1w", fallback: "w1" },
+    { key: "1m", fallback: "m1" },
+    { key: "3m", fallback: "m3" },
+    { key: "6m", fallback: "m6" },
+    { key: "1y", fallback: "y1" },
+    { key: "3y", fallback: "y3_cagr" },
+    { key: "5y", fallback: "y5_cagr" },
+    { key: "10y", fallback: "y10_cagr" },
+    { key: "since_launch", fallback: "since_inception" },
+  ];
+
   const sums: Record<string, number> = {};
   const counts: Record<string, number> = {};
+  let ytdSum = 0;
+  let ytdCount = 0;
   const annualSums: Record<string, number> = {};
   const annualCounts: Record<string, number> = {};
+  const currentYear = new Date().getFullYear();
 
   for (const fund of funds as any[]) {
     const returns = fund?.returns || {};
-    for (const fundKey of FUND_RETURN_KEYS) {
-      const categoryKey = fundReturnToCategoryKey[fundKey];
-      if (!categoryKey) continue;
-      const value = toNumberOrNull(returns[fundKey]);
+    for (const field of trailingFieldMap) {
+      const value = toNumberOrNull(
+        returns?.trailing?.[field.key] ?? returns?.[field.fallback],
+      );
       if (value === null) continue;
-      sums[categoryKey] = (sums[categoryKey] || 0) + value;
-      counts[categoryKey] = (counts[categoryKey] || 0) + 1;
+      sums[field.key] = (sums[field.key] || 0) + value;
+      counts[field.key] = (counts[field.key] || 0) + 1;
     }
 
-    const annualReturns = normalizeYearValueMap(returns.annual);
+    const ytdValue = toNumberOrNull(returns?.annual?.ytd ?? returns?.ytd);
+    if (ytdValue !== null) {
+      ytdSum += ytdValue;
+      ytdCount += 1;
+    }
+
+    const annualReturns = normalizeYearValueMap(
+      returns?.annual?.yearly_returns ?? returns?.annual,
+    );
     for (const [year, rawValue] of Object.entries(annualReturns)) {
+      if (!/^\d{4}$/.test(year) || Number(year) >= currentYear) continue;
       const value = toNumberOrNull(rawValue);
       if (value === null) continue;
       annualSums[year] = (annualSums[year] || 0) + value;
@@ -86,24 +100,48 @@ export const recomputeCategoryAverageReturns = async (categoryId: string) => {
     }
   }
 
+  const annualYears = Object.keys(annualSums)
+    .filter((year) => Number(year) >= currentYear - 9)
+    .sort((left, right) => Number(right) - Number(left))
+    .slice(0, 9);
+
   const categoryAverageReturns = {
-    ...Object.fromEntries(
-      CATEGORY_TRAILING_KEYS.map((key) => [
-        key,
-        counts[key] ? sums[key] / counts[key] : null,
-      ]),
-    ),
-    annual: Object.fromEntries(
-      Object.keys(annualSums)
-        .sort((left, right) => Number(right) - Number(left))
-        .map((year) => [year, annualCounts[year] ? annualSums[year] / annualCounts[year] : null]),
-    ),
+    trailing: {
+      "1w": counts["1w"] ? sums["1w"] / counts["1w"] : null,
+      "1m": counts["1m"] ? sums["1m"] / counts["1m"] : null,
+      "3m": counts["3m"] ? sums["3m"] / counts["3m"] : null,
+      "6m": counts["6m"] ? sums["6m"] / counts["6m"] : null,
+      "1y": counts["1y"] ? sums["1y"] / counts["1y"] : null,
+      "3y": counts["3y"] ? sums["3y"] / counts["3y"] : null,
+      "5y": counts["5y"] ? sums["5y"] / counts["5y"] : null,
+      "10y": counts["10y"] ? sums["10y"] / counts["10y"] : null,
+      since_launch: counts["since_launch"]
+        ? sums["since_launch"] / counts["since_launch"]
+        : null,
+    },
+    annual: {
+      ytd: ytdCount > 0 ? ytdSum / ytdCount : null,
+      yearly_returns: Object.fromEntries(
+        annualYears.map((year) => [
+          year,
+          annualCounts[year] ? annualSums[year] / annualCounts[year] : null,
+        ]),
+      ),
+    },
   };
 
   await MFCategory.updateOne(
     { _id: categoryId, is_deleted: false },
     { category_average_returns: categoryAverageReturns },
   );
+};
+
+export const recomputeAllCategoryAverageReturns = async () => {
+  const categories = await MFCategory.find({ is_deleted: false }).select("_id").lean();
+  for (const category of categories as Array<{ _id: any }>) {
+    await recomputeCategoryAverageReturns(String(category._id));
+  }
+  return { recomputed: categories.length };
 };
 
 export const getMainCategories = async (query: any) => {
@@ -222,6 +260,10 @@ export const getCategories = async (query: any) => {
 };
 
 export const getCategoryByIdentifier = async (identifier: string) => {
+  // Keep admin edit view consistent: refresh averages from active funds on read.
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    await recomputeCategoryAverageReturns(identifier);
+  }
   const doc = await MFCategory.findOne({ _id: identifier, is_deleted: false }).populate("main_category_id", "name");
   if (!doc) throw new Error("Category not found");
   return doc;
@@ -247,7 +289,7 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
     main_category_id: mainCategoryId,
     // Legacy short_description support
     description: payload.description || payload.short_description || "",
-    category_average_returns: normalizeCategoryReturns(payload.category_average_returns),
+    category_average_returns: normalizeCategoryReturns({}),
     category_returns: normalizeCategoryReturns(payload.category_returns),
     suggested_use_case_note: payload.suggested_use_case_note || "",
     is_active: payload.is_active ?? 1,
@@ -255,6 +297,7 @@ export const createCategory = async (payload: Partial<IMFCategory> & { main_cate
   });
 
   await doc.save();
+  await recomputeCategoryAverageReturns(String(doc._id));
   return doc;
 };
 
@@ -288,9 +331,6 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
     if (exists) throw new Error("Category already exists");
   }
 
-  if (payload.category_average_returns) {
-    updateData.category_average_returns = normalizeCategoryReturns(payload.category_average_returns);
-  }
   if (payload.category_returns) {
     updateData.category_returns = normalizeCategoryReturns(payload.category_returns);
   }
@@ -305,6 +345,7 @@ export const updateCategory = async (id: string, payload: Partial<IMFCategory> &
 
   const doc = await MFCategory.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   if (!doc) throw new Error("Category not found");
+  await recomputeCategoryAverageReturns(String(doc._id));
   return doc;
 };
 

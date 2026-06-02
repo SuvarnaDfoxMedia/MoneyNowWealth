@@ -48,6 +48,34 @@ const emptyTrailingValues = () =>
     string
   >;
 
+const getLegacyTrailingValue = (source: any, key: string) => {
+  if (!source) return "";
+  if (source?.trailing?.[key] !== undefined && source?.trailing?.[key] !== null) {
+    return source.trailing[key]?.toString?.() || "";
+  }
+  const legacyMap: Record<string, string> = {
+    "1w": "w1",
+    "1m": "m1",
+    "3m": "m3",
+    "6m": "m6",
+    "1y": "y1",
+    "3y": "y3",
+    "5y": "y5",
+    "10y": "y10",
+    since_launch: "since_launch",
+  };
+  const legacyKey = legacyMap[key];
+  return legacyKey ? source?.[legacyKey]?.toString?.() || "" : "";
+};
+
+const getAnnualYearValue = (source: any, year: string) => {
+  const nested = source?.annual?.yearly_returns?.[year];
+  if (nested !== undefined && nested !== null) return nested?.toString?.() || "";
+  const flatAnnual = source?.annual?.[year];
+  if (flatAnnual !== undefined && flatAnnual !== null) return flatAnnual?.toString?.() || "";
+  return "";
+};
+
 export default function AddMFCategory() {
   const { id, role = "admin" } = useParams();
   const navigate = useNavigate();
@@ -81,6 +109,9 @@ export default function AddMFCategory() {
     suggested_use_case_note: "",
     is_active: 1,
   });
+  const [existingCategoryAnnualMap, setExistingCategoryAnnualMap] = useState<
+    Record<string, string>
+  >({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -112,7 +143,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             TRAILING_FIELDS.map((field) => [
               field.key,
-              category.category_returns?.trailing?.[field.key]?.toString?.() || "",
+              getLegacyTrailingValue(category.category_returns, field.key),
             ]),
           ),
         },
@@ -121,7 +152,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             annualYears.map((year) => [
               year,
-              category.category_returns?.annual?.yearly_returns?.[year]?.toString?.() || "",
+              getAnnualYearValue(category.category_returns, year),
             ]),
           ),
         },
@@ -130,7 +161,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             TRAILING_FIELDS.map((field) => [
               field.key,
-              category.category_average_returns?.trailing?.[field.key]?.toString?.() || "",
+              getLegacyTrailingValue(category.category_average_returns, field.key),
             ]),
           ),
         },
@@ -139,8 +170,7 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             annualYears.map((year) => [
               year,
-              category.category_average_returns?.annual?.yearly_returns?.[year]?.toString?.() ||
-                "",
+              getAnnualYearValue(category.category_average_returns, year),
             ]),
           ),
         },
@@ -149,6 +179,13 @@ export default function AddMFCategory() {
         suggested_use_case_note: category.suggested_use_case_note || "",
         is_active: category.is_active ?? 1,
       });
+      setExistingCategoryAnnualMap(
+        Object.fromEntries(
+          Object.entries(
+            category.category_returns?.annual?.yearly_returns || {},
+          ).map(([year, value]) => [year, value?.toString?.() || ""]),
+        ),
+      );
     })();
   }, [annualYears, getOne, id]);
 
@@ -249,17 +286,6 @@ export default function AddMFCategory() {
       }
     }
 
-    for (const field of TRAILING_FIELDS) {
-      const categoryAverageError = validateNumber(
-        form.categoryAverageTrailing[field.key],
-        `Category average ${field.label}`,
-      );
-      if (categoryAverageError) {
-        nextErrors[`categoryAverageTrailing.${field.key}`] =
-          categoryAverageError;
-      }
-    }
-
     for (const year of annualYears) {
       const categoryError = validateNumber(
         form.categoryAnnual[year],
@@ -267,16 +293,6 @@ export default function AddMFCategory() {
       );
       if (categoryError) {
         nextErrors[`categoryAnnual.${year}`] = categoryError;
-      }
-    }
-
-    for (const year of annualYears) {
-      const categoryAverageError = validateNumber(
-        form.categoryAverageAnnual[year],
-        `Category average ${year}`,
-      );
-      if (categoryAverageError) {
-        nextErrors[`categoryAverageAnnual.${year}`] = categoryAverageError;
       }
     }
 
@@ -325,6 +341,10 @@ export default function AddMFCategory() {
     if (!validate()) return;
 
     setSaving(true);
+    const mergedCategoryAnnual = {
+      ...existingCategoryAnnualMap,
+      ...form.categoryAnnual,
+    };
     const payload = {
       name: form.name.trim(),
       main_category_id: form.main_category_id,
@@ -333,14 +353,7 @@ export default function AddMFCategory() {
         trailing: toNumberMap(form.categoryTrailing),
         annual: {
           ytd: null,
-          yearly_returns: toNumberMap(form.categoryAnnual),
-        },
-      },
-      category_average_returns: {
-        trailing: toNumberMap(form.categoryAverageTrailing),
-        annual: {
-          ytd: null,
-          yearly_returns: toNumberMap(form.categoryAverageAnnual),
+          yearly_returns: toNumberMap(mergedCategoryAnnual),
         },
       },
       risk_level: form.risk_level.trim(),
@@ -382,6 +395,7 @@ export default function AddMFCategory() {
       suggested_use_case_note: "",
       is_active: 1,
     });
+    setExistingCategoryAnnualMap({});
     setErrors({});
   };
 
@@ -568,13 +582,7 @@ export default function AddMFCategory() {
                     )}
                     placeholder={field.label}
                     value={form.categoryAverageTrailing[field.key]}
-                    onChange={(event) =>
-                      setNestedNumberField(
-                        "categoryAverageTrailing",
-                        field.key,
-                        event.target.value,
-                      )
-                    }
+                    readOnly
                   />
                   {error(errors[`categoryAverageTrailing.${field.key}`])}
                 </div>
@@ -592,13 +600,7 @@ export default function AddMFCategory() {
                     )}
                     placeholder={year}
                     value={form.categoryAverageAnnual[year]}
-                    onChange={(event) =>
-                      setNestedNumberField(
-                        "categoryAverageAnnual",
-                        year,
-                        event.target.value,
-                      )
-                    }
+                    readOnly
                   />
                   {error(errors[`categoryAverageAnnual.${year}`])}
                 </div>

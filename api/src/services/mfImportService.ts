@@ -28,6 +28,10 @@ import {
   toDateOrNull,
   toNumberOrNull,
 } from "./mfUtils";
+
+const EXPORT_ANNUAL_YEARS = MF_ANNUAL_YEARS.filter(
+  (year) => Number(year) < new Date().getFullYear(),
+).slice(0, 9);
 import { recomputeCategoryAverageReturns } from "./mfCategoryService";
 
 const XLSXModule: any = (XLSX as any).default || XLSX;
@@ -237,17 +241,6 @@ const CATEGORY_HEADERS = [
   "since_launch",
   "category_ytd",
   ...MF_ANNUAL_YEARS.map((year) => `category_${year}`),
-  "category_average_1w",
-  "category_average_1m",
-  "category_average_3m",
-  "category_average_6m",
-  "category_average_1y",
-  "category_average_3y",
-  "category_average_5y",
-  "category_average_10y",
-  "category_average_since_launch",
-  "category_average_ytd",
-  ...MF_ANNUAL_YEARS,
   "risk_level",
   "suggested_use_case",
   "suggested_use_case_note",
@@ -372,6 +365,11 @@ const INDEX_SNAPSHOT_HEADERS = [
   "benchmark_index_name",
   "main_category_name",
   "category_name",
+  "return_1d",
+  "return_1w",
+  "return_1m",
+  "return_3m",
+  "return_6m",
   "return_1y",
   "return_3y",
   "return_5y",
@@ -739,6 +737,23 @@ const parseFundYearlyFromRow = (row: Record<string, unknown>) => {
   const seeded = parseYearValues(row, fundAnnualAliases);
   for (const [year, value] of Object.entries(seeded)) {
     if (out[year] === undefined) out[year] = value;
+  }
+  return out;
+};
+
+const parseCategoryYearlyFromRow = (row: Record<string, unknown>) => {
+  const out: Record<string, number | null> = {};
+  for (const [rawKey, rawValue] of Object.entries(row || {})) {
+    const key = headerKey(rawKey);
+    const prefixedYear = key.match(/^category_(\d{4})(?:_\d+)?$/i);
+    if (prefixedYear) {
+      out[prefixedYear[1]] = parseNumericValue(rawValue);
+      continue;
+    }
+    const plainYear = key.match(/^(\d{4})(?:_\d+)?$/);
+    if (plainYear) {
+      out[plainYear[1]] = parseNumericValue(rawValue);
+    }
   }
   return out;
 };
@@ -1173,6 +1188,13 @@ const importTopHoldingsWorkbook = async (
 
       if (duplicate) {
         section.skipped += 1;
+        addRowSkip(
+          skips,
+          parsed.sheetName,
+          rowNumber,
+          "Duplicate snapshot hash for same scheme and portfolio date",
+          nextData.fund_name,
+        );
         continue;
       }
 
@@ -1215,6 +1237,8 @@ const importTopHoldingsWorkbook = async (
     summary,
     errorCount: errors.length,
     errors: errors.slice(0, 500),
+    skipCount: skips.length,
+    skippedRows: skips.slice(0, 1000),
     previewSheets: [
       {
         sheet: parsed.sheetName,
@@ -1420,38 +1444,12 @@ const upsertCategoryRow = async (
         },
         annual: {
           ytd: parseNumber(row, ["category_ytd", "ytd"]),
-          yearly_returns: parseYearValues(
-            row,
-            Object.fromEntries(
-              MF_ANNUAL_YEARS.map((year) => [year, [`category_${year}`, year]]),
-            ) as Record<string, string[]>,
-          ),
+          yearly_returns: parseCategoryYearlyFromRow(row),
         },
       },
       category_average_returns: {
-        trailing: {
-          "1w": parseNumber(row, ["category_average_1w", "category_trailing_1w", "1_week"]),
-          "1m": parseNumber(row, ["category_average_1m", "category_trailing_1m", "1_month"]),
-          "3m": parseNumber(row, ["category_average_3m", "category_trailing_3m", "3_months"]),
-          "6m": parseNumber(row, ["category_average_6m", "category_trailing_6m", "6_months"]),
-          "1y": parseNumber(row, ["category_average_y1", "category_average_1y", "category_trailing_1y", "1_year"]),
-          "3y": parseNumber(row, ["category_average_y3", "category_average_3y", "category_trailing_3y", "3_years"]),
-          "5y": parseNumber(row, ["category_average_y5", "category_average_5y", "category_trailing_5y", "5_years"]),
-          "10y": parseNumber(row, ["category_average_y10", "category_average_10y", "category_trailing_10y", "10_years"]),
-          since_launch: parseNumber(row, ["category_average_since_launch", "category_average_since_inception"]),
-        },
-        annual: {
-          ytd: parseNumber(row, ["category_average_ytd", "category_ytd", "ytd"]),
-          yearly_returns: parseYearValues(
-            row,
-            Object.fromEntries(
-              MF_ANNUAL_YEARS.map((year) => [
-                year,
-                [`category_average_${year}`, `category_${year}`, year],
-              ]),
-            ) as Record<string, string[]>,
-          ),
-        },
+        trailing: buildNumericObject(CATEGORY_TRAILING_KEYS, {}),
+        annual: { ytd: null, yearly_returns: {} },
       },
       risk_level: String(valueByAliases(row, ["risk_level", "risk"]) || "").trim(),
       suggested_use_case: String(valueByAliases(row, ["suggested_use_case", "use_case"]) || "").trim(),
@@ -2213,6 +2211,11 @@ const upsertIndexSnapshotRow = async (
           { benchmark_id: benchmarkId, date: normalizedDate, is_deleted: false },
           {
             $set: {
+              return_1d: parseNumber(row, ["return_1d", "1d_return", "d1"]),
+              return_1w: parseNumber(row, ["return_1w", "1w_return", "w1"]),
+              return_1m: parseNumber(row, ["return_1m", "1m_return", "m1"]),
+              return_3m: parseNumber(row, ["return_3m", "3m_return", "m3"]),
+              return_6m: parseNumber(row, ["return_6m", "6m_return", "m6"]),
               return_1y: parseNumber(row, ["return_1y", "1y_return", "y1"]),
               return_3y: parseNumber(row, ["return_3y", "3y_return", "y3"]),
               return_5y: parseNumber(row, ["return_5y", "5y_return", "y5"]),
@@ -2240,6 +2243,11 @@ const upsertIndexSnapshotRow = async (
       main_category_id: mainCategory._id,
       category_id: category._id,
       returns: {
+        d1: parseNumber(row, ["return_1d", "1d_return", "d1"]),
+        w1: parseNumber(row, ["return_1w", "1w_return", "w1"]),
+        m1: parseNumber(row, ["return_1m", "1m_return", "m1"]),
+        m3: parseNumber(row, ["return_3m", "3m_return", "m3"]),
+        m6: parseNumber(row, ["return_6m", "6m_return", "m6"]),
         y1: parseNumber(row, ["return_1y", "1y_return", "y1"]),
         y3: parseNumber(row, ["return_3y", "3y_return", "y3"]),
         y5: parseNumber(row, ["return_5y", "5y_return", "y5"]),
@@ -2382,7 +2390,26 @@ const exportCategoryRows = async () => {
     .sort({ name: 1 })
     .lean();
 
-  return items.map((item: any) => [
+  const yearSet = new Set<string>();
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 9;
+  for (const item of items as any[]) {
+    const years = Object.keys(item?.category_returns?.annual?.yearly_returns || {});
+    years
+      .filter(
+        (year) =>
+          /^\d{4}$/.test(year) &&
+          Number(year) < currentYear &&
+          Number(year) >= minYear,
+      )
+      .forEach((year) => yearSet.add(year));
+  }
+  if (yearSet.size === 0) {
+    EXPORT_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
+  }
+  const annualYears = [...yearSet].sort((a, b) => Number(b) - Number(a));
+
+  const rows = items.map((item: any) => [
     prettyText(item.name),
     prettyText(item.main_category_id?.name || ""),
     item.description || "",
@@ -2396,27 +2423,37 @@ const exportCategoryRows = async () => {
     item.category_returns?.trailing?.["10y"] ?? "",
     item.category_returns?.trailing?.since_launch ?? "",
     item.category_returns?.annual?.ytd ?? "",
-    ...MF_ANNUAL_YEARS.map((year) =>
+    ...annualYears.map((year) =>
       mapToPlainYearValue(item.category_returns?.annual?.yearly_returns, year),
-    ),
-    item.category_average_returns?.trailing?.["1w"] ?? "",
-    item.category_average_returns?.trailing?.["1m"] ?? "",
-    item.category_average_returns?.trailing?.["3m"] ?? "",
-    item.category_average_returns?.trailing?.["6m"] ?? "",
-    item.category_average_returns?.trailing?.["1y"] ?? "",
-    item.category_average_returns?.trailing?.["3y"] ?? "",
-    item.category_average_returns?.trailing?.["5y"] ?? "",
-    item.category_average_returns?.trailing?.["10y"] ?? "",
-    item.category_average_returns?.trailing?.since_launch ?? "",
-    item.category_average_returns?.annual?.ytd ?? "",
-    ...MF_ANNUAL_YEARS.map((year) =>
-      mapToPlainYearValue(item.category_average_returns?.annual?.yearly_returns, year),
     ),
     item.risk_level || "",
     item.suggested_use_case || "",
     item.suggested_use_case_note || "",
     item.is_active === 1 ? "Yes" : "No",
   ]);
+
+  const headers = [
+    "category_name",
+    "main_category_name",
+    "description",
+    "category_trailing_1w",
+    "category_trailing_1m",
+    "category_trailing_3m",
+    "category_trailing_6m",
+    "category_trailing_1y",
+    "category_trailing_3y",
+    "category_trailing_5y",
+    "category_trailing_10y",
+    "since_launch",
+    "category_ytd",
+    ...annualYears.map((year) => `category_${year}`),
+    "risk_level",
+    "suggested_use_case",
+    "suggested_use_case_note",
+    "is_active",
+  ];
+
+  return { rows, headers };
 };
 
 const exportAmcRows = async () => {
@@ -2493,12 +2530,21 @@ const exportBenchmarkReturnRows = async () => {
     .sort({ date: -1 })
     .lean();
   const yearSet = new Set<string>();
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 9;
   for (const item of items as any[]) {
     const years = Object.keys(item?.annual?.yearly_returns || item?.annual || {});
-    years.filter((year) => /^\d{4}$/.test(year)).forEach((year) => yearSet.add(year));
+    years
+      .filter(
+        (year) =>
+          /^\d{4}$/.test(year) &&
+          Number(year) < currentYear &&
+          Number(year) >= minYear,
+      )
+      .forEach((year) => yearSet.add(year));
   }
   if (yearSet.size === 0) {
-    MF_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
+    EXPORT_ANNUAL_YEARS.forEach((year) => yearSet.add(year));
   }
   const dynamicYears = [...yearSet].sort((a, b) => Number(b) - Number(a));
   const headers = [...BENCHMARK_RETURN_FIXED_HEADERS, ...dynamicYears.map((year) => `bench_${year}`)];
@@ -2527,7 +2573,84 @@ const exportBenchmarkReturnRows = async () => {
   return { rows, headers };
 };
 
-const exportFundRows = async (onlyPopular = false) => {
+const resolveFundAnnualYearsForExport = (items: any[]) => {
+  const currentYear = new Date().getFullYear();
+  const minYear = currentYear - 9;
+  const importedYears = items.flatMap((item) =>
+    Object.keys(item?.returns?.annual?.yearly_returns || item?.returns?.annual || {})
+      .filter((year) => /^\d{4}$/.test(year))
+      .map((year) => Number(year))
+      .filter(
+        (year) => Number.isFinite(year) && year < currentYear && year >= minYear,
+      ),
+  );
+  const startYear = importedYears.length > 0 ? Math.max(...importedYears) : currentYear - 1;
+  return Array.from({ length: 9 }, (_, index) => String(startYear - index));
+};
+
+const buildFundHeaders = (annualYears: string[]) => [
+  "scheme_code",
+  "isin_number",
+  "fund_name",
+  "amc_name",
+  "category_name",
+  "main_category_name",
+  "plan_type",
+  "option_type",
+  "nav_current",
+  "nav_date",
+  "aum_cr",
+  "expense_ratio",
+  "return_1d",
+  "Fund trailing return_1w",
+  "Fund trailing return_1m",
+  "Fund trailing return_3m",
+  "Fund trailing return_6m",
+  "Fund trailing return_1y",
+  "Fund trailing return_3y",
+  "Fund trailing return_5y",
+  "Fund trailing return_10y",
+  "Fund trailing since_launch",
+  "YTD",
+  ...annualYears,
+  "sharpe_3y",
+  "sharpe_5y",
+  "std_dev_3y",
+  "std_dev_5y",
+  "beta_3y",
+  "beta_5y",
+  "alpha_3y",
+  "alpha_5y",
+  "max_drawdown_5y",
+  "max_drawdown_10y",
+  "turnover_ratio",
+  "fund_manager",
+  "launch_date",
+  "min_investment",
+  "sip_allowed",
+  "min_sip_investment",
+  "lumpsum_allowed",
+  "min_lumpsum_investment",
+  "exit_load",
+  "is_featured",
+  "is_popular",
+  "fund_objective",
+  "investment_strategy",
+  "domestic_equity_pct",
+  "international_equity_pct",
+  "debt_pct",
+  "other_pct",
+  "gold_pct",
+  "cash_pct",
+  "large_cap_pct",
+  "mid_cap_pct",
+  "small_cap_pct",
+  "tax_type",
+  "riskometer_label",
+  "is_active",
+];
+
+const exportFundRows = async (onlyPopular = false, annualYears: string[] = EXPORT_ANNUAL_YEARS) => {
   const filter: Record<string, unknown> = { is_deleted: false };
   if (onlyPopular) filter.is_popular = true;
 
@@ -2566,7 +2689,7 @@ const exportFundRows = async (onlyPopular = false) => {
     item.returns?.trailing?.["10y"] ?? item.returns?.y10_cagr ?? "",
     item.returns?.trailing?.since_launch ?? item.returns?.since_inception ?? "",
     item.returns?.annual?.ytd ?? item.returns?.ytd ?? "",
-    ...MF_ANNUAL_YEARS.map((year) =>
+    ...annualYears.map((year) =>
       mapToPlainYearValue(item.returns?.annual?.yearly_returns || item.returns?.annual, year),
     ),
     item.risk_metrics?.sharpe_3y ?? "",
@@ -2646,6 +2769,11 @@ const exportIndexSnapshotRows = async () => {
     benchmark_index_name: item.benchmark_index_name,
     main_category_name: prettyText(item.main_category_id?.name || ""),
     category_name: prettyText(item.category_id?.name || ""),
+    return_1d: item.returns?.d1 ?? "",
+    return_1w: item.returns?.w1 ?? "",
+    return_1m: item.returns?.m1 ?? "",
+    return_3m: item.returns?.m3 ?? "",
+    return_6m: item.returns?.m6 ?? "",
     return_1y: item.returns?.y1 ?? "",
     return_3y: item.returns?.y3 ?? "",
     return_5y: item.returns?.y5 ?? "",
@@ -2849,22 +2977,38 @@ export const exportMfExcel = async ({ entity, mode = "data" }: ExportOptions) =>
     includeRows ? await loader() : [];
 
   if (entity === "full-workbook") {
+    const allFundItems = includeRows
+      ? await MFFund.find({ is_deleted: false }).select("returns.annual").lean()
+      : [];
+    const annualYears = includeRows ? resolveFundAnnualYearsForExport(allFundItems as any[]) : EXPORT_ANNUAL_YEARS;
+    const fundHeaders = buildFundHeaders(annualYears);
     appendSheet(workbook, "Main_Categories", await maybeRows(exportMainCategoriesRows), MAIN_CATEGORY_HEADERS);
-    appendSheet(workbook, "Categories_Master", await maybeRows(exportCategoryRows), CATEGORY_HEADERS);
+    const categoryExport = includeRows
+      ? await exportCategoryRows()
+      : { rows: [] as Array<Record<string, unknown> | unknown[]>, headers: CATEGORY_HEADERS };
+    appendSheet(workbook, "Categories_Master", categoryExport.rows, categoryExport.headers);
     appendSheet(workbook, "AMCs", await maybeRows(exportAmcRows), AMC_HEADERS);
-    appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true)), FUND_HEADERS);
-    appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false)), FUND_HEADERS);
+    appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true, annualYears)), fundHeaders);
+    appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false, annualYears)), fundHeaders);
     appendSheet(workbook, "NFO_List", await maybeRows(exportNfoRows), NFO_HEADERS);
     appendSheet(workbook, "Index_Data", await maybeRows(exportIndexSnapshotRows), INDEX_SNAPSHOT_HEADERS);
   } else if (entity === "main-categories") {
     appendSheet(workbook, getPrimarySheetName("main-categories"), await maybeRows(exportMainCategoriesRows), MAIN_CATEGORY_HEADERS);
   } else if (entity === "categories") {
-    appendSheet(workbook, getPrimarySheetName("categories"), await maybeRows(exportCategoryRows), CATEGORY_HEADERS);
+    const categoryExport = includeRows
+      ? await exportCategoryRows()
+      : { rows: [] as Array<Record<string, unknown> | unknown[]>, headers: CATEGORY_HEADERS };
+    appendSheet(workbook, getPrimarySheetName("categories"), categoryExport.rows, categoryExport.headers);
   } else if (entity === "amcs") {
     appendSheet(workbook, getPrimarySheetName("amcs"), await maybeRows(exportAmcRows), AMC_HEADERS);
   } else if (entity === "funds") {
-    appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true)), FUND_HEADERS);
-    appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false)), FUND_HEADERS);
+    const allFundItems = includeRows
+      ? await MFFund.find({ is_deleted: false }).select("returns.annual").lean()
+      : [];
+    const annualYears = includeRows ? resolveFundAnnualYearsForExport(allFundItems as any[]) : EXPORT_ANNUAL_YEARS;
+    const fundHeaders = buildFundHeaders(annualYears);
+    appendSheet(workbook, "Popular_Funds", await maybeRows(() => exportFundRows(true, annualYears)), fundHeaders);
+    appendSheet(workbook, "Scheme_Details", await maybeRows(() => exportFundRows(false, annualYears)), fundHeaders);
   } else if (entity === "benchmarks") {
     appendSheet(workbook, getPrimarySheetName("benchmarks"), await maybeRows(exportBenchmarkRows), BENCHMARK_HEADERS);
   } else if (entity === "benchmark-returns") {

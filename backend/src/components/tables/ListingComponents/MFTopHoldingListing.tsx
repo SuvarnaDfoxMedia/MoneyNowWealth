@@ -18,6 +18,8 @@ interface MFTopHoldingRow {
   portfolio_date?: string;
   uploaded_at?: string;
   holdings_count?: number;
+  stock_holdings?: number;
+  bond_holdings?: number;
   top_holdings_summary?: string[];
   assets_top_10_holdings_pct?: number;
   is_active: number;
@@ -127,11 +129,8 @@ export default function MFTopHoldingListing() {
     },
     { key: "fund_name", label: "Fund Name", sortable: true },
     { key: "scheme_code", label: "Scheme Code", sortable: true },
-    {
-      key: "holdings_count",
-      label: "Holdings",
-      render: (row) => row.holdings_count ?? 0,
-    },
+    { key: "stock_holdings", label: "Stock Holdings", render: (row) => row.stock_holdings ?? 0 },
+    { key: "bond_holdings", label: "Bond Holdings", render: (row) => row.bond_holdings ?? 0 },
     {
       key: "summary",
       label: "Top Holdings",

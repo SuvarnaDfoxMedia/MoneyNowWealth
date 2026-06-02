@@ -29,6 +29,11 @@ export default function AddMFIndexSnapshot() {
     benchmark_index_name: "",
     main_category_id: "",
     category_id: "",
+    d1: "",
+    w1: "",
+    m1: "",
+    m3: "",
+    m6: "",
     y1: "",
     y3: "",
     y5: "",
@@ -85,6 +90,11 @@ export default function AddMFIndexSnapshot() {
         main_category_id: d.main_category_id?._id || "",
         category_id: d.category_id?._id || "",
         y1: d.returns?.y1?.toString?.() || "",
+        d1: d.returns?.d1?.toString?.() || "",
+        w1: d.returns?.w1?.toString?.() || "",
+        m1: d.returns?.m1?.toString?.() || "",
+        m3: d.returns?.m3?.toString?.() || "",
+        m6: d.returns?.m6?.toString?.() || "",
         y3: d.returns?.y3?.toString?.() || "",
         y5: d.returns?.y5?.toString?.() || "",
         y10: d.returns?.y10?.toString?.() || "",
@@ -143,6 +153,16 @@ export default function AddMFIndexSnapshot() {
     if (!form.last_updated_date)
       next.last_updated_date = "Last updated date is required";
 
+    const d1Err = validateNumber(form.d1, "1D return");
+    if (d1Err) next.d1 = d1Err;
+    const w1Err = validateNumber(form.w1, "1W return");
+    if (w1Err) next.w1 = w1Err;
+    const m1Err = validateNumber(form.m1, "1M return");
+    if (m1Err) next.m1 = m1Err;
+    const m3Err = validateNumber(form.m3, "3M return");
+    if (m3Err) next.m3 = m3Err;
+    const m6Err = validateNumber(form.m6, "6M return");
+    if (m6Err) next.m6 = m6Err;
     const y1Err = validateNumber(form.y1, "1Y return");
     if (y1Err) next.y1 = y1Err;
     const y3Err = validateNumber(form.y3, "3Y return");
@@ -169,6 +189,11 @@ export default function AddMFIndexSnapshot() {
         if (field === "main_category_id") next.main_category_id = msg;
         if (field === "category_id") next.category_id = msg;
         if (field === "returns.y1") next.y1 = msg;
+        if (field === "returns.d1") next.d1 = msg;
+        if (field === "returns.w1") next.w1 = msg;
+        if (field === "returns.m1") next.m1 = msg;
+        if (field === "returns.m3") next.m3 = msg;
+        if (field === "returns.m6") next.m6 = msg;
         if (field === "returns.y3") next.y3 = msg;
         if (field === "returns.y5") next.y5 = msg;
         if (field === "returns.y10") next.y10 = msg;
@@ -200,6 +225,11 @@ export default function AddMFIndexSnapshot() {
       main_category_id: form.main_category_id || undefined,
       category_id: form.category_id || undefined,
       returns: {
+        d1: form.d1 === "" ? null : Number(form.d1),
+        w1: form.w1 === "" ? null : Number(form.w1),
+        m1: form.m1 === "" ? null : Number(form.m1),
+        m3: form.m3 === "" ? null : Number(form.m3),
+        m6: form.m6 === "" ? null : Number(form.m6),
         y1: form.y1 === "" ? null : Number(form.y1),
         y3: form.y3 === "" ? null : Number(form.y3),
         y5: form.y5 === "" ? null : Number(form.y5),
@@ -227,6 +257,11 @@ export default function AddMFIndexSnapshot() {
       main_category_id: "",
       category_id: "",
       y1: "",
+      d1: "",
+      w1: "",
+      m1: "",
+      m3: "",
+      m6: "",
       y3: "",
       y5: "",
       y10: "",
@@ -432,6 +467,31 @@ export default function AddMFIndexSnapshot() {
         <div>
           <label className="block mb-2 text-gray-700 font-medium">Returns</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label htmlFor="returns_d1" className="block mb-2 text-gray-700 font-medium">1D</label>
+              <input id="returns_d1" className={`${mfInputClass} ${errors.d1 ? "!border-red-500 focus:!border-red-500" : ""}`} placeholder="1D" value={form.d1} onChange={(e) => { setForm({ ...form, d1: e.target.value }); setErrors((prev) => ({ ...prev, d1: "" })); }} />
+              {error(errors.d1)}
+            </div>
+            <div>
+              <label htmlFor="returns_w1" className="block mb-2 text-gray-700 font-medium">1W</label>
+              <input id="returns_w1" className={`${mfInputClass} ${errors.w1 ? "!border-red-500 focus:!border-red-500" : ""}`} placeholder="1W" value={form.w1} onChange={(e) => { setForm({ ...form, w1: e.target.value }); setErrors((prev) => ({ ...prev, w1: "" })); }} />
+              {error(errors.w1)}
+            </div>
+            <div>
+              <label htmlFor="returns_m1" className="block mb-2 text-gray-700 font-medium">1M</label>
+              <input id="returns_m1" className={`${mfInputClass} ${errors.m1 ? "!border-red-500 focus:!border-red-500" : ""}`} placeholder="1M" value={form.m1} onChange={(e) => { setForm({ ...form, m1: e.target.value }); setErrors((prev) => ({ ...prev, m1: "" })); }} />
+              {error(errors.m1)}
+            </div>
+            <div>
+              <label htmlFor="returns_m3" className="block mb-2 text-gray-700 font-medium">3M</label>
+              <input id="returns_m3" className={`${mfInputClass} ${errors.m3 ? "!border-red-500 focus:!border-red-500" : ""}`} placeholder="3M" value={form.m3} onChange={(e) => { setForm({ ...form, m3: e.target.value }); setErrors((prev) => ({ ...prev, m3: "" })); }} />
+              {error(errors.m3)}
+            </div>
+            <div>
+              <label htmlFor="returns_m6" className="block mb-2 text-gray-700 font-medium">6M</label>
+              <input id="returns_m6" className={`${mfInputClass} ${errors.m6 ? "!border-red-500 focus:!border-red-500" : ""}`} placeholder="6M" value={form.m6} onChange={(e) => { setForm({ ...form, m6: e.target.value }); setErrors((prev) => ({ ...prev, m6: "" })); }} />
+              {error(errors.m6)}
+            </div>
             <div>
               <label htmlFor="returns_y1" className="block mb-2 text-gray-700 font-medium">1Y</label>
               <input

@@ -5,6 +5,11 @@ export interface IMFIndexSnapshot extends Document {
   main_category_id?: mongoose.Types.ObjectId | null;
   category_id?: mongoose.Types.ObjectId | null;
   returns?: {
+    d1?: number | null;
+    w1?: number | null;
+    m1?: number | null;
+    m3?: number | null;
+    m6?: number | null;
     y1?: number | null;
     y3?: number | null;
     y5?: number | null;
@@ -24,6 +29,11 @@ const mfIndexSnapshotSchema = new Schema<IMFIndexSnapshot>(
     main_category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFMainCategory", default: null, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", default: null, index: true },
     returns: {
+      d1: { type: Number, default: null },
+      w1: { type: Number, default: null },
+      m1: { type: Number, default: null },
+      m3: { type: Number, default: null },
+      m6: { type: Number, default: null },
       y1: { type: Number, default: null },
       y3: { type: Number, default: null },
       y5: { type: Number, default: null },

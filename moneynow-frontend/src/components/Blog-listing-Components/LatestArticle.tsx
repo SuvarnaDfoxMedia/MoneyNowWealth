@@ -14,6 +14,7 @@ import { normalizeRichTextHtml } from "@/utils/normalizeRichTextHtml";
 import { useRefreshSignal } from "@/hooks/useRefreshSignal";
 import { API } from "@/app/api/axios";
 import { useContentAccess } from "@/hooks/useContentAccess";
+import { usePathname } from "next/navigation";
 
 interface Article {
   _id: string;
@@ -26,6 +27,10 @@ interface Article {
   cluster?: {
     title: string;
   };
+  topic?: {
+    title?: string;
+  };
+  publish_date?: string;
 }
 
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL!;
@@ -42,6 +47,8 @@ const FeaturedArticle = () => {
   const hasLoadedRef = useRef(false);
   const { refreshTick } = useRefreshSignal();
   const { accessLevel } = useContentAccess();
+  const pathname = usePathname();
+  const blogBasePath = pathname.startsWith("/user/") ? "/user/blog" : "/blog";
 
   useEffect(() => {
     const fetchFeaturedArticle = async () => {
@@ -50,21 +57,28 @@ const FeaturedArticle = () => {
         if (isInitialLoad) {
           setLoading(true);
         }
-        const { data } = await API.get("/api/cluster/first-topic-article/all");
-        const firstClusterArticle = data?.clusters?.[0]?.topic?.article;
+        const { data } = await API.get("/api/article/published/latest", {
+          params: { limit: 1 },
+        });
+        const latestArticle =
+          data?.articles?.[0] || data?.data?.articles?.[0] || data?.data?.[0];
 
-        if (firstClusterArticle) {
+        if (latestArticle) {
           setArticle({
-            _id: firstClusterArticle._id,
-            title: firstClusterArticle.title,
-            slug: firstClusterArticle.slug,
-            hero_image: firstClusterArticle.hero_image,
-            author: firstClusterArticle.author,
-            created_at: firstClusterArticle.created_at,
-            introduction: firstClusterArticle.introduction,
-            cluster: { title: data?.clusters?.[0]?.title },
+            _id: latestArticle._id,
+            title: latestArticle.title,
+            slug: latestArticle.slug,
+            hero_image: latestArticle.hero_image,
+            author: latestArticle.author,
+            created_at: latestArticle.created_at,
+            publish_date: latestArticle.publish_date,
+            introduction: latestArticle.introduction,
+            cluster: latestArticle.cluster,
+            topic: latestArticle.topic,
           });
           hasLoadedRef.current = true;
+        } else {
+          setArticle(null);
         }
       } catch (err) {
         console.error(err);
@@ -97,15 +111,15 @@ const FeaturedArticle = () => {
       </p>
 
       <div className="relative mb-[15px]">
-        {article.cluster?.title && (
-          <Link href={`/blog/${article.slug}`}>
+        {(article.cluster?.title || article.topic?.title) && (
+          <Link href={`${blogBasePath}/${article.slug}`}>
             <span className="text-[18px] sm:text-[20px] font-inter text-[#043F79] font-bold cursor-pointer hover:underline">
-              {article.cluster.title}
+              {article.cluster?.title || article.topic?.title}
             </span>
           </Link>
         )}
 
-        <Link href={`/blog/${article.slug}`}>
+        <Link href={`${blogBasePath}/${article.slug}`}>
           <h3 className="text-[22px] md:text-[30px] font-semibold mt-1 mb-1 cursor-pointer hover:text-[#043F79]">
             {article.title}
           </h3>
@@ -113,13 +127,15 @@ const FeaturedArticle = () => {
 
         <p className="text-[13px] md:text-[16px] font-medium font-inter mb-[25px]">
           {article.author || "Team Money Now"} &nbsp;|&nbsp;
-          {article.created_at
-            ? new Date(article.created_at).toLocaleDateString("en-GB")
+          {article.publish_date || article.created_at
+            ? new Date(
+                article.publish_date || article.created_at || "",
+              ).toLocaleDateString("en-GB")
             : ""}
         </p>
       </div>
 
-      <Link href={`/blog/${article.slug}`}>
+      <Link href={`${blogBasePath}/${article.slug}`}>
         <div className="cursor-pointer">
           <Image
             src={imageSrc}

@@ -12,6 +12,12 @@ export interface CardData {
   published_at: string;
   author: string;
   created_at?: string;
+  access_level?: string;
+  content_type?: string;
+  article_type?: string;
+  plan_type?: string;
+  is_premium?: boolean;
+  premium?: boolean;
 }
 
 const IMAGE_BASE = API.defaults.baseURL + "/uploads";
@@ -19,6 +25,10 @@ const IMAGE_BASE = API.defaults.baseURL + "/uploads";
 export const useFetchCards = (
   endpoint: string,
   limit: number = 4,
+  options?: {
+    withCredentials?: boolean;
+    forceFreeOnly?: boolean;
+  },
 ) => {
   const [cards, setCards] = useState<CardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +36,8 @@ export const useFetchCards = (
   const hasLoadedRef = useRef(false);
   const { refreshTick, refresh } = useRefreshSignal();
   const { accessLevel } = useContentAccess();
+  const withCredentials = options?.withCredentials ?? true;
+  const forceFreeOnly = options?.forceFreeOnly ?? false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +50,7 @@ export const useFetchCards = (
       try {
         const { data } = await API.get(endpoint, {
           params: { limit },
+          withCredentials,
         });
 
         const articles = Array.isArray(data)
@@ -56,7 +69,28 @@ export const useFetchCards = (
           return;
         }
 
-        const formattedCards: CardData[] = articles.map((article: any) => {
+        const freeOnlyArticles = forceFreeOnly
+          ? articles.filter((article: any) => {
+              const level = String(
+                article?.access_level ||
+                  article?.content_type ||
+                  article?.article_type ||
+                  article?.plan_type ||
+                  "",
+              ).toLowerCase();
+
+              const isPremiumFlag = Boolean(
+                article?.is_premium === true || article?.premium === true,
+              );
+
+              if (isPremiumFlag) return false;
+              if (!level) return true;
+
+              return !level.includes("premium");
+            })
+          : articles;
+
+        const formattedCards: CardData[] = freeOnlyArticles.map((article: any) => {
           let imageSrc = "/no-image.png";
 
           if (article.hero_image) {
@@ -76,15 +110,25 @@ export const useFetchCards = (
                 .join(" ") + "..."
             : "";
 
+          const articlePublishDate = article.publish_date
+            ? new Date(article.publish_date).getTime()
+            : 0;
+          const topicPublishDate = article.topic?.publish_date
+            ? new Date(article.topic.publish_date).getTime()
+            : 0;
+          const effectivePublishedAt =
+            articlePublishDate >= topicPublishDate
+              ? article.publish_date
+              : article.topic?.publish_date;
+
           return {
             slug: article.slug,
             imageSrc,
             category: article.cluster?.title || article.topic?.title || "General",
-            title: article.topic?.title || article.title,
+            title: article.title || article.topic?.title || "Untitled",
             description,
             published_at:
-              article.topic?.publish_date ||
-              article.publish_date ||
+              effectivePublishedAt ||
               article.created_at ||
               "",
             author: article.author || "Team Money Now",
@@ -107,7 +151,7 @@ export const useFetchCards = (
     };
 
     fetchData();
-  }, [endpoint, limit, refreshTick, accessLevel]);
+  }, [endpoint, limit, refreshTick, accessLevel, withCredentials, forceFreeOnly]);
 
   return { cards, loading, error, refetch: refresh };
 };

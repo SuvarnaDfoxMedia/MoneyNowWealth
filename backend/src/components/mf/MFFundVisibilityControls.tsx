@@ -4,13 +4,16 @@ import { mfCheckboxClass } from "./MFFormShared";
 export const MF_FUND_VISIBILITY_GROUPS = [
   { key: "fund_overview", label: "Fund Overview" },
   { key: "fund_performance", label: "Fund Performance" },
+  { key: "asset_allocation", label: "Asset Allocation" },
+  { key: "equity_allocation", label: "Equity Allocation" },
+  { key: "fund_overview_risk", label: "Fund Overview and Risk" },
   { key: "risk_ratio", label: "Risk Ratio" },
 ] as const;
 
 const PERFORMANCE_ANNUAL_FIELDS = (() => {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear() - 1;
   const fields: string[] = [];
-  for (let year = currentYear; year >= 2016; year -= 1) {
+  for (let year = currentYear; year >= 2017; year -= 1) {
     fields.push(`fund_performance.annual_${year}`);
   }
   return fields;
@@ -49,7 +52,19 @@ export const MF_FUND_VISIBILITY_FIELD_KEYS = [
   "fund_performance.5y",
   "fund_performance.10y",
   "fund_performance.since_launch",
+  "fund_performance.return_ytd",
   ...PERFORMANCE_ANNUAL_FIELDS,
+  "asset_allocation.domestic_equity_pct",
+  "asset_allocation.international_equity_pct",
+  "asset_allocation.debt_pct",
+  "asset_allocation.other_pct",
+  "asset_allocation.gold_pct",
+  "asset_allocation.cash_pct",
+  "equity_allocation.large_cap_pct",
+  "equity_allocation.mid_cap_pct",
+  "equity_allocation.small_cap_pct",
+  "fund_overview_risk.tax_type",
+  "fund_overview_risk.riskometer_label",
   "risk_ratio.sharpe_3y",
   "risk_ratio.sharpe_5y",
   "risk_ratio.std_dev_3y",

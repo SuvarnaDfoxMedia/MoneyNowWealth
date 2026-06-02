@@ -402,7 +402,14 @@ export const getLatestPublishedArticles = async (
           },
         },
       },
-      { $sort: { publish_date: -1, created_at: -1 } },
+      {
+        $addFields: {
+          effective_publish_date: {
+            $max: ["$publish_date", "$topic.publish_date"],
+          },
+        },
+      },
+      { $sort: { effective_publish_date: -1, publish_date: -1, created_at: -1 } },
       { $limit: limit },
     ]);
 

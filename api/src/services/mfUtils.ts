@@ -39,7 +39,7 @@ export const BENCHMARK_TRAILING_KEYS = [
   "ytd",
 ] as const;
 
-const buildAnnualYears = (startYear = new Date().getFullYear() - 1, count = 10) =>
+const buildAnnualYears = (startYear = new Date().getFullYear(), count = 10) =>
   Array.from({ length: count }, (_, index) => String(startYear - index));
 
 export const MF_ANNUAL_YEARS = buildAnnualYears();

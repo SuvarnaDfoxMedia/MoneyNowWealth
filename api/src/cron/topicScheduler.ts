@@ -8,7 +8,6 @@ import cron from "node-cron";
 import Topic, { type ITopic } from "../models/topicModel";
 import Article from "../models/articleModel";
 import User from "../models/userModel";
-import { sendBlogNotificationViaGetResponse } from "../services/getresponseService";
 
 /* ---------------------------------------------------
    Topic & Article Scheduler (runs every 5 minutes)

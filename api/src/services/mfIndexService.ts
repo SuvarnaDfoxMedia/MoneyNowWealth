@@ -103,6 +103,11 @@ export const createIndexSnapshot = async (payload: Partial<IMFIndexSnapshot> & {
     category_id: new Types.ObjectId(categoryId) as any,
     main_category_id: new Types.ObjectId(mainCategoryId) as any,
     returns: {
+      d1: toNumberOrNull(payload.returns?.d1),
+      w1: toNumberOrNull(payload.returns?.w1),
+      m1: toNumberOrNull(payload.returns?.m1),
+      m3: toNumberOrNull(payload.returns?.m3),
+      m6: toNumberOrNull(payload.returns?.m6),
       y1: toNumberOrNull(payload.returns?.y1),
       y3: toNumberOrNull(payload.returns?.y3),
       y5: toNumberOrNull(payload.returns?.y5),
@@ -138,6 +143,11 @@ export const updateIndexSnapshot = async (
   }
   if (payload.returns) {
     doc.returns = {
+      d1: toNumberOrNull(payload.returns.d1),
+      w1: toNumberOrNull(payload.returns.w1),
+      m1: toNumberOrNull(payload.returns.m1),
+      m3: toNumberOrNull(payload.returns.m3),
+      m6: toNumberOrNull(payload.returns.m6),
       y1: toNumberOrNull(payload.returns.y1),
       y3: toNumberOrNull(payload.returns.y3),
       y5: toNumberOrNull(payload.returns.y5),

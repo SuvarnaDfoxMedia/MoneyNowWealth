@@ -10,6 +10,7 @@ export interface PopularFundRow {
   min_sip_investment?: number | null;
   min_lumpsum_investment?: number | null;
   returns?: {
+    trailing?: Record<string, number | null>;
     y3_cagr?: number | null;
     y5_cagr?: number | null;
     y10_cagr?: number | null;

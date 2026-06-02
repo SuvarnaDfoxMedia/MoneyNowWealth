@@ -37,7 +37,7 @@ export default function MFBenchmarkListing() {
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const disposition = String(response.headers["content-disposition"] || "");
-      const filenameMatch = disposition.match(/filename=\"([^\"]+)\"/i);
+      const filenameMatch = disposition.match(/filename="([^"]+)"/i);
       const filename = filenameMatch?.[1] || `mf-${selectedEntity}-${mode}.xlsx`;
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
