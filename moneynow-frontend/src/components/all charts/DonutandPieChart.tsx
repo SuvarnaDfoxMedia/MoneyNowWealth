@@ -43,16 +43,18 @@ export default function DonutChart({
   innerRadius = 72,
   outerRadius = 108,
 }: DonutChartProps) {
-  const chartData = data.filter((item) => Number(item.value) > 0).map((item) => ({
-    label: item.label,
-    value: item.value,
-    color: item.color,
-  }));
+  const chartData = data
+    .filter((item) => Number(item.value) > 0)
+    .map((item) => ({
+      label: item.label,
+      value: item.value,
+      color: item.color,
+    }));
 
   return (
-    <div className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="w-full bg-white p-4">
       <div style={{ width: "100%", height }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={chartData}
@@ -71,7 +73,9 @@ export default function DonutChart({
                 />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => formatAmount(value as number | string)} />
+            <Tooltip
+              formatter={(value) => formatAmount(value as number | string)}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>
