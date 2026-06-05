@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import DonutChart from "@/components/all charts/DonutChart";
+import DonutChart from "@/components/all charts/DonutandPieChart";
 import StackedBarLineChart from "@/components/all charts/StackedBarLineChart";
 import ComparisonBarChart from "@/components/all charts/ComparisonBarChart";
 import StartSipReportDownload from "./charts-sub-components/StartSipReportDownload";
@@ -195,7 +195,7 @@ export default function StartSipStaticPage() {
                       {chartData?.type === "sip" ? (
                         <StackedBarLineChart
                           data={chartData.barData || []}
-                          height={440}
+                          height={640}
                         />
                       ) : null}
                       {chartData?.type === "goal" ? (
