@@ -1,0 +1,123 @@
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Ignore node modules everywhere
+node_modules/
+**/node_modules/
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Ignore environment config files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# React / Next.js builds & outputs
+# Next.js
+.next/
+out/
+# Vite
+dist/
+build/
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Local IDE configs
+.vscode/
+.idea/
+
+# OS system files
+.DS_Store
+Thumbs.db
+
+# Optional: coverage / caches
+coverage/
+*.cache/
+
+# Optional upload folder if present
+# uploads/
+
+
+
+# ===============================
+# Node.js
+# ===============================
+node_modules/
+dist/
+.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===============================
+# Vite
+# ===============================
+.vite/
+*.local
+*.tsbuildinfo
+
+# ===============================
+# Logs
+# ===============================
+logs/
+*.log
+
+# ===============================
+# OS & IDE
+# ===============================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ===============================
+# Build output folders (optional)
+# ===============================
+api/build/
+backend/build/
+moneynow-frontend/dist/
+
+# ===============================
+# Misc
+# ===============================
+coverage/
+
+# ===============================
+# Global ignores for the repo
+# ===============================
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Python / FastAPI
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Metadata & Implementation Tracking
+immplementation_data/
+execution_plan.md
+simple_chatbot_plan.md

@@ -1,0 +1,252 @@
+"use client";
+
+import React, { useEffect } from "react";
+import { FiEye } from "react-icons/fi";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useSubscription } from "@/hooks/useSubscription";
+import { usePagination } from "@/hooks/usePagination";
+import { Pagination } from "@/components/Pagination";
+import PremiumUpgradeCard from "@/components/subscription/PremiumUpgradeCard";
+
+const safeDate = (value?: string) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-GB");
+};
+
+const isActiveForFullEndDate = (value?: string) => {
+  if (!value) return false;
+
+  const endDate = new Date(value);
+  const today = new Date();
+
+  if (isNaN(endDate.getTime())) return false;
+
+  endDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return endDate.getTime() >= today.getTime();
+};
+
+const SubscriptionsListing = () => {
+  const router = useRouter();
+
+  const pagination = usePagination({
+    initialPage: 1,
+    initialLimit: 10,
+  });
+
+  const {
+    payments,
+    latestSubscription,
+    currentSubscription,
+    loading,
+    error,
+    total,
+    totalPages,
+    refresh,
+  } = useSubscription(pagination.page, pagination.limit);
+
+  useEffect(() => {
+    if (total > 0) {
+      pagination.setTotalItems(total);
+    }
+  }, [total]);
+
+  const startingIndex = (pagination.page - 1) * pagination.limit;
+  const subscriptionCard = currentSubscription || latestSubscription;
+  const isSubscriptionActive = isActiveForFullEndDate(
+    subscriptionCard?.endDate,
+  );
+  const isPremiumActive =
+    currentSubscription?.planType?.toLowerCase() === "premium" &&
+    isSubscriptionActive;
+
+  return (
+    <div className="w-full min-h-screen p-2 bg-gray-50">
+      <h1 className="text-lg font-semibold mb-6 flex items-center gap-2">
+        <div className="w-6 h-6 relative">
+          <Image
+            src="/images/before-check-icon.png"
+            alt="Check Icon"
+            fill
+            className="object-contain"
+            priority
+          />
+        </div>
+        Subscriptions
+        {total > 0 && (
+          <span className="text-sm font-normal text-gray-500 ml-2">
+            ({total} total invoices)
+          </span>
+        )}
+      </h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <div className="lg:col-span-8">
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+              <h2 className="text-md font-semibold">Invoices</h2>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Show:</span>
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => {
+                    pagination.setLimit(Number(e.target.value));
+                    pagination.goToFirst();
+                  }}
+                  className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#043F79] focus:border-[#043F79]"
+                >
+                  <option value="5">5 per page</option>
+                  <option value="10">10 per page</option>
+                  <option value="20">20 per page</option>
+                  <option value="50">50 per page</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-6 text-sm text-gray-500 px-4 mb-2">
+              <span>#</span>
+              <span>Plan Name</span>
+              <span>Start Date</span>
+              <span>End Date</span>
+              <span>Amount</span>
+              <span className="text-right">Action</span>
+            </div>
+
+            {loading ? (
+              <p className="text-center py-6 text-gray-500">Loading...</p>
+            ) : error ? (
+              <p className="text-center py-6 text-red-500">{error}</p>
+            ) : payments.length === 0 ? (
+              <p className="text-center py-6 text-gray-500">
+                No invoices found.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {payments.map((inv, index) => (
+                    <div
+                      key={`${inv._id}-${index}`}
+                      className="grid grid-cols-6 items-center border border-gray-200 rounded-xl px-4 py-3 bg-white hover:bg-gray-50 transition"
+                    >
+                      <span className="text-sm">
+                        {startingIndex + index + 1}
+                      </span>
+
+                      <span className="text-sm font-medium">
+                        {inv.planName}
+                      </span>
+
+                      <span className="text-sm">{safeDate(inv.startDate)}</span>
+
+                      <span className="text-sm">{safeDate(inv.endDate)}</span>
+
+                      <span className="text-sm font-semibold">
+                        {"\u20B9"}
+                        {Number(inv.amount || 0).toFixed(2)}
+                      </span>
+
+                      <div className="flex justify-end">
+                        <button
+                          className="text-gray-600 hover:text-gray-900"
+                          onClick={() => router.push(`/invoice/${inv._id}`)}
+                          title="View Invoice"
+                        >
+                          <FiEye size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {total > 0 && (
+                  <div className="mt-6 pt-6">
+                    <Pagination
+                      currentPage={pagination.page}
+                      totalPages={pagination.totalPages || totalPages}
+                      onPageChange={pagination.setPage}
+                      showPageNumbers={true}
+                      showBoundaryButtons={true}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {subscriptionCard && (
+          <div className="lg:col-span-4">
+            <div className="sticky top-4 space-y-4">
+              <div className="w-full bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
+                <div className="mb-4 w-20 h-20 relative">
+                  <Image
+                    src="/images/subscribe-right-icon.png"
+                    alt="Premium Plan"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+
+                <h3 className="font-semibold text-lg mb-4">
+                  Latest Subscription
+                </h3>
+
+                <div className="w-full flex flex-col text-left text-sm bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="mb-2 flex gap-3">
+                    <span className="font-semibold">Plan:</span>
+                    <span className="font-normal">
+                      {subscriptionCard.planName}
+                    </span>
+                  </p>
+
+                  <p className="mb-2 flex gap-3">
+                    <span className="font-semibold">Amount:</span>
+                    <span className="font-normal">
+                      {"\u20B9"}
+                      {Number(subscriptionCard.amount || 0).toFixed(2)}
+                    </span>
+                  </p>
+
+                  <p className="mb-2 flex gap-3">
+                    <span className="font-semibold">Purchase Date:</span>
+                    <span className="font-normal">
+                      {safeDate(subscriptionCard.paymentDate)}
+                    </span>
+                  </p>
+
+                  <p className="flex gap-3">
+                    <span className="font-semibold">Expiry Date:</span>
+                    <span className="font-normal">
+                      {safeDate(subscriptionCard.endDate)}
+                    </span>
+                  </p>
+                </div>
+
+                <button
+                  className={`mt-5 w-20 py-2 rounded-lg font-semibold text-sm tracking-wide ${
+                    isSubscriptionActive
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-gray-400 text-white"
+                  }`}
+                >
+                  {isSubscriptionActive ? "ACTIVE" : "EXPIRED"}
+                </button>
+              </div>
+
+              {!isPremiumActive && (
+                <PremiumUpgradeCard variant="compact" onUpgraded={refresh} />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SubscriptionsListing;

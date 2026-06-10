@@ -1,0 +1,363 @@
+import { body } from "express-validator";
+
+const requiredString = (field: string, label: string, min = 2, max = 120) =>
+  body(field)
+    .exists({ checkFalsy: true })
+    .withMessage(`${label} is required`)
+    .bail()
+    .isString()
+    .withMessage(`${label} must be a string`)
+    .bail()
+    .isLength({ min, max })
+    .withMessage(`${label} must be between ${min} and ${max} characters`)
+    .trim();
+
+const optionalString = (field: string, label: string, max = 5000) =>
+  body(field)
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .withMessage(`${label} must be a string`)
+    .bail()
+    .isLength({ max })
+    .withMessage(`${label} must be at most ${max} characters`)
+    .trim();
+
+const optionalNumber = (field: string, label: string, min = -1000, max = 1000) =>
+  body(field)
+    .optional({ nullable: true, checkFalsy: true })
+    .isFloat({ min, max })
+    .withMessage(`${label} must be a number between ${min} and ${max}`)
+    .toFloat();
+
+const optionalNonNegativeNumber = (field: string, label: string, max = 1_000_000_000) =>
+  body(field)
+    .optional({ nullable: true, checkFalsy: true })
+    .isFloat({ min: 0, max })
+    .withMessage(`${label} must be a number between 0 and ${max}`)
+    .toFloat();
+
+const optionalBoolean = (field: string, label: string) =>
+  body(field)
+    .optional({ nullable: true })
+    .isBoolean()
+    .withMessage(`${label} must be a boolean`)
+    .toBoolean();
+
+const optionalIsActive = (field = "is_active") =>
+  body(field)
+    .optional({ nullable: true })
+    .isInt({ min: 0, max: 1 })
+    .withMessage("is_active must be 0 or 1")
+    .toInt();
+
+const optionalMongoId = (field: string, label: string) =>
+  body(field)
+    .optional({ nullable: true })
+    .isMongoId()
+    .withMessage(`${label} must be a valid id`);
+
+const requiredMongoId = (field: string, label: string) =>
+  body(field)
+    .exists({ checkFalsy: true })
+    .withMessage(`${label} is required`)
+    .bail()
+    .isMongoId()
+    .withMessage(`${label} must be a valid id`);
+
+const optionalIsoDate = (field: string, label: string) =>
+  body(field)
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601()
+    .withMessage(`${label} must be a valid ISO date`)
+    .toDate();
+
+const requiredIsoDate = (field: string, label: string) =>
+  body(field)
+    .exists({ checkFalsy: true })
+    .withMessage(`${label} is required`)
+    .bail()
+    .isISO8601()
+    .withMessage(`${label} must be a valid ISO date`)
+    .toDate();
+
+const requireAmcReference = () =>
+  body().custom((value, { req }) => {
+    if (req.body?.amc_id || req.body?.amc_name) return true;
+    throw new Error("amc_id or amc_name is required");
+  });
+
+const validateDateOrder = (startField: string, endField: string, label: string) =>
+  body(endField).custom((value, { req }) => {
+    if (!req.body?.[startField] || !value) return true;
+    const start = new Date(req.body[startField]);
+    const end = new Date(value);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return true;
+    if (end < start) throw new Error(`${label} must be greater than or equal to ${startField}`);
+    return true;
+  });
+
+export const createMainCategoryValidators = [
+  requiredString("name", "Name", 2, 120),
+  optionalString("description", "Description", 5000),
+  optionalNumber("sort_order", "Sort order", 0, 9999),
+  optionalIsActive(),
+];
+
+export const updateMainCategoryValidators = [
+  optionalString("name", "Name", 120),
+  optionalString("description", "Description", 5000),
+  optionalNumber("sort_order", "Sort order", 0, 9999),
+  optionalIsActive(),
+];
+
+export const createCategoryValidators = [
+  requiredString("name", "Name", 2, 120),
+  requiredMongoId("main_category_id", "Main category"),
+  optionalString("description", "Description", 5000),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  body("benchmark_return_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Annual", "Trailing"])
+    .withMessage("Benchmark return type must be Annual or Trailing"),
+  optionalNumber("benchmark_returns.y1", "Benchmark 1Y return"),
+  optionalNumber("benchmark_returns.y3", "Benchmark 3Y return"),
+  optionalNumber("benchmark_returns.y5", "Benchmark 5Y return"),
+  optionalNumber("benchmark_returns.y10", "Benchmark 10Y return"),
+  optionalNumber("category_average_returns.y1", "Category average 1Y return"),
+  optionalNumber("category_average_returns.y3", "Category average 3Y return"),
+  optionalNumber("category_average_returns.y5", "Category average 5Y return"),
+  optionalNumber("category_average_returns.y10", "Category average 10Y return"),
+  optionalString("risk_level", "Risk level", 200),
+  optionalString("suggested_use_case", "Suggested use case", 500),
+  optionalString("suggested_use_case_note", "Suggested use case note", 5000),
+  optionalIsActive(),
+];
+
+export const updateCategoryValidators = [
+  optionalString("name", "Name", 120),
+  optionalMongoId("main_category_id", "Main category"),
+  optionalString("description", "Description", 5000),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  body("benchmark_return_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Annual", "Trailing"])
+    .withMessage("Benchmark return type must be Annual or Trailing"),
+  optionalNumber("benchmark_returns.y1", "Benchmark 1Y return"),
+  optionalNumber("benchmark_returns.y3", "Benchmark 3Y return"),
+  optionalNumber("benchmark_returns.y5", "Benchmark 5Y return"),
+  optionalNumber("benchmark_returns.y10", "Benchmark 10Y return"),
+  optionalNumber("category_average_returns.y1", "Category average 1Y return"),
+  optionalNumber("category_average_returns.y3", "Category average 3Y return"),
+  optionalNumber("category_average_returns.y5", "Category average 5Y return"),
+  optionalNumber("category_average_returns.y10", "Category average 10Y return"),
+  optionalString("risk_level", "Risk level", 200),
+  optionalString("suggested_use_case", "Suggested use case", 500),
+  optionalString("suggested_use_case_note", "Suggested use case note", 5000),
+  optionalIsActive(),
+];
+
+export const createAmcValidators = [
+  requiredString("name", "AMC name", 2, 120),
+  optionalIsActive(),
+];
+
+export const updateAmcValidators = [
+  optionalString("name", "AMC name", 120),
+  optionalIsActive(),
+];
+
+export const createFundValidators = [
+  requiredString("scheme_code", "Scheme code", 2, 80),
+  requiredString("fund_name", "Fund name", 2, 200),
+  requireAmcReference(),
+  optionalMongoId("amc_id", "AMC"),
+  optionalString("amc_name", "AMC name", 120),
+  requiredMongoId("category_id", "Category"),
+  body("plan_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Regular", "Direct"])
+    .withMessage("plan_type must be Regular or Direct"),
+  body("option_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Growth", "IDCW"])
+    .withMessage("option_type must be Growth or IDCW"),
+  optionalNonNegativeNumber("aum_cr", "AUM (Cr)"),
+  optionalNumber("expense_ratio", "Expense ratio", 0, 100),
+  optionalNumber("returns.d1", "1D return"),
+  optionalNumber("returns.m1", "1M return"),
+  optionalNumber("returns.m3", "3M return"),
+  optionalNumber("returns.m6", "6M return"),
+  optionalNumber("returns.y1", "1Y return"),
+  optionalNumber("returns.y3_cagr", "3Y CAGR return"),
+  optionalNumber("returns.y5_cagr", "5Y CAGR return"),
+  optionalNumber("returns.y10_cagr", "10Y CAGR return"),
+  optionalNumber("risk_metrics.sharpe_3y", "Sharpe (3Y)"),
+  optionalNumber("risk_metrics.std_dev_3y", "Std Dev (3Y)"),
+  optionalNumber("risk_metrics.beta_3y", "Beta (3Y)"),
+  optionalNumber("risk_metrics.alpha_3y", "Alpha (3Y)"),
+  optionalNumber("risk_metrics.max_drawdown_5y", "Max Drawdown (5Y)"),
+  optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
+  optionalString("fund_manager", "Fund manager", 200),
+  optionalIsoDate("launch_date", "Acceptance date"),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  optionalNumber("benchmark_returns_trailing.d1", "Benchmark trailing 1D return"),
+  optionalNumber("benchmark_returns_trailing.m1", "Benchmark trailing 1M return"),
+  optionalNumber("benchmark_returns_trailing.m3", "Benchmark trailing 3M return"),
+  optionalNumber("benchmark_returns_trailing.m6", "Benchmark trailing 6M return"),
+  optionalNumber("benchmark_returns_trailing.y1", "Benchmark trailing 1Y return"),
+  optionalNumber("benchmark_returns_trailing.y3", "Benchmark trailing 3Y return"),
+  optionalNumber("benchmark_returns_trailing.y5", "Benchmark trailing 5Y return"),
+  optionalNumber("benchmark_returns_trailing.y10", "Benchmark trailing 10Y return"),
+  optionalNumber("benchmark_returns_annual.y1", "Benchmark annual 1Y return"),
+  optionalNumber("benchmark_returns_annual.y3", "Benchmark annual 3Y return"),
+  optionalNumber("benchmark_returns_annual.y5", "Benchmark annual 5Y return"),
+  optionalNumber("benchmark_returns_annual.y10", "Benchmark annual 10Y return"),
+  optionalNonNegativeNumber("min_investment", "Minimum investment"),
+  optionalBoolean("sip_allowed", "sip_allowed"),
+  optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
+  optionalBoolean("lumpsum_allowed", "lumpsum_allowed"),
+  optionalNonNegativeNumber("min_lumpsum_investment", "Minimum lumpsum investment"),
+  optionalString("exit_load", "Exit load", 500),
+  optionalBoolean("is_featured", "is_featured"),
+  optionalBoolean("is_popular", "is_popular"),
+  body("top_holdings")
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (Array.isArray(value)) return value.every((v) => typeof v === "string");
+      if (typeof value === "string") return true;
+      throw new Error("top_holdings must be an array of strings or a comma-separated string");
+    }),
+  optionalNumber("asset_allocation.equity_pct", "Equity allocation", 0, 100),
+  optionalNumber("asset_allocation.debt_pct", "Debt allocation", 0, 100),
+  optionalNumber("asset_allocation.other_pct", "Other allocation", 0, 100),
+  optionalString("tax_type", "Tax type", 120),
+  optionalString("riskometer_label", "Risk label", 120),
+  optionalIsActive(),
+];
+
+export const updateFundValidators = [
+  optionalString("scheme_code", "Scheme code", 80),
+  optionalString("fund_name", "Fund name", 200),
+  optionalMongoId("amc_id", "AMC"),
+  optionalString("amc_name", "AMC name", 120),
+  optionalMongoId("category_id", "Category"),
+  body("plan_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Regular", "Direct"])
+    .withMessage("plan_type must be Regular or Direct"),
+  body("option_type")
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(["Growth", "IDCW"])
+    .withMessage("option_type must be Growth or IDCW"),
+  optionalNonNegativeNumber("aum_cr", "AUM (Cr)"),
+  optionalNumber("expense_ratio", "Expense ratio", 0, 100),
+  optionalNumber("returns.d1", "1D return"),
+  optionalNumber("returns.m1", "1M return"),
+  optionalNumber("returns.m3", "3M return"),
+  optionalNumber("returns.m6", "6M return"),
+  optionalNumber("returns.y1", "1Y return"),
+  optionalNumber("returns.y3_cagr", "3Y CAGR return"),
+  optionalNumber("returns.y5_cagr", "5Y CAGR return"),
+  optionalNumber("returns.y10_cagr", "10Y CAGR return"),
+  optionalNumber("risk_metrics.sharpe_3y", "Sharpe (3Y)"),
+  optionalNumber("risk_metrics.std_dev_3y", "Std Dev (3Y)"),
+  optionalNumber("risk_metrics.beta_3y", "Beta (3Y)"),
+  optionalNumber("risk_metrics.alpha_3y", "Alpha (3Y)"),
+  optionalNumber("risk_metrics.max_drawdown_5y", "Max Drawdown (5Y)"),
+  optionalNumber("risk_metrics.turnover_ratio", "Turnover ratio"),
+  optionalString("fund_manager", "Fund manager", 200),
+  optionalIsoDate("launch_date", "Acceptance date"),
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  optionalNumber("benchmark_returns_trailing.d1", "Benchmark trailing 1D return"),
+  optionalNumber("benchmark_returns_trailing.m1", "Benchmark trailing 1M return"),
+  optionalNumber("benchmark_returns_trailing.m3", "Benchmark trailing 3M return"),
+  optionalNumber("benchmark_returns_trailing.m6", "Benchmark trailing 6M return"),
+  optionalNumber("benchmark_returns_trailing.y1", "Benchmark trailing 1Y return"),
+  optionalNumber("benchmark_returns_trailing.y3", "Benchmark trailing 3Y return"),
+  optionalNumber("benchmark_returns_trailing.y5", "Benchmark trailing 5Y return"),
+  optionalNumber("benchmark_returns_trailing.y10", "Benchmark trailing 10Y return"),
+  optionalNumber("benchmark_returns_annual.y1", "Benchmark annual 1Y return"),
+  optionalNumber("benchmark_returns_annual.y3", "Benchmark annual 3Y return"),
+  optionalNumber("benchmark_returns_annual.y5", "Benchmark annual 5Y return"),
+  optionalNumber("benchmark_returns_annual.y10", "Benchmark annual 10Y return"),
+  optionalNonNegativeNumber("min_investment", "Minimum investment"),
+  optionalBoolean("sip_allowed", "sip_allowed"),
+  optionalNonNegativeNumber("min_sip_investment", "Minimum SIP investment"),
+  optionalBoolean("lumpsum_allowed", "lumpsum_allowed"),
+  optionalNonNegativeNumber("min_lumpsum_investment", "Minimum lumpsum investment"),
+  optionalString("exit_load", "Exit load", 500),
+  optionalBoolean("is_featured", "is_featured"),
+  optionalBoolean("is_popular", "is_popular"),
+  body("top_holdings")
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (Array.isArray(value)) return value.every((v) => typeof v === "string");
+      if (typeof value === "string") return true;
+      throw new Error("top_holdings must be an array of strings or a comma-separated string");
+    }),
+  optionalNumber("asset_allocation.equity_pct", "Equity allocation", 0, 100),
+  optionalNumber("asset_allocation.debt_pct", "Debt allocation", 0, 100),
+  optionalNumber("asset_allocation.other_pct", "Other allocation", 0, 100),
+  optionalString("tax_type", "Tax type", 120),
+  optionalString("riskometer_label", "Risk label", 120),
+  optionalIsActive(),
+];
+
+export const createNfoValidators = [
+  requiredString("nfo_id", "NFO ID", 1, 80),
+  requiredString("fund_name", "Fund name", 2, 200),
+  requireAmcReference(),
+  optionalMongoId("amc_id", "AMC"),
+  optionalString("amc_name", "AMC name", 120),
+  requiredMongoId("category_id", "Category"),
+  optionalString("fund_objective_short", "Fund objective", 5000),
+  optionalIsoDate("subscription_start_date", "Subscription start date"),
+  optionalIsoDate("subscription_end_date", "Subscription end date"),
+  validateDateOrder("subscription_start_date", "subscription_end_date", "subscription_end_date"),
+  optionalNonNegativeNumber("min_investment", "Minimum investment"),
+  optionalString("benchmark", "Benchmark", 200),
+  optionalString("risk_level", "Risk level", 200),
+  optionalBoolean("is_open", "is_open"),
+  optionalIsActive(),
+];
+
+export const updateNfoValidators = [
+  optionalString("nfo_id", "NFO ID", 80),
+  optionalString("fund_name", "Fund name", 200),
+  optionalMongoId("amc_id", "AMC"),
+  optionalString("amc_name", "AMC name", 120),
+  optionalMongoId("category_id", "Category"),
+  optionalString("fund_objective_short", "Fund objective", 5000),
+  optionalIsoDate("subscription_start_date", "Subscription start date"),
+  optionalIsoDate("subscription_end_date", "Subscription end date"),
+  validateDateOrder("subscription_start_date", "subscription_end_date", "subscription_end_date"),
+  optionalNonNegativeNumber("min_investment", "Minimum investment"),
+  optionalString("benchmark", "Benchmark", 200),
+  optionalString("risk_level", "Risk level", 200),
+  optionalBoolean("is_open", "is_open"),
+  optionalIsActive(),
+];
+
+export const createIndexSnapshotValidators = [
+  requiredString("benchmark_index_name", "Benchmark index name", 2, 200),
+  optionalMongoId("main_category_id", "Main category"),
+  optionalMongoId("category_id", "Category"),
+  optionalNumber("returns.y1", "1Y return"),
+  optionalNumber("returns.y3", "3Y return"),
+  optionalNumber("returns.y5", "5Y return"),
+  optionalNumber("returns.y10", "10Y return"),
+  requiredIsoDate("last_updated_date", "Last updated date"),
+  optionalIsActive(),
+];
+
+export const updateIndexSnapshotValidators = [
+  optionalString("benchmark_index_name", "Benchmark index name", 200),
+  optionalMongoId("main_category_id", "Main category"),
+  optionalMongoId("category_id", "Category"),
+  optionalNumber("returns.y1", "1Y return"),
+  optionalNumber("returns.y3", "3Y return"),
+  optionalNumber("returns.y5", "5Y return"),
+  optionalNumber("returns.y10", "10Y return"),
+  optionalIsoDate("last_updated_date", "Last updated date"),
+  optionalIsActive(),
+];
