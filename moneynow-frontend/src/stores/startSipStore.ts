@@ -1,397 +1,3 @@
-// "use client";
-
-// import { create } from "zustand";
-// import { devtools } from "zustand/middleware";
-// import {
-//   CalculatorTab,
-//   requestCalculatorResult,
-// } from "@/hooks/useCalculator";
-
-// export type StartSipCalculatorId =
-//   | "sip-starter"
-//   | "step-up-sip"
-//   | "target-based-sip"
-//   | "crore-journey"
-//   | "sip-returns";
-
-// export interface StartSipCalculatorItem {
-//   id: StartSipCalculatorId;
-//   title: string;
-//   tab?: CalculatorTab;
-//   isInteractive: boolean;
-// }
-
-// export type StartSipResult = Partial<{
-//   years: number;
-//   target_amount: number;
-//   target_wealth: number;
-//   invested_amount: number;
-//   target_savings: number;
-//   savings_amount: number;
-//   growth_value: number;
-//   stepup_growth_value: number;
-//   growth_amount: number;
-//   maturity_amount: number;
-//   stepup_maturity_amount: number;
-//   stepup_invested_amount: number;
-//   sip_amount: number;
-//   monthly_savings: number;
-//   total_earnings: number;
-// }>;
-
-// export type StartSipChartState =
-//   | {
-//       type: "goal";
-//       data: Array<{ label: string; target: number; savings: number }>;
-//     }
-//   | {
-//       type: "sip";
-//       barData: Array<{
-//         label: string;
-//         invested: number;
-//         growth: number;
-//         totalValue: number;
-//       }>;
-//       pieData: Array<{ label: string; value: number; color: string }>;
-//     }
-//   | null;
-
-// export const START_SIP_CALCULATORS: StartSipCalculatorItem[] = [
-//   {
-//     id: "sip-starter",
-//     title: "SIP STARTER (CORE) - Calculator",
-//     tab: "SIP Calculator",
-//     isInteractive: true,
-//   },
-//   {
-//     id: "step-up-sip",
-//     title: "Step Up SIP - Calculator",
-//     tab: "SIP with Annual Increase",
-//     isInteractive: true,
-//   },
-//   {
-//     id: "target-based-sip",
-//     title: "TARGET-BASED SIP",
-//     tab: "Target Amount SIP Calculator",
-//     isInteractive: true,
-//   },
-//   {
-//     id: "crore-journey",
-//     title: "₹1 CRORE JOURNEY",
-//     tab: "Become A Crorepati Calculator",
-//     isInteractive: true,
-//   },
-//   {
-//     id: "sip-returns",
-//     title: "SIP RETURNS BY CATEGORY (inside Learn)",
-//     isInteractive: false,
-//   },
-// ];
-
-// export const START_SIP_DEFAULT_VALUES = {
-//   sip_amount: 25000,
-//   lumpsum_amount: 500000,
-//   interest_rate: 12,
-//   expected_return: 12,
-//   years: 10,
-//   period: 120,
-//   inflation_rate: 6,
-//   dream_amount: 9754439,
-//   wealth_amount: 10000000,
-//   current_age: 30,
-//   retirement_age: 55,
-//   savings_amount: 0,
-//   sip_stepup_value: 10,
-//   loan_amount: 1000000,
-//   loan_tenure_type: "year",
-//   loan_tenure: 5,
-//   withdrawal_amount: 10000,
-//   lumpsum_period: 10,
-//   target_amount: 5000000,
-//   current_cost: 100000,
-//   no_years: 5,
-//   principal_amount: 2500000,
-//   compound_interval: "Yearly",
-//   retire_age: 60,
-//   savings_interest_rate: 12,
-//   income_tax_rate: 7,
-//   house_flat_value: 500000,
-//   home_loan_emi_value: 30000,
-//   new_car_value: 300000,
-//   eating_out_value: 25000,
-//   lifestyle_spending_value: 25000,
-//   holidays_value: 10000,
-//   transport_value: 10000,
-//   credit_card_interest_value: 30000,
-//   personal_loan_value: 20000,
-//   shopping_value: 10000,
-//   children: [
-//     {
-//       name: "Child 1",
-//       currentAge: 2,
-//       educationAge: 18,
-//       educationAmount: 500000,
-//     },
-//     {
-//       name: "Child 2",
-//       currentAge: 8,
-//       educationAge: 20,
-//       educationAmount: 500000,
-//     },
-//   ],
-// };
-
-// export type StartSipValues = typeof START_SIP_DEFAULT_VALUES;
-
-// const currentYear = new Date().getFullYear();
-
-// const formatCurrency = (value?: number) =>
-//   `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
-
-// export function buildStartSipChartData(
-//   activeCalculatorId: string,
-//   values: StartSipValues,
-//   result: StartSipResult | null,
-// ): StartSipChartState {
-//   if (!result) return null;
-
-//   if (activeCalculatorId === "crore-journey") {
-//     const years = Math.max(
-//       1,
-//       Number(result.years || values.retirement_age - values.current_age || 1),
-//     );
-//     const target = Number(result.target_amount || result.target_wealth || 0);
-//     const savings = Number(
-//       result.invested_amount ||
-//         result.target_savings ||
-//         result.savings_amount ||
-//         0,
-//     );
-
-//     return {
-//       type: "goal",
-//       data: Array.from({ length: years }, (_, index) => ({
-//         label: `${currentYear + index}`,
-//         target: Math.round(target * ((index + 1) / years)),
-//         savings: Math.round(savings * ((index + 1) / years)),
-//       })),
-//     };
-//   }
-
-//   const years = Math.max(1, Number(values.years || result.years || 1));
-//   const invested = Number(
-//     result.invested_amount ||
-//       result.stepup_invested_amount ||
-//       values.sip_amount * years * 12 ||
-//       0,
-//   );
-//   const growth = Number(
-//     result.growth_value ||
-//       result.stepup_growth_value ||
-//       result.growth_amount ||
-//       result.total_earnings ||
-//       0,
-//   );
-//   const maturity = Number(
-//     result.maturity_amount ||
-//       result.stepup_maturity_amount ||
-//       result.target_wealth ||
-//       result.target_amount ||
-//       0,
-//   );
-
-//   return {
-//     type: "sip",
-//     barData: Array.from({ length: years }, (_, index) => {
-//       const progress = (index + 1) / years;
-//       const investedValue = Math.round(invested * progress);
-//       const growthValue = Math.round(growth * progress);
-
-//       return {
-//         label: `${currentYear + index}`,
-//         invested: investedValue,
-//         growth: growthValue,
-//         totalValue: investedValue + growthValue,
-//       };
-//     }),
-//     pieData: [
-//       { label: "Total SIP Amount Invested", value: invested, color: "#48A8C8" },
-//       {
-//         label: "Total Growth",
-//         value: growth || Math.max(maturity - invested, 0),
-//         color: "#34A853",
-//       },
-//     ],
-//   };
-// }
-
-// export function buildStartSipResultRows(
-//   activeCalculatorId: string,
-//   values: StartSipValues,
-//   result: StartSipResult | null,
-// ) {
-//   if (!result) return [];
-
-//   switch (activeCalculatorId) {
-//     case "step-up-sip":
-//       return [
-//         [
-//           "Total SIP Amount Invested",
-//           formatCurrency(
-//             result.stepup_invested_amount || result.invested_amount,
-//           ),
-//         ],
-//         [
-//           "Total Growth",
-//           formatCurrency(result.stepup_growth_value || result.growth_value),
-//         ],
-//         [
-//           "Total Future Value",
-//           formatCurrency(
-//             result.stepup_maturity_amount || result.maturity_amount,
-//           ),
-//         ],
-//       ];
-//     case "target-based-sip":
-//       return [
-//         [
-//           "Target Wealth",
-//           formatCurrency(result.target_wealth || values.wealth_amount),
-//         ],
-//         ["Required SIP Amount", formatCurrency(result.sip_amount)],
-//         ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-//         ["Total Growth", formatCurrency(result.growth_amount)],
-//       ];
-//     case "crore-journey":
-//       return [
-//         [
-//           "Target Corpus",
-//           formatCurrency(result.target_amount || result.target_wealth),
-//         ],
-//         ["Monthly Savings Required", formatCurrency(result.monthly_savings)],
-//         ["Total Amount Invested", formatCurrency(result.invested_amount)],
-//         ["Total Growth", formatCurrency(result.total_earnings)],
-//       ];
-//     default:
-//       return [
-//         ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-//         ["Total Growth", formatCurrency(result.growth_value)],
-//         ["Total Future Value", formatCurrency(result.maturity_amount)],
-//       ];
-//   }
-// }
-
-// interface StartSipStore {
-//   activeCalculatorId: StartSipCalculatorId;
-//   values: StartSipValues;
-//   result: any;
-//   loading: boolean;
-//   error: string | null;
-//   setActiveCalculator: (id: StartSipCalculatorId) => void;
-//   setFieldValue: (field: string, value: any) => void;
-//   resetValues: () => void;
-//   calculate: () => Promise<void>;
-// }
-
-// const getActiveCalculator = (id: StartSipCalculatorId) =>
-//   START_SIP_CALCULATORS.find((item) => item.id === id) || START_SIP_CALCULATORS[0];
-
-// const buildUiAwareValues = (
-//   id: StartSipCalculatorId,
-//   values: typeof START_SIP_DEFAULT_VALUES,
-// ) => {
-//   if (id === "sip-starter" || id === "step-up-sip") {
-//     return {
-//       ...values,
-//       interest_rate: values.expected_return || values.interest_rate,
-//       period: Math.max(12, Number(values.years || 1) * 12),
-//     };
-//   }
-
-//   if (id === "target-based-sip") {
-//     return {
-//       ...values,
-//       period: Math.max(1, Number(values.years || 1)),
-//     };
-//   }
-
-//   if (id === "crore-journey") {
-//     return {
-//       ...values,
-//       wealth_amount: 10000000,
-//     };
-//   }
-
-//   return values;
-// };
-
-// export const useStartSipStore = create<StartSipStore>()(
-//   devtools((set, get) => ({
-//     activeCalculatorId: "sip-starter",
-//     values: START_SIP_DEFAULT_VALUES,
-//     result: null,
-//     loading: false,
-//     error: null,
-
-//     setActiveCalculator: (id) =>
-//       set({
-//         activeCalculatorId: id,
-//         result: null,
-//         error: null,
-//       }),
-
-//     setFieldValue: (field, value) =>
-//       set((state) => ({
-//         values: {
-//           ...state.values,
-//           [field]: value,
-//         },
-//       })),
-
-//     resetValues: () =>
-//       set({
-//         values: START_SIP_DEFAULT_VALUES,
-//         result: null,
-//         error: null,
-//       }),
-
-//     calculate: async () => {
-//       const { activeCalculatorId, values } = get();
-//       const calculator = getActiveCalculator(activeCalculatorId);
-
-//       if (!calculator.isInteractive || !calculator.tab) {
-//         set({
-//           error: "This section is part of Learn and is not an interactive calculator.",
-//           result: null,
-//         });
-//         return;
-//       }
-
-//       try {
-//         set({ loading: true, error: null });
-
-//         const uiValues = buildUiAwareValues(activeCalculatorId, values);
-//         const data = await requestCalculatorResult(calculator.tab, uiValues);
-
-//         set({
-//           result: data,
-//           loading: false,
-//         });
-//       } catch (error: any) {
-//         set({
-//           loading: false,
-//           result: null,
-//           error:
-//             error?.response?.data?.message ||
-//             error?.response?.data?.msg ||
-//             error?.message ||
-//             "Calculation failed",
-//         });
-//       }
-//     },
-//   })),
-// );
-
 
 
 
@@ -583,69 +189,65 @@ export const START_SIP_CALCULATORS: StartSipCalculatorItem[] = [
     tab: "Spending Less Calculator",
     isInteractive: true,
   },
-  {
-    id: "sip-returns",
-    title: "SIP RETURNS BY CATEGORY (inside Learn)",
-    isInteractive: false,
-  },
+  // {
+  //   id: "sip-returns",
+  //   title: "SIP RETURNS BY CATEGORY (inside Learn)",
+  //   isInteractive: false,
+  // },
 ];
 
 export const START_SIP_DEFAULT_VALUES = {
   // Lumpsum Calculator
-  lumpsum_amount: 5000000,
-  interest_rate: 12,
-  lumpsum_period: 26,
-
-  // SIP Calculator
-  sip_amount: 10000,
+  lumpsum_amount: 500000,
   expected_return: 12,
   years: 10,
-  period: 299,
+
+  // SIP Calculator
+  sip_amount: 25000,
+  interest_rate: 12.5,
+  period: 120,
 
   // Goal Setting Calculator
-  dream_amount: 10000000,
-  savings_amount: 1000000,
-  inflation_rate: 5,
-  goal_years: 30,
+  dream_amount: 9754439,
+  savings_amount: 0,
+  inflation_rate: 6,
 
-  // SIP with Annual Increase Calculator
-  stepup_sip_amount: 25000,
-  stepup_years: 25,
-  stepup_return: 12.4,
+  // SIP with Annual Increase Calculator (uses same sip_amount, interest_rate, period, sip_stepup_value)
   sip_stepup_value: 10,
 
   // Target Amount SIP Calculator
-  target_amount: 5000000,
+  wealth_amount: 2500000,
 
   // Lumpsum Target Calculator
-  target_wealth: 10000000,
+  target_amount: 5000000,
 
-  // Become A Crorepati Calculator
-  wealth_amount: 10000000,
-
-  // Retirement Planning Calculator
+  // Become A Crorepati / Retirement Planning Calculator
   current_age: 30,
-  retirement_age: 55,
+  retirement_age: 60,
+
+  // Spending Less Calculator
   retire_age: 60,
-  retirement_inflation: 6,
   savings_interest_rate: 12,
+  income_tax_rate: 7,
+  house_flat_value: 500000,
+  home_loan_emi_value: 30000,
+  new_car_value: 300000,
+  eating_out_value: 25000,
+  lifestyle_spending_value: 25000,
+  holidays_value: 10000,
+  transport_value: 10000,
+  credit_card_interest_value: 30000,
+  personal_loan_value: 20000,
+  shopping_value: 10000,
 
   // Loan Calculators
   loan_amount: 1000000,
   loan_tenure: 5,
   loan_tenure_type: "year",
 
-  // Home Loan Calculator
-  house_flat_value: 500000,
-  home_loan_emi_value: 30000,
-  home_down_payment: 100000,
-
-  // Car Loan Calculator
-  new_car_value: 300000,
-  car_down_payment: 50000,
-
   // SWP Calculator
   withdrawal_amount: 10000,
+  lumpsum_period: 10,
 
   // Future Value Inflation Calculator
   current_cost: 100000,
@@ -655,58 +257,13 @@ export const START_SIP_DEFAULT_VALUES = {
   principal_amount: 2500000,
   compound_interval: "Yearly",
 
-  // Education Loan EMI Calculator
-  education_cost: 1000000,
-
-  // Personal Loan EMI Calculator
-  personal_loan_value: 20000,
-
-  // Spending Less Calculator
-  eating_out_value: 25000,
-  lifestyle_spending_value: 25000,
-  holidays_value: 10000,
-  transport_value: 10000,
-  credit_card_interest_value: 30000,
-  shopping_value: 10000,
-
-  // Miscellaneous
-  income_tax_rate: 7,
-
-  // Additional fields used in chart/result logic
-  invested_amount: 0,
-  growth_amount: 0,
-  growth_value: 0,
-  maturity_amount: 0,
-  future_amount: 0,
-  monthly_savings: 0,
-  total_earnings: 0,
-  total_interest: 0,
-  total_payment: 0,
-  monthly_emi: 0,
-  total_withdrawal: 0,
-  final_balance: 0,
-  future_cost: 0,
-  compound_maturity: 0,
-  total_gain: 0,
-  total_savings_value: 0,
-  required_sip_amount: 0,
-  dream_amount_inflation: 0,
-  growth_savings_amount: 0,
-  final_target_amount: 0,
-
   // Children Education Planner
   children: [
     {
       name: "Child 1",
       currentAge: 2,
-      educationAge: 18,
-      educationAmount: 500000,
-    },
-    {
-      name: "Child 2",
-      currentAge: 8,
-      educationAge: 20,
-      educationAmount: 500000,
+      educationAge: 4,
+      educationAmount: 50000,
     },
   ],
 };
@@ -717,7 +274,7 @@ export type StartSipValues = typeof START_SIP_DEFAULT_VALUES;
 const currentYear = new Date().getFullYear();
 
 const formatCurrency = (value?: number) =>
-  `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+  `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
 export function buildStartSipChartData(
   activeCalculatorId: string,
@@ -726,65 +283,86 @@ export function buildStartSipChartData(
 ): StartSipChartState {
   if (!result) return null;
 
-  if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting") {
-    const years = Math.max(
+  // Determine years
+  let years = Math.max(1, Number(values.years || values.lumpsum_period || values.stepup_years || values.loan_tenure || result.years || 1));
+  if (activeCalculatorId === "children-education-planner" && values.children && values.children.length > 0) {
+    years = Math.max(...values.children.map((c: any) => Math.max(Number(c.educationAge - c.currentAge) || 1, 1)), 1);
+  } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
+    years = Math.max(
       1,
       Number(result.years || values.goal_years || values.retirement_age - values.current_age || 1),
     );
-    const target = Number(result.target_amount || result.target_wealth || result.dream_amount_inflation || 0);
-    const savings = Number(
-      result.invested_amount ||
-        result.target_savings ||
-        result.savings_amount ||
-        result.growth_savings_amount ||
-        0,
-    );
-
-    return {
-      type: "goal",
-      data: Array.from({ length: years }, (_, index) => ({
-        label: `${currentYear + index}`,
-        target: Math.round(target * ((index + 1) / years)),
-        savings: Math.round(savings * ((index + 1) / years)),
-      })),
-    };
   }
 
   // Loan Chart Mapping Variations
   const isLoan = ["car-loan", "home-loan", "education-loan", "personal-loan"].includes(activeCalculatorId);
-  const years = Math.max(1, Number(values.years || values.lumpsum_period || values.stepup_years || values.loan_tenure || result.years || 1));
-  
-  const invested = isLoan 
-    ? Number(result.invested_amount || values.loan_amount || 0)
-    : Number(
-        result.invested_amount ||
-          result.stepup_invested_amount ||
-          values.sip_amount * years * 12 ||
-          values.lumpsum_amount ||
-          0,
-      );
 
-  const growth = isLoan 
-    ? Number(result.total_interest || result.growth_amount || 0)
-    : Number(
-        result.growth_value ||
-          result.stepup_growth_value ||
-          result.growth_amount ||
-          result.total_earnings ||
-          result.total_gain ||
-          0,
-      );
+  let invested = 0;
+  if (isLoan) {
+    invested = Number(result.invested_amount || values.loan_amount || 0);
+  } else if (activeCalculatorId === "children-education-planner") {
+    invested = Number(result.total_savings_amount || 0);
+  } else if (activeCalculatorId === "spending-less") {
+    invested = Number(result.savings_amount || 0);
+  } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
+    invested = Number(
+      result.invested_amount ||
+        result.target_savings ||
+        result.savings_amount ||
+        result.growth_savings_amount ||
+        result.total_savings_amount ||
+        0,
+    );
+  } else {
+    invested = Number(
+      result.invested_amount ||
+        result.stepup_invested_amount ||
+        values.sip_amount * years * 12 ||
+        values.lumpsum_amount ||
+        0,
+    );
+  }
 
-  const maturity = Number(
-    result.maturity_amount ||
-      result.stepup_maturity_amount ||
-      result.target_wealth ||
-      result.target_amount ||
-      result.future_amount ||
-      result.compound_maturity ||
-      result.total_payment ||
-      0,
-  );
+  let growth = 0;
+  if (isLoan) {
+    growth = Number(result.total_interest || result.growth_amount || 0);
+  } else if (activeCalculatorId === "children-education-planner") {
+    growth = Number((result.total_inflation_adjust_education_amount || 0) - (result.total_savings_amount || 0));
+  } else if (activeCalculatorId === "spending-less") {
+    growth = Number((result.savings_maturity_amount || 0) - (result.savings_amount || 0));
+  } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
+    const target = Number(result.target_amount || result.target_wealth || result.dream_amount_inflation || 0);
+    growth = Math.max(target - invested, 0);
+  } else {
+    growth = Number(
+      result.growth_value ||
+        result.stepup_growth_value ||
+        result.growth_amount ||
+        result.total_earnings ||
+        result.total_gain ||
+        0,
+    );
+  }
+
+  let maturity = 0;
+  if (activeCalculatorId === "children-education-planner") {
+    maturity = Number(result.total_inflation_adjust_education_amount || 0);
+  } else if (activeCalculatorId === "spending-less") {
+    maturity = Number(result.savings_maturity_amount || 0);
+  } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
+    maturity = Number(result.target_amount || result.target_wealth || result.dream_amount_inflation || 0);
+  } else {
+    maturity = Number(
+      result.maturity_amount ||
+        result.stepup_maturity_amount ||
+        result.target_wealth ||
+        result.target_amount ||
+        result.future_amount ||
+        result.compound_maturity ||
+        result.total_payment ||
+        0,
+    );
+  }
 
   return {
     type: "sip",
@@ -825,94 +403,175 @@ export function buildStartSipResultRows(
   switch (activeCalculatorId) {
     case "lumpsum-calculator":
       return [
-        ["Your Lumpsum Amount", formatCurrency(values.lumpsum_amount)],
-        ["Number of years to achieve your goal", `${values.lumpsum_period} Years`],
-        ["Your Future Amount", formatCurrency(result.maturity_amount || result.future_amount)],
+        ["Lumpsum Amount", formatCurrency(result.lumpsum_amount)],
+        ["Expected Return", `${result.expected_return ?? values.expected_return}%`],
+        ["Time Period", `${result.years} Years`],
+        ["Future Amount", formatCurrency(result.future_amount)],
       ];
     case "sip-starter":
       return [
-        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.growth_value)],
-        ["Total Future Value", formatCurrency(result.maturity_amount)],
+        ["Monthly SIP Amount", formatCurrency(result.sip_amount)],
+        ["Interest Rate", `${result.interest_rate}%`],
+        ["Period in Months", `${result.period}`],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["Growth Value", formatCurrency(result.growth_value)],
+        ["Maturity Amount", formatCurrency(result.maturity_amount)],
       ];
     case "goal-setting":
       return [
-        ["Your targeted Dream Amount (Inflation adjusted)", formatCurrency(result.dream_amount_inflation)],
-        ["Growth of your Savings Amount", formatCurrency(result.growth_savings_amount)],
-        ["Final Targeted Amount", formatCurrency(result.final_target_amount)],
-        ["Number of years to achieve your goal", `${values.goal_years} Years`],
-        ["Monthly Savings required", formatCurrency(result.monthly_savings || result.sip_amount)],
-        ["Total Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth Amount", formatCurrency(result.growth_amount || result.total_earnings)],
+        ["No of Years", `${result.years}`],
+        ["Dream Amount", formatCurrency(result.dream_amount)],
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["Expected Return", `${result.expected_return}%`],
+        ["Savings Amount", formatCurrency(result.savings_amount)],
+        ["Target Dream Amount", formatCurrency(result.target_dream_amount)],
+        ["Target Savings Amount", formatCurrency(result.target_savings_amount)],
+        ["Target Amount", formatCurrency(result.target_amount)],
+        ["Monthly Savings", formatCurrency(result.monthly_savings)],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["Total Earnings", formatCurrency(result.total_earnings)],
       ];
     case "step-up-sip":
       return [
-        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.growth_value)],
-        ["Total Future Value", formatCurrency(result.maturity_amount)],
-        ["Total SIP Amount Invested with step up", formatCurrency(result.stepup_invested_amount)],
-        ["Total Growth with step up", formatCurrency(result.stepup_growth_value)],
-        ["Total Future Value with step up", formatCurrency(result.stepup_maturity_amount)],
+        ["Monthly SIP Amount", formatCurrency(result.sip_amount)],
+        ["Interest Rate", `${result.interest_rate}%`],
+        ["Period in Months", `${result.period}`],
+        ["SIP Step Up Value", `${result.sip_stepup_value}%`],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["Growth Value", formatCurrency(result.growth_value)],
+        ["Maturity Amount", formatCurrency(result.maturity_amount)],
+        ["Step-Up Invested Amount", formatCurrency(result.stepup_invested_amount)],
+        ["Step-Up Growth Value", formatCurrency(result.stepup_growth_value)],
+        ["Step-Up Maturity Amount", formatCurrency(result.stepup_maturity_amount)],
       ];
     case "target-based-sip":
       return [
-        ["Target Wealth", formatCurrency(result.target_wealth || values.target_amount)],
-        ["Required SIP Amount", formatCurrency(result.sip_amount || result.required_sip_amount)],
-        ["Total SIP Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.growth_amount)],
+        ["Target Amount", formatCurrency(result.wealth_amount)],
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["Expected Return", `${result.expected_return}%`],
+        ["Investment Period", `${result.period} Years`],
+        ["Target Wealth", formatCurrency(result.target_wealth)],
+        ["SIP Amount", formatCurrency(result.sip_amount)],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["Growth Amount", formatCurrency(result.growth_amount)],
       ];
     case "lumpsum-target":
       return [
-        ["Target Wealth", formatCurrency(values.target_wealth)],
-        ["Lumpsum Amount Required", formatCurrency(result.invested_amount)],
-        ["Total Growth Amount", formatCurrency(result.growth_amount)],
+        ["Target Amount", formatCurrency(result.target_amount)],
+        ["Expected Return", `${result.expected_return}%`],
+        ["Investment Period", `${result.years} Years`],
+        ["Lumpsum Amount", formatCurrency(result.lumpsum_amount)],
       ];
     case "crore-journey":
       return [
-        ["Target Corpus", formatCurrency(result.target_amount || result.target_wealth || 10000000)],
-        ["Monthly Savings Required", formatCurrency(result.monthly_savings)],
-        ["Total Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth", formatCurrency(result.total_earnings)],
+        ["Current Age (Years)", `${result.current_age}`],
+        ["Retirement Age (Years)", `${result.retirement_age}`],
+        ["Wealth Amount", formatCurrency(result.wealth_amount)],
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["Expected Return", `${result.expected_return}%`],
+        ["Savings Amount", formatCurrency(result.savings_amount)],
+        ["Target Wealth", formatCurrency(result.target_wealth)],
+        ["Target Savings", formatCurrency(result.target_savings)],
+        ["Target Amount", formatCurrency(result.target_amount)],
+        ["Years", `${result.years}`],
+        ["Monthly Savings", formatCurrency(result.monthly_savings)],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["Total Earnings", formatCurrency(result.total_earnings)],
       ];
     case "retirement-planning":
       return [
-        ["Target Retirement Corpus", formatCurrency(result.target_amount || result.target_wealth)],
-        ["Monthly Savings Required", formatCurrency(result.monthly_savings)],
-        ["Total Amount Invested", formatCurrency(result.invested_amount)],
-        ["Total Growth Amount", formatCurrency(result.growth_amount || result.total_earnings)],
+        ["Current Age (Years)", `${result.current_age}`],
+        ["Retirement Age (Years)", `${result.retirement_age}`],
+        ["Wealth Amount", formatCurrency(result.wealth_amount)],
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["Expected Return", `${result.expected_return}%`],
+        ["Savings Amount", formatCurrency(result.savings_amount)],
+        ["Target Wealth", formatCurrency(result.target_wealth)],
+        ["Target Savings", formatCurrency(result.target_savings)],
+        ["Target Amount", formatCurrency(result.target_amount)],
+        ["Years", `${result.years}`],
+        ["Monthly Savings", formatCurrency(result.monthly_savings)],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["Total Earnings", formatCurrency(result.total_earnings)],
       ];
     case "car-loan":
     case "home-loan":
     case "education-loan":
     case "personal-loan":
       return [
-        ["Monthly EMI", formatCurrency(result.monthly_emi)],
-        ["Principal Loan Amount", formatCurrency(values.loan_amount)],
-        ["Total Interest Payable", formatCurrency(result.total_interest)],
-        ["Total Payment (Principal + Interest)", formatCurrency(result.total_payment)],
+        ["Loan Amount", formatCurrency(result.loan_amount)],
+        ["Interest Rate", `${result.interest_rate}%`],
+        ["Loan Tenure Type", `${result.loan_tenure_type}`],
+        ["Loan Tenure", `${result.loan_tenure}`],
+        ["EMI", formatCurrency(result.emi)],
+        ["Total Interest", formatCurrency(result.total_interest)],
+        ["Total Amount", formatCurrency(result.total_amount)],
       ];
     case "swp-calculator":
       return [
-        ["Total Investment", formatCurrency(result.invested_amount)],
-        ["Total Withdrawal", formatCurrency(result.total_withdrawal)],
-        ["Final Balance", formatCurrency(result.final_balance)],
+        ["Invested Amount", formatCurrency(result.invested_amount)],
+        ["SWP Tenure", `${result.swp_tenure} Years`],
+        ["Total Withdrawal Amount", formatCurrency(result.total_withdrawal_amount)],
+        ["Terminal Value", formatCurrency(result.terminal_value)],
       ];
     case "future-value-inflation":
       return [
-        ["Current Cost", formatCurrency(values.current_cost)],
-        ["Future Cost", formatCurrency(result.future_cost || result.maturity_amount)],
+        ["Current Cost", formatCurrency(result.current_cost)],
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["No of Years", `${result.no_years}`],
+        ["Future Amount", formatCurrency(result.future_amount)],
       ];
     case "compounding-calculator":
       return [
-        ["Principal Amount", formatCurrency(values.principal_amount)],
-        ["Total Gain", formatCurrency(result.total_gain || result.growth_value)],
-        ["Maturity Amount", formatCurrency(result.compound_maturity || result.maturity_amount)],
+        ["Principal Amount", formatCurrency(result.principal_amount)],
+        ["Interest Rate", `${result.interest_rate}%`],
+        ["Compound Interval", `${result.compound_interval}`],
+        ["Period", `${result.period}`],
+        ["Maturity Amount", formatCurrency(result.maturity_amount)],
       ];
     case "spending-less":
       return [
-        ["Total Potential Monthly Savings", formatCurrency(result.monthly_savings)],
-        ["Future Value of Savings", formatCurrency(result.total_savings_value || result.maturity_amount)],
+        ["Current Age (Years)", `${result.current_age}`],
+        ["Retirement Age (Years)", `${result.retire_age}`],
+        ["Savings Interest Rate", `${result.savings_interest_rate}%`],
+        ["Income Tax Rate", `${result.income_tax_rate}%`],
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["Savings Amount", formatCurrency(result.savings_amount)],
+        ["Years", `${result.years} Years`],
+        ["Savings Maturity Amount", formatCurrency(result.savings_maturity_amount)],
       ];
+    case "children-education-planner": {
+      const rows: [string, string][] = [];
+      if (result.child1_name && result.child1_name !== "") {
+        rows.push(
+          [`${result.child1_name}'s Current Age`, `${result.child1_current_age} Years`],
+          [`${result.child1_name}'s Education Age`, `${result.child1_education_age} Years`],
+          [`${result.child1_name}'s Education Amount`, formatCurrency(result.child1_education_amount)],
+          [`${result.child1_name}'s Inflation Adjusted Amount`, formatCurrency(result.child1_inflation_adjust_education_amount)],
+          [`${result.child1_name}'s Savings Amount`, formatCurrency(result.child1_savings_amount)],
+          [`${result.child1_name}'s Monthly Savings`, formatCurrency(result.child1_monthly_savings)]
+        );
+      }
+      if (result.child2_name && result.child2_name !== "") {
+        rows.push(
+          [`${result.child2_name}'s Current Age`, `${result.child2_current_age} Years`],
+          [`${result.child2_name}'s Education Age`, `${result.child2_education_age} Years`],
+          [`${result.child2_name}'s Education Amount`, formatCurrency(result.child2_education_amount)],
+          [`${result.child2_name}'s Inflation Adjusted Amount`, formatCurrency(result.child2_inflation_adjust_education_amount)],
+          [`${result.child2_name}'s Savings Amount`, formatCurrency(result.child2_savings_amount)],
+          [`${result.child2_name}'s Monthly Savings`, formatCurrency(result.child2_monthly_savings)]
+        );
+      }
+      rows.push(
+        ["Inflation Rate", `${result.inflation_rate}%`],
+        ["Expected Return", `${result.expected_return}%`],
+        ["Total Savings Amount", formatCurrency(result.total_savings_amount)],
+        ["Total Monthly Savings", formatCurrency(result.total_monthly_savings)],
+        ["Total Education Amount", formatCurrency(result.total_education_amount)],
+        ["Total Inflation Adjusted Amount", formatCurrency(result.total_inflation_adjust_education_amount)]
+      );
+      return rows;
+    }
     default:
       return [
         ["Total Amount Invested", formatCurrency(result.invested_amount)],
@@ -937,51 +596,9 @@ interface StartSipStore {
 const getActiveCalculator = (id: StartSipCalculatorId) =>
   START_SIP_CALCULATORS.find((item) => item.id === id) || START_SIP_CALCULATORS[0];
 
-const buildUiAwareValues = (
-  id: StartSipCalculatorId,
-  values: typeof START_SIP_DEFAULT_VALUES,
-) => {
-  // Sync contextual interest rates, periods, and custom payload fields per documentation spec mapping
-  if (id === "sip-starter") {
-    return {
-      ...values,
-      interest_rate: values.expected_return,
-      period: values.period,
-    };
-  }
-
-  if (id === "lumpsum-calculator") {
-    return {
-      ...values,
-      period: values.lumpsum_period * 12,
-    };
-  }
-
-  if (id === "step-up-sip") {
-    return {
-      ...values,
-      sip_amount: values.stepup_sip_amount,
-      interest_rate: values.stepup_return,
-      period: values.stepup_years * 12,
-    };
-  }
-
-  if (id === "target-based-sip") {
-    return {
-      ...values,
-      period: Math.max(1, Number(values.years || 1)),
-    };
-  }
-
-  if (id === "crore-journey") {
-    return {
-      ...values,
-      wealth_amount: 10000000,
-    };
-  }
-
-  return values;
-};
+// buildUiAwareValues now delegates to buildCalculatorPayload from useCalculator
+// to ensure the API payload exactly matches FreeCalculators behavior.
+import { buildCalculatorPayload } from "@/hooks/useCalculator";
 
 export const useStartSipStore = create<StartSipStore>()(
   devtools((set, get) => ({
@@ -1028,11 +645,16 @@ export const useStartSipStore = create<StartSipStore>()(
       try {
         set({ loading: true, error: null });
 
-        const uiValues = buildUiAwareValues(activeCalculatorId, values);
-        const data = await requestCalculatorResult(calculator.tab, uiValues);
+        // Use buildCalculatorPayload directly so the API payload always matches FreeCalculators
+        const payload = buildCalculatorPayload(calculator.tab, values);
+        const { data } = await (await import("axios")).default.post(
+          `/api/calc/${(await import("@/hooks/useCalculator")).CALCULATOR_ROUTE_MAP[calculator.tab]}`,
+          payload,
+        );
+        const processedData = data;
 
         set({
-          result: data,
+          result: processedData,
           loading: false,
         });
       } catch (error: any) {

@@ -1,0 +1,149 @@
+import React, { useState } from "react";
+import { createPortal } from "react-dom";
+import { FiX, FiCheckCircle, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMfApiDashboard } from "../hooks";
+
+interface SyncProgressModalProps {
+  role: string;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgressModalProps) {
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { data, refetch } = useMfApiDashboard(role, {
+    refetchInterval: isOpen ? 1500 : undefined,
+  });
+
+  const dashboard = data?.data;
+  const latestJob = dashboard?.latestSyncJob || null;
+  const totalSchemes = latestJob?.response?.total ?? dashboard?.totalSchemes ?? 0;
+  const activeSchemes = latestJob?.response?.active ?? dashboard?.activeSchemes ?? 0;
+  const inactiveSchemes = latestJob?.response?.inactive ?? dashboard?.inactiveSchemes ?? 0;
+  const processedSchemes = latestJob?.response?.processed ?? 0;
+  const failedSchemes = latestJob?.response?.errors ?? dashboard?.failedSchemes ?? 0;
+  const syncMessage = latestJob?.message || dashboard?.lastSyncMessage || dashboard?.runningMessage || "";
+  const isRunning = latestJob?.status === "running";
+  const hasFinishedJob = latestJob ? latestJob.status !== "running" : false;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({
+        queryKey: [role, "mf-api", "dashboard"],
+        exact: true,
+      });
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const progressPercentage =
+    totalSchemes > 0
+      ? Math.min(100, Math.round((processedSchemes / totalSchemes) * 100))
+      : 0;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900">Background Sync Progress</h3>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          >
+            <FiX className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {isRunning ? (
+            <div className="mb-6 flex items-center gap-3 text-blue-600">
+              <FiRefreshCw className="h-5 w-5 animate-spin" />
+              <div>
+                <p className="font-medium">Sync is currently running...</p>
+                {syncMessage ? (
+                  <p className="mt-1 max-w-full truncate text-xs text-blue-500" title={syncMessage}>
+                    {syncMessage}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : hasFinishedJob ? (
+            <div className="mb-6 flex items-center gap-3 text-green-600">
+              <FiCheckCircle className="h-5 w-5" />
+              <p className="font-medium">Sync process completed!</p>
+            </div>
+          ) : (
+            <div className="mb-6 flex items-center gap-3 text-gray-600">
+              <FiAlertCircle className="h-5 w-5" />
+              <p className="font-medium">Sync is currently idle.</p>
+            </div>
+          )}
+
+          {/* Progress Bar */}
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-medium text-gray-700">Overall Progress</span>
+            <span className="font-semibold text-gray-900">{progressPercentage}%</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className={`h-full transition-all duration-500 ${
+                isRunning ? "bg-blue-500" : "bg-green-500"
+              }`}
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+
+          {/* Stats Grid */}
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
+              <p className="text-sm font-medium text-gray-500">Total Schemes</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">{totalSchemes}</p>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
+              <p className="text-sm font-medium text-gray-500">Active</p>
+              <p className="mt-1 text-2xl font-semibold text-blue-600">{activeSchemes}</p>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
+              <p className="text-sm font-medium text-gray-500">Processed</p>
+              <p className="mt-1 text-2xl font-semibold text-green-600">{processedSchemes}</p>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-center">
+              <p className="text-sm font-medium text-gray-500">Inactive / Errors</p>
+              <p className="mt-1 text-2xl font-semibold text-red-600">{failedSchemes}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-100 bg-gray-50 px-6 py-4 flex justify-between items-center">
+          <p className="text-xs text-gray-500">Updates every 1.5 seconds while the job is running</p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => void handleRefresh()}
+              disabled={isRefreshing}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-[#043f79] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#032e59]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}

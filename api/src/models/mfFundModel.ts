@@ -50,6 +50,9 @@ export interface IMFFund extends Document {
   scheme_code?: string;
   isin?: string;
   isin_number?: string;
+  mf_api_scheme_id?: mongoose.Types.ObjectId | null;  // ref to MfApiScheme._id
+  mf_api_external_key?: string;                        // ref to MfApiScheme.external_key
+  mf_api_synced_at?: Date | null;                      // last time API data was pushed into this fund
   fund_name: string;
   amc_id: mongoose.Types.ObjectId;
   category_id: mongoose.Types.ObjectId;
@@ -85,6 +88,25 @@ export interface IMFFund extends Document {
   fund_manager?: string;
   launch_date?: Date | null;
   benchmark_id?: mongoose.Types.ObjectId | null;
+  benchmark_index_name?: string;
+  benchmark_returns_trailing?: {
+    d1?: number | null;
+    m1?: number | null;
+    m3?: number | null;
+    m6?: number | null;
+    y1?: number | null;
+    y3?: number | null;
+    y5?: number | null;
+    y10?: number | null;
+    since_launch?: number | null;
+  };
+  benchmark_returns_annual?: {
+    y1?: number | null;
+    y3?: number | null;
+    y5?: number | null;
+    y10?: number | null;
+  };
+  benchmark_inception_return?: number | null;
   min_investment?: number | null;
   sip_allowed?: boolean;
   min_sip_investment?: number | null;
@@ -122,6 +144,14 @@ const mfFundSchema = new Schema<IMFFund>(
     scheme_code: { type: String, trim: true, default: "", index: true },
     isin: { type: String, trim: true, default: "", index: true },
     isin_number: { type: String, trim: true, default: "", index: true },
+    mf_api_scheme_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MfApiScheme",
+      default: null,
+      index: true,
+    },
+    mf_api_external_key: { type: String, trim: true, default: "", index: true },
+    mf_api_synced_at: { type: Date, default: null },
     fund_name: { type: String, required: true, trim: true, index: true },
     amc_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFAmc", required: true, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", required: true, index: true },
@@ -149,6 +179,25 @@ const mfFundSchema = new Schema<IMFFund>(
     fund_manager: { type: String, trim: true, default: "" },
     launch_date: { type: Date, default: null },
     benchmark_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFBenchmark", default: null, index: true },
+    benchmark_index_name: { type: String, trim: true, default: "" },
+    benchmark_returns_trailing: {
+      d1: { type: Number, default: null },
+      m1: { type: Number, default: null },
+      m3: { type: Number, default: null },
+      m6: { type: Number, default: null },
+      y1: { type: Number, default: null },
+      y3: { type: Number, default: null },
+      y5: { type: Number, default: null },
+      y10: { type: Number, default: null },
+      since_launch: { type: Number, default: null },
+    },
+    benchmark_returns_annual: {
+      y1: { type: Number, default: null },
+      y3: { type: Number, default: null },
+      y5: { type: Number, default: null },
+      y10: { type: Number, default: null },
+    },
+    benchmark_inception_return: { type: Number, default: null },
     min_investment: { type: Number, default: null },
     sip_allowed: { type: Boolean, default: true },
     min_sip_investment: { type: Number, default: null },
@@ -194,6 +243,8 @@ mfFundSchema.index({ category_id: 1, "returns.trailing.3y": -1 });
 mfFundSchema.index({ is_popular: 1, is_active: 1 });
 mfFundSchema.index({ is_featured: 1, is_active: 1 });
 mfFundSchema.index({ fund_name: "text", fund_manager: "text", fund_objective: "text" });
+mfFundSchema.index({ mf_api_scheme_id: 1, is_deleted: 1 });
+mfFundSchema.index({ mf_api_external_key: 1, is_deleted: 1 });
 
 const MFFund: Model<IMFFund> =
   (mongoose.models.MFFund as Model<IMFFund>) ||

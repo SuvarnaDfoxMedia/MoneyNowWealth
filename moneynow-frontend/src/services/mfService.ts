@@ -52,4 +52,8 @@ export const mfService = {
     const { data } = await API.get("/api/mf/filters", { params });
     return data;
   },
+  getMfApiSchemes: async (params?: MfQueryParams) => {
+    const { data } = await API.get("/api/mf-api/schemes", { params });
+    return data;
+  },
 };

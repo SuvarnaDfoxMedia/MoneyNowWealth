@@ -211,6 +211,7 @@ export default function MFBenchmarkViewComparisonPage() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [funds, setFunds] = useState<FundOption[]>([]);
   const [returnsRows, setReturnsRows] = useState<BenchmarkReturnRow[]>([]);
+  const [categoryDetailsById, setCategoryDetailsById] = useState<Record<string, CategoryOption>>({});
 
   const [benchmarkA, setBenchmarkA] = useState("");
   const [benchmarkB, setBenchmarkB] = useState("");
@@ -303,6 +304,37 @@ export default function MFBenchmarkViewComparisonPage() {
     };
   }, [role, fundId, fundA, fundB, fundDetailsById]);
 
+  useEffect(() => {
+    const ids = [categoryName, categoryA, categoryB, categoryForFund].filter(Boolean);
+    const missingIds = ids.filter((id) => !categoryDetailsById[id]);
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            const res: any = await axiosApi.get(`/${role}/mf/categories/${id}`);
+            return [id, (res?.data || null) as CategoryOption | null] as const;
+          } catch {
+            return [id, null] as const;
+          }
+        }),
+      );
+      if (cancelled) return;
+      setCategoryDetailsById((prev) => {
+        const next = { ...prev };
+        results.forEach(([id, detail]) => {
+          if (detail) next[id] = detail;
+        });
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [role, categoryName, categoryA, categoryB, categoryForFund, categoryDetailsById]);
+
   const findBenchmarkRow = (benchmarkId: string) => {
     const byId = latestRows.find((item) => extractId(item.benchmark_id) === benchmarkId);
     if (byId) return byId;
@@ -324,7 +356,7 @@ export default function MFBenchmarkViewComparisonPage() {
     }
     if (mode === "benchmark-vs-category") {
       const rowA = findBenchmarkRow(benchmarkA);
-      const selectedCategory = categoryById.get(categoryName);
+      const selectedCategory = categoryDetailsById[categoryName] || categoryById.get(categoryName);
       return {
         left: fromBenchmarkRow(benchmarkById.get(benchmarkA)?.name || "Benchmark", rowA),
         right: fromCategory(selectedCategory?.name || "Category", selectedCategory),
@@ -339,15 +371,15 @@ export default function MFBenchmarkViewComparisonPage() {
       };
     }
     if (mode === "category-vs-category") {
-      const leftCategory = categoryById.get(categoryA);
-      const rightCategory = categoryById.get(categoryB);
+      const leftCategory = categoryDetailsById[categoryA] || categoryById.get(categoryA);
+      const rightCategory = categoryDetailsById[categoryB] || categoryById.get(categoryB);
       return {
         left: fromCategory(leftCategory?.name || "Category A", leftCategory),
         right: fromCategory(rightCategory?.name || "Category B", rightCategory),
       };
     }
     if (mode === "category-vs-fund") {
-      const leftCategory = categoryById.get(categoryForFund);
+      const leftCategory = categoryDetailsById[categoryForFund] || categoryById.get(categoryForFund);
       const rightFund = fundDetailsById[fundId] || fundById.get(fundId);
       return {
         left: fromCategory(leftCategory?.name || "Category", leftCategory),
@@ -399,9 +431,12 @@ export default function MFBenchmarkViewComparisonPage() {
     [chartSeries],
   );
 
-  const leftOneYear = leftRightSeries.left.y1 ?? 0;
-  const rightOneYear = leftRightSeries.right.y1 ?? 0;
-  const deltaOneYear = Number((leftOneYear - rightOneYear).toFixed(2));
+  const leftOneYear = leftRightSeries.left.y1;
+  const rightOneYear = leftRightSeries.right.y1;
+  const deltaOneYear =
+    leftOneYear !== null && rightOneYear !== null
+      ? Number((leftOneYear - rightOneYear).toFixed(2))
+      : null;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -505,9 +540,9 @@ export default function MFBenchmarkViewComparisonPage() {
             </div>
 
             <div className="mt-5 grid gap-4 md:grid-cols-3">
-              <StatCard label="Left (1Y)" value={`${leftOneYear.toFixed(2)}%`} />
-              <StatCard label="Right (1Y)" value={`${rightOneYear.toFixed(2)}%`} />
-              <StatCard label="Delta (Left-Right)" value={`${deltaOneYear.toFixed(2)}%`} />
+              <StatCard label="Left (1Y)" value={leftOneYear === null ? "—" : `${leftOneYear.toFixed(2)}%`} />
+              <StatCard label="Right (1Y)" value={rightOneYear === null ? "—" : `${rightOneYear.toFixed(2)}%`} />
+              <StatCard label="Delta (Left-Right)" value={deltaOneYear === null ? "—" : `${deltaOneYear.toFixed(2)}%`} />
             </div>
 
             <div className="mt-5 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
