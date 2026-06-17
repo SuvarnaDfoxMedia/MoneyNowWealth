@@ -1,4 +1,4 @@
-﻿/**
+/**
  * mfApiBridgeService.ts
  *
  * Bridges the MF API automation module (mf_api_schemes) with the manual
@@ -7,35 +7,35 @@
  * always reads fresh data from the manual system.
  *
  * DATA FLOW:
- *   MfApiScheme (API source) â†’ MFFund (frontend-facing record)
+ *   MfApiScheme (API source) -> MFFund (frontend-facing record)
  *
- * WHAT GETS SYNCED FROM API â†’ MANUAL:
- *   âœ… fund_name, scheme_code, isin, plan_type, option_type
- *   âœ… amc_name (resolved to amc_id via MFAmc)
- *   âœ… nav_Current, nav_date (from latest_nav, latest_date)
- *   âœ… aum_cr (from scheme_assets)
- *   âœ… expense_ratio (from expense_ratio_percentage)
- *   âœ… fund_manager (from scheme_manager)
- *   âœ… fund_objective (from scheme_objective)
- *   âœ… launch_date (from scheme_inception_date)
- *   âœ… exit_load
- *   âœ… min_investment, sip_minimum_amount
- *   âœ… riskometer_label (from riskometer_value)
- *   âœ… large_cap_pct, mid_cap_pct, small_cap_pct (from market_cap)
- *   âœ… returns.trailing (from trailing_returns)
- *   âœ… returns.since_inception (from scheme_inception_return)
- *   âœ… risk_metrics.sharpe_3y (from risk_metrics.sharpe_3y)
- *   âœ… risk_metrics.alpha_3y (from risk_metrics.alpha_1y â€” best available)
- *   âœ… risk_metrics.beta_3y (from risk_metrics.beta_1y)
- *   âœ… risk_metrics.turnover_ratio (from scheme_turnover)
+ * WHAT GETS SYNCED FROM API -> MANUAL:
+ *   ✅ fund_name, scheme_code, isin, plan_type, option_type
+ *   ✅ amc_name (resolved to amc_id via MFAmc)
+ *   ✅ nav_Current, nav_date (from latest_nav, latest_date)
+ *   ✅ aum_cr (from scheme_assets)
+ *   ✅ expense_ratio (from expense_ratio_percentage)
+ *   ✅ fund_manager (from scheme_manager)
+ *   ✅ fund_objective (from scheme_objective)
+ *   ✅ launch_date (from scheme_inception_date)
+ *   ✅ exit_load
+ *   ✅ min_investment, sip_minimum_amount
+ *   ✅ riskometer_label (from riskometer_value)
+ *   ✅ large_cap_pct, mid_cap_pct, small_cap_pct (from market_cap)
+ *   ✅ returns.trailing (from trailing_returns)
+ *   ✅ returns.since_inception (from scheme_inception_return)
+ *   ✅ risk_metrics.sharpe_3y (from risk_metrics.sharpe_3y)
+ *   ✅ risk_metrics.alpha_1y (from risk_metrics.alpha_1y)
+ *   ✅ risk_metrics.beta_1y (from risk_metrics.beta_1y)
+ *   ✅ risk_metrics.turnover_ratio (from scheme_turnover)
  *
  * WHAT IS NOT OVERWRITTEN (manual-only, API has no data):
- *   âŒ returns.annual.yearly_returns  â€” manual import only
- *   âŒ frontend_visibility            â€” admin-controlled
- *   âŒ is_featured, is_popular       â€” admin-controlled
+ *   ❌ returns.annual.yearly_returns  — manual import only
+ *   ❌ frontend_visibility            — admin-controlled
+ *   ❌ is_featured, is_popular       — admin-controlled
  *   ? category_id                   — resolved automatically or auto-created from API category
- *   âŒ benchmark_id                  â€” manual mapping
- *   âŒ investment_strategy           â€” manual content
+ *   ❌ benchmark_id                  — manual mapping
+ *   ❌ investment_strategy           — manual content
  *
  * CATEGORY MAPPING NOTE:
  *   The API provides a string category like "Hybrid: Balanced". The manual
@@ -53,8 +53,11 @@ import NavHistory from "../models/navHistoryModel";
 import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
 import MFMainCategory from "../models/mfMainCategoryModel";
+import MFBenchmark from "../models/mfBenchmarkModel";
 import { recomputeCategoryAverageReturns } from "./mfCategoryService";
 import { normalizeDateOnly } from "./navCalculationService";
+import { parseSchemeTitle } from "../utils/schemeParser";
+import { parseCategoryPath } from "../utils/categoryParser";
 
 const toN = (v: any): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -71,59 +74,6 @@ const toD = (v: any): Date | null => {
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const normalizeText = (value: string) => String(value || "").trim();
-
-const parseSchemeTitle = (schemeName: string) => {
-  const clean = normalizeText(schemeName);
-  const parts = clean.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
-  const last = parts[parts.length - 1] || "";
-  const secondLast = parts[parts.length - 2] || "";
-  const planMatch = /^(direct|regular)\s*plan$/i.exec(secondLast);
-  const optionMatch = /^(growth|idcw|dividend)$/i.exec(last);
-
-  if (parts.length >= 3 && planMatch && optionMatch) {
-    return {
-      baseName: parts.slice(0, -2).join(" - "),
-      planType: planMatch[1].toLowerCase() === "direct" ? "Direct" : "Regular",
-      optionType:
-        optionMatch[1].toLowerCase() === "idcw" || optionMatch[1].toLowerCase() === "dividend"
-          ? "IDCW"
-          : "Growth",
-    };
-  }
-
-  return {
-    baseName: clean,
-    planType: "",
-    optionType: "",
-  };
-};
-
-const parseCategoryPath = (rawCategory: string) => {
-  const clean = normalizeText(rawCategory);
-  if (!clean) {
-    return { mainCategoryName: "Uncategorized", categoryName: "Uncategorized" };
-  }
-
-  if (clean.includes(":")) {
-    const [mainCategoryName, ...rest] = clean.split(":").map((part) => part.trim()).filter(Boolean);
-    const categoryName = rest.join(":").trim() || mainCategoryName || "Uncategorized";
-    return {
-      mainCategoryName: mainCategoryName || "Uncategorized",
-      categoryName,
-    };
-  }
-
-  if (clean.includes("-")) {
-    const [mainCategoryName, ...rest] = clean.split("-").map((part) => part.trim()).filter(Boolean);
-    const categoryName = rest.join("-").trim() || mainCategoryName || "Uncategorized";
-    return {
-      mainCategoryName: mainCategoryName || "Uncategorized",
-      categoryName,
-    };
-  }
-
-  return { mainCategoryName: clean, categoryName: clean };
-};
 
 const findCategoryByName = async (name: string) =>
   MFCategory.findOne({
@@ -187,27 +137,63 @@ const resolveCategoryId = async (apiCategory: string): Promise<mongoose.Types.Ob
     }
   }
 
-  let mainCategory = await findMainCategoryByName(fallbackMainCategoryName);
+  // Auto-create with the correct parsed names (not "Uncategorized")
+  const { mainCategoryName: fallbackMainCat, categoryName: fallbackCat } = parsed;
+
+  let mainCategory = await findMainCategoryByName(fallbackMainCat);
   if (!mainCategory) {
     mainCategory = await MFMainCategory.create({
-      name: fallbackMainCategoryName,
+      name: fallbackMainCat,
       is_active: 1,
       is_deleted: false,
     });
   }
 
-  const createdCategory = await MFCategory.create({
-    name: fallbackCategoryName,
-    main_category_id: mainCategory._id,
-    is_active: 1,
-    is_deleted: false,
-  });
+  let newCategory = await findCategoryByName(fallbackCat);
+  if (!newCategory) {
+    newCategory = await MFCategory.create({
+      name: fallbackCat,
+      main_category_id: mainCategory._id,
+      is_active: 1,
+      is_deleted: false,
+    });
+  }
 
   console.info(
-    `[mfApiBridgeService] Auto-created MFCategory "${fallbackCategoryName}" under MFMainCategory "${fallbackMainCategoryName}" for API category "${apiCategory || "Uncategorized"}"`,
+    `[mfApiBridgeService] Auto-created/resolved MFCategory "${fallbackCat}" under "${fallbackMainCat}" for API category "${apiCategory}"`,
   );
 
-  return createdCategory._id as mongoose.Types.ObjectId;
+  return newCategory._id as mongoose.Types.ObjectId;
+};
+
+/**
+ * Resolve a benchmark for an API benchmark string using fuzzy matching.
+ * Returns the ObjectId or null if no acceptable match is found.
+ */
+const resolveBenchmarkId = async (apiBenchmark: string): Promise<mongoose.Types.ObjectId | null> => {
+  const clean = normalizeText(apiBenchmark);
+  if (!clean) return null;
+
+  const exactMatch = await MFBenchmark.findOne({
+    name: { $regex: `^${escapeRegex(clean)}$`, $options: "i" },
+    is_deleted: false,
+  }).lean();
+  if (exactMatch) return exactMatch._id as mongoose.Types.ObjectId;
+
+  // Attempt fuzzy match
+  const allBenchmarks = await MFBenchmark.find({ is_deleted: false, is_active: 1 }).lean();
+  const cleanLower = clean.toLowerCase();
+  
+  // Try to find if any known benchmark name is fully contained in the API benchmark name
+  const sortedByLength = [...allBenchmarks].sort((a, b) => b.name.length - a.name.length);
+  for (const benchmark of sortedByLength) {
+    const escaped = escapeRegex(benchmark.name);
+    if (new RegExp(`\\b${escaped}\\b`, "i").test(clean)) {
+      return benchmark._id as mongoose.Types.ObjectId;
+    }
+  }
+
+  return null;
 };
 
 const mapPlanType = (plan: string): "Regular" | "Direct" | "" => {
@@ -257,31 +243,31 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
   const rm = (scheme as any).risk_metrics || {};
   const mc = (scheme as any).market_cap || {};
   const benchmarkReturns = (scheme as any).benchmark_returns || {};
+  const categoryReturns = (scheme as any).category_avg_returns || {};
   const parsedTitle = parseSchemeTitle(scheme.scheme_name || "");
 
   const amcId = await resolveAmcId(scheme.amc_name || "");
   const categoryId = await resolveCategoryId(scheme.category || "");
+  const benchmarkIndexName = (scheme as any).scheme_benchmark || benchmarkReturns.benchmark_name || "";
+  const benchmarkId = await resolveBenchmarkId(benchmarkIndexName);
 
   const payload: Record<string, any> = {
-    // â”€â”€ Identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ---- Identity ----
     fund_name:   parsedTitle.baseName || scheme.scheme_name,
     scheme_code: scheme.scheme_code || "",
     isin:        scheme.isin || "",
     isin_number: scheme.isin || "",
     plan_type:   mapPlanType(scheme.plan_type || parsedTitle.planType || ""),
     option_type: mapOptionType(scheme.option_type || parsedTitle.optionType || ""),
-    // â”€â”€ Bridge refs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    mf_api_scheme_id:   scheme._id,
-    mf_api_external_key: scheme.external_key,
-    mf_api_synced_at:   new Date(),
-    // â”€â”€ AMC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ...(amcId ? { amc_id: amcId } : {}),
-    // â”€â”€ Category (only set if resolved) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ...(categoryId ? { category_id: categoryId } : {}),
-    // â”€â”€ NAV â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    ...(benchmarkId ? { benchmark_id: benchmarkId } : {}),
+    // ---- NAV ----
     nav_Current: toN(scheme.latest_nav),
     nav_date:    toD(scheme.latest_date),
-    // â”€â”€ Fund info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    nav_change:  toN((scheme as any).nav_change),
+    nav_change_percentage: toN((scheme as any).nav_change_percentage),
+    // ---- Fund info ----
     aum_cr:          toN(scheme.scheme_assets),
     aum:             toN(scheme.scheme_assets),
     expense_ratio:   toN(scheme.expense_ratio_percentage),
@@ -292,11 +278,11 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
     min_investment:  toN(scheme.minimum_investment),
     min_sip_investment: toN(scheme.sip_minimum_amount),
     riskometer_label: scheme.riskometer_value || "",
-    // â”€â”€ Market cap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ---- Market cap ----
     large_cap_pct: toN(mc.large_cap_pct ?? scheme.market_cap_largecap_percent),
     mid_cap_pct:   toN(mc.mid_cap_pct   ?? scheme.market_cap_midcap_percent),
     small_cap_pct: toN(mc.small_cap_pct ?? scheme.market_cap_smallcap_percent),
-    // â”€â”€ Returns (trailing) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ---- Returns (trailing) ----
     returns: {
       since_inception: toN(scheme.scheme_inception_return),
       d1:   toN(tr.d1),
@@ -311,26 +297,38 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
         "10y":         toN(tr["10y"]),
         since_launch:  toN(tr.since_launch),
       },
-      // annual.yearly_returns is NOT overwritten â€” it is manual-only
     },
-    // â”€â”€ Risk metrics (best available from API) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ---- Category Returns (from API) ----
+    api_category_returns: {
+      "1w":          toN(categoryReturns["1w"]) ?? null,
+      "1m":          toN(categoryReturns["1m"]) ?? null,
+      "3m":          toN(categoryReturns["3m"]) ?? null,
+      "6m":          toN(categoryReturns["6m"]) ?? null,
+      "1y":          toN(categoryReturns["1y"]) ?? null,
+      "2y":          toN(categoryReturns["2y"]) ?? null,
+      "3y":          toN(categoryReturns["3y"]) ?? null,
+      "5y":          toN(categoryReturns["5y"]) ?? null,
+      "10y":         toN(categoryReturns["10y"]) ?? null,
+      ytd:           toN(categoryReturns.ytd) ?? null,
+      since_launch:  toN(categoryReturns.since_launch) ?? null,
+    },
+    // ---- Risk metrics (best available from API) ----
     risk_metrics: {
       sharpe_3y:      toN(rm.sharpe_3y),
-      alpha_3y:       toN(rm.alpha_1y),   // API only gives 1y alpha
-      beta_3y:        toN(rm.beta_1y),    // API only gives 1y beta
+      alpha_1y:       toN(rm.alpha_1y),
+      beta_1y:        toN(rm.beta_1y),
       turnover_ratio: toN(scheme.scheme_turnover),
     },
-    benchmark_index_name:
-      (scheme as any).scheme_benchmark || benchmarkReturns.benchmark_name || "",
+    benchmark_index_name: benchmarkIndexName,
     benchmark_returns_trailing: {
-      d1: toN(benchmarkReturns["1w"]) ?? null,
-      m1: toN(benchmarkReturns["1m"]) ?? null,
-      m3: toN(benchmarkReturns["3m"]) ?? null,
-      m6: toN(benchmarkReturns["6m"]) ?? null,
-      y1: toN(benchmarkReturns["1y"]) ?? null,
-      y3: toN(benchmarkReturns["3y"]) ?? null,
-      y5: toN(benchmarkReturns["5y"]) ?? null,
-      y10: toN(benchmarkReturns["10y"]) ?? null,
+      d1:           null,                                          // 1-day: not available from API
+      m1:           toN(benchmarkReturns["1m"]) ?? null,
+      m3:           toN(benchmarkReturns["3m"]) ?? null,
+      m6:           toN(benchmarkReturns["6m"]) ?? null,
+      y1:           toN(benchmarkReturns["1y"]) ?? null,
+      y3:           toN(benchmarkReturns["3y"]) ?? null,
+      y5:           toN(benchmarkReturns["5y"]) ?? null,
+      y10:          toN(benchmarkReturns["10y"]) ?? null,
       since_launch: toN(benchmarkReturns.since_launch) ?? null,
     },
     benchmark_returns_annual: {
@@ -345,19 +343,6 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
   return payload;
 };
 
-/**
- * Sync one MfApiScheme into the MFFund collection.
- * Called:
- *   1. When a scheme is activated (toggleSchemeActive â†’ is_active: true)
- *   2. After every successful syncOneScheme call
- *   3. After a successful importMfApiData row
- *
- * Behaviour:
- *   - If MFFund with mf_api_scheme_id already exists â†’ update API fields only
- *   - If MFFund matched by scheme_code â†’ link it and update API fields
- *   - If no MFFund exists â†’ create one (requires amcId; will skip if no amc)
- *   - If is_active is being set to FALSE â†’ do NOT delete MFFund, just stop syncing
- */
 export const syncApiSchemeToManual = async (
   schemeId: string,
   options: { activating?: boolean } = {}
@@ -365,17 +350,11 @@ export const syncApiSchemeToManual = async (
   const scheme = await MfApiScheme.findById(schemeId).lean() as IMfApiScheme | null;
   if (!scheme) return { action: "skipped", reason: "MfApiScheme not found" };
 
-  // NOTE: We intentionally do not route through mfFundService.createFund/updateFund.
-  // Those paths strip NAV fields; this bridge writes directly to preserve API data.
-
-  // Only create a new MFFund record if the scheme is active
-  // (updating existing records is always allowed for data freshness)
   const schemeActive = scheme.is_active === true;
 
   try {
     const payload = await buildMFFundPayload(scheme);
 
-    // â”€â”€ Find existing MFFund by bridge ref or scheme_code â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let existing = await MFFund.findOne({
       is_deleted: false,
       $or: [
@@ -386,15 +365,16 @@ export const syncApiSchemeToManual = async (
     });
 
     if (existing) {
-      // â”€â”€ UPDATE: merge API fields; never touch manual-only fields â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // stripNulls removed — null values are now meaningful (they clear stale fields)
+
       const {
-        // Exclude fields that must not be overwritten from API
         returns: payloadReturns,
         risk_metrics: payloadRisk,
+        benchmark_returns_trailing: payloadBenchmarkReturns,
+        api_category_returns: payloadApiCategoryReturns,
         ...scalarFields
       } = payload;
 
-      // Merge returns carefully: keep existing annual.yearly_returns, update trailing only
       const existingReturns = (existing as any).returns || {};
       const mergedReturns = {
         ...existingReturns,
@@ -402,55 +382,67 @@ export const syncApiSchemeToManual = async (
         d1: payloadReturns.d1 ?? existingReturns.d1,
         trailing: {
           ...(existingReturns.trailing || {}),
-          ...payloadReturns.trailing,
+          ...payloadReturns.trailing,  // nulls are intentional — they clear stale data
         },
-        // annual.yearly_returns is PRESERVED from existing (manual-only)
         annual: {
           ...(existingReturns.annual || {}),
           ytd: (scheme as any).trailing_returns?.ytd ?? existingReturns.annual?.ytd,
-          // yearly_returns NOT touched
         },
       };
 
-      // Merge risk_metrics: only update fields the API provides, preserve rest
       const existingRisk = (existing as any).risk_metrics || {};
       const mergedRisk = {
         ...existingRisk,
-        ...(payloadRisk.sharpe_3y   !== null ? { sharpe_3y:      payloadRisk.sharpe_3y }   : {}),
-        ...(payloadRisk.alpha_3y    !== null ? { alpha_3y:        payloadRisk.alpha_3y }    : {}),
-        ...(payloadRisk.beta_3y     !== null ? { beta_3y:         payloadRisk.beta_3y }     : {}),
-        ...(payloadRisk.turnover_ratio !== null ? { turnover_ratio: payloadRisk.turnover_ratio } : {}),
+        // Only overwrite risk fields that API provides (non-null)
+        ...(payloadRisk.sharpe_3y      !== null && payloadRisk.sharpe_3y      !== undefined ? { sharpe_3y:      payloadRisk.sharpe_3y }      : {}),
+        ...(payloadRisk.alpha_1y       !== null && payloadRisk.alpha_1y       !== undefined ? { alpha_1y:       payloadRisk.alpha_1y }       : {}),
+        ...(payloadRisk.beta_1y        !== null && payloadRisk.beta_1y        !== undefined ? { beta_1y:        payloadRisk.beta_1y }        : {}),
+        ...(payloadRisk.turnover_ratio !== null && payloadRisk.turnover_ratio !== undefined ? { turnover_ratio: payloadRisk.turnover_ratio } : {}),
       };
+
+      const existingBenchmarkReturns = (existing as any).benchmark_returns_trailing || {};
+      const mergedBenchmarkReturns = {
+        ...existingBenchmarkReturns,
+        ...payloadBenchmarkReturns,
+      };
+
+      const existingApiCategoryReturns = (existing as any).api_category_returns || {};
+        const mergedApiCategoryReturns = {
+          ...existingApiCategoryReturns,
+          // Keep existing values when API returns null for a period
+          ...Object.fromEntries(
+            Object.entries(payloadApiCategoryReturns || {}).filter(([_, v]) => v !== null && v !== undefined),
+          ),
+        };
 
       const updateDoc: Record<string, any> = {
         ...scalarFields,
+        benchmark_returns_trailing: mergedBenchmarkReturns,
+        api_category_returns: mergedApiCategoryReturns,
         returns: mergedReturns,
         risk_metrics: mergedRisk,
-        mf_api_scheme_id: scheme._id,         // ensure link is set even if matched by scheme_code
+        mf_api_scheme_id: scheme._id,
         mf_api_external_key: scheme.external_key,
         mf_api_synced_at: new Date(),
       };
 
-      // nav_Current and nav_date: updateFund() deletes these, so update directly via findByIdAndUpdate
       await MFFund.findByIdAndUpdate(existing._id, {
         $set: {
           ...updateDoc,
           nav_Current: payload.nav_Current,
           nav_date: payload.nav_date,
+          nav_change: payload.nav_change,
+          nav_change_percentage: payload.nav_change_percentage,
         },
       });
 
       await upsertNavHistoryFromApiScheme(scheme, String(existing._id));
 
-      const categoryIdToRecompute = String(existing.category_id || payload.category_id || "");
-      if (categoryIdToRecompute) {
-        await recomputeCategoryAverageReturns(categoryIdToRecompute).catch(() => {});
-      }
+      // categoryIdToRecompute removed for asynchronous batch processing (Phase 4.1)
 
       return { action: "updated" };
     }
 
-    // â”€â”€ CREATE: only if scheme is active (admin confirmed it) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (!schemeActive && !options.activating) {
       return { action: "skipped", reason: "Scheme is not active; MFFund not created yet" };
     }
@@ -463,15 +455,13 @@ export const syncApiSchemeToManual = async (
       return { action: "skipped", reason: "scheme_code is required to create MFFund" };
     }
 
-    // Build the initial MFFund document
     const newFund = new MFFund({
       ...payload,
-      // Explicit safe defaults for manual-only fields
       returns: {
         ...payload.returns,
         annual: {
           ytd:            (scheme as any).trailing_returns?.ytd ?? null,
-          yearly_returns: {},   // empty â€” must be manually imported
+          yearly_returns: {},
         },
       },
       risk_metrics: {
@@ -495,26 +485,15 @@ export const syncApiSchemeToManual = async (
 
     await newFund.save();
     await upsertNavHistoryFromApiScheme(scheme, String(newFund._id));
-    if (payload.category_id) {
-      await recomputeCategoryAverageReturns(String(payload.category_id)).catch(() => {});
-    }
+    // Category recomputation deferred to bulk job (Phase 4.1)
     return { action: "created" };
 
   } catch (err: any) {
-    // Never crash the parent sync â€” log and return
     console.error(`[mfApiBridgeService] syncApiSchemeToManual failed for ${schemeId}:`, err?.message);
     return { action: "skipped", reason: err?.message || "Unknown error" };
   }
 };
 
-/**
- * Called when scheme is DEACTIVATED.
- * Does NOT delete the MFFund record â€” just logs that sync will stop.
- * Admin must manually manage the MFFund visibility separately.
- */
 export const onSchemeDeactivated = async (schemeId: string): Promise<void> => {
-  // Future: could set MFFund.is_active = 0 if desired.
-  // For now: do nothing â€” client decided to keep MFFund records alive.
   return;
 };
-

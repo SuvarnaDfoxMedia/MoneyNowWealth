@@ -18,6 +18,7 @@ import {
   importMfApiTopHoldings,
   getMfApiNavHistory,
   syncSchemeToManual,
+  resyncAllToManual,
 } from "../controllers/mfApiController";
 
 const router = express.Router();
@@ -48,5 +49,8 @@ router.post("/:role/mf-api/schemes/:id/top-holdings", ...adminEditorMiddleware, 
 
 // ─ NAV History (built up daily via sync) ─
 router.get("/:role/mf-api/schemes/:id/nav-history", ...adminEditorMiddleware, getMfApiNavHistory);
+
+// ─ Bulk bridge re-sync: repopulates MFFund from stored MfApiScheme data ─
+router.post("/:role/mf-api/resync-to-manual", ...adminEditorMiddleware, resyncAllToManual);
 
 export default router;

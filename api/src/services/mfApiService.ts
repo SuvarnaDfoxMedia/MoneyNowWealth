@@ -7,6 +7,8 @@ import MfApiSyncLog from "../models/mfApiSyncLogModel";
 import MfApiNavHistory from "../models/mfApiNavHistoryModel";
 import MFFund from "../models/mfFundModel";
 import { syncApiSchemeToManual } from "./mfApiBridgeService";
+import { recomputeAllCategoryAverageReturns } from "./mfCategoryService";
+import { parseSchemeTitle } from "../utils/schemeParser";
 
 const MF_API_BASE =
   (process.env.MF_EXTERNAL_API_BASE || "https://mfapi.advisorkhoj.com").trim();
@@ -42,29 +44,6 @@ const pick = (source: RawObject | null | undefined, keys: string[]) => {
 };
 
 const normalizeString = (value: unknown) => String(value ?? "").trim();
-
-const parseSchemeTitle = (title: string) => {
-  const clean = normalizeString(title);
-  const parts = clean.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
-  const last = parts[parts.length - 1] || "";
-  const secondLast = parts[parts.length - 2] || "";
-  const planMatch = /^(direct|regular)\s*plan$/i.exec(secondLast);
-  const optionMatch = /^(growth|idcw|dividend)$/i.exec(last);
-
-  if (parts.length >= 3 && planMatch && optionMatch) {
-    return {
-      baseName: parts.slice(0, -2).join(" - "),
-      planType: planMatch[1].toLowerCase() === "direct" ? "Direct" : "Regular",
-      optionType: optionMatch[1].toLowerCase() === "idcw" || optionMatch[1].toLowerCase() === "dividend" ? "IDCW" : "Growth",
-    };
-  }
-
-  return {
-    baseName: clean,
-    planType: "",
-    optionType: "",
-  };
-};
 
 const normalizeDate = (value: unknown) => {
   if (!value) return null;
@@ -170,7 +149,6 @@ const normalizeScheme = (payload: RawObject, latestInfo?: RawObject | null) => {
       "schemeId",
       "scheme_code",
       "schemeCode",
-      "code",
       "scheme_amfi_code",
       "scheme_isin",
     ]),
@@ -186,7 +164,7 @@ const normalizeScheme = (payload: RawObject, latestInfo?: RawObject | null) => {
     ]),
   );
   const schemeCode = normalizeString(
-    pick(payload, ["scheme_code", "schemeCode", "code", "scheme_amfi_code"]),
+    pick(payload, ["scheme_code", "schemeCode", "scheme_amfi_code"]),
   );
   const isin = normalizeString(
     pick(payload, ["isin", "isin_no", "isinNumber", "isin_number", "scheme_isin"]),
@@ -305,7 +283,7 @@ const normalizeScheme = (payload: RawObject, latestInfo?: RawObject | null) => {
     scheme_benchmark: normalizeString(
       pick(source, ["scheme_benchmark", "benchmark", "benchmark_name"]),
     ),
-    scheme_status: normalizeString(pick(source, ["scheme_status", "status"])),
+    scheme_status: normalizeString(pick(source, ["scheme_status", "scheme_open_close"])),
     minimum_investment: normalizeNumber(
       pick(source, ["minimum_investment", "min_investment", "min_lumpsum_investment"]),
     ),
@@ -529,13 +507,31 @@ const upsertScheme = async (payload: RawObject, latestInfo?: RawObject | null) =
     is_deleted: { $ne: true },
   });
 
-  const sync_status = latestInfo === null ? "queued" : "success";
+  let sync_status = "queued";
+  let last_sync_error = "";
+
+  if (latestInfo !== null) {
+    const hasNav = normalized.latest_nav !== null && normalized.latest_nav !== undefined;
+    const hasSchemeCode = Boolean(normalized.scheme_code);
+    const hasSchemeName = Boolean(normalized.scheme_name);
+    
+    const tr = (structured as any).trailing_returns || {};
+    const hasTrailingReturns = Object.values(tr).some(v => v !== null && v !== undefined);
+
+    if (hasNav && hasSchemeCode && hasSchemeName && hasTrailingReturns) {
+      sync_status = "success";
+    } else {
+      sync_status = "failed";
+      last_sync_error = "API returned empty or invalid object data";
+    }
+  }
+
   const updateData = {
     ...normalized,
     ...structured,
     sync_status,
     last_synced_at: new Date(),
-    last_sync_error: "",
+    last_sync_error,
   };
 
   if (existing) {
@@ -550,6 +546,7 @@ const upsertScheme = async (payload: RawObject, latestInfo?: RawObject | null) =
 
 type SyncOptions = {
   activeOnly?: boolean;
+  offlineMode?: boolean;
 };
 
 export const syncAllSchemes = async (context: SyncContext = {}, options: SyncOptions = {}) => {
@@ -747,7 +744,8 @@ export const processDetailedSyncBatch = async (
                 schemeName: schemeDoc.scheme_name,
                 externalSchemeId: schemeDoc.external_scheme_id || schemeDoc.scheme_code,
               },
-              context
+              context,
+              options
             );
             processed += 1;
           } catch {
@@ -755,7 +753,7 @@ export const processDetailedSyncBatch = async (
           }
         })
       );
-      if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+      if (delayMs > 0 && !options.offlineMode) await new Promise((r) => setTimeout(r, delayMs));
     };
 
     // Phase 1: Active in batches of 20, 200ms between batches
@@ -823,6 +821,18 @@ export const processDetailedSyncBatch = async (
       },
     });
 
+    // Recompute all categories after entire batch is completed
+    try {
+      await recomputeAllCategoryAverageReturns();
+      await updateSyncLogProgress(parentLogId, {
+        message: options.activeOnly
+          ? `Active sync & category recompute complete: ${processed} success, ${errors} failed out of ${totalActive}`
+          : `Full sync & category recompute complete: ${processed} success, ${errors} failed out of ${total}`,
+      });
+    } catch (err: any) {
+      console.error("Bulk category recompute failed after sync:", err);
+    }
+
   } catch (error: any) {
     await MfApiSyncLog.findByIdAndUpdate(parentLogId, {
       status: "failed",
@@ -834,6 +844,7 @@ export const processDetailedSyncBatch = async (
 export const syncOneScheme = async (
   payload: { schemeId?: string; schemeName?: string; externalSchemeId?: string },
   context: SyncContext = {},
+  options: SyncOptions = {},
 ) => {
   let schemeDoc = null as any;
   if (payload.schemeId) {
@@ -848,8 +859,16 @@ export const syncOneScheme = async (
     throw new Error("schemeName or schemeId is required");
   }
 
-  const lookupSchemeName = parseSchemeTitle(schemeName).baseName || schemeName;
-  const latestInfo = await requestExternalLatestInfo(lookupSchemeName);
+  // Use full name for external API lookup - AdvisorKhoj requires the exact scheme name
+  // as it appears in getAllMutualFundSchemesRegAndDir. parseSchemeTitle is used only
+  // for normalizing plan_type/option_type into stored DB fields, not for the API call.
+  let latestInfo;
+  if (options.offlineMode) {
+    latestInfo = schemeDoc?.latest_info_raw || {};
+  } else {
+    latestInfo = await requestExternalLatestInfo(schemeName);
+  }
+  
   const latestPayload = normalizeLatestInfo(latestInfo);
 
   if (isRateLimitedResponse(latestPayload)) {
@@ -1579,3 +1598,4 @@ export const markSchemesAsReviewed = async (ids: string[]) => {
   );
   return { success: true };
 };
+

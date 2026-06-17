@@ -266,3 +266,34 @@ export const syncSchemeToManual = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: err?.message || "Bridge sync failed" });
   }
 };
+
+export const resyncAllToManual = async (req: Request, res: Response) => {
+  try {
+    const { syncApiSchemeToManual } = await import("../services/mfApiBridgeService");
+    const MfApiScheme = (await import("../models/mfApiSchemeModel")).default;
+
+    const schemes = await MfApiScheme.find({
+      is_deleted: { $ne: true },
+      is_active: true,
+      sync_status: "success",
+    }).select("_id").lean();
+
+    // Fire and forget — run in background so the HTTP response returns immediately
+    (async () => {
+      let done = 0;
+      for (const s of schemes) {
+        await syncApiSchemeToManual(String(s._id), { activating: true }).catch(() => {});
+        done++;
+      }
+      console.log(`[resync-to-manual] Completed ${done}/${schemes.length} schemes`);
+    })().catch(console.error);
+
+    return res.json({
+      success: true,
+      message: `Bridge re-sync started for ${schemes.length} active schemes`,
+      total: schemes.length,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err?.message || "Resync failed" });
+  }
+};
