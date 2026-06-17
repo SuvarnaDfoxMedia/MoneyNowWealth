@@ -136,11 +136,24 @@ export const recomputeCategoryAverageReturns = async (categoryId: string) => {
   );
 };
 
-export const recomputeAllCategoryAverageReturns = async () => {
-  const categories = await MFCategory.find({ is_deleted: false }).select("_id").lean();
-  for (const category of categories as Array<{ _id: any }>) {
-    await recomputeCategoryAverageReturns(String(category._id));
+/**
+ * Recomputes average returns for ALL active categories.
+ * Called after a full sync batch completes.
+ */
+export const recomputeAllCategoryAverageReturns = async (): Promise<{ recomputed: number }> => {
+  const categories = await MFCategory.find({ is_deleted: false, is_active: 1 })
+    .select("_id")
+    .lean();
+
+  for (const category of categories) {
+    await recomputeCategoryAverageReturns(String(category._id)).catch((err) => {
+      console.error(
+        `[mfCategoryService] recomputeAll failed for ${category._id}:`,
+        err?.message,
+      );
+    });
   }
+
   return { recomputed: categories.length };
 };
 

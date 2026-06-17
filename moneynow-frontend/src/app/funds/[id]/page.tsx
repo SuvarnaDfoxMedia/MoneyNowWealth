@@ -15,6 +15,10 @@ interface FundDetail {
   sip_allowed?: boolean;
   lumpsum_allowed?: boolean;
   riskometer_label?: string;
+  nav_Current?: number | null;
+  nav_date?: Date | string | null;
+  nav_change?: number | null;
+  nav_change_percentage?: number | null;
   benchmark_index_name?: string;
   benchmark_returns_trailing?: {
     d1?: number | null;
@@ -93,6 +97,25 @@ export default function FundDetailPage() {
                 .filter(Boolean)
                 .join(" | ")}
             </p>
+          </div>
+
+          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm flex items-center gap-4">
+            <div>
+              <div className="text-gray-500 text-sm">NAV</div>
+              <div className="text-2xl font-bold text-[#1e293b]">
+                {fund.nav_Current ? `₹${fund.nav_Current.toFixed(4)}` : "N/A"}
+              </div>
+            </div>
+            {fund.nav_change != null && (
+              <div className={`mt-4 font-medium ${fund.nav_change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {fund.nav_change > 0 ? "+" : ""}
+                {fund.nav_change.toFixed(4)} ({fund.nav_change > 0 ? "+" : ""}
+                {fund.nav_change_percentage?.toFixed(2)}%)
+              </div>
+            )}
+            <div className="mt-4 text-xs text-gray-400">
+              {fund.nav_date ? `As of ${new Date(fund.nav_date).toLocaleDateString()}` : ""}
+            </div>
           </div>
 
           <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
