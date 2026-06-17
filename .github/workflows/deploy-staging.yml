@@ -1,0 +1,61 @@
+name: Deploy MoneyNow Wealth - Staging
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to VPS (Staging)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            export NVM_DIR="$HOME/.nvm"
+            source "$NVM_DIR/nvm.sh"
+            BASE="/var/www/moneynowwealth/staging"
+
+            echo "==============================="
+            echo " Pulling latest code..."
+            echo "==============================="
+            cd $BASE
+            git pull origin main
+
+            echo "==============================="
+            echo " Deploying API..."
+            echo "==============================="
+            cd $BASE/api
+            npm install
+            pm2 restart moneynow-api-staging
+
+            echo "==============================="
+            echo " Deploying Frontend..."
+            echo "==============================="
+            cd $BASE/moneynow-frontend
+            npm install
+            npm run build
+            pm2 restart moneynow-frontend
+
+            echo "==============================="
+            echo " Deploying Backend (Admin)..."
+            echo "==============================="
+            cd $BASE/backend
+            npm install
+            npm run build
+            pm2 restart moneynow-backend-staging || pm2 start npm --name "moneynow-backend-staging" -- run preview -- --host --port 4000
+            pm2 save
+
+            echo "==============================="
+            echo " All deployments complete!"
+            echo "==============================="
