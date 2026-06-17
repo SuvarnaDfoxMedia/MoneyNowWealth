@@ -14,6 +14,7 @@ import {
 import { BsThreeDots } from "react-icons/bs";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/useAuth";
+import { getMfApiNavItem } from "../modules/mf-api";
 import {
   formatUnreadCount,
   type EnquiryModule,
@@ -169,6 +170,7 @@ const AppSidebar: React.FC = () => {
           // MF import entry intentionally disabled
         ],
       },
+      getMfApiNavItem(role || "admin"),
       {
         name: "NAV",
         icon: <FiFileText />,

@@ -1,28 +1,41 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import "intl-tel-input/build/css/intlTelInput.css";
+import { ArrowRight, BarChart3, Target, TrendingUp, X } from "lucide-react";
 import { executeRecaptcha } from "@/lib/recaptcha";
 import useRecaptchaLifecycle from "@/hooks/useRecaptchaLifecycle";
 import useIntlPhoneField from "@/hooks/useIntlPhoneField";
 
-type Persona = {
+type AudienceCard = {
   id: string;
-  label: string;
+  tab: string;
   title: string;
-  summary: string;
-  icon: "briefcase" | "family" | "globe";
-  fitHeading: string;
-  fit: string[];
-  concernsHeading: string;
-  concerns: string[];
-  supportHeading: string;
-  support: string[];
-  nextCta: {
-    label: string;
-    href: string;
-  };
+  copy: string;
+  image: string;
+};
+
+type Reason = {
+  number: string;
+  title: string;
+  copy: string;
+};
+
+type ArticleCard = {
+  title: string;
+  copy: string;
+  image: string;
+  href: string;
+};
+
+type ToolCard = {
+  title: string;
+  copy: string;
+  cta: string;
+  href: string;
+  icon: "target" | "chart" | "trend";
 };
 
 type LeadState = {
@@ -38,213 +51,142 @@ type LeadErrors = {
   submit?: string;
 };
 
-const PERSONAS: Persona[] = [
+const AUDIENCES: AudienceCard[] = [
   {
-    id: "professionals",
-    label: "Working professionals",
-    title: "Working professionals",
-    summary:
-      "Structured wealth building for doctors, lawyers, and salaried professionals who want long-term clarity without handling everything alone.",
-    icon: "briefcase",
-    fitHeading: "Why it fits you",
-    fit: ["Doctors", "Lawyers", "Salaried professionals"],
-    concernsHeading: "Common concerns",
-    concerns: [
-      "I know I should be investing, but I do not want to handle everything alone.",
-      "I know I should be investing, but I want structure and accountability here.",
-    ],
-    supportHeading: "How we support you",
-    support: [
-      "Structured, goal-based plans using mutual funds",
-      "Organized reviews and practical guidance",
-    ],
-    nextCta: {
-      label: "Start a conversation",
-      href: "/contact-us",
-    },
+    id: "busy-professionals",
+    tab: "Busy Professionals",
+    title: "Busy professionals",
+    copy: "Long workdays often leave little time to organise investments properly. We help simplify the process so starting or continuing becomes easier.",
+    image: "/images/article-img-1.png",
   },
   {
-    id: "families",
-    label: "Families and life stages",
-    title: "Families and life stages",
-    summary:
-      "Simple, step-by-step support for young families, retirees, and beginners who want to build habits that last.",
-    icon: "family",
-    fitHeading: "Details",
-    fit: [
-      "Young families: long-term habit building and goal-linked mutual funds",
-      "Retirees: income, stability, and organized decision support",
-      "Beginners: simple, clear steps to start with mutual funds",
-    ],
-    concernsHeading: "Common concerns",
-    concerns: [
-      "I want money decisions to feel simpler and less intimidating.",
-      "I want support that fits my life stage, not generic advice.",
-    ],
-    supportHeading: "How we support you",
-    support: [
-      "Goal-linked investing and habit building",
-      "Guided conversations around priorities and next steps",
-    ],
-    nextCta: {
-      label: "Start a conversation",
-      href: "/contact-us",
-    },
+    id: "salaried-individuals",
+    tab: "Salaried Individuals",
+    title: "Salaried individuals",
+    copy: "A steady income can become a steady investment habit with the right structure, SIP planning, and simple checkpoints along the way.",
+    image: "/images/blog-img-1.png",
   },
   {
-    id: "business-nri",
-    label: "Business owners and NRIs",
-    title: "Business owners and NRIs",
-    summary:
-      "Clarity, structure, and oversight for self-employed professionals, business families, and NRIs managing money across contexts.",
-    icon: "globe",
-    fitHeading: "Details",
-    fit: [
-      "Self-employed: clarity, structure, and non-chaotic process",
-      "Families protecting business wealth: clearer separation and oversight",
-      "NRIs: organized reporting and support from a distance",
-    ],
-    concernsHeading: "Common concerns",
-    concerns: [
-      "My money decisions are spread across places and need a clearer picture.",
-      "I want reliable support, not product-pushing.",
-    ],
-    supportHeading: "How we support you",
-    support: [
-      "Structured planning outside business or distance pressures",
-      "Guided prioritization and long-term oversight",
-    ],
-    nextCta: {
-      label: "Start a conversation",
-      href: "/contact-us",
-    },
+    id: "young-families",
+    tab: "Young Families",
+    title: "Young families",
+    copy: "New goals can arrive quickly. We help families bring education, home, protection, and long-term investing into one clearer plan.",
+    image: "/images/people-behind-1.png",
+  },
+  {
+    id: "business-owners",
+    tab: "Business Owners",
+    title: "Business owners",
+    copy: "When business and personal finances move together, we help create cleaner separation, better visibility, and more disciplined investing.",
+    image: "/images/people-behind-2.png",
+  },
+  {
+    id: "nris",
+    tab: "NRI's",
+    title: "NRI investors",
+    copy: "For investors managing money from a distance, we keep reporting, portfolio discussions, and follow-ups organised and easy to track.",
+    image: "/images/blog-img-2.png",
+  },
+  {
+    id: "new-investors",
+    tab: "New Investors",
+    title: "New investors",
+    copy: "If you are beginning, we keep the first steps clear: understand your goal, choose a sensible route, and build confidence gradually.",
+    image: "/images/blog-img-3.png",
   },
 ];
+
+const REASONS: Reason[] = [
+  {
+    number: "01",
+    title: "Clarity",
+    copy: "To get a clearer sense of where to begin, instead of trying to figure everything out alone.",
+  },
+  {
+    number: "02",
+    title: "Confidence",
+    copy: "To start SIPs or make investments with more structure and less confusion, with someone walking them through the process step by step.",
+  },
+  {
+    number: "03",
+    title: "Goals",
+    copy: "To connect what they are investing today more clearly with the future goals and timelines they have in mind.",
+  },
+  {
+    number: "04",
+    title: "Tools",
+    copy: "To use simple tools and data before taking the next step, so decisions feel more informed and less guesswork-driven.",
+  },
+  {
+    number: "05",
+    title: "Guidance",
+    copy: "To have human support available when it matters - a guided journey where questions can be discussed and you are not left to navigate every step on your own.",
+  },
+];
+
+const ARTICLES: ArticleCard[] = [
+  {
+    title: "Why staying invested matters more than timing the market",
+    copy: "A short read on how discipline and time can work for your money.",
+    image: "/images/people-behind-2.png",
+    href: "/blog-listing",
+  },
+  {
+    title: "How to choose a comfortable SIP amount",
+    copy: "Practical ways to decide what you can invest each month without over-stretching yourself.",
+    image: "/images/article-img-1.png",
+    href: "/blog-listing",
+  },
+  {
+    title: "How to choose a right asset allocation",
+    copy: "Practical ways to decide what you can invest each month without over-stretching yourself.",
+    image: "/images/people-behind-1.png",
+    href: "/blog-listing",
+  },
+];
+
+const TOOLS: ToolCard[] = [
+  {
+    title: "Plan another goal",
+    copy: "Estimate how much SIP you may need for a different goal amount, time frame, or return assumption.",
+    cta: "Open goal calculator",
+    href: "/free-calculators",
+    icon: "target",
+  },
+  {
+    title: "See what a lumpsum could do",
+    copy: "Check how a one-time investment today could grow alongside your SIPs over the years.",
+    cta: "Open lumpsum calculator",
+    href: "/free-calculators",
+    icon: "chart",
+  },
+  {
+    title: "Understand inflation on your goals",
+    copy: "See how inflation changes the real value of your future goals and why starting early matters.",
+    cta: "Open inflation calculator",
+    href: "/free-calculators",
+    icon: "trend",
+  },
+];
+
+const iconMap = {
+  target: Target,
+  chart: BarChart3,
+  trend: TrendingUp,
+};
 
 const inputClass =
   "h-[52px] w-full rounded-[10px] border border-[#D8DEE8] bg-white px-4 text-[15px] text-[#1A1A1A] outline-none transition focus:border-[#0B3B6E]";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 const WHO_WE_WORK_WITH_RECAPTCHA_ACTION = "who_we_work_with_submit";
 
-function PersonaIcon({ icon }: { icon: Persona["icon"] }) {
-  if (icon === "briefcase") {
-    return (
-      <svg viewBox="0 0 64 64" className="h-14 w-14" fill="none">
-        <rect x="10" y="20" width="44" height="28" rx="5" fill="#477AB3" />
-        <rect x="24" y="14" width="16" height="8" rx="2" fill="#214D7C" />
-        <rect x="16" y="27" width="18" height="14" rx="2" fill="#E4B84A" />
-        <rect x="38" y="24" width="12" height="18" rx="2" fill="#5AC29A" />
-      </svg>
-    );
-  }
-
-  if (icon === "family") {
-    return (
-      <svg viewBox="0 0 64 64" className="h-14 w-14" fill="none">
-        <circle cx="19" cy="22" r="8" fill="#D89C7D" />
-        <circle cx="32" cy="28" r="7" fill="#F0C59A" />
-        <circle cx="47" cy="21" r="8" fill="#CDA173" />
-        <path d="M11 34c0-4 4-7 8-7s8 3 8 7v10H11V34Z" fill="#6D8FCD" />
-        <path d="M24 38c0-4 4-7 8-7s8 3 8 7v8H24v-8Z" fill="#8FD2B5" />
-        <path d="M39 34c0-4 4-7 8-7s8 3 8 7v10H39V34Z" fill="#88AE71" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 64 64" className="h-14 w-14" fill="none">
-      <circle cx="22" cy="19" r="8" fill="#C89B73" />
-      <path d="M14 33c0-4 4-7 8-7s8 3 8 7v11H14V33Z" fill="#5D7FB5" />
-      <circle cx="44" cy="31" r="14" fill="#73B6D8" />
-      <path
-        d="M31 31h26M44 18c-3 3-5 8-5 13s2 10 5 13M44 18c3 3 5 8 5 13s-2 10-5 13"
-        stroke="#2A587D"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function PersonaHeroIllustration() {
-  return (
-    <div className="relative h-[250px] w-full md:h-[300px]">
-      <div className="absolute left-[6%] top-[10%] h-[92px] w-[180px] rounded-[10px] border border-[#163B63] bg-white p-3 shadow-[0_10px_30px_rgba(17,45,77,0.10)]">
-        <p className="text-[14px] font-semibold text-[#111111]">Mutual Funds</p>
-        <div className="mt-3 space-y-2">
-          <div className="h-[1px] bg-slate-200" />
-          <div className="h-[1px] bg-slate-200" />
-          <div className="h-[1px] bg-slate-200" />
-        </div>
-        <svg
-          viewBox="0 0 120 60"
-          className="absolute bottom-3 right-3 h-12 w-28"
-          fill="none"
-        >
-          <path
-            d="M5 50L35 20L55 34L90 10"
-            stroke="#3D7CC0"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M90 10H78M90 10V22"
-            stroke="#3D7CC0"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-      <div className="absolute right-[8%] top-[16%] h-[96px] w-[182px] rounded-[10px] border border-[#2E8C5B] bg-white p-3 shadow-[0_10px_30px_rgba(17,45,77,0.10)]">
-        <div className="mt-8">
-          <svg viewBox="0 0 120 50" className="h-12 w-28" fill="none">
-            <path
-              d="M5 40L24 28L42 34L61 16L86 30L111 10"
-              stroke="#42B57A"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <path
-              d="M111 10H98M111 10V23"
-              stroke="#42B57A"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-      </div>
-      <div className="absolute bottom-0 left-1/2 flex w-[290px] -translate-x-1/2 items-end justify-center gap-3">
-        {["#5C84BA", "#78A6D6", "#1B3F67", "#7BC2A5", "#4F7FB0"].map(
-          (color, index) => (
-            <div
-              key={color}
-              className="flex flex-col items-center"
-              style={{ marginBottom: index % 2 === 0 ? 0 : 10 }}
-            >
-              <div className="h-8 w-8 rounded-full border-2 border-[#1D3857] bg-[#E8B18E]" />
-              <div
-                className="mt-1 h-16 w-10 rounded-t-[10px]"
-                style={{ backgroundColor: color }}
-              />
-            </div>
-          ),
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TickBullet({ text }: { text: string }) {
-  return (
-    <li className="flex items-start gap-3 text-[15px] leading-6 text-[#202020]">
-      <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#36B37E] text-[12px] font-bold text-white">
-        &#10003;
-      </span>
-      <span>{text}</span>
-    </li>
-  );
-}
-
-export default function WhoWeWorkWithPage() {
+function ConversationModal({
+  initialPreference,
+  onClose,
+}: {
+  initialPreference: AudienceCard;
+  onClose: () => void;
+}) {
   const {
     phoneRef,
     getMobileValue,
@@ -252,24 +194,32 @@ export default function WhoWeWorkWithPage() {
     clearPhoneValue,
     validateMobileNumber,
   } = useIntlPhoneField();
-  const [selectedPersonaId, setSelectedPersonaId] = useState(PERSONAS[0].id);
   const [lead, setLead] = useState<LeadState>({
     name: "",
     email: "",
-    preference: PERSONAS[0].label,
+    preference: initialPreference.tab,
   });
   const [errors, setErrors] = useState<LeadErrors>({});
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const selectedPersona = useMemo(
-    () =>
-      PERSONAS.find((persona) => persona.id === selectedPersonaId) ??
-      PERSONAS[0],
-    [selectedPersonaId],
-  );
-
   useRecaptchaLifecycle();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   const validateLead = () => {
     const nextErrors: LeadErrors = {};
@@ -316,8 +266,8 @@ export default function WhoWeWorkWithPage() {
         mobile,
         country_code: countryCode,
         preference: lead.preference.trim(),
-        persona_id: selectedPersona.id,
-        persona_label: selectedPersona.label,
+        persona_id: initialPreference.id,
+        persona_label: initialPreference.tab,
         recaptcha_token: recaptchaToken,
       };
 
@@ -339,7 +289,7 @@ export default function WhoWeWorkWithPage() {
       setLead({
         name: "",
         email: "",
-        preference: selectedPersona.label,
+        preference: initialPreference.tab,
       });
       clearPhoneValue();
       setSubmitted(true);
@@ -359,291 +309,456 @@ export default function WhoWeWorkWithPage() {
   };
 
   return (
-    <div className="bg-[#F7FAFD] font-poppins text-[#111111]">
-      <section className="border-b border-[#E6EDF5] bg-[radial-gradient(circle_at_top,rgba(39,91,156,0.16),transparent_48%),linear-gradient(180deg,#F9FCFF_0%,#F2F7FC_100%)]">
-        <div className="mx-auto max-w-[1240px] px-4 py-8 md:px-6 md:py-10">
-          <div className="grid items-center gap-10 xl:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-[30px] border border-[#DCE8F4] bg-white/85 p-7 shadow-[0_18px_50px_rgba(18,45,77,0.08)] md:min-h-[306px] md:p-10">
-              <p className="text-[15px] font-medium text-[#0B4B88]">Personas</p>
-              <h1 className="mt-3 max-w-[560px] text-[38px] font-semibold leading-[1.1] tracking-[-0.03em] text-[#111111] md:text-[52px]">
-                Who we work with
-              </h1>
-              <p className="mt-5 max-w-[560px] text-[18px] leading-8 text-[#3B4856]">
-                Start with the kind of financial situation that feels most like
-                yours. We help long-term investors build structure, clarity, and
-                confidence with mutual funds.
-              </p>
-              <div className="mt-7">
-                <Link
-                  href={selectedPersona.nextCta.href}
-                  className="inline-flex items-center rounded-[10px] bg-[#0B3B6E] px-6 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#082D54]"
-                >
-                  Get Started
-                </Link>
-              </div>
-            </div>
-
-            <div className="rounded-[30px] border border-[#DCE8F4] bg-white/90 p-5 shadow-[0_18px_50px_rgba(18,45,77,0.08)] md:min-h-[306px] md:p-7">
-              <PersonaHeroIllustration />
-            </div>
-          </div>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 py-5 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="conversation-modal-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-[18px] border border-[#DCE5EF] bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.24)]">
+        <div className="flex items-start justify-between gap-4">
+          <h2
+            id="conversation-modal-title"
+            className="text-[24px] font-semibold tracking-[-0.03em] text-[#111111] md:text-[28px]"
+          >
+            Connect with an advisor
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-[#D8DEE8] text-[#111111] transition hover:bg-[#F3F6FA]"
+            aria-label="Close popup"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </button>
         </div>
-      </section>
 
-      <section className="mx-auto max-w-[1240px] px-4 py-10 md:px-6 md:py-12">
-        <div className="grid gap-8 xl:grid-cols-[1.9fr_0.95fr]">
+        <form noValidate onSubmit={handleLeadSubmit} className="mt-6 space-y-4">
           <div>
-            <h2 className="text-[28px] font-semibold tracking-[-0.03em] text-[#111111] md:text-[32px]">
-              Personas
-            </h2>
+            <label className="mb-2 block text-[14px] font-medium text-[#111111]">
+              Name
+            </label>
+            <input
+              value={lead.name}
+              onChange={(event) => {
+                setLead((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }));
+                setErrors((prev) => ({
+                  ...prev,
+                  name: undefined,
+                  submit: undefined,
+                }));
+              }}
+              placeholder="Enter your name"
+              className={`${inputClass} ${errors.name ? "border-red-500" : ""}`}
+            />
+            {errors.name ? (
+              <p className="mt-2 text-sm text-red-600">{errors.name}</p>
+            ) : null}
+          </div>
 
-            <div className="mt-6 grid gap-5 lg:grid-cols-3">
-              {PERSONAS.map((persona) => {
-                const active = persona.id === selectedPersona.id;
+          <div>
+            <label className="mb-2 block text-[14px] font-medium text-[#111111]">
+              Email
+            </label>
+            <input
+              type="text"
+              inputMode="email"
+              value={lead.email}
+              onChange={(event) => {
+                setLead((prev) => ({
+                  ...prev,
+                  email: event.target.value,
+                }));
+                setErrors((prev) => ({
+                  ...prev,
+                  email: undefined,
+                  submit: undefined,
+                }));
+              }}
+              placeholder="Enter your email"
+              className={`${inputClass} ${errors.email ? "border-red-500" : ""}`}
+            />
+            {errors.email ? (
+              <p className="mt-2 text-sm text-red-600">{errors.email}</p>
+            ) : null}
+          </div>
+
+          <div className="who-we-work-phone">
+            <label className="mb-2 block text-[14px] font-medium text-[#111111]">
+              Mobile
+            </label>
+            <input
+              ref={phoneRef}
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              onChange={() =>
+                setErrors((prev) => ({
+                  ...prev,
+                  mobile: undefined,
+                  submit: undefined,
+                }))
+              }
+              onBlur={() => {
+                const mobileError = validateMobileNumber();
+                setErrors((prev) => ({
+                  ...prev,
+                  mobile: mobileError || undefined,
+                }));
+              }}
+              placeholder="Enter your mobile number"
+              className={`${inputClass} !pl-[84px] ${
+                errors.mobile ? "border-red-500" : ""
+              }`}
+            />
+            {errors.mobile ? (
+              <p className="mt-2 text-sm text-red-600">{errors.mobile}</p>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-[14px] font-medium text-[#111111]">
+              Preference
+            </label>
+            <select
+              value={lead.preference}
+              onChange={(event) =>
+                setLead((prev) => ({
+                  ...prev,
+                  preference: event.target.value,
+                }))
+              }
+              className={inputClass}
+            >
+              {AUDIENCES.map((audience) => (
+                <option key={audience.id} value={audience.tab}>
+                  {audience.tab}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitLoading}
+            className="w-full rounded-[10px] bg-[#0B3B6E] px-5 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#082D54] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitLoading ? "Submitting..." : "Schedule my discussion"}
+          </button>
+
+          {submitted ? (
+            <div className="rounded-[10px] border border-[#C8E6D4] bg-[#F2FBF6] px-4 py-3 text-sm text-[#17663A]">
+              Your details were shared successfully. We&apos;ll follow up based
+              on the persona path that fits you best.
+            </div>
+          ) : null}
+          {errors.submit ? (
+            <div className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errors.submit}
+            </div>
+          ) : null}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function WhoWeWorkWithPage() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [revealedIndexes, setRevealedIndexes] = useState<number[]>([0]);
+  const [isConversationOpen, setIsConversationOpen] = useState(false);
+  const [conversationIndex, setConversationIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => {
+        const nextIndex = (current + 1) % AUDIENCES.length;
+
+        setRevealedIndexes((currentRevealed) =>
+          currentRevealed.includes(nextIndex)
+            ? currentRevealed
+            : [...currentRevealed, nextIndex],
+        );
+
+        return nextIndex;
+      });
+    }, 3600);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const handleAudienceSelect = (index: number) => {
+    setActiveIndex(index);
+    setRevealedIndexes((currentRevealed) =>
+      currentRevealed.includes(index)
+        ? currentRevealed
+        : [...currentRevealed, index],
+    );
+  };
+
+  const handleConversationOpen = (index: number) => {
+    setConversationIndex(index);
+    setIsConversationOpen(true);
+  };
+
+  return (
+    <main className="font-poppins text-[#111111]">
+      <section className="bg-[#F3F9FF]">
+       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-[40px] md:px-6 lg:grid-cols-2 lg:py-[50px]">
+          <div className="relative">
+            <h1 className="text-[32px] font-semibold leading-[1.08] tracking-[-0.03em] sm:text-[36px] md:text-[46px]">
+              Who usually works with us
+            </h1>
+            <p className="mt-6 max-w-[520px] text-[16px] leading-[28px] text-[#20242A] sm:mt-8 sm:text-[17px] sm:leading-[30px]">
+              Most people who reach out to Moneynow are looking for a simpler,
+              more structured way to start or continue investing for long-term
+              goals - with clearer information, less noise, and a smoother
+              experience.
+            </p>
+            <button
+              type="button"
+              onClick={() => handleConversationOpen(activeIndex)}
+              aria-haspopup="dialog"
+              className="mt-8 inline-flex items-center gap-3 rounded-[6px] bg-[#074A86] px-5 py-3 text-[16px] font-medium text-white shadow-sm transition hover:bg-[#063C70]"
+            >
+              Start a Conversation
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="w-full min-w-0">
+            <div className="mb-3 flex gap-4 overflow-x-auto whitespace-nowrap pb-2 text-[13px] font-medium text-[#676767] sm:gap-5 sm:text-[14px] md:justify-end">
+              {AUDIENCES.map((audience, index) => (
+                <button
+                  key={audience.id}
+                  type="button"
+                  onFocus={() => handleAudienceSelect(index)}
+                  onClick={() => handleAudienceSelect(index)}
+                  className={`border-b pb-1 transition ${
+                    index === activeIndex
+                      ? "border-[#074A86] text-[#074A86]"
+                      : "border-transparent hover:text-[#074A86]"
+                  }`}
+                >
+                  {audience.tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative min-h-[620px] overflow-visible pt-[62px] sm:min-h-[610px] md:min-h-[420px] md:pt-[70px]">
+              {AUDIENCES.map((audience, index) => {
+                const stackPosition =
+                  (activeIndex - index + AUDIENCES.length) % AUDIENCES.length;
+                const isActive = stackPosition === 0;
+                const hasBeenRevealed = revealedIndexes.includes(index);
+                const isIncomingFromBottom =
+                  stackPosition === AUDIENCES.length - 1;
+                const visibleStackPosition = Math.min(stackPosition, 5);
+                const deckPosition = isIncomingFromBottom
+                  ? -1
+                  : visibleStackPosition;
+                const translateY = isActive
+                  ? 0
+                  : isIncomingFromBottom
+                    ? 92
+                    : -deckPosition * 14;
+                const scale = isActive
+                  ? 1
+                  : isIncomingFromBottom
+                    ? 0.985
+                    : 1 - deckPosition * 0.018;
+                const isVisible =
+                  isActive ||
+                  (hasBeenRevealed &&
+                    !isIncomingFromBottom &&
+                    stackPosition <= 5);
 
                 return (
-                  <button
-                    key={persona.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedPersonaId(persona.id);
-                      setLead((prev) => ({
-                        ...prev,
-                        preference: persona.label,
-                      }));
-                      setSubmitted(false);
-                      setErrors({});
-                    }}
-                    className={`flex h-full flex-col rounded-[18px] border bg-white p-5 text-left shadow-[0_12px_30px_rgba(18,45,77,0.06)] transition ${
-                      active
-                        ? "border-[#0B4B88] shadow-[0_18px_38px_rgba(11,75,136,0.12)]"
-                        : "border-[#DCE5EF] hover:border-[#AFC5DB]"
+                  <article
+                    key={audience.id}
+                    className={`absolute inset-x-0 top-[62px] rounded-[16px] border border-[#ECEFF3] bg-[#ffffff] shadow-[0_12px_24px_rgba(15,23,42,0.18)] transition-[transform,opacity] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform md:top-[70px] ${
+                      isActive
+                        ? "pointer-events-auto grid gap-5 p-4 md:grid-cols-[1fr_0.92fr] md:gap-6 md:p-5"
+                        : "pointer-events-none h-[86px] overflow-hidden"
                     }`}
+                    style={{
+                      zIndex: isActive
+                        ? AUDIENCES.length + 1
+                        : isIncomingFromBottom
+                          ? 1
+                          : AUDIENCES.length - deckPosition,
+                      opacity: isVisible ? 1 : 0,
+                      transform: `translate3d(0, ${translateY}px, 0) scale(${scale})`,
+                      transformOrigin: "top center",
+                    }}
                   >
-                    <PersonaIcon icon={persona.icon} />
-                    <h3 className="mt-4 text-[18px] font-semibold text-[#111111]">
-                      {persona.title}
-                    </h3>
-                    <div className="mt-5">
-                      <p className="text-[15px] font-semibold text-[#111111]">
-                        {persona.fitHeading}
-                      </p>
-                      <ul className="mt-3 space-y-2">
-                        {persona.fit.map((item) => (
-                          <TickBullet key={item} text={item} />
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="mt-5">
-                      <p className="text-[15px] font-semibold text-[#111111]">
-                        {persona.concernsHeading}
-                      </p>
-                      <ul className="mt-3 space-y-2 text-[15px] leading-6 text-[#202020]">
-                        {persona.concerns.map((item) => (
-                          <li key={item} className="list-none">
-                            • {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="mt-5">
-                      <p className="text-[15px] font-semibold text-[#111111]">
-                        {persona.supportHeading}
-                      </p>
-                      <ul className="mt-3 space-y-2 text-[15px] leading-6 text-[#202020]">
-                        {persona.support.map((item) => (
-                          <li key={item} className="list-none">
-                            • {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <span className="mt-auto inline-flex items-center pt-6 text-[15px] font-medium text-[#0B4B88]">
-                      {persona.nextCta.label}
-                      <span className="ml-2">&rarr;</span>
-                    </span>
-                  </button>
+                    {isActive ? (
+                      <>
+                        <div className="relative min-h-[260px] overflow-hidden rounded-[8px] bg-[#E5EEF5] sm:min-h-[300px]">
+                          <Image
+                            src={audience.image}
+                            alt={audience.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 320px"
+                          />
+                        </div>
+                        <div className="flex flex-col justify-center py-2 pr-1">
+                          <h2 className="text-[24px] font-semibold leading-[1.16] tracking-[-0.03em] sm:text-[26px]">
+                            {audience.title}
+                          </h2>
+                          <p className="mt-4 text-[15px] leading-[25px] sm:mt-6 sm:text-[16px] sm:leading-[26px]">
+                            {audience.copy}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleConversationOpen(index)}
+                            aria-haspopup="dialog"
+                            className="mt-6 inline-flex items-center gap-2 text-[16px] font-medium text-[#074A86]"
+                          >
+                            Start a conversation
+                            <span aria-hidden="true">-&gt;</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </article>
                 );
               })}
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
-            <div className="rounded-[18px] border border-[#DCE5EF] bg-white p-6 shadow-[0_12px_30px_rgba(18,45,77,0.06)]">
-              <h3 className="text-[16px] font-semibold text-[#111111]">
-                Primary use
-              </h3>
-              <p className="mt-2 text-[15px] leading-6 text-[#2E3A48]">
-                Goal-based, long-term mutual fund planning with a clear human
-                support layer.
-              </p>
+      <section className="relative py-[50px]">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <h2 className="text-center text-[28px] font-semibold leading-tight tracking-[-0.03em] sm:text-[32px] md:text-[40px]">
+            What People Usually Come To Us For
+          </h2>
 
-              <h3 className="mt-5 text-[16px] font-semibold text-[#111111]">
-                Audience groups
-              </h3>
-              <p className="mt-2 text-[15px] leading-6 text-[#2E3A48]">
-                Working professionals, families in different life stages,
-                business owners, and NRIs.
-              </p>
-
-              <h3 className="mt-5 text-[16px] font-semibold text-[#111111]">
-                Journey intent
-              </h3>
-              <p className="mt-2 text-[15px] leading-6 text-[#2E3A48]">
-                Long-term habit building, structure, and practical wealth
-                conversations.
-              </p>
-
-              <h3 className="mt-5 text-[16px] font-semibold text-[#111111]">
-                Next action
-              </h3>
-              <p className="mt-2 text-[15px] leading-6 text-[#2E3A48]">
-                Start a guided discussion based on the persona path that fits
-                you best.
-              </p>
-            </div>
-
-            <div className="rounded-[18px] border border-[#DCE5EF] bg-white p-6 shadow-[0_12px_30px_rgba(18,45,77,0.06)]">
-              <h2 className="text-[24px] font-semibold tracking-[-0.03em] text-[#111111] md:text-[28px]">
-                Connect with an advisor
-              </h2>
-
-              <form
-                noValidate
-                onSubmit={handleLeadSubmit}
-                className="mt-6 space-y-4"
+          <div className="mt-10 grid gap-y-8 sm:grid-cols-2 sm:gap-x-6 md:mt-14 lg:grid-cols-5">
+            {REASONS.map((reason, index) => (
+              <div
+                key={reason.number}
+                className={`px-4 md:px-5 ${
+                  index === 0 ? "" : "lg:border-l lg:border-[#E5EAF0]"
+                }`}
               >
-                <div>
-                  <label className="mb-2 block text-[14px] font-medium text-[#111111]">
-                    Name
-                  </label>
-                  <input
-                    value={lead.name}
-                    onChange={(event) => {
-                      setLead((prev) => ({
-                        ...prev,
-                        name: event.target.value,
-                      }));
-                      setErrors((prev) => ({
-                        ...prev,
-                        name: undefined,
-                        submit: undefined,
-                      }));
-                    }}
-                    placeholder="Enter your name"
-                    className={`${inputClass} ${errors.name ? "border-red-500" : ""}`}
-                  />
-                  {errors.name ? (
-                    <p className="mt-2 text-sm text-red-600">{errors.name}</p>
-                  ) : null}
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-[14px] font-medium text-[#111111]">
-                    Email
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="email"
-                    value={lead.email}
-                    onChange={(event) => {
-                      setLead((prev) => ({
-                        ...prev,
-                        email: event.target.value,
-                      }));
-                      setErrors((prev) => ({
-                        ...prev,
-                        email: undefined,
-                        submit: undefined,
-                      }));
-                    }}
-                    placeholder="Enter your email"
-                    className={`${inputClass} ${errors.email ? "border-red-500" : ""}`}
-                  />
-                  {errors.email ? (
-                    <p className="mt-2 text-sm text-red-600">{errors.email}</p>
-                  ) : null}
-                </div>
-
-                <div className="who-we-work-phone">
-                  <label className="mb-2 block text-[14px] font-medium text-[#111111]">
-                    Mobile
-                  </label>
-                  <input
-                    ref={phoneRef}
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    onChange={() =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        mobile: undefined,
-                        submit: undefined,
-                      }))
-                    }
-                    onBlur={() => {
-                      const mobileError = validateMobileNumber();
-                      setErrors((prev) => ({
-                        ...prev,
-                        mobile: mobileError || undefined,
-                      }));
-                    }}
-                    placeholder="Enter your mobile number"
-                    className={`${inputClass} !pl-[84px] ${
-                      errors.mobile ? "border-red-500" : ""
-                    }`}
-                  />
-                  {errors.mobile ? (
-                    <p className="mt-2 text-sm text-red-600">{errors.mobile}</p>
-                  ) : null}
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-[14px] font-medium text-[#111111]">
-                    Preference
-                  </label>
-                  <select
-                    value={lead.preference}
-                    onChange={(event) =>
-                      setLead((prev) => ({
-                        ...prev,
-                        preference: event.target.value,
-                      }))
-                    }
-                    className={inputClass}
-                  >
-                    {PERSONAS.map((persona) => (
-                      <option key={persona.id} value={persona.label}>
-                        {persona.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitLoading}
-                  className="w-full rounded-[10px] bg-[#0B3B6E] px-5 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#082D54] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submitLoading ? "Submitting..." : "Schedule my discussion"}
-                </button>
-
-                {submitted ? (
-                  <div className="rounded-[10px] border border-[#C8E6D4] bg-[#F2FBF6] px-4 py-3 text-sm text-[#17663A]">
-                    Your details were shared successfully. We&apos;ll follow up
-                    based on the persona path that fits you best.
-                  </div>
-                ) : null}
-                {errors.submit ? (
-                  <div className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {errors.submit}
-                  </div>
-                ) : null}
-              </form>
-            </div>
+                <p className="text-[30px] font-semibold leading-none text-[#D0D7DF]">
+                  {reason.number}
+                </p>
+                <p className="mt-4 text-[18px] font-semibold">
+                  {reason.title}
+                </p>
+                <p className="mt-3 text-[15px] leading-[25px] ">
+                  {reason.copy}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      <section className="bg-[#F3F9FF] py-14 md:py-[50px]">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <h2 className="text-center text-[28px] font-semibold leading-tight tracking-[-0.03em] sm:text-[32px] md:text-[40px]">
+            Learn More About Long-Term Investing
+          </h2>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:mt-12 lg:grid-cols-3">
+            {ARTICLES.map((article) => (
+              <article
+                key={article.title}
+                className="overflow-hidden rounded-[10px] border border-[#E5EAF0] bg-white shadow-[0_2px_6px_rgba(15,23,42,0.03)]"
+              >
+                <div className="relative aspect-[1.9/1] bg-[#E5EEF5]">
+                  <Image
+                    src={article.image}
+                    alt={article.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 33vw"
+                  />
+                </div>
+                <div className="p-6">
+                  <h3 className="text-[20px] font-semibold leading-[1.48] tracking-[-0.02em]">
+                    {article.title}
+                  </h3>
+                  <p className="mt-4 text-[16px] leading-[26px] ">
+                    {article.copy}
+                  </p>
+                  <Link
+                    href={article.href}
+                    className="mt-8 inline-flex items-center gap-3 text-[16px] font-medium"
+                  >
+                    Read Article
+                    <span aria-hidden="true">-&gt;</span>
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-14 md:py-[50px]">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <div className="text-center">
+            <h2 className="text-[28px] font-semibold leading-tight tracking-[-0.03em] sm:text-[32px] md:text-[40px]">
+              More Tools To Explore
+            </h2>
+            <p className="mt-4 text-[17px] leading-7 text-[#20242A]">
+              Use these simple tools to look at your money from a few different
+              angles
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-2 lg:mt-12 lg:grid-cols-3">
+            {TOOLS.map((tool) => {
+              const Icon = iconMap[tool.icon];
+
+              return (
+                <article
+                  key={tool.title}
+                  className="rounded-[10px] border border-[#E5EAF0] bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.10)]"
+                >
+                  <div className="flex h-[48px] w-[48px] items-center justify-center rounded-[6px] bg-[#E7EEF5] text-[#074A86]">
+                    <Icon aria-hidden="true" className="h-7 w-7" />
+                  </div>
+                  <h3 className="mt-6 text-[20px] font-semibold tracking-[-0.02em]">
+                    {tool.title}
+                  </h3>
+                  <p className="mt-5 text-[16px] leading-[26px]">
+                    {tool.copy}
+                  </p>
+                  <Link
+                    href={tool.href}
+                    className="mt-7 inline-flex items-center gap-3 rounded-[6px] bg-[#074A86] px-5 py-3 text-[16px] font-medium text-white transition hover:bg-[#063C70]"
+                  >
+                    {tool.cta}
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {isConversationOpen ? (
+        <ConversationModal
+          initialPreference={AUDIENCES[conversationIndex]}
+          onClose={() => setIsConversationOpen(false)}
+        />
+      ) : null}
 
       <style jsx global>{`
         .who-we-work-phone .iti {
@@ -697,9 +812,9 @@ export default function WhoWeWorkWithPage() {
           border: 1px solid #d8dee8;
           box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
           color: #111111;
-          z-index: 40;
+          z-index: 60;
         }
       `}</style>
-    </div>
+    </main>
   );
 }

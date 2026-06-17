@@ -74,6 +74,7 @@ import MFTopHoldingDetail from "./components/mf/MFTopHoldingDetail";
 import MFTopHoldingHistoryPage from "./components/mf/MFTopHoldingHistoryPage";
 import NavDashboardPage from "./modules/nav/pages/NavDashboardPage";
 import NavHistoryPage from "./modules/nav/pages/NavHistoryPage";
+import { renderMfApiRoutes } from "./modules/mf-api";
 import FinancialWellnessEnquiryView from "./components/FinancialWellnessEnquiryView";
 import TestimonialsPage from "./pages/Testimonials/TestimonialsPage";
 
@@ -294,6 +295,8 @@ function AppRoutes() {
           element={<AddMFIndexSnapshot />}
         />
         {/* MF import route intentionally disabled */}
+
+        {renderMfApiRoutes(role || "admin")}
 
         {/* Admin-only routes */}
         {role === "admin" && (

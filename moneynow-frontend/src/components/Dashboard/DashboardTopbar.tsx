@@ -77,7 +77,7 @@ export default function DashboardTopbar() {
             <Bell className="h-5 w-5" />
           </button>
           <button className="h-[38px] rounded-md bg-[#0A4A87] px-5 text-[14px]  font-semibold text-white transition-all duration-300 hover:bg-[#083B6C]">
-            + Explore
+            + My Portfolio
           </button>
           {profile ? (
             <div className="relative" ref={menuRef}>

@@ -59,6 +59,8 @@ const emptyForm = () => ({
   option_type: "Growth",
   nav_Current: "",
   nav_date: null as string | null,
+  nav_change: "",
+  nav_change_percentage: "",
   aum: "",
   expense_ratio: "",
   inception_return: "",
@@ -68,6 +70,9 @@ const emptyForm = () => ({
     FUND_TRAILING_FIELDS.map(
       (field) => field.key,
     ) as unknown as readonly string[],
+  ),
+  apiCategoryReturns: emptyMap(
+    [...FUND_TRAILING_FIELDS.map(field => field.key), "ytd"] as unknown as readonly string[],
   ),
   returnsAnnual: emptyMap(DEFAULT_ANNUAL_YEARS),
   sharpe_3y: "",
@@ -216,6 +221,8 @@ export default function AddMFFund() {
           fund.nav_current?.toString?.() ||
           "",
         nav_date: fund.nav_date || null,
+        nav_change: fund.nav_change?.toString?.() || "",
+        nav_change_percentage: fund.nav_change_percentage?.toString?.() || "",
         aum: fund.aum?.toString?.() || fund.aum_cr?.toString?.() || "",
         expense_ratio: fund.expense_ratio?.toString?.() || "",
         inception_return:
@@ -248,6 +255,17 @@ export default function AddMFFund() {
                 (field.key === "10y" ? fund.returns?.y10_cagr?.toString?.() : "") ||
                 (field.key === "since_launch" ? fund.returns?.since_inception?.toString?.() : "") ||
                 "",
+            ]),
+          ),
+        },
+        apiCategoryReturns: {
+          ...emptyMap(
+            [...FUND_TRAILING_FIELDS.map(field => field.key), "ytd"] as unknown as readonly string[],
+          ),
+          ...Object.fromEntries(
+            ([...FUND_TRAILING_FIELDS, { key: "ytd", label: "YTD" }]).map((field) => [
+              field.key,
+              fund.api_category_returns?.[field.key]?.toString?.() || "",
             ]),
           ),
         },
@@ -364,9 +382,7 @@ export default function AddMFFund() {
   };
 
   const setMapField = (
-    group:
-      | "returnsTrailing"
-      | "returnsAnnual",
+    group: "returnsTrailing" | "returnsAnnual" | "apiCategoryReturns",
     key: string,
     value: string,
   ) => {
@@ -564,6 +580,8 @@ export default function AddMFFund() {
       plan_type: form.plan_type,
       option_type: form.option_type,
       nav_Current: toNumberOrNull(form.nav_Current),
+      nav_change: toNumberOrNull(form.nav_change),
+      nav_change_percentage: toNumberOrNull(form.nav_change_percentage),
       aum: toNumberOrNull(form.aum),
       expense_ratio: toNumberOrNull(form.expense_ratio),
       returns: {
@@ -577,6 +595,7 @@ export default function AddMFFund() {
           yearly_returns: toNumberMap(form.returnsAnnual),
         },
       },
+      api_category_returns: toNumberMap(form.apiCategoryReturns),
       risk_metrics: {
         sharpe_3y: toNumberOrNull(form.sharpe_3y),
         sharpe_5y: toNumberOrNull(form.sharpe_5y),
@@ -968,6 +987,12 @@ export default function AddMFFund() {
                 {formatNavDate(form.nav_date)}
               </p>
             </div>
+            {renderInputField("nav_change", "NAV Change", "fund_overview.nav_change")}
+            {renderInputField(
+              "nav_change_percentage",
+              "NAV Change %",
+              "fund_overview.nav_change_percentage",
+            )}
             {renderInputField("aum", "AUM (Crs.)", "fund_overview.aum")}
             {renderInputField(
               "expense_ratio",
@@ -1153,6 +1178,31 @@ export default function AddMFFund() {
               </div>
             ))}
           </div>
+
+
+          <h4 className="mb-4 mt-6 font-semibold text-gray-700">
+            API Category Returns
+          </h4>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {([...FUND_TRAILING_FIELDS, { key: "ytd", label: "YTD" }]).map((field) => (
+              <div key={field.key}>
+                {renderFieldLabel(field.label, `fund_performance.api_category_returns_${field.key}`)}
+                <input
+                  className={inputClass(errors[`apiCategoryReturns.${field.key}`])}
+                  disabled={isViewMode}
+                  value={form.apiCategoryReturns[field.key]}
+                  onChange={(event) =>
+                    setMapField(
+                      "apiCategoryReturns",
+                      field.key,
+                      event.target.value,
+                    )
+                  }
+                />
+                {error(errors[`apiCategoryReturns.${field.key}`])}
+              </div>
+            ))}
+          </div>
         </section>
 
         <section>
@@ -1294,3 +1344,9 @@ export default function AddMFFund() {
     </MFFormContainer>
   );
 }
+
+
+
+
+
+

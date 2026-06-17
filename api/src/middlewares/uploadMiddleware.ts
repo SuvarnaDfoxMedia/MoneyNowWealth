@@ -59,6 +59,26 @@ const navFileFilter = (
   cb(new Error("Only Excel/CSV files (.xlsx, .xls, .csv) are allowed!"));
 };
 
+const mfApiFileFilter = (
+  _req: Request,
+  file: Express.Multer.File,
+  cb: FileFilterCallback,
+) => {
+  const allowedMimeTypes = new Set([
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/octet-stream",
+    "text/csv",
+    "application/json",
+  ]);
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  if (allowedMimeTypes.has(file.mimetype) || [".xlsx", ".xls", ".csv", ".json"].includes(ext)) {
+    cb(null, true);
+    return;
+  }
+  cb(new Error("Only Excel, CSV, or JSON files (.xlsx, .xls, .csv, .json) are allowed!"));
+};
+
 /* --------------------------------------------------------
    Helper: Always return correct public URL
 --------------------------------------------------------- */
@@ -182,6 +202,14 @@ export const uploadMfExcel = multer({
 export const uploadNavDataFile = multer({
   storage: mfImportStorage,
   fileFilter: navFileFilter,
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+}).single("file");
+
+export const uploadMfApiDataFile = multer({
+  storage: mfImportStorage,
+  fileFilter: mfApiFileFilter,
   limits: {
     fileSize: 20 * 1024 * 1024,
   },
