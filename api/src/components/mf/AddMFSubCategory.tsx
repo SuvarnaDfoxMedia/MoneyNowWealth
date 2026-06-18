@@ -79,14 +79,18 @@ export default function AddMFCategory() {
         main_category_id: d.main_category_id?._id || "",
         description: d.description || "",
         benchmark_index_name: d.benchmark_index_name || "",
-        y1: d.benchmark_returns?.y1?.toString?.() || "",
-        y3: d.benchmark_returns?.y3?.toString?.() || "",
-        y5: d.benchmark_returns?.y5?.toString?.() || "",
-        y10: d.benchmark_returns?.y10?.toString?.() || "",
-        category_avg_y1: d.category_average_returns?.y1?.toString?.() || "",
-        category_avg_y3: d.category_average_returns?.y3?.toString?.() || "",
-        category_avg_y5: d.category_average_returns?.y5?.toString?.() || "",
-        category_avg_y10: d.category_average_returns?.y10?.toString?.() || "",
+        // Bug 2: y1/y3/y5/y10 are the manually-editable category_returns.trailing fields
+        // (the UI section was mislabelled "Benchmark Returns" — now corrected to "Category Returns").
+        y1: d.category_returns?.trailing?.["1y"]?.toString?.() || "",
+        y3: d.category_returns?.trailing?.["3y"]?.toString?.() || "",
+        y5: d.category_returns?.trailing?.["5y"]?.toString?.() || "",
+        y10: d.category_returns?.trailing?.["10y"]?.toString?.() || "",
+        // category_average_returns is auto-computed by the backend from active fund returns.
+        // We display it read-only; the correct nested path uses "1y" string keys.
+        category_avg_y1: d.category_average_returns?.trailing?.["1y"]?.toString?.() || "",
+        category_avg_y3: d.category_average_returns?.trailing?.["3y"]?.toString?.() || "",
+        category_avg_y5: d.category_average_returns?.trailing?.["5y"]?.toString?.() || "",
+        category_avg_y10: d.category_average_returns?.trailing?.["10y"]?.toString?.() || "",
         risk_level: d.risk_level || "",
         suggested_use_case: d.suggested_use_case || "",
         suggested_use_case_note: d.suggested_use_case_note || "",
@@ -135,13 +139,13 @@ export default function AddMFCategory() {
       next.benchmark_index_name =
         "Benchmark index name must be under 200 characters";
 
-    const y1Err = validateNumber(form.y1, "Benchmark 1Y return");
+    const y1Err = validateNumber(form.y1, "1Y return");
     if (y1Err) next.y1 = y1Err;
-    const y3Err = validateNumber(form.y3, "Benchmark 3Y return");
+    const y3Err = validateNumber(form.y3, "3Y return");
     if (y3Err) next.y3 = y3Err;
-    const y5Err = validateNumber(form.y5, "Benchmark 5Y return");
+    const y5Err = validateNumber(form.y5, "5Y return");
     if (y5Err) next.y5 = y5Err;
-    const y10Err = validateNumber(form.y10, "Benchmark 10Y return");
+    const y10Err = validateNumber(form.y10, "10Y return");
     if (y10Err) next.y10 = y10Err;
     const catY1Err = validateNumber(form.category_avg_y1, "Category average 1Y return");
     if (catY1Err) next.category_avg_y1 = catY1Err;
@@ -178,14 +182,10 @@ export default function AddMFCategory() {
         if (field === "main_category_id") next.main_category_id = msg;
         if (field === "description") next.description = msg;
         if (field === "benchmark_index_name") next.benchmark_index_name = msg;
-        if (field === "benchmark_returns.y1") next.y1 = msg;
-        if (field === "benchmark_returns.y3") next.y3 = msg;
-        if (field === "benchmark_returns.y5") next.y5 = msg;
-        if (field === "benchmark_returns.y10") next.y10 = msg;
-        if (field === "category_average_returns.y1") next.category_avg_y1 = msg;
-        if (field === "category_average_returns.y3") next.category_avg_y3 = msg;
-        if (field === "category_average_returns.y5") next.category_avg_y5 = msg;
-        if (field === "category_average_returns.y10") next.category_avg_y10 = msg;
+        if (field === "category_returns.trailing.1y") next.y1 = msg;
+        if (field === "category_returns.trailing.3y") next.y3 = msg;
+        if (field === "category_returns.trailing.5y") next.y5 = msg;
+        if (field === "category_returns.trailing.10y") next.y10 = msg;
         if (field === "risk_level") next.risk_level = msg;
         if (field === "suggested_use_case") next.suggested_use_case = msg;
         if (field === "suggested_use_case_note") next.suggested_use_case_note = msg;
@@ -216,17 +216,16 @@ export default function AddMFCategory() {
       main_category_id: form.main_category_id,
       description: form.description.trim(),
       benchmark_index_name: form.benchmark_index_name.trim(),
-      benchmark_returns: {
-        y1: form.y1 === "" ? null : Number(form.y1),
-        y3: form.y3 === "" ? null : Number(form.y3),
-        y5: form.y5 === "" ? null : Number(form.y5),
-        y10: form.y10 === "" ? null : Number(form.y10),
-      },
-      category_average_returns: {
-        y1: form.category_avg_y1 === "" ? null : Number(form.category_avg_y1),
-        y3: form.category_avg_y3 === "" ? null : Number(form.category_avg_y3),
-        y5: form.category_avg_y5 === "" ? null : Number(form.category_avg_y5),
-        y10: form.category_avg_y10 === "" ? null : Number(form.category_avg_y10),
+      // Bug 2: write to category_returns.trailing with "1y"/"3y" string keys.
+      // category_average_returns is intentionally omitted — it is auto-computed
+      // by the backend (recomputeCategoryAverageReturns) and must not be overwritten here.
+      category_returns: {
+        trailing: {
+          "1y":  form.y1  === "" ? null : Number(form.y1),
+          "3y":  form.y3  === "" ? null : Number(form.y3),
+          "5y":  form.y5  === "" ? null : Number(form.y5),
+          "10y": form.y10 === "" ? null : Number(form.y10),
+        },
       },
       risk_level: form.risk_level.trim(),
       suggested_use_case: form.suggested_use_case.trim(),
@@ -404,7 +403,8 @@ export default function AddMFCategory() {
         </div>
 
         <div>
-          <label className="block mb-2 text-gray-700 font-medium">Benchmark Returns</label>
+          {/* Bug 2: label corrected — these fields store category_returns.trailing, not benchmark data */}
+          <label className="block mb-2 text-gray-700 font-medium">Category Returns</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label htmlFor="benchmark_y1" className="block mb-2 text-gray-700 font-medium">1Y</label>

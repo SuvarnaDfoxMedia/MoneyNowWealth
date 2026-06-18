@@ -410,9 +410,55 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     ? latestInfo.scheme_performance_list
     : [];
 
-  const schemePerfRow = perfList[0] || {};
-  const benchmarkRow  = perfList[1] || {};
-  const categoryRow   = perfList[2] || {};
+  // Bug 11 fix: identify rows by scheme_name content rather than by array index.
+  // The API does not guarantee a fixed order, and some funds have only 2 entries
+  // (e.g. no benchmark row), so blind index access produces silently wrong data.
+
+  // Normalised names used for comparison — lower-cased, trimmed.
+  const fundName      = String(latestInfo?.scheme_name      || "").toLowerCase().trim();
+  const benchmarkName = String(latestInfo?.scheme_benchmark || "").toLowerCase().trim();
+
+  // Helper: does a perf-list row look like a category-average row?
+  // Category rows have names like "Equity: Sectoral-Banking..." (contains a colon).
+  const looksLikeCategory = (row: any): boolean =>
+    String(row?.scheme_name || "").includes(":");
+
+  // ── Step 1: find the fund's own row ──────────────────────────────────────
+  // Match by checking whether the row's scheme_name starts with the first
+  // 10 characters of the fund name (robust against suffix differences like
+  // "- Direct Plan - Growth Option" vs "Direct Growth").
+  const fundPrefix = fundName.slice(0, 10);
+  const schemePerfRow =
+    (fundPrefix
+      ? perfList.find((r: any) =>
+          String(r?.scheme_name || "").toLowerCase().startsWith(fundPrefix),
+        )
+      : undefined) ||
+    perfList[0] ||   // index fallback — preserves original behaviour
+    {};
+
+  // ── Step 2: find the benchmark row ───────────────────────────────────────
+  // Prefer a direct name match against latestInfo.scheme_benchmark.
+  // If that is absent, take the first remaining non-category row.
+  const benchmarkRow =
+    (benchmarkName
+      ? perfList.find((r: any) =>
+          r !== schemePerfRow &&
+          String(r?.scheme_name || "").toLowerCase().includes(benchmarkName.slice(0, 10)),
+        )
+      : undefined) ||
+    perfList.find((r: any) =>
+      r !== schemePerfRow && !looksLikeCategory(r),
+    ) ||
+    perfList[1] ||   // index fallback
+    {};
+
+  // ── Step 3: category row is whatever is left ──────────────────────────────
+  const categoryRow =
+    perfList.find((r: any) => r !== schemePerfRow && r !== benchmarkRow) ||
+    perfList[2] ||   // index fallback
+    {};
+
 
   const riskList = Array.isArray(latestInfo?.risk_statistics_list)
     ? latestInfo.risk_statistics_list
@@ -566,6 +612,11 @@ export const syncAllSchemes = async (context: SyncContext = {}, options: SyncOpt
 };
 
 const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOptions = {}) => {
+  // Bug 4 Fix B: expire stale is_new flags before starting the sync so that
+  // any scheme first seen more than 24 hours ago stops appearing as "New"
+  // automatically, without requiring a manual admin action.
+  await expireIsNewFlag();
+
   const externalResponse = await requestExternalSchemes();
   
   if (isRateLimitedResponse(externalResponse)) {
@@ -608,6 +659,18 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
     try {
       const normalized = normalizeScheme(row);
 
+      // Bug 4 Fix A: only mark is_new for genuine NFOs — schemes whose inception
+      // date falls within the last 30 days.  A full DB-wipe + re-sync will no
+      // longer tag every scheme as "New"; only truly fresh launches qualify.
+      const NFO_WINDOW_MS = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+      const inceptionDate = normalizeDate(
+        pick(row, ["scheme_inception_date", "launch_date", "inception_date"])
+      );
+      const isNFO =
+        inceptionDate instanceof Date &&
+        !Number.isNaN(inceptionDate.getTime()) &&
+        Date.now() - inceptionDate.getTime() <= NFO_WINDOW_MS;
+
       const upsertResult = await MfApiScheme.findOneAndUpdate(
         { external_key: normalized.external_key, is_deleted: { $ne: true } },
         {
@@ -625,7 +688,7 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
           },
           $setOnInsert: {
             is_active: false,
-            is_new: true,
+            is_new: isNFO,   // Bug 4 Fix A: true only for funds launched in last 30 days
             sync_status: "queued",
             first_seen_date: new Date(),
             latest_nav: null,
@@ -676,6 +739,23 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
   processDetailedSyncBatch(String(log._id), context, options).catch(err => {
     console.error("Background sync detail batch failed:", err);
   });
+};
+
+/**
+ * Bug 4 Fix B: Exported expiry helper — clears is_new on all schemes whose
+ * first_seen_date is older than 24 hours.  Called automatically at the start
+ * of every backgroundMasterSync run, and can also be invoked independently
+ * (e.g. from a scheduled cron job) if needed.
+ */
+export const expireIsNewFlag = async (): Promise<void> => {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+  await MfApiScheme.updateMany(
+    {
+      is_new: true,
+      first_seen_date: { $lt: cutoff },
+    },
+    { $set: { is_new: false } },
+  );
 };
 
 const updateSyncLogProgress = async (
@@ -733,9 +813,14 @@ export const processDetailedSyncBatch = async (
       },
     });
 
-    // Helper: process one batch with delay
-    const processBatch = async (batch: typeof activeSchemes, delayMs: number) => {
-      await Promise.allSettled(
+    // Rate-limit tracking across batches
+    let consecutiveRateLimitErrors = 0;
+    let rateLimitAborted = false;
+
+    // Helper: process one batch with inter-batch delay.
+    // Returns true if the caller should abort the entire sync (rate limited).
+    const processBatch = async (batch: typeof activeSchemes, delayMs: number): Promise<boolean> => {
+      const results = await Promise.allSettled(
         batch.map(async (schemeDoc) => {
           try {
             await syncOneScheme(
@@ -748,19 +833,55 @@ export const processDetailedSyncBatch = async (
               options
             );
             processed += 1;
-          } catch {
+          } catch (err: any) {
             errors += 1;
+            // Re-throw so allSettled captures it as a rejection
+            throw err;
           }
         })
       );
-      if (delayMs > 0 && !options.offlineMode) await new Promise((r) => setTimeout(r, delayMs));
+
+      // Count consecutive rate-limit rejections in this batch
+      let batchHasRateLimit = false;
+      for (const result of results) {
+        if (result.status === "rejected") {
+          const msg = String(result.reason?.message || result.reason || "").toLowerCase();
+          if (msg.includes("rate limit")) {
+            consecutiveRateLimitErrors += 1;
+            batchHasRateLimit = true;
+          } else {
+            consecutiveRateLimitErrors = 0; // non-rate-limit error resets the streak
+          }
+        } else {
+          consecutiveRateLimitErrors = 0; // success resets the streak
+        }
+      }
+
+      // Abort if 3 or more consecutive rate-limit errors
+      if (consecutiveRateLimitErrors >= 3) return true;
+
+      // Extra back-off when rate limiting has started but hasn't yet hit threshold
+      const extraDelay = batchHasRateLimit && !options.offlineMode ? 1000 : 0;
+      if ((delayMs + extraDelay) > 0 && !options.offlineMode) {
+        await new Promise((r) => setTimeout(r, delayMs + extraDelay));
+      }
+      return false;
     };
 
     // Phase 1: Active in batches of 20, 200ms between batches
     const activeBatchSize = 20;
     for (let i = 0; i < activeSchemes.length; i += activeBatchSize) {
       const batch = activeSchemes.slice(i, i + activeBatchSize);
-      await processBatch(batch, 200);
+      const shouldAbort = await processBatch(batch, 200);
+      if (shouldAbort) {
+        rateLimitAborted = true;
+        await updateSyncLogProgress(parentLogId, {
+          status: "rate_limited",
+          message: "API is busy. Please try again in a few minutes.",
+          response: { total, active: totalActive, inactive: totalInactive, processed, errors, phase: "aborted-rate-limit" },
+        });
+        break; // break instead of return to allow category recompute
+      }
       await updateSyncLogProgress(parentLogId, {
         message: `[Active] Processed ${Math.min(i + activeBatchSize, totalActive)}/${totalActive} active schemes | ${errors} errors`,
         response: {
@@ -791,7 +912,16 @@ export const processDetailedSyncBatch = async (
       const inactiveBatchSize = 10;
       for (let i = 0; i < inactiveSchemes.length; i += inactiveBatchSize) {
         const batch = inactiveSchemes.slice(i, i + inactiveBatchSize);
-        await processBatch(batch, 500);
+        const shouldAbortInactive = await processBatch(batch, 500);
+        if (shouldAbortInactive) {
+          rateLimitAborted = true;
+          await updateSyncLogProgress(parentLogId, {
+            status: "rate_limited",
+            message: "API is busy. Please try again in a few minutes.",
+            response: { total, active: totalActive, inactive: totalInactive, processed, errors, phase: "aborted-rate-limit-inactive" },
+          });
+          break; // break instead of return to allow category recompute
+        }
         await updateSyncLogProgress(parentLogId, {
           message: `[Inactive] Processed ${Math.min(i + inactiveBatchSize, totalInactive)}/${totalInactive} inactive schemes | Active: ${totalActive} done | Total errors: ${errors}`,
           response: {
@@ -804,22 +934,25 @@ export const processDetailedSyncBatch = async (
           },
         });
       }
+
     }
 
-    await updateSyncLogProgress(parentLogId, {
-      status: errors > 0 ? "failed" : "success",
-      message: options.activeOnly
-        ? `Active sync complete: ${processed} success, ${errors} failed out of ${totalActive} active schemes`
-        : `Full sync complete: ${processed} success, ${errors} failed out of ${total} (${totalActive} active + ${totalInactive} inactive)`,
-      response: {
-        total,
-        active: totalActive,
-        inactive: totalInactive,
-        processed,
-        errors,
-        phase: "complete",
-      },
-    });
+    if (!rateLimitAborted) {
+      await updateSyncLogProgress(parentLogId, {
+        status: errors > 0 ? "failed" : "success",
+        message: options.activeOnly
+          ? `Active sync complete: ${processed} success, ${errors} failed out of ${totalActive} active schemes`
+          : `Full sync complete: ${processed} success, ${errors} failed out of ${total} (${totalActive} active + ${totalInactive} inactive)`,
+        response: {
+          total,
+          active: totalActive,
+          inactive: totalInactive,
+          processed,
+          errors,
+          phase: "complete",
+        },
+      });
+    }
 
     // Recompute all categories after entire batch is completed
     try {

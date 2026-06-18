@@ -58,6 +58,7 @@ import { recomputeCategoryAverageReturns } from "./mfCategoryService";
 import { normalizeDateOnly } from "./navCalculationService";
 import { parseSchemeTitle } from "../utils/schemeParser";
 import { parseCategoryPath } from "../utils/categoryParser";
+import { createBenchmarkReturn } from "./mfBenchmarkService";
 
 const toN = (v: any): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -75,17 +76,38 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$
 
 const normalizeText = (value: string) => String(value || "").trim();
 
-const findCategoryByName = async (name: string) =>
-  MFCategory.findOne({
-    name: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
+const findCategoryByName = async (name: string) => {
+  const normalisedName = name.replace(/\s+/g, " ").trim();
+  return MFCategory.findOne({
+    name: { $regex: `^${escapeRegex(normalisedName)}$`, $options: "i" },
     is_deleted: false,
-  });
+  }).sort({ created_at: 1 });
+};
 
-const findMainCategoryByName = async (name: string) =>
-  MFMainCategory.findOne({
-    name: { $regex: `^${escapeRegex(name)}$`, $options: "i" },
+const findMainCategoryByName = async (name: string) => {
+  const normalisedName = name.replace(/\s+/g, " ").trim();
+  return MFMainCategory.findOne({
+    name: { $regex: `^${escapeRegex(normalisedName)}$`, $options: "i" },
     is_deleted: false,
-  });
+  }).sort({ created_at: 1 });
+};
+
+//
+// ─── Promise Lock (Mutex) ──────────────────────────────────────────────────────────
+// Prevents race conditions when bulk-syncing multiple schemes concurrently,
+// ensuring duplicate categories/benchmarks aren't created.
+const lockMap = new Map<string, Promise<any>>();
+
+const withLock = async <T>(key: string, fn: () => Promise<T>): Promise<T> => {
+  while (lockMap.has(key)) {
+    await lockMap.get(key);
+  }
+  const promise = fn().finally(() => lockMap.delete(key));
+  lockMap.set(key, promise);
+  return promise;
+};
+
+// ─── Resolution Helpers ───────────────────────────────────────────────────────
 
 /**
  * Resolve or auto-create an MFAmc record by name.
@@ -104,96 +126,138 @@ const resolveAmcId = async (amcName: string): Promise<mongoose.Types.ObjectId | 
 /**
  * Resolve or auto-create a category for an API category string.
  * This never returns null for a non-empty category input.
+ * Now accepts categoryReturns to update the MFCategory document directly.
  */
-const resolveCategoryId = async (apiCategory: string): Promise<mongoose.Types.ObjectId | null> => {
+const resolveCategoryId = async (
+  apiCategory: string,
+  categoryReturns: any = {}
+): Promise<mongoose.Types.ObjectId | null> => {
   const clean = normalizeText(apiCategory);
-  const parsed = parseCategoryPath(clean);
-  const fallbackCategoryName = parsed.categoryName;
-  const fallbackMainCategoryName = parsed.mainCategoryName;
+  if (!clean) return null;
 
-  const exactMatch = clean ? await findCategoryByName(clean) : null;
-  if (exactMatch) return exactMatch._id as mongoose.Types.ObjectId;
+  return withLock(`category_${clean}`, async () => {
+    const parsed = parseCategoryPath(clean);
+    const fallbackMainCat = parsed.mainCategoryName;
+    const fallbackCat = parsed.categoryName;
 
-  const candidateParts = [parsed.categoryName, parsed.mainCategoryName]
-    .map((part) => normalizeText(part))
-    .filter(Boolean);
-  for (const part of candidateParts) {
-    const partMatch = await findCategoryByName(part);
-    if (partMatch) return partMatch._id as mongoose.Types.ObjectId;
-  }
+    const exactMatch = await findCategoryByName(clean);
+    let categoryId = exactMatch?._id as mongoose.Types.ObjectId;
 
-  const allCategories = await MFCategory.find({ is_deleted: false, is_active: 1 }).lean();
-  const cleanLower = clean.toLowerCase();
-  const sortedByLength = [...allCategories].sort((a, b) => b.name.length - a.name.length);
-
-  for (const category of sortedByLength) {
-    const escaped = escapeRegex(category.name);
-    if (new RegExp(`\\b${escaped}\\b`, "i").test(clean)) {
-      return category._id as mongoose.Types.ObjectId;
+    if (!categoryId) {
+      const candidateParts = [fallbackCat, fallbackMainCat]
+        .map((part) => normalizeText(part))
+        .filter(Boolean);
+      for (const part of candidateParts) {
+        const partMatch = await findCategoryByName(part);
+        if (partMatch) {
+          categoryId = partMatch._id as mongoose.Types.ObjectId;
+          break;
+        }
+      }
     }
-    const nameLower = category.name.toLowerCase();
-    if (cleanLower.includes(nameLower) || nameLower.includes(cleanLower)) {
-      return category._id as mongoose.Types.ObjectId;
+
+    if (!categoryId) {
+      const allCategories = await MFCategory.find({ is_deleted: false, is_active: 1 }).lean();
+      const sortedByLength = [...allCategories].sort((a, b) => b.name.length - a.name.length);
+      for (const category of sortedByLength) {
+        const escaped = escapeRegex(category.name);
+        if (new RegExp(`\\b${escaped}\\b`, "i").test(clean)) {
+          categoryId = category._id as mongoose.Types.ObjectId;
+          break;
+        }
+      }
     }
-  }
 
-  // Auto-create with the correct parsed names (not "Uncategorized")
-  const { mainCategoryName: fallbackMainCat, categoryName: fallbackCat } = parsed;
+    // Auto-create with the correct parsed names if still not found
+    if (!categoryId) {
+      // Main Category logic with lock
+      let mainCategory = await findMainCategoryByName(fallbackMainCat);
+      if (!mainCategory) {
+        mainCategory = await MFMainCategory.create({
+          name: fallbackMainCat.replace(/\s+/g, " ").trim(),
+          is_active: 1,
+          is_deleted: false,
+        });
+      }
 
-  let mainCategory = await findMainCategoryByName(fallbackMainCat);
-  if (!mainCategory) {
-    mainCategory = await MFMainCategory.create({
-      name: fallbackMainCat,
-      is_active: 1,
-      is_deleted: false,
-    });
-  }
+      let newCategory = await findCategoryByName(fallbackCat);
+      if (!newCategory) {
+        newCategory = await MFCategory.create({
+          name: fallbackCat,
+          main_category_id: mainCategory._id,
+          is_active: 1,
+          is_deleted: false,
+        });
+        console.info(
+          `[mfApiBridgeService] Auto-created/resolved MFCategory "${fallbackCat}" under "${fallbackMainCat}" for API category "${apiCategory}"`,
+        );
+      }
+      categoryId = newCategory._id as mongoose.Types.ObjectId;
+    }
 
-  let newCategory = await findCategoryByName(fallbackCat);
-  if (!newCategory) {
-    newCategory = await MFCategory.create({
-      name: fallbackCat,
-      main_category_id: mainCategory._id,
-      is_active: 1,
-      is_deleted: false,
-    });
-  }
+    // Update category returns directly on the MFCategory document
+    const hasCategoryReturns = Object.values(categoryReturns).some((v) => v !== null && v !== undefined && v !== "");
+    if (hasCategoryReturns && categoryId) {
+      const trailing = {
+        "1w": toN(categoryReturns["1w"]) ?? null,
+        "1m": toN(categoryReturns["1m"]) ?? null,
+        "3m": toN(categoryReturns["3m"]) ?? null,
+        "6m": toN(categoryReturns["6m"]) ?? null,
+        "1y": toN(categoryReturns["1y"]) ?? null,
+        "2y": toN(categoryReturns["2y"]) ?? null,
+        "3y": toN(categoryReturns["3y"]) ?? null,
+        "5y": toN(categoryReturns["5y"]) ?? null,
+        "10y": toN(categoryReturns["10y"]) ?? null,
+        since_launch: toN(categoryReturns.since_launch) ?? null,
+      };
 
-  console.info(
-    `[mfApiBridgeService] Auto-created/resolved MFCategory "${fallbackCat}" under "${fallbackMainCat}" for API category "${apiCategory}"`,
-  );
+      await MFCategory.findByIdAndUpdate(categoryId, {
+        $set: { "category_returns.trailing": trailing },
+      });
+    }
 
-  return newCategory._id as mongoose.Types.ObjectId;
+    return categoryId;
+  });
 };
 
 /**
  * Resolve a benchmark for an API benchmark string using fuzzy matching.
- * Returns the ObjectId or null if no acceptable match is found.
+ * Auto-creates the benchmark if it doesn't exist so data can be stored.
  */
 const resolveBenchmarkId = async (apiBenchmark: string): Promise<mongoose.Types.ObjectId | null> => {
   const clean = normalizeText(apiBenchmark);
   if (!clean) return null;
 
-  const exactMatch = await MFBenchmark.findOne({
-    name: { $regex: `^${escapeRegex(clean)}$`, $options: "i" },
-    is_deleted: false,
-  }).lean();
-  if (exactMatch) return exactMatch._id as mongoose.Types.ObjectId;
+  return withLock(`benchmark_${clean}`, async () => {
+    const exactMatch = await MFBenchmark.findOne({
+      name: { $regex: `^${escapeRegex(clean)}$`, $options: "i" },
+      is_deleted: false,
+    }).lean();
+    if (exactMatch) return exactMatch._id as mongoose.Types.ObjectId;
 
-  // Attempt fuzzy match
-  const allBenchmarks = await MFBenchmark.find({ is_deleted: false, is_active: 1 }).lean();
-  const cleanLower = clean.toLowerCase();
-  
-  // Try to find if any known benchmark name is fully contained in the API benchmark name
-  const sortedByLength = [...allBenchmarks].sort((a, b) => b.name.length - a.name.length);
-  for (const benchmark of sortedByLength) {
-    const escaped = escapeRegex(benchmark.name);
-    if (new RegExp(`\\b${escaped}\\b`, "i").test(clean)) {
-      return benchmark._id as mongoose.Types.ObjectId;
+    // Attempt fuzzy match
+    const allBenchmarks = await MFBenchmark.find({ is_deleted: false, is_active: 1 }).lean();
+    
+    // Try to find if any known benchmark name is fully contained in the API benchmark name
+    const sortedByLength = [...allBenchmarks].sort((a, b) => b.name.length - a.name.length);
+    for (const benchmark of sortedByLength) {
+      const escaped = escapeRegex(benchmark.name);
+      if (new RegExp(`\\b${escaped}\\b`, "i").test(clean)) {
+        return benchmark._id as mongoose.Types.ObjectId;
+      }
     }
-  }
 
-  return null;
+    // Auto-create missing benchmark so we have a place to store returns
+    const newBenchmark = await MFBenchmark.create({
+      name: clean,
+      type: "index",
+      is_active: 1,
+      is_deleted: false,
+    });
+    
+    console.info(`[mfApiBridgeService] Auto-created MFBenchmark "${clean}"`);
+    return newBenchmark._id as mongoose.Types.ObjectId;
+  });
 };
 
 const mapPlanType = (plan: string): "Regular" | "Direct" | "" => {
@@ -247,7 +311,7 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
   const parsedTitle = parseSchemeTitle(scheme.scheme_name || "");
 
   const amcId = await resolveAmcId(scheme.amc_name || "");
-  const categoryId = await resolveCategoryId(scheme.category || "");
+  const categoryId = await resolveCategoryId(scheme.category || "", categoryReturns);
   const benchmarkIndexName = (scheme as any).scheme_benchmark || benchmarkReturns.benchmark_name || "";
   const benchmarkId = await resolveBenchmarkId(benchmarkIndexName);
 
@@ -298,20 +362,6 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
         since_launch:  toN(tr.since_launch),
       },
     },
-    // ---- Category Returns (from API) ----
-    api_category_returns: {
-      "1w":          toN(categoryReturns["1w"]) ?? null,
-      "1m":          toN(categoryReturns["1m"]) ?? null,
-      "3m":          toN(categoryReturns["3m"]) ?? null,
-      "6m":          toN(categoryReturns["6m"]) ?? null,
-      "1y":          toN(categoryReturns["1y"]) ?? null,
-      "2y":          toN(categoryReturns["2y"]) ?? null,
-      "3y":          toN(categoryReturns["3y"]) ?? null,
-      "5y":          toN(categoryReturns["5y"]) ?? null,
-      "10y":         toN(categoryReturns["10y"]) ?? null,
-      ytd:           toN(categoryReturns.ytd) ?? null,
-      since_launch:  toN(categoryReturns.since_launch) ?? null,
-    },
     // ---- Risk metrics (best available from API) ----
     risk_metrics: {
       sharpe_3y:      toN(rm.sharpe_3y),
@@ -321,15 +371,15 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
     },
     benchmark_index_name: benchmarkIndexName,
     benchmark_returns_trailing: {
-      d1:           null,                                          // 1-day: not available from API
-      m1:           toN(benchmarkReturns["1m"]) ?? null,
-      m3:           toN(benchmarkReturns["3m"]) ?? null,
-      m6:           toN(benchmarkReturns["6m"]) ?? null,
-      y1:           toN(benchmarkReturns["1y"]) ?? null,
-      y3:           toN(benchmarkReturns["3y"]) ?? null,
-      y5:           toN(benchmarkReturns["5y"]) ?? null,
-      y10:          toN(benchmarkReturns["10y"]) ?? null,
-      since_launch: toN(benchmarkReturns.since_launch) ?? null,
+      "1w":          toN(benchmarkReturns["1w"]) ?? null,
+      "1m":          toN(benchmarkReturns["1m"]) ?? null,
+      "3m":          toN(benchmarkReturns["3m"]) ?? null,
+      "6m":          toN(benchmarkReturns["6m"]) ?? null,
+      "1y":          toN(benchmarkReturns["1y"]) ?? null,
+      "3y":          toN(benchmarkReturns["3y"]) ?? null,
+      "5y":          toN(benchmarkReturns["5y"]) ?? null,
+      "10y":         toN(benchmarkReturns["10y"]) ?? null,
+      since_launch:  toN(benchmarkReturns.since_launch) ?? null,
     },
     benchmark_returns_annual: {
       y1: null,
@@ -341,6 +391,32 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
   };
 
   return payload;
+};
+const syncBenchmarkReturn = async (benchmarkId: string | undefined, scheme: IMfApiScheme, schemeId: string) => {
+  if (!benchmarkId) return;
+  const benchmarkReturns = (scheme as any).benchmark_returns || {};
+  try {
+    await createBenchmarkReturn({
+      benchmark_id: String(benchmarkId),
+      date: new Date(),
+      trailing: {
+        "1w":          toN(benchmarkReturns["1w"]),
+        "1m":          toN(benchmarkReturns["1m"]),
+        "3m":          toN(benchmarkReturns["3m"]),
+        "6m":          toN(benchmarkReturns["6m"]),
+        "1y":          toN(benchmarkReturns["1y"]),
+        "3y":          toN(benchmarkReturns["3y"]),
+        "5y":          toN(benchmarkReturns["5y"]),
+        "10y":         toN(benchmarkReturns["10y"]),
+        since_launch:  toN(benchmarkReturns.since_launch),
+      },
+    });
+  } catch (benchmarkErr: any) {
+    console.warn(
+      `[mfApiBridgeService] Non-fatal: failed to upsert MFBenchmarkReturn for ` +
+      `benchmark ${benchmarkId} (scheme ${schemeId}): ${benchmarkErr?.message}`,
+    );
+  }
 };
 
 export const syncApiSchemeToManual = async (
@@ -371,7 +447,6 @@ export const syncApiSchemeToManual = async (
         returns: payloadReturns,
         risk_metrics: payloadRisk,
         benchmark_returns_trailing: payloadBenchmarkReturns,
-        api_category_returns: payloadApiCategoryReturns,
         ...scalarFields
       } = payload;
 
@@ -403,22 +478,14 @@ export const syncApiSchemeToManual = async (
       const existingBenchmarkReturns = (existing as any).benchmark_returns_trailing || {};
       const mergedBenchmarkReturns = {
         ...existingBenchmarkReturns,
-        ...payloadBenchmarkReturns,
+        ...Object.fromEntries(
+          Object.entries(payloadBenchmarkReturns || {}).filter(([_, v]) => v !== null && v !== undefined),
+        ),
       };
-
-      const existingApiCategoryReturns = (existing as any).api_category_returns || {};
-        const mergedApiCategoryReturns = {
-          ...existingApiCategoryReturns,
-          // Keep existing values when API returns null for a period
-          ...Object.fromEntries(
-            Object.entries(payloadApiCategoryReturns || {}).filter(([_, v]) => v !== null && v !== undefined),
-          ),
-        };
 
       const updateDoc: Record<string, any> = {
         ...scalarFields,
         benchmark_returns_trailing: mergedBenchmarkReturns,
-        api_category_returns: mergedApiCategoryReturns,
         returns: mergedReturns,
         risk_metrics: mergedRisk,
         mf_api_scheme_id: scheme._id,
@@ -439,6 +506,8 @@ export const syncApiSchemeToManual = async (
       await upsertNavHistoryFromApiScheme(scheme, String(existing._id));
 
       // categoryIdToRecompute removed for asynchronous batch processing (Phase 4.1)
+
+      await syncBenchmarkReturn(payload.benchmark_id, scheme, schemeId);
 
       return { action: "updated" };
     }
@@ -485,6 +554,9 @@ export const syncApiSchemeToManual = async (
 
     await newFund.save();
     await upsertNavHistoryFromApiScheme(scheme, String(newFund._id));
+
+    await syncBenchmarkReturn(payload.benchmark_id, scheme, schemeId);
+
     // Category recomputation deferred to bulk job (Phase 4.1)
     return { action: "created" };
 

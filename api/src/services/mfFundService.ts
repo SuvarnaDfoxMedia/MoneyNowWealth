@@ -413,7 +413,20 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.category_id) {
     updateData.category_id = await resolveCategoryId(payload);
   }
-  if (payload.benchmark_id !== undefined) updateData.benchmark_id = null;
+  // Correct three-way benchmark_id guard:
+  //   - valid string → keep the provided ObjectId
+  //   - explicit null  → intentional clear
+  //   - undefined (not in payload) → leave existing value untouched
+  if (payload.benchmark_id !== undefined && payload.benchmark_id !== null) {
+    updateData.benchmark_id = payload.benchmark_id; // valid ObjectId — preserve it
+  } else if (payload.benchmark_id === null) {
+    updateData.benchmark_id = null; // caller explicitly wants to clear the link
+  }
+  // If undefined: field is not in payload, so updateData already has the raw
+  // spread value from line 399 — remove it to avoid accidentally overwriting.
+  else {
+    delete updateData.benchmark_id;
+  }
 
   if (payload.returns || payload.y1_return || payload.y3_cagr || payload.y5_cagr || payload.y10_cagr) {
     updateData.returns = normalizeFundReturns({

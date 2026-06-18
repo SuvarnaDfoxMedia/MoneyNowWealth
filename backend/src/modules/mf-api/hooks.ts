@@ -35,18 +35,22 @@ export const useMfApiDashboard = (role: string, options?: { refetchInterval?: nu
 export const useMfApiSchemes = (
   role: string,
   params: { search?: string; page?: number; limit?: number } = {},
+  options?: { refetchInterval?: number },
 ) =>
   useQuery({
     queryKey: [role, "mf-api", "schemes", params],
     queryFn: () => fetchMfApiSchemes(role, params),
     placeholderData: keepPreviousData,
+    refetchInterval: options?.refetchInterval,
   });
 
-export const useMfApiScheme = (role: string, id?: string) =>
+
+export const useMfApiScheme = (role: string, id?: string, options?: { refetchInterval?: number }) =>
   useQuery({
     queryKey: [role, "mf-api", "scheme", id],
     queryFn: () => fetchMfApiScheme(role, id || ""),
     enabled: Boolean(id),
+    refetchInterval: options?.refetchInterval,
   });
 
 export const useMfApiSyncLogs = (
@@ -65,7 +69,15 @@ export const useMfApiSyncAll = (role: string) => {
   return useMutation({
     mutationFn: () => syncAllMfApiSchemes(role),
     onSuccess: (response) => {
-      toast.success(response.message || "MF API sync started");
+      // Fix C: warn instead of success when the API rate-limited the sync
+      if ((response as any)?.status === "rate_limited") {
+        toast(
+          response.message || "Sync paused — API rate limited. Queued schemes will resume on next run.",
+          { icon: "⚠️" },
+        );
+      } else {
+        toast.success(response.message || "MF API sync started");
+      }
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => {
@@ -80,7 +92,15 @@ export const useMfApiSyncActive = (role: string) => {
   return useMutation({
     mutationFn: () => syncActiveMfApiSchemes(role),
     onSuccess: (response) => {
-      toast.success(response.message || "Active MF API sync started");
+      // Fix C: warn instead of success when rate-limited
+      if ((response as any)?.status === "rate_limited") {
+        toast(
+          response.message || "Sync paused — API rate limited. Queued schemes will resume on next run.",
+          { icon: "⚠️" },
+        );
+      } else {
+        toast.success(response.message || "Active MF API sync started");
+      }
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => {
@@ -147,8 +167,9 @@ export const useMfApiToggleActive = (role: string) => {
   return useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       toggleMfApiSchemeActive(role, id, is_active),
-    onSuccess: (_, { is_active }) => {
+    onSuccess: (_, { id, is_active }) => {
       toast.success(`Scheme ${is_active ? "activated" : "deactivated"}`);
+      // Immediate invalidation
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => toast.error("Failed to update scheme"),
@@ -162,6 +183,7 @@ export const useMfApiBulkToggle = (role: string) => {
       bulkToggleMfApiSchemes(role, ids, is_active),
     onSuccess: (_, { ids, is_active }) => {
       toast.success(`${ids.length} schemes ${is_active ? "activated" : "deactivated"}`);
+      // Immediate invalidation
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => toast.error("Failed to bulk update schemes"),

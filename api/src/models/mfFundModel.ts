@@ -96,14 +96,14 @@ export interface IMFFund extends Document {
   benchmark_id?: mongoose.Types.ObjectId | null;
   benchmark_index_name?: string;
   benchmark_returns_trailing?: {
-    d1?: number | null;
-    m1?: number | null;
-    m3?: number | null;
-    m6?: number | null;
-    y1?: number | null;
-    y3?: number | null;
-    y5?: number | null;
-    y10?: number | null;
+    "1w"?: number | null;
+    "1m"?: number | null;
+    "3m"?: number | null;
+    "6m"?: number | null;
+    "1y"?: number | null;
+    "3y"?: number | null;
+    "5y"?: number | null;
+    "10y"?: number | null;
     since_launch?: number | null;
   };
   benchmark_returns_annual?: {
@@ -112,19 +112,7 @@ export interface IMFFund extends Document {
     y5?: number | null;
     y10?: number | null;
   };
-  api_category_returns?: {
-    "1w"?: number | null;
-    "1m"?: number | null;
-    "3m"?: number | null;
-    "6m"?: number | null;
-    "1y"?: number | null;
-    "2y"?: number | null;
-    "3y"?: number | null;
-    "5y"?: number | null;
-    "10y"?: number | null;
-    ytd?: number | null;
-    since_launch?: number | null;
-  };
+
   benchmark_inception_return?: number | null;
   min_investment?: number | null;
   sip_allowed?: boolean;
@@ -204,14 +192,14 @@ const mfFundSchema = new Schema<IMFFund>(
     benchmark_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFBenchmark", default: null, index: true },
     benchmark_index_name: { type: String, trim: true, default: "" },
     benchmark_returns_trailing: {
-      d1: { type: Number, default: null },
-      m1: { type: Number, default: null },
-      m3: { type: Number, default: null },
-      m6: { type: Number, default: null },
-      y1: { type: Number, default: null },
-      y3: { type: Number, default: null },
-      y5: { type: Number, default: null },
-      y10: { type: Number, default: null },
+      "1w": { type: Number, default: null },
+      "1m": { type: Number, default: null },
+      "3m": { type: Number, default: null },
+      "6m": { type: Number, default: null },
+      "1y": { type: Number, default: null },
+      "3y": { type: Number, default: null },
+      "5y": { type: Number, default: null },
+      "10y": { type: Number, default: null },
       since_launch: { type: Number, default: null },
     },
     benchmark_returns_annual: {
@@ -220,19 +208,7 @@ const mfFundSchema = new Schema<IMFFund>(
       y5: { type: Number, default: null },
       y10: { type: Number, default: null },
     },
-    api_category_returns: {
-      "1w": { type: Number, default: null },
-      "1m": { type: Number, default: null },
-      "3m": { type: Number, default: null },
-      "6m": { type: Number, default: null },
-      "1y": { type: Number, default: null },
-      "2y": { type: Number, default: null },
-      "3y": { type: Number, default: null },
-      "5y": { type: Number, default: null },
-      "10y": { type: Number, default: null },
-      ytd: { type: Number, default: null },
-      since_launch: { type: Number, default: null },
-    },
+
     benchmark_inception_return: { type: Number, default: null },
     min_investment: { type: Number, default: null },
     sip_allowed: { type: Boolean, default: true },

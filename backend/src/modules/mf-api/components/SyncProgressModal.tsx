@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { FiX, FiCheckCircle, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
+import { FiX, FiCheckCircle, FiRefreshCw, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMfApiDashboard } from "../hooks";
+import { useMfApiDashboard, useMfApiSyncActive } from "../hooks";
 
 interface SyncProgressModalProps {
   role: string;
@@ -16,6 +16,7 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
   const { data, refetch } = useMfApiDashboard(role, {
     refetchInterval: isOpen ? 1500 : undefined,
   });
+  const retrySyncMutation = useMfApiSyncActive(role);
 
   const dashboard = data?.data;
   const latestJob = dashboard?.latestSyncJob || null;
@@ -26,7 +27,8 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
   const failedSchemes = latestJob?.response?.errors ?? dashboard?.failedSchemes ?? 0;
   const syncMessage = latestJob?.message || dashboard?.lastSyncMessage || dashboard?.runningMessage || "";
   const isRunning = latestJob?.status === "running";
-  const hasFinishedJob = latestJob ? latestJob.status !== "running" : false;
+  const isRateLimited = latestJob?.status === "rate_limited";
+  const hasFinishedJob = latestJob ? (latestJob.status !== "running" && latestJob.status !== "rate_limited") : false;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -74,6 +76,26 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
                     {syncMessage}
                   </p>
                 ) : null}
+              </div>
+            </div>
+          ) : isRateLimited ? (
+            // Rate-limited state — amber warning, not red error
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3 text-amber-700">
+                <FiAlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">API is currently busy (rate limited)</p>
+                  <p className="mt-1 text-sm text-amber-600">
+                    Your sync has been paused. Schemes not yet synced will continue
+                    automatically on the next sync run. Please wait a few minutes before
+                    trying again.
+                  </p>
+                  {syncMessage ? (
+                    <p className="mt-2 text-xs text-amber-500 truncate" title={syncMessage}>
+                      {syncMessage}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : hasFinishedJob ? (
@@ -127,6 +149,15 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
         <div className="border-t border-gray-100 bg-gray-50 px-6 py-4 flex justify-between items-center">
           <p className="text-xs text-gray-500">Updates every 1.5 seconds while the job is running</p>
           <div className="flex gap-3">
+            {isRateLimited && (
+              <button
+                onClick={() => retrySyncMutation.mutate()}
+                disabled={retrySyncMutation.isPending}
+                className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {retrySyncMutation.isPending ? "Starting..." : "Retry Sync"}
+              </button>
+            )}
             <button
               onClick={() => void handleRefresh()}
               disabled={isRefreshing}
