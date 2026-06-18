@@ -50,6 +50,7 @@ export default function AddMFBenchmark() {
     benchmark_trailing_3m: "",
     benchmark_trailing_6m: "",
     benchmark_trailing_1y: "",
+    benchmark_trailing_2y: "",
     benchmark_trailing_3y: "",
     benchmark_trailing_5y: "",
     benchmark_trailing_10y: "",
@@ -85,6 +86,7 @@ export default function AddMFBenchmark() {
             benchmark_trailing_3m: (latest?.trailing?.["3m"] ?? latest.return_3m)?.toString?.() || "",
             benchmark_trailing_6m: (latest?.trailing?.["6m"] ?? latest.return_6m)?.toString?.() || "",
             benchmark_trailing_1y: (latest?.trailing?.["1y"] ?? latest.return_1y)?.toString?.() || "",
+            benchmark_trailing_2y: (latest?.trailing?.["2y"] ?? latest.return_2y)?.toString?.() || "",
             benchmark_trailing_3y: (latest?.trailing?.["3y"] ?? latest.return_3y)?.toString?.() || "",
             benchmark_trailing_5y: (latest?.trailing?.["5y"] ?? latest.return_5y)?.toString?.() || "",
             benchmark_trailing_10y: (latest?.trailing?.["10y"] ?? latest.return_10y)?.toString?.() || "",
@@ -143,6 +145,7 @@ export default function AddMFBenchmark() {
             "3m": returnsForm.benchmark_trailing_3m === "" ? null : Number(returnsForm.benchmark_trailing_3m),
             "6m": returnsForm.benchmark_trailing_6m === "" ? null : Number(returnsForm.benchmark_trailing_6m),
             "1y": returnsForm.benchmark_trailing_1y === "" ? null : Number(returnsForm.benchmark_trailing_1y),
+            "2y": returnsForm.benchmark_trailing_2y === "" ? null : Number(returnsForm.benchmark_trailing_2y),
             "3y": returnsForm.benchmark_trailing_3y === "" ? null : Number(returnsForm.benchmark_trailing_3y),
             "5y": returnsForm.benchmark_trailing_5y === "" ? null : Number(returnsForm.benchmark_trailing_5y),
             "10y": returnsForm.benchmark_trailing_10y === "" ? null : Number(returnsForm.benchmark_trailing_10y),
@@ -225,7 +228,7 @@ export default function AddMFBenchmark() {
             </div>
             {[
               "benchmark_trailing_1w","benchmark_trailing_1m","benchmark_trailing_3m","benchmark_trailing_6m",
-              "benchmark_trailing_1y","benchmark_trailing_3y","benchmark_trailing_5y","benchmark_trailing_10y","since_launch","bench_YTD",
+              "benchmark_trailing_1y","benchmark_trailing_2y","benchmark_trailing_3y","benchmark_trailing_5y","benchmark_trailing_10y","since_launch","bench_YTD",
             ].map((key) => (
               <input
                 key={key}

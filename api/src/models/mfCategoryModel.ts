@@ -14,10 +14,12 @@ const categoryReturnsSchema = new Schema(
       "3m": { type: Number, default: null },
       "6m": { type: Number, default: null },
       "1y": { type: Number, default: null },
+      "2y": { type: Number, default: null },
       "3y": { type: Number, default: null },
       "5y": { type: Number, default: null },
       "10y": { type: Number, default: null },
       since_launch: { type: Number, default: null },
+      ytd: { type: Number, default: null },
     },
     annual: {
       ytd: { type: Number, default: null },

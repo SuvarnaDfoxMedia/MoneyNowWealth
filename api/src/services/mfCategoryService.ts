@@ -19,25 +19,9 @@ const exactCaseInsensitive = (value: string) => ({
   $options: "i",
 });
 
-const normalizeCategoryReturns = (value: any) => ({
-  trailing: {
-    "1w": toNumberOrNull(value?.trailing?.["1w"] ?? value?.w1),
-    "1m": toNumberOrNull(value?.trailing?.["1m"] ?? value?.m1),
-    "3m": toNumberOrNull(value?.trailing?.["3m"] ?? value?.m3),
-    "6m": toNumberOrNull(value?.trailing?.["6m"] ?? value?.m6),
-    "1y": toNumberOrNull(value?.trailing?.["1y"] ?? value?.y1),
-    "3y": toNumberOrNull(value?.trailing?.["3y"] ?? value?.y3),
-    "5y": toNumberOrNull(value?.trailing?.["5y"] ?? value?.y5),
-    "10y": toNumberOrNull(value?.trailing?.["10y"] ?? value?.y10),
-    since_launch: toNumberOrNull(
-      value?.trailing?.since_launch ?? value?.since_launch ?? value?.since_inception,
-    ),
-  },
-  annual: {
-    ytd: toNumberOrNull(value?.annual?.ytd ?? value?.ytd),
-    yearly_returns: normalizeYearValueMap(value?.annual?.yearly_returns ?? value?.annual),
-  },
-});
+import { normalizeReturnsObject } from "../utils/returnMapper";
+
+const normalizeCategoryReturns = (value: any) => normalizeReturnsObject(value);
 
 export const recomputeCategoryAverageReturns = async (categoryId: string) => {
   const funds = await MFFund.find({
@@ -49,7 +33,7 @@ export const recomputeCategoryAverageReturns = async (categoryId: string) => {
     .lean();
 
   const trailingFieldMap: Array<{
-    key: "1w" | "1m" | "3m" | "6m" | "1y" | "3y" | "5y" | "10y" | "since_launch";
+    key: "1w" | "1m" | "3m" | "6m" | "1y" | "2y" | "3y" | "5y" | "10y" | "since_launch" | "ytd";
     fallback: string;
   }> = [
     { key: "1w", fallback: "w1" },
@@ -57,10 +41,12 @@ export const recomputeCategoryAverageReturns = async (categoryId: string) => {
     { key: "3m", fallback: "m3" },
     { key: "6m", fallback: "m6" },
     { key: "1y", fallback: "y1" },
+    { key: "2y", fallback: "y2_cagr" },
     { key: "3y", fallback: "y3_cagr" },
     { key: "5y", fallback: "y5_cagr" },
     { key: "10y", fallback: "y10_cagr" },
     { key: "since_launch", fallback: "since_inception" },
+    { key: "ytd", fallback: "ytd" },
   ];
 
   const sums: Record<string, number> = {};
@@ -112,12 +98,14 @@ export const recomputeCategoryAverageReturns = async (categoryId: string) => {
       "3m": counts["3m"] ? sums["3m"] / counts["3m"] : null,
       "6m": counts["6m"] ? sums["6m"] / counts["6m"] : null,
       "1y": counts["1y"] ? sums["1y"] / counts["1y"] : null,
+      "2y": counts["2y"] ? sums["2y"] / counts["2y"] : null,
       "3y": counts["3y"] ? sums["3y"] / counts["3y"] : null,
       "5y": counts["5y"] ? sums["5y"] / counts["5y"] : null,
       "10y": counts["10y"] ? sums["10y"] / counts["10y"] : null,
       since_launch: counts["since_launch"]
         ? sums["since_launch"] / counts["since_launch"]
         : null,
+      ytd: counts["ytd"] ? sums["ytd"] / counts["ytd"] : null,
     },
     annual: {
       ytd: ytdCount > 0 ? ytdSum / ytdCount : null,

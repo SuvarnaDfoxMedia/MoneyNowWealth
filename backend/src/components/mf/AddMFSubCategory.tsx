@@ -25,10 +25,12 @@ const TRAILING_FIELDS = [
   { key: "3m", label: "3 Months" },
   { key: "6m", label: "6 Months" },
   { key: "1y", label: "1 Year" },
+  { key: "2y", label: "2 Years" },
   { key: "3y", label: "3 Years" },
   { key: "5y", label: "5 Years" },
   { key: "10y", label: "10 Years" },
   { key: "since_launch", label: "Since Launch" },
+  { key: "ytd", label: "YTD" },
 ] as const;
 
 const buildAnnualYears = (startYear = new Date().getFullYear() - 1, count = 9) =>
@@ -50,6 +52,14 @@ const emptyTrailingValues = () =>
 
 const getLegacyTrailingValue = (source: any, key: string) => {
   if (!source) return "";
+  if (key === "ytd") {
+    if (source?.annual?.ytd !== undefined && source?.annual?.ytd !== null) {
+      return source.annual.ytd?.toString?.() || "";
+    }
+    if (source?.trailing?.ytd !== undefined && source?.trailing?.ytd !== null) {
+      return source.trailing.ytd?.toString?.() || "";
+    }
+  }
   if (source?.trailing?.[key] !== undefined && source?.trailing?.[key] !== null) {
     return source.trailing[key]?.toString?.() || "";
   }
@@ -59,10 +69,12 @@ const getLegacyTrailingValue = (source: any, key: string) => {
     "3m": "m3",
     "6m": "m6",
     "1y": "y1",
+    "2y": "y2",
     "3y": "y3",
     "5y": "y5",
     "10y": "y10",
     since_launch: "since_launch",
+    ytd: "ytd",
   };
   const legacyKey = legacyMap[key];
   return legacyKey ? source?.[legacyKey]?.toString?.() || "" : "";
@@ -352,7 +364,7 @@ export default function AddMFCategory() {
       category_returns: {
         trailing: toNumberMap(form.categoryTrailing),
         annual: {
-          ytd: null,
+          ytd: form.categoryTrailing.ytd && form.categoryTrailing.ytd !== "" ? Number(form.categoryTrailing.ytd) : null,
           yearly_returns: toNumberMap(mergedCategoryAnnual),
         },
       },

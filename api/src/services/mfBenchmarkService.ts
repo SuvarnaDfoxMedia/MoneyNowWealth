@@ -37,17 +37,7 @@ const normalizeYearlyReturns = (input: any) => {
   return out;
 };
 
-const normalizeBenchmarkTrailing = (payload: any) => ({
-  "1w": toNumberOrNull(payload?.trailing?.["1w"] ?? payload?.return_1w ?? payload?.benchmark_trailing_1w),
-  "1m": toNumberOrNull(payload?.trailing?.["1m"] ?? payload?.return_1m ?? payload?.benchmark_trailing_1m),
-  "3m": toNumberOrNull(payload?.trailing?.["3m"] ?? payload?.return_3m ?? payload?.benchmark_trailing_3m),
-  "6m": toNumberOrNull(payload?.trailing?.["6m"] ?? payload?.return_6m ?? payload?.benchmark_trailing_6m),
-  "1y": toNumberOrNull(payload?.trailing?.["1y"] ?? payload?.return_1y ?? payload?.benchmark_trailing_1y),
-  "3y": toNumberOrNull(payload?.trailing?.["3y"] ?? payload?.return_3y ?? payload?.benchmark_trailing_3y),
-  "5y": toNumberOrNull(payload?.trailing?.["5y"] ?? payload?.return_5y ?? payload?.benchmark_trailing_5y),
-  "10y": toNumberOrNull(payload?.trailing?.["10y"] ?? payload?.return_10y ?? payload?.benchmark_trailing_10y),
-  since_launch: toNumberOrNull(payload?.trailing?.since_launch ?? payload?.since_launch ?? payload?.return_since_inception),
-});
+import { normalizeReturnsObject } from "../utils/returnMapper";
 
 export const getBenchmarks = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
@@ -170,11 +160,7 @@ export const createBenchmarkReturn = async (payload: any) => {
   const benchmark = await MFBenchmark.findOne({ _id: payload.benchmark_id, is_deleted: false }).select("_id");
   if (!benchmark) throw new Error("Benchmark not found");
 
-  const trailing = normalizeBenchmarkTrailing(payload);
-  const annual = {
-    ytd: toNumberOrNull(payload?.annual?.ytd ?? payload?.return_ytd ?? payload?.bench_YTD ?? payload?.bench_ytd),
-    yearly_returns: normalizeYearlyReturns(payload),
-  };
+  const { trailing, annual } = normalizeReturnsObject(payload);
 
   const doc = await MFBenchmarkReturn.findOneAndUpdate(
     { benchmark_id: payload.benchmark_id, date, is_deleted: false },

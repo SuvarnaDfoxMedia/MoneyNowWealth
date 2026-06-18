@@ -10,10 +10,12 @@ type CategoryOption = {
   category_returns?: {
     trailing?: Record<string, number | null>;
     annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
+    ytd?: number | null;
   };
   category_average_returns?: {
     trailing?: Record<string, number | null>;
     annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
+    ytd?: number | null;
   };
 };
 type FundOption = {
@@ -31,6 +33,7 @@ type FundOption = {
     m6?: number | null;
     ytd?: number | null;
     y1?: number | null;
+    y2?: number | null;
     y3_cagr?: number | null;
     y5_cagr?: number | null;
     y10_cagr?: number | null;
@@ -52,6 +55,7 @@ type BenchmarkReturnRow = {
   return_6m?: number | null;
   return_ytd?: number | null;
   return_1y?: number | null;
+  return_2y?: number | null;
   return_3y?: number | null;
   return_5y?: number | null;
   return_10y?: number | null;
@@ -75,6 +79,7 @@ type SeriesPoint = {
   m6: number | null;
   ytd: number | null;
   y1: number | null;
+  y2: number | null;
   y3: number | null;
   y5: number | null;
   y10: number | null;
@@ -89,6 +94,7 @@ const PERIODS: Array<{ key: keyof Omit<SeriesPoint, "label">; label: string }> =
   { key: "m6", label: "6M" },
   { key: "ytd", label: "YTD" },
   { key: "y1", label: "1Y" },
+  { key: "y2", label: "2Y" },
   { key: "y3", label: "3Y" },
   { key: "y5", label: "5Y" },
   { key: "y10", label: "10Y" },
@@ -104,6 +110,7 @@ const emptySeries = (label: string): SeriesPoint => ({
   m6: null,
   ytd: null,
   y1: null,
+  y2: null,
   y3: null,
   y5: null,
   y10: null,
@@ -140,6 +147,7 @@ const fromBenchmarkRow = (label: string, row?: BenchmarkReturnRow): SeriesPoint 
   m6: asNumber(row?.trailing?.["6m"] ?? row?.return_6m),
   ytd: asNumber(row?.annual?.ytd ?? row?.return_ytd),
   y1: asNumber(row?.trailing?.["1y"] ?? row?.return_1y),
+  y2: asNumber(row?.trailing?.["2y"] ?? row?.return_2y),
   y3: asNumber(row?.trailing?.["3y"] ?? row?.return_3y),
   y5: asNumber(row?.trailing?.["5y"] ?? row?.return_5y),
   y10: asNumber(row?.trailing?.["10y"] ?? row?.return_10y),
@@ -155,6 +163,7 @@ const fromFund = (label: string, fund?: FundOption): SeriesPoint => ({
   m6: asNumber(fund?.returns?.trailing?.["6m"] ?? fund?.returns?.m6),
   ytd: asNumber(fund?.returns?.annual?.ytd ?? fund?.returns?.ytd),
   y1: asNumber(fund?.returns?.trailing?.["1y"] ?? fund?.returns?.y1),
+  y2: asNumber(fund?.returns?.trailing?.["2y"] ?? fund?.returns?.y2),
   y3: asNumber(fund?.returns?.trailing?.["3y"] ?? fund?.returns?.y3_cagr),
   y5: asNumber(fund?.returns?.trailing?.["5y"] ?? fund?.returns?.y5_cagr),
   y10: asNumber(fund?.returns?.trailing?.["10y"] ?? fund?.returns?.y10_cagr),
@@ -170,8 +179,9 @@ const fromCategory = (label: string, category?: CategoryOption): SeriesPoint => 
     m1: asNumber(source?.trailing?.["1m"]),
     m3: asNumber(source?.trailing?.["3m"]),
     m6: asNumber(source?.trailing?.["6m"]),
-    ytd: asNumber(source?.annual?.ytd),
+    ytd: asNumber(source?.annual?.ytd ?? source?.trailing?.ytd ?? source?.ytd),
     y1: asNumber(source?.trailing?.["1y"]),
+    y2: asNumber(source?.trailing?.["2y"]),
     y3: asNumber(source?.trailing?.["3y"]),
     y5: asNumber(source?.trailing?.["5y"]),
     y10: asNumber(source?.trailing?.["10y"]),

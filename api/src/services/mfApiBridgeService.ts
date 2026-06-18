@@ -198,6 +198,7 @@ const resolveCategoryId = async (
     // Update category returns directly on the MFCategory document
     const hasCategoryReturns = Object.values(categoryReturns).some((v) => v !== null && v !== undefined && v !== "");
     if (hasCategoryReturns && categoryId) {
+      const categoryYtd = toN(categoryReturns?.annual?.ytd ?? categoryReturns?.ytd) ?? null;
       const trailing = {
         "1w": toN(categoryReturns["1w"]) ?? null,
         "1m": toN(categoryReturns["1m"]) ?? null,
@@ -209,10 +210,14 @@ const resolveCategoryId = async (
         "5y": toN(categoryReturns["5y"]) ?? null,
         "10y": toN(categoryReturns["10y"]) ?? null,
         since_launch: toN(categoryReturns.since_launch) ?? null,
+        ytd: categoryYtd,
       };
 
       await MFCategory.findByIdAndUpdate(categoryId, {
-        $set: { "category_returns.trailing": trailing },
+        $set: {
+          "category_returns.trailing": trailing,
+          "category_returns.annual.ytd": categoryYtd,
+        },
       });
     }
 
@@ -356,10 +361,12 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
         "3m":          toN(tr["3m"]),
         "6m":          toN(tr["6m"]),
         "1y":          toN(tr["1y"]),
+        "2y":          toN(tr["2y"]),
         "3y":          toN(tr["3y"]),
         "5y":          toN(tr["5y"]),
         "10y":         toN(tr["10y"]),
         since_launch:  toN(tr.since_launch),
+        ytd:           toN(tr.ytd),
       },
     },
     // ---- Risk metrics (best available from API) ----
@@ -376,10 +383,12 @@ const buildMFFundPayload = async (scheme: IMfApiScheme): Promise<Record<string, 
       "3m":          toN(benchmarkReturns["3m"]) ?? null,
       "6m":          toN(benchmarkReturns["6m"]) ?? null,
       "1y":          toN(benchmarkReturns["1y"]) ?? null,
+      "2y":          toN(benchmarkReturns["2y"]) ?? null,
       "3y":          toN(benchmarkReturns["3y"]) ?? null,
       "5y":          toN(benchmarkReturns["5y"]) ?? null,
       "10y":         toN(benchmarkReturns["10y"]) ?? null,
       since_launch:  toN(benchmarkReturns.since_launch) ?? null,
+      ytd:           toN(benchmarkReturns.ytd) ?? null,
     },
     benchmark_returns_annual: {
       y1: null,
@@ -405,10 +414,12 @@ const syncBenchmarkReturn = async (benchmarkId: string | undefined, scheme: IMfA
         "3m":          toN(benchmarkReturns["3m"]),
         "6m":          toN(benchmarkReturns["6m"]),
         "1y":          toN(benchmarkReturns["1y"]),
+        "2y":          toN(benchmarkReturns["2y"]),
         "3y":          toN(benchmarkReturns["3y"]),
         "5y":          toN(benchmarkReturns["5y"]),
         "10y":         toN(benchmarkReturns["10y"]),
         since_launch:  toN(benchmarkReturns.since_launch),
+        ytd:           toN(benchmarkReturns.ytd),
       },
     });
   } catch (benchmarkErr: any) {
@@ -450,7 +461,7 @@ export const syncApiSchemeToManual = async (
         ...scalarFields
       } = payload;
 
-      const existingReturns = (existing as any).returns || {};
+      const existingReturns = (existing.get("returns") as any)?.toObject?.() || (existing.get("returns") as any) || {};
       const mergedReturns = {
         ...existingReturns,
         since_inception: payloadReturns.since_inception ?? existingReturns.since_inception,

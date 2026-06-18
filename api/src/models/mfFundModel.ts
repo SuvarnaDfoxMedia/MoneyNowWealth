@@ -8,10 +8,12 @@ const trailingReturnsSchema = new Schema(
     "3m": { type: Number, default: null },
     "6m": { type: Number, default: null },
     "1y": { type: Number, default: null },
+    "2y": { type: Number, default: null },
     "3y": { type: Number, default: null },
     "5y": { type: Number, default: null },
     "10y": { type: Number, default: null },
     since_launch: { type: Number, default: null },
+    ytd: { type: Number, default: null },
   },
   { _id: false },
 );
@@ -101,10 +103,12 @@ export interface IMFFund extends Document {
     "3m"?: number | null;
     "6m"?: number | null;
     "1y"?: number | null;
+    "2y"?: number | null;
     "3y"?: number | null;
     "5y"?: number | null;
     "10y"?: number | null;
     since_launch?: number | null;
+    ytd?: number | null;
   };
   benchmark_returns_annual?: {
     y1?: number | null;
@@ -171,7 +175,7 @@ const mfFundSchema = new Schema<IMFFund>(
     aum: { type: Number, default: null },
     aum_cr: { type: Number, default: null },
     expense_ratio: { type: Number, default: null },
-    returns: { type: fundReturnsSchema, default: () => ({}) },
+    returns: fundReturnsSchema,
     risk_metrics: {
       sharpe_3y: { type: Number, default: null },
       sharpe_5y: { type: Number, default: null },
@@ -197,10 +201,12 @@ const mfFundSchema = new Schema<IMFFund>(
       "3m": { type: Number, default: null },
       "6m": { type: Number, default: null },
       "1y": { type: Number, default: null },
+      "2y": { type: Number, default: null },
       "3y": { type: Number, default: null },
       "5y": { type: Number, default: null },
       "10y": { type: Number, default: null },
       since_launch: { type: Number, default: null },
+      ytd: { type: Number, default: null },
     },
     benchmark_returns_annual: {
       y1: { type: Number, default: null },

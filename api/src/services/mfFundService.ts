@@ -55,26 +55,14 @@ const normalizeInvestmentFlags = (payload: any) => {
   };
 };
 
+import { normalizeReturnsObject } from "../utils/returnMapper";
+
 const normalizeFundReturns = (value: any) => ({
   d1: toNumberOrNull(value?.d1 ?? value?.return_1d),
   since_inception: toNumberOrNull(
     value?.since_inception ?? value?.trailing?.since_launch ?? value?.inception_return,
   ),
-  trailing: {
-    "1w": toNumberOrNull(value?.trailing?.["1w"] ?? value?.w1),
-    "1m": toNumberOrNull(value?.trailing?.["1m"] ?? value?.m1),
-    "3m": toNumberOrNull(value?.trailing?.["3m"] ?? value?.m3),
-    "6m": toNumberOrNull(value?.trailing?.["6m"] ?? value?.m6),
-    "1y": toNumberOrNull(value?.trailing?.["1y"] ?? value?.y1),
-    "3y": toNumberOrNull(value?.trailing?.["3y"] ?? value?.y3_cagr),
-    "5y": toNumberOrNull(value?.trailing?.["5y"] ?? value?.y5_cagr),
-    "10y": toNumberOrNull(value?.trailing?.["10y"] ?? value?.y10_cagr),
-    since_launch: toNumberOrNull(value?.trailing?.since_launch ?? value?.since_inception),
-  },
-  annual: {
-    ytd: toNumberOrNull(value?.annual?.ytd ?? value?.ytd),
-    yearly_returns: normalizeYearValueMap(value?.annual?.yearly_returns ?? value?.annual),
-  },
+  ...normalizeReturnsObject(value),
 });
 
 const normalizeVisibilityMap = (value: any) => {

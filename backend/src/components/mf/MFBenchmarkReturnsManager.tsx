@@ -25,6 +25,7 @@ type ReturnRow = {
   return_6m?: number | null;
   return_ytd?: number | null;
   return_1y?: number | null;
+  return_2y?: number | null;
   return_3y?: number | null;
   return_5y?: number | null;
   return_10y?: number | null;
@@ -173,6 +174,7 @@ export default function MFBenchmarkReturnsManager() {
       { key: "6m", label: "6M", render: (row) => row?.trailing?.["6m"] ?? row.return_6m ?? "-" },
       { key: "ytd", label: "YTD", render: (row) => row?.annual?.ytd ?? row.return_ytd ?? "-" },
       { key: "1y", label: "1Y", render: (row) => row?.trailing?.["1y"] ?? row.return_1y ?? "-" },
+      { key: "2y", label: "2Y", render: (row) => row?.trailing?.["2y"] ?? row.return_2y ?? "-" },
       { key: "3y", label: "3Y", render: (row) => row?.trailing?.["3y"] ?? row.return_3y ?? "-" },
       { key: "5y", label: "5Y", render: (row) => row?.trailing?.["5y"] ?? row.return_5y ?? "-" },
       { key: "10y", label: "10Y", render: (row) => row?.trailing?.["10y"] ?? row.return_10y ?? "-" },
