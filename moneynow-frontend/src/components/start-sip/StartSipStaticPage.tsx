@@ -285,7 +285,7 @@ export default function StartSipStaticPage() {
     FIELD_CONFIG[activeCalculatorId as keyof typeof FIELD_CONFIG] || [];
 
   const resultRows = useMemo(
-    () => buildStartSipResultRows(activeCalculatorId, values, result),
+    () => buildStartSipResultRows(activeCalculatorId, values, result) as [string, string][],
     [activeCalculatorId, values, result],
   );
 
@@ -487,7 +487,7 @@ export default function StartSipStaticPage() {
                     </span>
                     <input
                       type={field.type}
-                      value={(values as Record<string, unknown>)[field.key] ?? ""}
+                      value={((values as Record<string, unknown>)[field.key] as string | number) ?? ""}
                       onChange={(e) => {
                         const val =
                           field.type === "number"

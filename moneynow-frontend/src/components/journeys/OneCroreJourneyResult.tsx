@@ -142,25 +142,19 @@ export default function OneCroreJourneyResult({
           </div>
           {hasCalculated && activeResult?.sip_amount ? (
             <StartSipReportDownload
-              activeTab={"Target Amount SIP Calculator"}
-              result={{
-                target_wealth: activeResult.target_wealth,
-                sip_amount: activeResult.sip_amount,
-                invested_amount: activeResult.invested_amount,
-                growth_amount: activeResult.growth_amount,
-              }}
-              values={{
-                ...START_SIP_DEFAULT_VALUES,
-                wealth_amount: form.wealth_amount,
-                years: form.years,
-                expected_return: form.expected_return,
-                inflation_rate: form.inflation_rate,
-                sip_amount: Number(activeResult.sip_amount || 0),
-                current_age: 0,
-                retirement_age: 0,
-                savings_amount: 0,
-                sip_stepup_value: 0,
-              }}
+              title="Target Amount SIP Calculator"
+              inputRows={[
+                ["Target Amount", `Rs. ${Number(form.wealth_amount || 0).toLocaleString("en-IN")}`],
+                ["Expected Return Rate", `${form.expected_return}%`],
+                ["Time Period", `${form.years} Years`],
+                ["Inflation Rate", `${form.inflation_rate}%`],
+              ]}
+              resultRows={[
+                ["Monthly SIP Investment Required", `Rs. ${Number(activeResult.sip_amount || 0).toLocaleString("en-IN")}`],
+                ["Total Amount Invested", `Rs. ${Number(activeResult.invested_amount || 0).toLocaleString("en-IN")}`],
+                ["Potential Total Growth Amount", `Rs. ${Number(activeResult.growth_amount || 0).toLocaleString("en-IN")}`],
+                ["Your Target Amount (Inflation Adjusted)", `Rs. ${Number(activeResult.target_wealth || 0).toLocaleString("en-IN")}`],
+              ]}
               barChartRef={barChartRef}
               pieChartRef={pieChartRef}
               chartType="sip"
