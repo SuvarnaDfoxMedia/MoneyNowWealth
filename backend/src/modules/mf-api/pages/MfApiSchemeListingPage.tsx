@@ -21,6 +21,7 @@ import {
 import { DataTable, TableColumn } from "../../../components/PagesComponent/DataTable";
 import { useDataTableStore } from "../../../store/dataTableStore";
 import SyncProgressModal from "../components/SyncProgressModal";
+import { useMfApiDashboard } from "../hooks";
 
 type ActiveFilter = "all" | "active" | "inactive" | "new" | "failed";
 
@@ -66,14 +67,29 @@ export default function MfApiSchemeListingPage() {
     return base;
   }, [searchValue, page, recordsPerPage, activeFilter]);
 
-  const schemesQuery = useMfApiSchemes(role, params);
+  // Fix C: determine whether any visible row is still syncing, so we can auto-poll.
+  const [isSyncing, setIsSyncing] = React.useState(false);
+  const dashboardQuery = useMfApiDashboard(role, { refetchInterval: isSyncing ? 3000 : undefined });
+
+  React.useEffect(() => {
+    const data = dashboardQuery.data?.data;
+    const pending = (data?.pendingSchemes ?? 0) > 0;
+    const running = data?.recentLogs?.[0]?.status === "running";
+    setIsSyncing(pending || running);
+  }, [dashboardQuery.data]);
+
+  const schemesQuery = useMfApiSchemes(role, params, {
+    refetchInterval: isSyncing ? 3000 : undefined,
+  });
+  const schemeRows = schemesQuery.data?.data ?? [];
+
   const syncActiveMutation = useMfApiSyncActive(role);
   const syncOneMutation = useMfApiSyncOne(role);
   const toggleActiveMutation = useMfApiToggleActive(role);
   const bulkToggleMutation = useMfApiBulkToggle(role);
   const markReviewedMutation = useMfApiMarkReviewed(role);
 
-  const rows = schemesQuery.data?.data ?? [];
+  const rows = schemeRows;
   const totalRecords = schemesQuery.data?.total ?? 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 

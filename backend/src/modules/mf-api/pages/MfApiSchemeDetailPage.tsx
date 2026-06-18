@@ -806,12 +806,26 @@ function NavHistoryTab({ role, id, scheme }: { role: string; id: string; scheme:
 
 export default function MfApiSchemeDetailPage() {
   const { role = "admin", id = "" } = useParams();
-  const schemeQuery = useMfApiScheme(role, id);
+
+  // Determine if a sync is currently in progress for this scheme
+  const [hasPendingSync, setHasPendingSync] = React.useState(false);
+
+  const schemeQuery = useMfApiScheme(role, id, {
+    refetchInterval: hasPendingSync ? 3000 : undefined,
+  });
+
+  const scheme = schemeQuery.data?.data;
+
+  React.useEffect(() => {
+    if (!scheme) return;
+    const isSyncing = scheme.sync_status === "queued" || scheme.sync_status === "running";
+    const isActivating = scheme.is_active && !scheme.linked_manual_fund;
+    setHasPendingSync(Boolean(isSyncing || isActivating));
+  }, [scheme]);
+
   const syncOneMutation = useMfApiSyncOne(role);
   const toggleActiveMutation = useMfApiToggleActive(role);
   const syncToManualMutation = useMfApiSyncToManual(role);
-
-  const scheme = schemeQuery.data?.data;
   const rawPayload =
     (scheme as any)?.rawPayload || (scheme as any)?.raw_payload || {};
   const latestInfo = getMfApiLatestInfo(scheme as any) || {};
