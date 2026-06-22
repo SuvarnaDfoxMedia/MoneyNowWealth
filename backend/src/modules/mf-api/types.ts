@@ -52,10 +52,20 @@ export type MfApiScheme = {
   category_avg_returns?: MfApiTrailingReturns & { category_name?: string };
   risk_metrics?: {
     volatility_3y?: number | null;
+    std_dev_3y?: number | null;
+    std_dev_5y?: number | null;
     sharpe_3y?: number | null;
+    sharpe_5y?: number | null;
     alpha_1y?: number | null;
+    alpha_3y?: number | null;
+    alpha_5y?: number | null;
     beta_1y?: number | null;
+    beta_3y?: number | null;
+    beta_5y?: number | null;
     sortino?: number | null;
+    max_drawdown_5y?: number | null;
+    max_drawdown_10y?: number | null;
+    turnover_ratio?: number | null;
     yield_to_maturity?: number | null;
     average_maturity?: number | null;
   };

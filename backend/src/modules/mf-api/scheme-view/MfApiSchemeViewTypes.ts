@@ -146,3 +146,19 @@ export function riskColor(level: string | null | undefined): {
   if (v.includes("low"))       return { bg: "bg-green-100",  text: "text-green-700"  };
   return                              { bg: "bg-gray-100",   text: "text-gray-600"   };
 }
+
+// Helper: Calculate value of ₹10,000 invested
+export function valueOf10k(returnPct: number | null | undefined, years: number | null): string {
+  if (returnPct === null || returnPct === undefined) return "—";
+  if (years !== null && returnPct === 0) return "—"; // If long term and 0, treat as missing/invalid
+  
+  let value = 10000;
+  if (years !== null) {
+    // CAGR for multiple years
+    value = 10000 * Math.pow(1 + returnPct / 100, years);
+  } else {
+    // Absolute return for < 1 yr or 1 yr
+    value = 10000 * (1 + returnPct / 100);
+  }
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+}

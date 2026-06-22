@@ -5,6 +5,7 @@ import {
   getActivePeriods,
   fmtReturn,
   returnColor,
+  valueOf10k,
 } from "./MfApiSchemeViewTypes";
 
 interface ReturnsComparisonTableProps {
@@ -184,14 +185,24 @@ export default function ReturnsComparisonTable({
                 {/* Return period cells */}
                 {activePeriods.map((p) => {
                   const val = row[p.key] as number | null | undefined;
+                  const show10k = ["1Y", "3Y", "5Y", "10Y", "SI"].includes(p.label);
+                  const years = p.label === "3Y" ? 3 : p.label === "5Y" ? 5 : p.label === "10Y" ? 10 : null;
+
                   return (
                     <td
                       key={p.key}
-                      className={`py-3 px-3 text-right tabular-nums font-medium text-sm ${
+                      className={`py-3 px-3 text-right text-sm ${
                         p.key === activePeriod.key ? "bg-blue-50/50" : ""
-                      } ${returnColor(val, p.isLongTerm)}`}
+                      }`}
                     >
-                      {fmtReturn(val, p.isLongTerm)}
+                      <div className={`tabular-nums font-medium ${returnColor(val, p.isLongTerm)}`}>
+                        {fmtReturn(val, p.isLongTerm)}
+                      </div>
+                      {show10k && (
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5 tabular-nums">
+                          {valueOf10k(val, years)}
+                        </div>
+                      )}
                     </td>
                   );
                 })}

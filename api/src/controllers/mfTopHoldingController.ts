@@ -128,12 +128,17 @@ export const importTopHoldings = async (req: Request, res: Response) => {
       validateOnly,
     });
 
-    if (!validateOnly && report?.errorCount > 0) {
+    if (!validateOnly && (report?.errorCount || report?.errors?.length || 0) > 0) {
       return sendError(
         res,
         "Import blocked because validation failed. Fix the workbook and validate again.",
         400,
-        report,
+        {
+          errors: report.errors,
+          skips: report.skips,
+          errorCount: report.errorCount || report.errors?.length || 0,
+          skipCount: report.skips?.length || 0,
+        },
       );
     }
 

@@ -176,6 +176,33 @@ export default function MfApiSchemeListingPage() {
       render: (row) => <StatusPill status={getMfApiSyncStatus(row)} />,
     },
     {
+      key: "linked_status",
+      label: "Link Status",
+      render: (row) => (
+        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
+          row.linked_manual_fund 
+            ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20"
+            : "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
+        }`}>
+          {row.linked_manual_fund ? (
+            <>
+              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+              </svg>
+              Bridged
+            </>
+          ) : (
+            <>
+              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+              Needs Review
+            </>
+          )}
+        </span>
+      ),
+    },
+    {
       key: "is_active",
       label: "Active",
       render: (row) => (

@@ -420,7 +420,9 @@ export const uploadNavWorkbook = async ({
     throw new Error("Uploaded NAV file not found");
   }
 
-  const workbook = XLSXModule.readFile(resolvedPath, {
+  const buffer = fs.readFileSync(resolvedPath);
+  const workbook = XLSXModule.read(buffer, {
+    type: "buffer",
     cellDates: true,
     cellNF: true,
     cellText: true,
@@ -429,7 +431,6 @@ export const uploadNavWorkbook = async ({
   const headerErrors = validateHeaders(headers);
   const { validRows, errors, skipped, skippedRows } = await parseNavRows(rows);
   const allErrors = [...headerErrors, ...errors];
-
   if (headerErrors.length > 0 || allErrors.length > 0) {
     return {
       success: false,

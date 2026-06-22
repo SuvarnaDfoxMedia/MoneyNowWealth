@@ -259,7 +259,7 @@ export const getMfApiNavHistory = async (req: Request, res: Response) => {
 export const syncSchemeToManual = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { syncApiSchemeToManual } = await import("../services/mfApiBridgeService");
+    const { syncApiSchemeToManual } = await import("../services/mf-import/MfApiSyncEngine");
     const result = await syncApiSchemeToManual(id, { activating: true });
     return res.json({ success: true, ...result });
   } catch (err: any) {
@@ -269,7 +269,7 @@ export const syncSchemeToManual = async (req: Request, res: Response) => {
 
 export const resyncAllToManual = async (req: Request, res: Response) => {
   try {
-    const { syncApiSchemeToManual } = await import("../services/mfApiBridgeService");
+    const { syncApiSchemeToManual } = await import("../services/mf-import/MfApiSyncEngine");
     const MfApiScheme = (await import("../models/mfApiSchemeModel")).default;
 
     const schemes = await MfApiScheme.find({

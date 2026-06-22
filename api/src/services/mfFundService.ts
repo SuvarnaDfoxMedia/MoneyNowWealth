@@ -15,26 +15,31 @@ import { recomputeCategoryAverageReturns } from "./mfCategoryService";
 const escapeRegex = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const exactCaseInsensitive = (value: string) => ({
-  $regex: `^${escapeRegex(value.trim())}$`,
-  $options: "i",
-});
+import { MfAliasResolver } from "./mf-import/MfAliasResolver";
+import { MfTransactionService } from "./mf-import/mfTransactionService";
+import { MfRepository } from "../db/mfRepository";
 
 const resolveAmcId = async (payload: any) => {
-  if (payload.amc_id) return payload.amc_id;
-  if (!payload.amc_name) throw new Error("amc_id or amc_name is required");
+  const amcSearch = payload.amc_id || payload.amc_name;
+  if (!amcSearch) throw new Error("amc_id or amc_name is required");
 
-  const name = String(payload.amc_name).trim();
-  let amc = await MFAmc.findOne({ name, is_deleted: false });
+  // Implementation Task 3: Alias Resolution (No entity creation may bypass)
+  const amc = await MfAliasResolver.resolveAmc(amcSearch);
   if (!amc) {
-    amc = await MFAmc.create({ name, is_active: 1, is_deleted: false });
+    throw new Error(`Unknown AMC: ${amcSearch}. Orphan creation is prevented.`);
   }
   return amc._id;
 };
 
 const resolveCategoryId = async (payload: any) => {
-  if (payload.category_id && /^[a-f\d]{24}$/i.test(String(payload.category_id))) return payload.category_id;
-  throw new Error("category_id (mongo id) is required");
+  const catSearch = payload.category_id || payload.category_name;
+  if (!catSearch) throw new Error("category_id or category_name is required");
+
+  const category = await MfAliasResolver.resolveCategory(catSearch);
+  if (!category) {
+    throw new Error(`Unknown Category: ${catSearch}. Orphan creation is prevented.`);
+  }
+  return category._id;
 };
 
 const normalizeInvestmentFlags = (payload: any) => {
@@ -286,80 +291,68 @@ export const getFundById = async (id: string) => {
 };
 
 export const createFund = async (payload: Partial<IMFFund> & any) => {
-  const createData: any = { ...payload };
-  delete createData.nav_Current;
-  delete createData.nav_current;
-  delete createData.nav_date;
+  // Implementation Task 2 & 7: Admin UI Transaction Integrity & Shared Engine Reuse
+  return await MfTransactionService.executeWithTransaction(async (session) => {
+    const createData: any = { ...payload };
+    delete createData.nav_Current;
+    delete createData.nav_current;
+    delete createData.nav_date;
 
-  if (!payload.scheme_code) {
-    throw new Error("scheme_code is required");
-  }
-  if (!payload.fund_name) {
-    throw new Error("fund_name is required");
-  }
+    if (!payload.scheme_code) {
+      throw new Error("scheme_code is required");
+    }
+    if (!payload.fund_name) {
+      throw new Error("fund_name is required");
+    }
 
-  const amcId = await resolveAmcId(payload);
-  const categoryId = await resolveCategoryId(payload);
+    const amcId = await resolveAmcId(payload);
+    const categoryId = await resolveCategoryId(payload);
 
-  const investmentFlags = normalizeInvestmentFlags(payload);
-  const normalizedSchemeCode = String(payload.scheme_code).trim();
-  const normalizedFundName = String(payload.fund_name).trim();
-  const planType = String(payload.plan_type || "Regular").trim();
-  const optionType = String(payload.option_type || "Growth").trim();
+    const investmentFlags = normalizeInvestmentFlags(payload);
+    const normalizedSchemeCode = String(payload.scheme_code).trim();
+    const normalizedFundName = String(payload.fund_name).trim();
+    const planType = String(payload.plan_type || "Regular").trim();
+    const optionType = String(payload.option_type || "Growth").trim();
 
-  const exists = await MFFund.findOne({
-    is_deleted: false,
-    $or: [
-      { scheme_code: exactCaseInsensitive(normalizedSchemeCode) },
-      {
-        fund_name: exactCaseInsensitive(normalizedFundName),
-        plan_type: planType,
-        option_type: optionType,
+    // Mapping payload to standard DB structure
+    const mappedData = {
+      ...createData,
+      scheme_code: normalizedSchemeCode,
+      fund_name: normalizedFundName,
+      amc_id: amcId,
+      category_id: categoryId,
+      isin: String(payload.isin ?? payload.isin_number ?? "").trim(),
+      isin_number: String(payload.isin_number ?? payload.isin ?? "").trim(),
+      aum: toNumberOrNull(payload.aum ?? payload.aum_cr),
+      aum_cr: toNumberOrNull(payload.aum_cr ?? payload.aum),
+      expense_ratio: toNumberOrNull(payload.expense_ratio),
+      returns: normalizeFundReturns({
+        ...payload.returns,
+        since_inception:
+          payload.returns?.since_inception ??
+          payload.returns?.["Since Inception Return"] ??
+          payload.inception_return,
+        y1: payload.returns?.y1 ?? payload.y1_return,
+        y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
+        y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
+        y10_cagr: payload.returns?.y10_cagr ?? payload.y10_cagr,
+      }),
+      risk_metrics: {
+        sharpe_3y: toNumberOrNull(payload.risk_metrics?.sharpe_3y),
+        sharpe_5y: toNumberOrNull(payload.risk_metrics?.sharpe_5y),
+        std_dev_3y: toNumberOrNull(payload.risk_metrics?.std_dev_3y),
+        std_dev_5y: toNumberOrNull(payload.risk_metrics?.std_dev_5y),
+        beta_3y: toNumberOrNull(payload.risk_metrics?.beta_3y),
+        beta_5y: toNumberOrNull(payload.risk_metrics?.beta_5y),
+        alpha_3y: toNumberOrNull(payload.risk_metrics?.alpha_3y),
+        alpha_5y: toNumberOrNull(payload.risk_metrics?.alpha_5y),
+        max_drawdown_5y: toNumberOrNull(payload.risk_metrics?.max_drawdown_5y),
+        max_drawdown_10y: toNumberOrNull(payload.risk_metrics?.max_drawdown_10y),
+        turnover_ratio: toNumberOrNull(payload.risk_metrics?.turnover_ratio),
       },
-    ],
-  }).select("_id");
-  if (exists) throw new Error("Fund already exists");
-
-  const doc = new MFFund({
-    ...createData,
-    scheme_code: normalizedSchemeCode,
-    fund_name: normalizedFundName,
-    amc_id: amcId,
-    category_id: categoryId,
-    isin: String(payload.isin ?? payload.isin_number ?? "").trim(),
-    isin_number: String(payload.isin_number ?? payload.isin ?? "").trim(),
-    // NAV is system-managed via NAV import; ignore manual NAV inputs.
-    aum: toNumberOrNull(payload.aum ?? payload.aum_cr),
-    aum_cr: toNumberOrNull(payload.aum_cr ?? payload.aum),
-    expense_ratio: toNumberOrNull(payload.expense_ratio),
-    returns: normalizeFundReturns({
-      ...payload.returns,
-      since_inception:
-        payload.returns?.since_inception ??
-        payload.returns?.["Since Inception Return"] ??
-        payload.inception_return,
-      y1: payload.returns?.y1 ?? payload.y1_return,
-      y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
-      y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
-      y10_cagr: payload.returns?.y10_cagr ?? payload.y10_cagr,
-    }),
-    risk_metrics: {
-      sharpe_3y: toNumberOrNull(payload.risk_metrics?.sharpe_3y),
-      sharpe_5y: toNumberOrNull(payload.risk_metrics?.sharpe_5y),
-      std_dev_3y: toNumberOrNull(payload.risk_metrics?.std_dev_3y),
-      std_dev_5y: toNumberOrNull(payload.risk_metrics?.std_dev_5y),
-      beta_3y: toNumberOrNull(payload.risk_metrics?.beta_3y),
-      beta_5y: toNumberOrNull(payload.risk_metrics?.beta_5y),
-      alpha_3y: toNumberOrNull(payload.risk_metrics?.alpha_3y),
-      alpha_5y: toNumberOrNull(payload.risk_metrics?.alpha_5y),
-      max_drawdown_5y: toNumberOrNull(payload.risk_metrics?.max_drawdown_5y),
-      max_drawdown_10y: toNumberOrNull(payload.risk_metrics?.max_drawdown_10y),
-      turnover_ratio: toNumberOrNull(payload.risk_metrics?.turnover_ratio),
-    },
-    launch_date: toDateOrNull(payload.launch_date),
-    benchmark_id: null,
-    min_investment: toNumberOrNull(payload.min_investment),
-    ...investmentFlags,
+      launch_date: toDateOrNull(payload.launch_date),
+      min_investment: toNumberOrNull(payload.min_investment),
+      ...investmentFlags,
       is_featured: toBoolean(payload.is_featured),
       is_popular: toBoolean(payload.is_popular),
       domestic_equity_pct: toNumberOrNull(payload.domestic_equity_pct),
@@ -374,25 +367,31 @@ export const createFund = async (payload: Partial<IMFFund> & any) => {
       tax_type: String(payload.tax_type || "").trim(),
       riskometer_label: String(payload.riskometer_label || "").trim(),
       frontend_visibility: normalizeFrontendVisibility(payload.frontend_visibility),
-    is_active: payload.is_active ?? 1,
-    is_deleted: false,
-  });
+      is_active: payload.is_active ?? 1,
+      is_deleted: false,
+    };
 
-  await doc.save();
-  await recomputeCategoryAverageReturns(String(categoryId));
-  return doc;
+    // Implementation Task 8: Data Consistency (Use upsertFund to process through Alias Resolver)
+    const doc = await MfRepository.upsertFund({ scheme_code: normalizedSchemeCode }, mappedData);
+    
+    // We don't await recompute to prevent transaction block, or we can await since it's fast
+    await recomputeCategoryAverageReturns(String(categoryId));
+    return doc;
+  });
 };
 
 export const updateFund = async (id: string, payload: Partial<IMFFund> & any) => {
-  const updateData: any = { ...payload };
-  ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
-  delete updateData.nav_Current;
-  delete updateData.nav_current;
-  delete updateData.nav_date;
-  const currentDoc = await MFFund.findOne({ _id: id, is_deleted: false }).select(
-    "scheme_code fund_name plan_type option_type category_id",
-  );
-  if (!currentDoc) throw new Error("Fund not found");
+  // Implementation Task 2 & 7: Admin UI Transaction Integrity
+  return await MfTransactionService.executeWithTransaction(async (session) => {
+    const updateData: any = { ...payload };
+    ["_id", "created_at", "updated_at", "deleted_at", "is_deleted"].forEach((k) => delete updateData[k]);
+    delete updateData.nav_Current;
+    delete updateData.nav_current;
+    delete updateData.nav_date;
+    const currentDoc = await MFFund.findOne({ _id: id, is_deleted: false }).select(
+      "scheme_code fund_name plan_type option_type category_id",
+    );
+    if (!currentDoc) throw new Error("Fund not found");
 
 if (payload.amc_name || payload.amc_id) {
     updateData.amc_id = await resolveAmcId(payload);
@@ -476,49 +475,109 @@ if (payload.amc_name || payload.amc_id) {
   if (payload.debt_pct !== undefined) updateData.debt_pct = toNumberOrNull(payload.debt_pct);
   if (payload.other_pct !== undefined) updateData.other_pct = toNumberOrNull(payload.other_pct);
   if (payload.gold_pct !== undefined) updateData.gold_pct = toNumberOrNull(payload.gold_pct);
-  if (payload.cash_pct !== undefined) updateData.cash_pct = toNumberOrNull(payload.cash_pct);
-  if (payload.large_cap_pct !== undefined) updateData.large_cap_pct = toNumberOrNull(payload.large_cap_pct);
-  if (payload.mid_cap_pct !== undefined) updateData.mid_cap_pct = toNumberOrNull(payload.mid_cap_pct);
-  if (payload.small_cap_pct !== undefined) updateData.small_cap_pct = toNumberOrNull(payload.small_cap_pct);
-  if (payload.tax_type !== undefined) updateData.tax_type = String(payload.tax_type || "").trim();
-  if (payload.riskometer_label !== undefined) updateData.riskometer_label = String(payload.riskometer_label || "").trim();
+    if (payload.amc_name || payload.amc_id) {
+      updateData.amc_id = await resolveAmcId(payload);
+    }
 
+    if (payload.category_id) {
+      updateData.category_id = await resolveCategoryId(payload);
+    }
 
-  if (payload.frontend_visibility !== undefined) {
-    updateData.frontend_visibility = normalizeFrontendVisibility(
-      payload.frontend_visibility,
-    );
-  }
+    if (payload.benchmark_id !== undefined && payload.benchmark_id !== null) {
+      updateData.benchmark_id = payload.benchmark_id; 
+    } else if (payload.benchmark_id === null) {
+      updateData.benchmark_id = null; 
+    } else {
+      delete updateData.benchmark_id;
+    }
 
-  const nextSchemeCode = String(updateData.scheme_code ?? currentDoc.scheme_code ?? "").trim();
-  const nextFundName = String(updateData.fund_name ?? currentDoc.fund_name ?? "").trim();
-  const nextPlanType = String(updateData.plan_type ?? currentDoc.plan_type ?? "Regular").trim();
-  const nextOptionType = String(updateData.option_type ?? currentDoc.option_type ?? "Growth").trim();
+    if (payload.returns || payload.y1_return || payload.y3_cagr || payload.y5_cagr || payload.y10_cagr) {
+      updateData.returns = normalizeFundReturns({
+        ...payload.returns,
+        since_inception:
+          payload.returns?.since_inception ??
+          payload.returns?.["Since Inception Return"] ??
+          payload.inception_return,
+        y1: payload.returns?.y1 ?? payload.y1_return,
+        y3_cagr: payload.returns?.y3_cagr ?? payload.y3_cagr,
+        y5_cagr: payload.returns?.y5_cagr ?? payload.y5_cagr,
+        y10_cagr: payload.returns?.y10_cagr ?? payload.y10_cagr,
+      });
+    }
 
-  const exists = await MFFund.findOne({
-    _id: { $ne: id },
-    is_deleted: false,
-    $or: [
-      { scheme_code: exactCaseInsensitive(nextSchemeCode) },
-      {
-        fund_name: exactCaseInsensitive(nextFundName),
-        plan_type: nextPlanType,
-        option_type: nextOptionType,
-      },
-    ],
-  }).select("_id");
-  if (exists) throw new Error("Fund already exists");
+    if (payload.risk_metrics) {
+      updateData.risk_metrics = {
+        sharpe_3y: toNumberOrNull(payload.risk_metrics.sharpe_3y),
+        sharpe_5y: toNumberOrNull(payload.risk_metrics.sharpe_5y),
+        std_dev_3y: toNumberOrNull(payload.risk_metrics.std_dev_3y),
+        std_dev_5y: toNumberOrNull(payload.risk_metrics.std_dev_5y),
+        beta_3y: toNumberOrNull(payload.risk_metrics.beta_3y),
+        beta_5y: toNumberOrNull(payload.risk_metrics.beta_5y),
+        alpha_3y: toNumberOrNull(payload.risk_metrics.alpha_3y),
+        alpha_5y: toNumberOrNull(payload.risk_metrics.alpha_5y),
+        max_drawdown_5y: toNumberOrNull(payload.risk_metrics.max_drawdown_5y),
+        max_drawdown_10y: toNumberOrNull(payload.risk_metrics.max_drawdown_10y),
+        turnover_ratio: toNumberOrNull(payload.risk_metrics.turnover_ratio),
+      };
+    }
 
-  const doc = await MFFund.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
-  if (!doc) throw new Error("Fund not found");
-  const affectedCategoryIds = [
-    String(currentDoc.get("category_id") || ""),
-    String(updateData.category_id || ""),
-  ].filter(Boolean);
-  for (const categoryId of [...new Set(affectedCategoryIds)]) {
-    await recomputeCategoryAverageReturns(categoryId);
-  }
-  return doc;
+    if (payload.scheme_code !== undefined) updateData.scheme_code = String(payload.scheme_code || "").trim();
+    if (payload.isin !== undefined || payload.isin_number !== undefined) {
+      updateData.isin = String(payload.isin ?? payload.isin_number ?? "").trim();
+      updateData.isin_number = String(payload.isin_number ?? payload.isin ?? "").trim();
+    }
+    if (payload.fund_name !== undefined) updateData.fund_name = String(payload.fund_name || "").trim();
+    if (payload.aum !== undefined || payload.aum_cr !== undefined) {
+      updateData.aum = toNumberOrNull(payload.aum ?? payload.aum_cr);
+      updateData.aum_cr = toNumberOrNull(payload.aum_cr ?? payload.aum);
+    }
+    if (payload.expense_ratio !== undefined) updateData.expense_ratio = toNumberOrNull(payload.expense_ratio);
+    if (payload.launch_date !== undefined) updateData.launch_date = toDateOrNull(payload.launch_date);
+    if (payload.min_investment !== undefined) updateData.min_investment = toNumberOrNull(payload.min_investment);
+    if (
+      payload.sip_allowed !== undefined ||
+      payload.lumpsum_allowed !== undefined ||
+      payload.min_sip_investment !== undefined ||
+      payload.min_lumpsum_investment !== undefined
+    ) {
+      Object.assign(updateData, normalizeInvestmentFlags(payload));
+    }
+    if (payload.is_featured !== undefined) updateData.is_featured = toBoolean(payload.is_featured);
+    if (payload.is_popular !== undefined) updateData.is_popular = toBoolean(payload.is_popular);
+    if (payload.domestic_equity_pct !== undefined) updateData.domestic_equity_pct = toNumberOrNull(payload.domestic_equity_pct);
+    if (payload.international_equity_pct !== undefined) updateData.international_equity_pct = toNumberOrNull(payload.international_equity_pct);
+    if (payload.debt_pct !== undefined) updateData.debt_pct = toNumberOrNull(payload.debt_pct);
+    if (payload.other_pct !== undefined) updateData.other_pct = toNumberOrNull(payload.other_pct);
+    if (payload.gold_pct !== undefined) updateData.gold_pct = toNumberOrNull(payload.gold_pct);
+    if (payload.cash_pct !== undefined) updateData.cash_pct = toNumberOrNull(payload.cash_pct);
+    if (payload.large_cap_pct !== undefined) updateData.large_cap_pct = toNumberOrNull(payload.large_cap_pct);
+    if (payload.mid_cap_pct !== undefined) updateData.mid_cap_pct = toNumberOrNull(payload.mid_cap_pct);
+    if (payload.small_cap_pct !== undefined) updateData.small_cap_pct = toNumberOrNull(payload.small_cap_pct);
+    if (payload.tax_type !== undefined) updateData.tax_type = String(payload.tax_type || "").trim();
+    if (payload.riskometer_label !== undefined) updateData.riskometer_label = String(payload.riskometer_label || "").trim();
+
+    if (payload.frontend_visibility !== undefined) {
+      updateData.frontend_visibility = normalizeFrontendVisibility(
+        payload.frontend_visibility,
+      );
+    }
+
+    // Task 8: Data Consistency. We no longer use findByIdAndUpdate, we push it through upsertFund
+    // which relies on MfAliasResolver and prevents duplicate orphan overlaps
+    const doc = await MfRepository.upsertFund({ _id: id }, updateData);
+    if (!doc) throw new Error("Fund not found");
+
+    const affectedCategoryIds = [
+      String(currentDoc.get("category_id") || ""),
+      String(updateData.category_id || ""),
+    ].filter((val, index, self) => val && self.indexOf(val) === index);
+
+    for (const catId of affectedCategoryIds) {
+      await recomputeCategoryAverageReturns(catId);
+    }
+
+    return doc;
+  });
 };
 
 export const toggleFundStatus = async (id: string) => {

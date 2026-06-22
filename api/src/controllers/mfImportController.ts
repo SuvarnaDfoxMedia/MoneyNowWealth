@@ -1,11 +1,10 @@
 import fs from "fs";
 import type { Request, Response } from "express";
 import {
-  exportMfExcel,
   importMfExcel,
-  type ExportMode,
-  type MfImportEntity,
+  exportMfExcel,
 } from "../services/mfImportService";
+import { ExportMode, MfImportEntity } from "../types/mfImportDto";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 
 const VALID_ENTITIES: MfImportEntity[] = [
@@ -57,14 +56,19 @@ export const importExcel = async (req: Request, res: Response) => {
 
     const entity = resolveEntity(req.body?.entity);
     const validateOnly = String(req.body?.validateOnly || "").trim() === "true";
+    const forceManualTopHoldings = String(req.body?.forceManual || "").trim() === "true";
 
     const report = await importMfExcel({
       filePath: req.file.path,
       entity,
       validateOnly,
+      forceManualTopHoldings,
+      logSource: "manual_import",
+      fileName: req.file.originalname || "",
+      triggeredBy: (req as any).user?.id?.toString() || "",
     });
 
-    if (!validateOnly && report?.errorCount > 0) {
+    if (!validateOnly && (report?.errorCount || report?.errors?.length || 0) > 0) {
       return sendError(
         res,
         "Import blocked because validation failed. Fix the workbook and validate again.",
@@ -89,7 +93,10 @@ export const exportExcel = async (req: Request, res: Response) => {
   try {
     const entity = resolveEntity(req.query?.entity);
     const mode = resolveExportMode(req.query?.mode);
-    const exportFile = await exportMfExcel({ entity, mode });
+    const exportFile = await exportMfExcel({
+      entity: entity as any,
+      mode,
+    });
 
     res.setHeader("Content-Type", exportFile.contentType);
     res.setHeader(

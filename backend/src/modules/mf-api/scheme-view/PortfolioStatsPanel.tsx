@@ -8,12 +8,21 @@ interface PortfolioStatsPanelProps {
 
   // Risk statistics from risk_statistics_list[0]
   volatility3y?: number | null;
+  volatility5y?: number | null;
   sharpeRatio3y?: number | null;
+  sharpeRatio5y?: number | null;
   alpha1y?: number | null;
+  alpha3y?: number | null;
+  alpha5y?: number | null;
   beta1y?: number | null;
+  beta3y?: number | null;
+  beta5y?: number | null;
   sortino?: number | null;
   ytm?: number | null;
   avgMaturity?: number | null;
+  maxDrawdown5y?: number | null;
+  maxDrawdown10y?: number | null;
+  turnoverRatio?: number | null;
 
   // Capture ratios from root level
   upmarketCapture?: number | null;
@@ -35,12 +44,21 @@ export default function PortfolioStatsPanel({
   marketCapMidcapPct,
   marketCapSmallcapPct,
   volatility3y,
+  volatility5y,
   sharpeRatio3y,
+  sharpeRatio5y,
   alpha1y,
+  alpha3y,
+  alpha5y,
   beta1y,
+  beta3y,
+  beta5y,
   sortino,
   ytm,
   avgMaturity,
+  maxDrawdown5y,
+  maxDrawdown10y,
+  turnoverRatio,
   upmarketCapture,
   downmarketCapture,
   assetAllocation,
@@ -56,18 +74,26 @@ export default function PortfolioStatsPanel({
     { label: "Others",       val: assetAllocation?.other_pct,                color: "#9ca3af" },
   ].filter((item) => item.val != null);
 
-  // ── Panel 2: Risk / behaviour rows ────────────────────────────────────────
   const riskRows: Array<{ label: string; val: number | null | undefined; suffix: string }> = [
-    { label: "Sharpe Ratio (3Y)",  val: sharpeRatio3y,    suffix: ""     },
     { label: "Alpha (1Y)",         val: alpha1y,           suffix: "%"    },
+    { label: "Alpha (3Y)",         val: alpha3y,           suffix: "%"    },
+    { label: "Alpha (5Y)",         val: alpha5y,           suffix: "%"    },
     { label: "Beta (1Y)",          val: beta1y,            suffix: ""     },
+    { label: "Beta (3Y)",          val: beta3y,            suffix: ""     },
+    { label: "Beta (5Y)",          val: beta5y,            suffix: ""     },
+    { label: "Sharpe Ratio (3Y)",  val: sharpeRatio3y,    suffix: ""     },
+    { label: "Sharpe Ratio (5Y)",  val: sharpeRatio5y,    suffix: ""     },
     { label: "Std Deviation (3Y)", val: volatility3y,      suffix: "%"    },
+    { label: "Std Deviation (5Y)", val: volatility5y,      suffix: "%"    },
+    { label: "Max Drawdown (5Y)",  val: maxDrawdown5y,     suffix: "%"    },
+    { label: "Max Drawdown (10Y)", val: maxDrawdown10y,    suffix: "%"    },
     { label: "Sortino Ratio",      val: sortino,           suffix: ""     },
     { label: "Yield to Maturity",  val: ytm,               suffix: "%"    },
     { label: "Avg Maturity",       val: avgMaturity,       suffix: " yrs" },
+    { label: "Turnover Ratio",     val: turnoverRatio,     suffix: "%"    },
     { label: "Upmarket Capture",   val: upmarketCapture,   suffix: "%"    },
     { label: "Downmarket Capture", val: downmarketCapture, suffix: "%"    },
-  ];
+  ].filter(r => r.val != null);
 
   // ── Panel 3: Market cap items ──────────────────────────────────────────────
   const mcap = [

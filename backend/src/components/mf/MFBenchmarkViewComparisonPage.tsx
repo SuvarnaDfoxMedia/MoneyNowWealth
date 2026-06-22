@@ -145,7 +145,7 @@ const fromBenchmarkRow = (label: string, row?: BenchmarkReturnRow): SeriesPoint 
   m1: asNumber(row?.trailing?.["1m"] ?? row?.return_1m),
   m3: asNumber(row?.trailing?.["3m"] ?? row?.return_3m),
   m6: asNumber(row?.trailing?.["6m"] ?? row?.return_6m),
-  ytd: asNumber(row?.annual?.ytd ?? row?.return_ytd),
+  ytd: asNumber(row?.annual?.ytd ?? row?.return_ytd ?? row?.ytd ?? row?.ytd_return),
   y1: asNumber(row?.trailing?.["1y"] ?? row?.return_1y),
   y2: asNumber(row?.trailing?.["2y"] ?? row?.return_2y),
   y3: asNumber(row?.trailing?.["3y"] ?? row?.return_3y),
@@ -179,13 +179,13 @@ const fromCategory = (label: string, category?: CategoryOption): SeriesPoint => 
     m1: asNumber(source?.trailing?.["1m"]),
     m3: asNumber(source?.trailing?.["3m"]),
     m6: asNumber(source?.trailing?.["6m"]),
-    ytd: asNumber(source?.annual?.ytd ?? source?.trailing?.ytd ?? source?.ytd),
+    ytd: asNumber(source?.annual?.ytd ?? source?.trailing?.ytd ?? source?.ytd ?? source?.ytd_return),
     y1: asNumber(source?.trailing?.["1y"]),
     y2: asNumber(source?.trailing?.["2y"]),
     y3: asNumber(source?.trailing?.["3y"]),
     y5: asNumber(source?.trailing?.["5y"]),
     y10: asNumber(source?.trailing?.["10y"]),
-    si: asNumber(source?.trailing?.since_launch),
+    si: asNumber(source?.trailing?.since_launch ?? source?.since_launch ?? source?.inception_year_return),
   };
 };
 

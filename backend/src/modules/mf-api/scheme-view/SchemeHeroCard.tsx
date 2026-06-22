@@ -71,8 +71,25 @@ export default function SchemeHeroCard({
         })()
       : null;
 
-  // ── Risk badge colors ──────────────────────────────────────────────────────
+  // ── Risk badge colors & gauge ──────────────────────────────────────────────
   const colors = riskColor(riskometer);
+
+  const riskStr = (riskometer || "").toLowerCase().trim();
+  let gaugeLevel = -1;
+  if (riskStr.includes("very high")) gaugeLevel = 4;
+  else if (riskStr === "high" || riskStr.includes("high risk")) gaugeLevel = 3;
+  else if (riskStr.includes("moderately high")) gaugeLevel = 2;
+  else if (riskStr.includes("moderate")) gaugeLevel = 1;
+  else if (riskStr.includes("low")) gaugeLevel = 0;
+
+  const showGauge = gaugeLevel !== -1;
+  const gaugeColors = ["#22c55e", "#eab308", "#f97316", "#ea580c", "#ef4444"];
+  const getGaugePath = (startAngle: number, sweep: number) => {
+    const startRad = (Math.PI / 180) * (180 - startAngle);
+    const endRad = (Math.PI / 180) * (180 - (startAngle + sweep));
+    const cx = 20, cy = 20, r = 16;
+    return `M ${(cx + r * Math.cos(startRad)).toFixed(2)} ${(cy - r * Math.sin(startRad)).toFixed(2)} A ${r} ${r} 0 0 1 ${(cx + r * Math.cos(endRad)).toFixed(2)} ${(cy - r * Math.sin(endRad)).toFixed(2)}`;
+  };
 
   // ── Benchmark truncation ───────────────────────────────────────────────────
   const benchmarkLabel =
@@ -171,21 +188,42 @@ export default function SchemeHeroCard({
 
         {/* LEFT: Risk + ISIN + Code */}
         <div className="flex items-center flex-wrap gap-1">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${colors.bg} ${colors.text}`}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          {showGauge ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm">
+              <svg width="28" height="16" viewBox="0 0 40 24" className="overflow-visible block">
+                {gaugeColors.map((color, i) => (
+                  <path
+                    key={i}
+                    d={getGaugePath(i * 36, 36)}
+                    stroke={color}
+                    strokeWidth="6"
+                    fill="none"
+                  />
+                ))}
+                <g transform={`rotate(${-90 + (gaugeLevel * 36 + 18)} 20 20)`}>
+                  <path d="M 18.5 20 L 20 6 L 21.5 20 Z" fill="#374151" />
+                  <circle cx="20" cy="20" r="2.5" fill="#374151" />
+                </g>
+              </svg>
+              Risk: {riskometer}
+            </span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${colors.bg} ${colors.text}`}
             >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            Risk: {riskometer || "—"}
-          </span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              Risk: {riskometer || "—"}
+            </span>
+          )}
 
           <span className="ml-4 text-xs text-gray-400">
             ISIN: {isin || "—"}

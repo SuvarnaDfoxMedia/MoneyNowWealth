@@ -163,6 +163,7 @@ const entityGuidance: Record<
       "You can import the client workbook layout with Holdings Summary and Holdings Detail sections.",
       "Percentage cells are read from their displayed values, so 12.98% stays 12.98 during import.",
       "Export downloads a flat `Top_Holdings` sheet that can also be re-imported later.",
+      "Note: API-synced schemes must use the MF API dashboard's Top Holdings upload instead of this legacy importer.",
     ],
   },
   "full-workbook": {
@@ -171,6 +172,7 @@ const entityGuidance: Record<
       "This is the safest option when the workbook contains related entities together.",
       "Sheets are processed in dependency order: main categories, categories, AMCs, funds, NFOs, then index snapshots.",
       "Use the full workbook template when preparing data for a first-time bulk import.",
+      "Note: API-synced schemes must use the MF API dashboard's Top Holdings upload instead of this legacy importer.",
     ],
   },
 };

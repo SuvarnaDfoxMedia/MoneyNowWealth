@@ -136,23 +136,9 @@ export default function MFBenchmarkReturnsManager() {
     setPage(1);
   }, [selectedBenchmark, recordsPerPage, setPage]);
 
-  const annualYears = React.useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const minYear = currentYear - 9;
-    const years = new Set<string>();
-    rows.forEach((row) => {
-      Object.keys(row?.annual?.yearly_returns || {}).forEach((year) => {
-        if (
-          /^\d{4}$/.test(year) &&
-          Number(year) < currentYear &&
-          Number(year) >= minYear
-        ) {
-          years.add(year);
-        }
-      });
-    });
-    return [...years].sort((a, b) => Number(b) - Number(a));
-  }, [rows]);
+  const annualYears = React.useMemo(() => [
+    "2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"
+  ], []);
 
   const columns: TableColumn<ReturnRow>[] = useMemo(() => {
     const base: TableColumn<ReturnRow>[] = [
