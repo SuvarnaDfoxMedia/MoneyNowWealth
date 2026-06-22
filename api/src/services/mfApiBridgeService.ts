@@ -502,6 +502,7 @@ export const syncApiSchemeToManual = async (
         mf_api_scheme_id: scheme._id,
         mf_api_external_key: scheme.external_key,
         mf_api_synced_at: new Date(),
+        data_source: "api_sync",
       };
 
       await MFFund.findByIdAndUpdate(existing._id, {
@@ -559,6 +560,7 @@ export const syncApiSchemeToManual = async (
       is_featured:     false,
       is_popular:      false,
       frontend_visibility: { groups: {}, fields: {} },
+      data_source: "api_sync",
       is_active: 1,
       is_deleted: false,
     });

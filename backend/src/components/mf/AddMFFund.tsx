@@ -1214,7 +1214,7 @@ export default function AddMFFund() {
             ))}
           </div>
 
-          <h4 className="mb-4 mt-6 font-semibold text-gray-700">
+          {/* <h4 className="mb-4 mt-6 font-semibold text-gray-700">
             API Category Returns
           </h4>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -1241,7 +1241,7 @@ export default function AddMFFund() {
                 {error(errors[`apiCategoryReturns.${field.key}`])}
               </div>
             ))}
-          </div>
+          </div> */}
         </section>
 
         <section>

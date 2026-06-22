@@ -4,7 +4,6 @@ import Chart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
 import * as XLSX from "xlsx";
 
-import PageHeader from "../components/PageHeader";
 import StatusPill from "../components/StatusPill";
 import {
   useMfApiScheme,
@@ -27,6 +26,11 @@ import {
   toTitleCase,
 } from "../utils";
 import type { MfApiNavHistoryEntry, MfApiTopHolding } from "../types";
+import SchemeHeroCard from "../scheme-view/SchemeHeroCard";
+import FundDetailsCard from "../scheme-view/FundDetailsCard";
+import ReturnsComparisonTable from "../scheme-view/ReturnsComparisonTable";
+import PortfolioStatsPanel from "../scheme-view/PortfolioStatsPanel";
+import HoldingsSplitTable from "../scheme-view/HoldingsSplitTable";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -636,11 +640,14 @@ function TopHoldingsTab({ role, id, scheme }: { role: string; id: string; scheme
 // ─── NAV History Tab ──────────────────────────────────────────────────────────
 
 const NAV_PERIOD_OPTIONS = [
-  { label: "1M",  days: 30 },
-  { label: "3M",  days: 90 },
+  { label: "1M",  days: 30  },
+  { label: "3M",  days: 90  },
   { label: "6M",  days: 180 },
   { label: "1Y",  days: 365 },
-  { label: "3Y",  days: 1095 },
+  { label: "2Y",  days: 730 },
+  { label: "3Y",  days: 1095},
+  { label: "5Y",  days: 1825},
+  { label: "10Y", days: 3650},
 ];
 
 function NavHistoryTab({ role, id, scheme }: { role: string; id: string; scheme: any }) {
@@ -828,6 +835,57 @@ export default function MfApiSchemeDetailPage() {
   const syncToManualMutation = useMfApiSyncToManual(role);
   const rawPayload =
     (scheme as any)?.rawPayload || (scheme as any)?.raw_payload || {};
+  // Extract structured data from rawPayload (the actual AdvisorKhoj API response).
+  const rawData = rawPayload as any;
+  const fallbackPerformanceList = scheme?.trailing_returns
+    ? [
+        {
+          scheme_name: getMfApiSchemeName(scheme),
+          one_month_return: scheme?.trailing_returns?.["1m"] ?? null,
+          three_month_return: scheme?.trailing_returns?.["3m"] ?? null,
+          six_month_return: scheme?.trailing_returns?.["6m"] ?? null,
+          one_year_return: scheme?.trailing_returns?.["1y"] ?? null,
+          two_year_return: scheme?.trailing_returns?.["2y"] ?? null,
+          three_year_return: scheme?.trailing_returns?.["3y"] ?? null,
+          five_year_return: scheme?.trailing_returns?.["5y"] ?? null,
+          ten_year_return: scheme?.trailing_returns?.["10y"] ?? null,
+          inception_year_return: scheme?.trailing_returns?.since_launch ?? null,
+          ytd_return: scheme?.annual_returns?.ytd ?? null,
+        },
+        {
+          scheme_name: scheme?.benchmark_returns?.benchmark_name ?? "Benchmark",
+          one_month_return: scheme?.benchmark_returns?.["1m"] ?? null,
+          three_month_return: scheme?.benchmark_returns?.["3m"] ?? null,
+          six_month_return: scheme?.benchmark_returns?.["6m"] ?? null,
+          one_year_return: scheme?.benchmark_returns?.["1y"] ?? null,
+          two_year_return: scheme?.benchmark_returns?.["2y"] ?? null,
+          three_year_return: scheme?.benchmark_returns?.["3y"] ?? null,
+          five_year_return: scheme?.benchmark_returns?.["5y"] ?? null,
+          ten_year_return: scheme?.benchmark_returns?.["10y"] ?? null,
+          inception_year_return: null,
+          ytd_return: null,
+        },
+        {
+          scheme_name: scheme?.category_avg_returns?.category_name ?? "Category Avg",
+          one_month_return: scheme?.category_avg_returns?.["1m"] ?? null,
+          three_month_return: scheme?.category_avg_returns?.["3m"] ?? null,
+          six_month_return: scheme?.category_avg_returns?.["6m"] ?? null,
+          one_year_return: scheme?.category_avg_returns?.["1y"] ?? null,
+          two_year_return: scheme?.category_avg_returns?.["2y"] ?? null,
+          three_year_return: scheme?.category_avg_returns?.["3y"] ?? null,
+          five_year_return: scheme?.category_avg_returns?.["5y"] ?? null,
+          ten_year_return: scheme?.category_avg_returns?.["10y"] ?? null,
+          inception_year_return: null,
+          ytd_return: null,
+        },
+      ]
+    : [];
+  const performanceList =
+    Array.isArray(rawData?.scheme_performance_list) &&
+    rawData.scheme_performance_list.length > 0
+      ? rawData.scheme_performance_list
+      : fallbackPerformanceList;
+  const riskStat = rawData?.risk_statistics_list?.[0] ?? null;
   const latestInfo = getMfApiLatestInfo(scheme as any) || {};
   const latestNav = getMfApiLatestNav(scheme as any);
   const latestDate = getMfApiLatestDate(scheme as any);
@@ -839,6 +897,11 @@ export default function MfApiSchemeDetailPage() {
     (scheme as any)?.last_synced_at || (scheme as any)?.lastSyncedAt;
   const lastSyncError =
     (scheme as any)?.last_sync_error || (scheme as any)?.lastSyncError;
+
+  // For the overview panel - top holdings data.
+  const overviewHoldingsQuery = useMfApiTopHoldings(role, id);
+  const overviewHoldings =
+    (overviewHoldingsQuery.data as any)?.data ?? overviewHoldingsQuery.data ?? null;
 
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -863,77 +926,36 @@ export default function MfApiSchemeDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <PageHeader
-        title="Scheme Detail"
-        description="Latest API-driven record for this isolated MF API scheme."
-        actions={
-          <button
-            type="button"
-            onClick={() =>
-              syncOneMutation.mutate({
-                schemeId: id,
-                schemeName: scheme ? getMfApiSchemeName(scheme) : undefined,
-                externalSchemeId: scheme?.schemeCode || scheme?.scheme_code,
-              })
-            }
-            disabled={syncOneMutation.isPending}
-            className="rounded-lg bg-[#043f79] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {syncOneMutation.isPending ? "Syncing..." : "Sync This Scheme"}
-          </button>
+      <SchemeHeroCard
+        schemeName={scheme ? getMfApiSchemeName(scheme) : "Loading…"}
+        amcName={scheme ? getMfApiAmcName(scheme) : "-"}
+        category={rawData?.scheme_category ?? scheme?.category}
+        benchmark={rawData?.scheme_benchmark ?? (scheme as any)?.scheme_benchmark}
+        planType={toTitleCase(scheme?.planType || scheme?.plan_type)}
+        optionType={toTitleCase((scheme as any)?.optionType || (scheme as any)?.option_type)}
+        schemeAssets={rawData?.scheme_assets ?? (scheme as any)?.scheme_assets}
+        schemeAssetDate={rawData?.scheme_asset_date ?? (scheme as any)?.scheme_asset_date}
+        schemeManager={rawData?.scheme_manager ?? (scheme as any)?.scheme_manager}
+        exitLoad={rawData?.exit_load ?? (scheme as any)?.exit_load}
+        nav={rawData?.nav ?? latestNav}
+        navDate={rawData?.nav_date ?? latestDate}
+        navChange={rawData?.nav_change ?? (scheme as any)?.nav_change}
+        navChangePct={rawData?.nav_change_percentage ?? (scheme as any)?.nav_change_percentage}
+        riskometer={rawData?.riskometer_value ?? (scheme as any)?.riskometer_value}
+        rating={rawData?.rating ?? null}
+        ratingValue={rawData?.rating_value ?? null}
+        isin={rawData?.isin_no ?? scheme?.isin}
+        schemeCode={scheme?.schemeCode || scheme?.scheme_code}
+        syncStatus={syncStatus}
+        onSyncNow={() =>
+          syncOneMutation.mutate({
+            schemeId: id,
+            schemeName: scheme ? getMfApiSchemeName(scheme) : undefined,
+            externalSchemeId: scheme?.schemeCode || scheme?.scheme_code,
+          })
         }
+        isSyncing={syncOneMutation.isPending}
       />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Scheme Name</p>
-          <p className="mt-2 text-lg font-semibold text-gray-900 leading-tight">
-            {scheme ? getMfApiSchemeName(scheme) : "Loading..."}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">AMC</p>
-          <p className="mt-2 text-lg font-semibold text-gray-900">
-            {scheme ? getMfApiAmcName(scheme) : "-"}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Plan</p>
-          <p className="mt-2 text-lg font-semibold text-gray-900">
-            {scheme ? toTitleCase(scheme.planType || scheme.plan_type) : "-"}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Sync Status</p>
-          <div className="mt-2">
-            <StatusPill status={syncStatus} />
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Active (Syncing)</p>
-          <div className="mt-3 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() =>
-                id && toggleActiveMutation.mutate({ id, is_active: !isActive })
-              }
-              disabled={toggleActiveMutation.isPending}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 ${
-                isActive ? "bg-green-500" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-6" : "translate-x-1"}`}
-              />
-            </button>
-            <span
-              className={`text-sm font-medium ${isActive ? "text-green-700" : "text-gray-500"}`}
-            >
-              {isActive ? "Active — will sync" : "Inactive — skipped on sync"}
-            </span>
-          </div>
-        </div>
-      </div>
 
       {lastSyncError && (
         <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1025,181 +1047,61 @@ export default function MfApiSchemeDetailPage() {
 
       <div className="mt-6">
         {activeTab === "overview" && (
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Scheme Metadata
-              </h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Scheme Code
-                  </p>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {scheme?.schemeCode || scheme?.scheme_code || "-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">ISIN</p>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {scheme?.isin || "-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Category</p>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {scheme?.category || "-"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Sub Category
-                  </p>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {scheme?.subCategory || scheme?.sub_category || "-"}
-                  </p>
-                </div>
+          <div className="space-y-5">
+            {/* Fund Details */}
+            <FundDetailsCard
+              inceptionDate={rawData?.scheme_inception_date ?? (scheme as any)?.scheme_inception_date}
+              expenseRatio={rawData?.expense_ratio_percentage ?? (scheme as any)?.expense_ratio_percentage}
+              expenseRatioDate={rawData?.expense_ratio_date ?? (scheme as any)?.expense_ratio_date}
+              fundStatus={rawData?.scheme_status ?? (scheme as any)?.scheme_status}
+              minimumInvestment={rawData?.minimum_investment ?? (scheme as any)?.minimum_investment}
+              minimumTopup={rawData?.minimum_topup ?? (scheme as any)?.minimum_topup}
+              sipMinimum={rawData?.sip_minimum_amount ?? (scheme as any)?.sip_minimum_amount}
+              riskStatus={rawData?.riskometer_value ?? (scheme as any)?.riskometer_value}
+              returnsSinceInception={rawData?.scheme_inception_return ?? scheme?.trailing_returns?.since_launch}
+              schemeObjective={rawData?.scheme_objective ?? (scheme as any)?.scheme_objective}
+              schemeTurnover={rawData?.scheme_turnover ?? (scheme as any)?.scheme_turnover}
+              upmarketCapture={rawData?.upmarket_capture_ratio ?? null}
+              downmarketCapture={rawData?.downmarket_capture_ratio ?? null}
+            />
+
+            {/* Returns Comparison Table */}
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50">
+                <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Returns Comparison</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Annualised returns — Fund vs Benchmark vs Category</p>
+              </div>
+              <div className="p-5">
+                <ReturnsComparisonTable performanceList={performanceList} />
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900">
-                NAV Information
-              </h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Latest NAV
-                  </p>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatNumber(
-                      (scheme as any)?.latest_nav ?? (scheme as any)?.latestNav,
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Latest Date
-                  </p>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {formatDateTime(latestDate)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    NAV Change
-                  </p>
-                  <p className={`mt-1 text-sm ${getColorClass((scheme as any)?.nav_change ?? latestInfo?.nav_change)}`}>
-                    {formatNumber((scheme as any)?.nav_change ?? latestInfo?.nav_change)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    NAV Change %
-                  </p>
-                  <p className={`mt-1 text-sm ${getColorClass((scheme as any)?.nav_change_percentage ?? latestInfo?.nav_change_percentage)}`}>
-                    {formatNumber(
-                      (scheme as any)?.nav_change_percentage ?? latestInfo?.nav_change_percentage,
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* Holdings Split (only when available) */}
+            {overviewHoldings && overviewHoldings.holdings_count > 0 && (
+              <HoldingsSplitTable
+                holdings={overviewHoldings.holdings}
+                portfolioDate={overviewHoldings.portfolio_date}
+                holdingsCount={overviewHoldings.holdings_count}
+                assetsTop10Pct={overviewHoldings.assets_top_10_holdings_pct}
+              />
+            )}
 
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm xl:col-span-2">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Scheme Basic Details
-              </h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-4">
-                {[
-                  ["Scheme Objective", (scheme as any)?.scheme_objective],
-                  ["Scheme Manager", (scheme as any)?.scheme_manager],
-                  ["Riskometer", (scheme as any)?.riskometer_value],
-                  [
-                    "Inception Date",
-                    formatDateTime((scheme as any)?.scheme_inception_date),
-                  ],
-                  ["Asset Class", (scheme as any)?.asset_class],
-                  ["Benchmark", (scheme as any)?.scheme_benchmark],
-                  ["Scheme Status", (scheme as any)?.scheme_status],
-                  ["Exit Load", (scheme as any)?.exit_load],
-                ].map(([label, value]) => (
-                  <div key={String(label)}>
-                    <p className="text-sm font-medium text-gray-500">{label}</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {String(value || "-")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Investment Details
-              </h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {[
-                  [
-                    "Minimum Investment",
-                    formatNumber((scheme as any)?.minimum_investment),
-                  ],
-                  [
-                    "SIP Minimum",
-                    formatNumber((scheme as any)?.sip_minimum_amount),
-                  ],
-                  [
-                    "Minimum Topup",
-                    formatNumber((scheme as any)?.minimum_topup),
-                  ],
-                  [
-                    "Dividend Scheme",
-                    String((scheme as any)?.is_dividend_scheme ?? "-"),
-                  ],
-                ].map(([label, value]) => (
-                  <div key={String(label)}>
-                    <p className="text-sm font-medium text-gray-500">{label}</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {String(value || "-")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Expense & AUM
-              </h3>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {[
-                  [
-                    "Expense Ratio",
-                    formatNumber((scheme as any)?.expense_ratio_percentage),
-                  ],
-                  [
-                    "Expense Ratio Date",
-                    formatDateTime((scheme as any)?.expense_ratio_date),
-                  ],
-                  [
-                    "Scheme Assets",
-                    formatNumber((scheme as any)?.scheme_assets),
-                  ],
-                  [
-                    "Scheme Asset Date",
-                    formatDateTime((scheme as any)?.scheme_asset_date),
-                  ],
-                  ["Scheme Turnover", (scheme as any)?.scheme_turnover],
-                ].map(([label, value]) => (
-                  <div key={String(label)}>
-                    <p className="text-sm font-medium text-gray-500">{label}</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {String(value || "-")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Portfolio Stats (Market Cap + Risk + Asset Allocation) */}
+            <PortfolioStatsPanel
+              marketCapLargecapPct={rawData?.market_cap_largecap_percent ?? scheme?.market_cap?.large_cap_pct}
+              marketCapMidcapPct={rawData?.market_cap_midcap_percent ?? scheme?.market_cap?.mid_cap_pct}
+              marketCapSmallcapPct={rawData?.market_cap_smallcap_percent ?? scheme?.market_cap?.small_cap_pct}
+              volatility3y={riskStat?.volatility_cm_3year ?? scheme?.risk_metrics?.volatility_3y}
+              sharpeRatio3y={riskStat?.sharpratio_cm_3year ?? scheme?.risk_metrics?.sharpe_3y}
+              alpha1y={riskStat?.alpha_cm_1year ?? scheme?.risk_metrics?.alpha_1y}
+              beta1y={riskStat?.beta_cm_1year ?? scheme?.risk_metrics?.beta_1y}
+              sortino={riskStat?.shortino_ratio ?? scheme?.risk_metrics?.sortino}
+              ytm={riskStat?.yield_to_maturity ?? scheme?.risk_metrics?.yield_to_maturity}
+              avgMaturity={riskStat?.average_maturity ?? scheme?.risk_metrics?.average_maturity}
+              upmarketCapture={rawData?.upmarket_capture_ratio}
+              downmarketCapture={rawData?.downmarket_capture_ratio}
+              assetAllocation={overviewHoldings?.asset_allocation ?? null}
+            />
           </div>
         )}
 

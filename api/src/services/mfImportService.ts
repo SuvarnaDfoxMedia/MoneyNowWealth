@@ -1120,6 +1120,13 @@ const importTopHoldingsWorkbook = async (
     const rowNumber = index + 2;
     try {
       const matchedFund = await resolveFundForTopHolding(record.fund_name, record.scheme_code);
+
+      const isApiSynced = matchedFund ? (!!(matchedFund as any).mf_api_synced_at || (matchedFund as any).data_source === "api_sync") : false;
+      if (isApiSynced) {
+        addRowSkip(skips, parsed.sheetName, rowNumber, "Skipped - this scheme is linked to the MF API. Use the scheme's Top Holdings upload on the MF API dashboard (Schemes > [scheme] > Top Holdings) instead of the legacy importer.", record.scheme_code || record.fund_name);
+        continue;
+      }
+
       const topHoldingsSummary = buildTopHoldingSummary(record.holdings);
       const portfolioDate = normalizeDateValue(toDateOrNull(record.portfolio_date));
       const prevPortfolioDate = normalizeDateValue(toDateOrNull(record.prev_portfolio_date));
@@ -1971,14 +1978,52 @@ const upsertFundRow = async (
       return;
     }
 
-    if (!hasChanges(existing as Record<string, any>, nextData)) {
+    const isApiSynced = !!(existing as any).mf_api_synced_at || (existing as any).data_source === "api_sync";
+    let updatePayload: any = nextData;
+    let hasSkippedApiFields = false;
+
+    if (isApiSynced) {
+      updatePayload = {
+        sip_allowed: nextData.sip_allowed,
+        lumpsum_allowed: nextData.lumpsum_allowed,
+        min_lumpsum_investment: nextData.min_lumpsum_investment,
+        is_featured: nextData.is_featured,
+        is_popular: nextData.is_popular,
+        is_active: nextData.is_active,
+        is_deleted: nextData.is_deleted,
+        deleted_at: nextData.deleted_at,
+        last_updated_date: nextData.nav_date,
+        last_manual_import_at: new Date(),
+        "returns.annual.yearly_returns": nextData.returns.annual.yearly_returns,
+        "risk_metrics.sharpe_5y": nextData.risk_metrics.sharpe_5y,
+        "risk_metrics.std_dev_3y": nextData.risk_metrics.std_dev_3y,
+        "risk_metrics.std_dev_5y": nextData.risk_metrics.std_dev_5y,
+        "risk_metrics.beta_3y": nextData.risk_metrics.beta_3y,
+        "risk_metrics.beta_5y": nextData.risk_metrics.beta_5y,
+        "risk_metrics.alpha_3y": nextData.risk_metrics.alpha_3y,
+        "risk_metrics.alpha_5y": nextData.risk_metrics.alpha_5y,
+        "risk_metrics.max_drawdown_5y": nextData.risk_metrics.max_drawdown_5y,
+        "risk_metrics.max_drawdown_10y": nextData.risk_metrics.max_drawdown_10y,
+      };
+      hasSkippedApiFields = true;
+    } else {
+      updatePayload = { ...nextData, data_source: "manual", last_manual_import_at: new Date() };
+    }
+
+    if (!hasChanges(existing as Record<string, any>, isApiSynced ? updatePayload : nextData)) {
       section.skipped += 1;
-      addRowSkip(skips, sheetName, rowNumber, "No changes detected for existing fund", schemeCode);
+      addRowSkip(skips, sheetName, rowNumber, "No changes detected for existing fund", schemeCode || fundName);
       return;
     }
 
+    if (hasSkippedApiFields) {
+      addRowSkip(skips, sheetName, rowNumber, "Skipped API-managed fields - scheme is linked to AdvisorKhoj. Use the MF API dashboard to update core fields.", schemeCode || fundName);
+    }
+
     section.updated += 1;
-    if (!validateOnly) await MFFund.updateOne({ _id: (existing as any)._id }, nextData);
+    if (!validateOnly) {
+      await MFFund.updateOne({ _id: (existing as any)._id }, isApiSynced ? { $set: updatePayload } : updatePayload);
+    }
     if (!validateOnly && benchmarkId) {
       const normalizedToday = normalizeDateValue(new Date());
       if (normalizedToday) {

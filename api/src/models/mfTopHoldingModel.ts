@@ -56,6 +56,9 @@ export interface IMFTopHolding extends Document {
   upload_batch_id?: string;
   uploaded_at?: Date;
   snapshot_hash?: string;
+  data_source?: string;
+  last_manual_import_at?: Date | null;
+  last_synced_at?: Date | null;
   is_active: number;
   is_deleted: boolean;
   deleted_at?: Date | null;
@@ -111,6 +114,9 @@ const mfTopHoldingSchema = new Schema<IMFTopHolding>(
     upload_batch_id: { type: String, trim: true, default: "", index: true },
     uploaded_at: { type: Date, default: Date.now, index: true },
     snapshot_hash: { type: String, trim: true, default: "", index: true },
+    data_source: { type: String, enum: ["manual", "api_sync"], default: "manual" },
+    last_manual_import_at: { type: Date, default: null },
+    last_synced_at: { type: Date, default: null },
     is_active: { type: Number, default: 1, index: true },
     is_deleted: { type: Boolean, default: false, index: true },
     deleted_at: { type: Date, default: null },

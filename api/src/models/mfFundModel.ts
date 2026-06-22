@@ -143,6 +143,8 @@ export interface IMFFund extends Document {
     groups?: Map<string, boolean> | Record<string, boolean>;
     fields?: Map<string, boolean> | Record<string, boolean>;
   };
+  data_source?: string;
+  last_manual_import_at?: Date | null;
   is_active: number;
   is_deleted: boolean;
   deleted_at?: Date | null;
@@ -163,6 +165,8 @@ const mfFundSchema = new Schema<IMFFund>(
     },
     mf_api_external_key: { type: String, trim: true, default: "", index: true },
     mf_api_synced_at: { type: Date, default: null },
+    data_source: { type: String, enum: ["manual", "api_sync"], default: "manual" },
+    last_manual_import_at: { type: Date, default: null },
     fund_name: { type: String, required: true, trim: true, index: true },
     amc_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFAmc", required: true, index: true },
     category_id: { type: mongoose.Schema.Types.ObjectId, ref: "MFCategory", required: true, index: true },
