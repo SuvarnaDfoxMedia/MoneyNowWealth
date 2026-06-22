@@ -128,7 +128,7 @@ const AppSidebar: React.FC = () => {
         ],
       },
       {
-        name: "Mutual Funds",
+        name: "Mutual Funds (Manual)",
         icon: <FiFileText />,
         roles: ["admin", "editor"],
         subItems: [
@@ -496,9 +496,3 @@ const AppSidebar: React.FC = () => {
 };
 
 export default AppSidebar;
-
-
-
-
-
-

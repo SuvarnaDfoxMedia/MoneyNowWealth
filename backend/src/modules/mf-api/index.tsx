@@ -20,7 +20,7 @@ type MfApiNavItem = {
 };
 
 export const getMfApiNavItem = (role: string): MfApiNavItem => ({
-  name: "MF API",
+  name: "MF API (Automation)",
   icon: <FiDatabase />,
   roles: ["admin", "editor"],
   subItems: [
@@ -56,19 +56,16 @@ export const renderMfApiRoutes = (role: string) => {
         path="/:role/mf-api"
         element={<Navigate to={`/${currentRole}/mf-api/dashboard`} replace />}
       />
+      <Route path="/:role/mf-api/dashboard" element={<MfApiDashboardPage />} />
       <Route
-        path="/:role/mf-api/dashboard"
-        element={<MfApiDashboardPage />}
+        path="/:role/mf-api/schemes"
+        element={<MfApiSchemeListingPage />}
       />
-      <Route path="/:role/mf-api/schemes" element={<MfApiSchemeListingPage />} />
       <Route
         path="/:role/mf-api/schemes/:id"
         element={<MfApiSchemeDetailPage />}
       />
-      <Route
-        path="/:role/mf-api/sync-logs"
-        element={<MfApiSyncLogsPage />}
-      />
+      <Route path="/:role/mf-api/sync-logs" element={<MfApiSyncLogsPage />} />
       <Route
         path="/:role/mf-api/import-export"
         element={<MfApiImportExportPage />}

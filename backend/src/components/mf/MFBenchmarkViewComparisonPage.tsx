@@ -11,11 +11,17 @@ type CategoryOption = {
     trailing?: Record<string, number | null>;
     annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
     ytd?: number | null;
+    ytd_return?: number | null;
+    since_launch?: number | null;
+    inception_year_return?: number | null;
   };
   category_average_returns?: {
     trailing?: Record<string, number | null>;
     annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
     ytd?: number | null;
+    ytd_return?: number | null;
+    since_launch?: number | null;
+    inception_year_return?: number | null;
   };
 };
 type FundOption = {
@@ -60,6 +66,10 @@ type BenchmarkReturnRow = {
   return_5y?: number | null;
   return_10y?: number | null;
   return_since_inception?: number | null;
+  ytd?: number | null;
+  ytd_return?: number | null;
+  since_launch?: number | null;
+  inception_year_return?: number | null;
 };
 
 type ComparisonMode =

@@ -9,7 +9,9 @@ export type MfApiTrailingReturns = {
   "5y"?: number | null;
   "10y"?: number | null;
   since_launch?: number | null;
+  inception_year_return?: number | null;
   ytd?: number | null;
+  ytd_return?: number | null;
   d1?: number | null;
 };
 
@@ -46,6 +48,7 @@ export type MfApiScheme = {
   trailing_returns?: MfApiTrailingReturns;
   annual_returns?: {
     ytd?: number | null;
+    ytd_return?: number | null;
     yearly_returns?: Record<string, number | null>;
   };
   benchmark_returns?: MfApiTrailingReturns & { benchmark_name?: string };

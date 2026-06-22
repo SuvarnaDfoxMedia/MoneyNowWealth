@@ -3,13 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../components/PageHeader";
 import StatusPill from "../components/StatusPill";
-import { 
-  useMfApiSchemes, 
-  useMfApiSyncActive, 
+import {
+  useMfApiSchemes,
+  useMfApiSyncActive,
   useMfApiSyncOne,
   useMfApiToggleActive,
   useMfApiBulkToggle,
-  useMfApiMarkReviewed
+  useMfApiMarkReviewed,
 } from "../hooks";
 import {
   formatDateTime,
@@ -18,7 +18,10 @@ import {
   getMfApiSchemeName,
   toTitleCase,
 } from "../utils";
-import { DataTable, TableColumn } from "../../../components/PagesComponent/DataTable";
+import {
+  DataTable,
+  TableColumn,
+} from "../../../components/PagesComponent/DataTable";
 import { useDataTableStore } from "../../../store/dataTableStore";
 import SyncProgressModal from "../components/SyncProgressModal";
 import { useMfApiDashboard } from "../hooks";
@@ -55,21 +58,23 @@ export default function MfApiSchemeListingPage() {
 
   const params = useMemo(() => {
     const base: Record<string, any> = {
-      search:    searchValue,
+      search: searchValue,
       page,
-      limit:     recordsPerPage,
-      sort_by:   "active_first",
+      limit: recordsPerPage,
+      sort_by: "active_first",
     };
-    if (activeFilter === "active")   base.is_active = "true";
+    if (activeFilter === "active") base.is_active = "true";
     if (activeFilter === "inactive") base.is_active = "false";
-    if (activeFilter === "new")      base.is_new = "true";
-    if (activeFilter === "failed")   base.status = "failed";
+    if (activeFilter === "new") base.is_new = "true";
+    if (activeFilter === "failed") base.status = "failed";
     return base;
   }, [searchValue, page, recordsPerPage, activeFilter]);
 
   // Fix C: determine whether any visible row is still syncing, so we can auto-poll.
   const [isSyncing, setIsSyncing] = React.useState(false);
-  const dashboardQuery = useMfApiDashboard(role, { refetchInterval: isSyncing ? 3000 : undefined });
+  const dashboardQuery = useMfApiDashboard(role, {
+    refetchInterval: isSyncing ? 3000 : undefined,
+  });
 
   React.useEffect(() => {
     const data = dashboardQuery.data?.data;
@@ -96,13 +101,13 @@ export default function MfApiSchemeListingPage() {
   const handleBulkToggle = (is_active: boolean) => {
     bulkToggleMutation.mutate(
       { ids: Array.from(selectedIds), is_active },
-      { onSuccess: () => setSelectedIds(new Set()) }
+      { onSuccess: () => setSelectedIds(new Set()) },
     );
   };
 
   const handleMarkReviewed = () => {
     markReviewedMutation.mutate(Array.from(selectedIds), {
-      onSuccess: () => setSelectedIds(new Set())
+      onSuccess: () => setSelectedIds(new Set()),
     });
   };
 
@@ -144,7 +149,9 @@ export default function MfApiSchemeListingPage() {
           <span className="font-medium text-gray-900 leading-tight">
             {getMfApiSchemeName(row)}
           </span>
-          <span className="text-xs text-gray-400">{row.isin || row.scheme_code || ""}</span>
+          <span className="text-xs text-gray-400">
+            {row.isin || row.scheme_code || ""}
+          </span>
           {row.is_new && (
             <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
               NEW
@@ -156,7 +163,9 @@ export default function MfApiSchemeListingPage() {
     {
       key: "amc_name",
       label: "AMC",
-      render: (row) => <span className="text-sm text-gray-600">{getMfApiAmcName(row)}</span>,
+      render: (row) => (
+        <span className="text-sm text-gray-600">{getMfApiAmcName(row)}</span>
+      ),
     },
     {
       key: "category",
@@ -175,33 +184,33 @@ export default function MfApiSchemeListingPage() {
       label: "Sync Status",
       render: (row) => <StatusPill status={getMfApiSyncStatus(row)} />,
     },
-    {
-      key: "linked_status",
-      label: "Link Status",
-      render: (row) => (
-        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
-          row.linked_manual_fund 
-            ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20"
-            : "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
-        }`}>
-          {row.linked_manual_fund ? (
-            <>
-              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-              </svg>
-              Bridged
-            </>
-          ) : (
-            <>
-              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-              Needs Review
-            </>
-          )}
-        </span>
-      ),
-    },
+    // {
+    //   key: "linked_status",
+    //   label: "Link Status",
+    //   render: (row) => (
+    //     <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${
+    //       row.linked_manual_fund
+    //         ? "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20"
+    //         : "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20"
+    //     }`}>
+    //       {row.linked_manual_fund ? (
+    //         <>
+    //           <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+    //             <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+    //           </svg>
+    //           Bridged
+    //         </>
+    //       ) : (
+    //         <>
+    //           <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+    //             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+    //           </svg>
+    //           Needs Review
+    //         </>
+    //       )}
+    //     </span>
+    //   ),
+    // },
     {
       key: "is_active",
       label: "Active",
@@ -210,17 +219,26 @@ export default function MfApiSchemeListingPage() {
           <button
             type="button"
             title={row.is_active ? "Click to deactivate" : "Click to activate"}
-            onClick={() => toggleActiveMutation.mutate({ id: row._id, is_active: !row.is_active })}
+            onClick={() =>
+              toggleActiveMutation.mutate({
+                id: row._id,
+                is_active: !row.is_active,
+              })
+            }
             disabled={toggleActiveMutation.isPending}
             className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 ${
               row.is_active ? "bg-green-500" : "bg-gray-200"
             }`}
           >
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-              row.is_active ? "translate-x-4" : "translate-x-0.5"
-            }`} />
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                row.is_active ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
           </button>
-          <span className={`text-xs font-medium ${row.is_active ? "text-green-700" : "text-gray-400"}`}>
+          <span
+            className={`text-xs font-medium ${row.is_active ? "text-green-700" : "text-gray-400"}`}
+          >
             {row.is_active ? "Active" : "Inactive"}
           </span>
         </div>
@@ -279,11 +297,16 @@ export default function MfApiSchemeListingPage() {
             </button>
             <button
               type="button"
-              onClick={() => { syncActiveMutation.mutate(); setIsSyncModalOpen(true); }}
+              onClick={() => {
+                syncActiveMutation.mutate();
+                setIsSyncModalOpen(true);
+              }}
               disabled={syncActiveMutation.isPending}
               className="rounded-lg bg-[#043f79] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {syncActiveMutation.isPending ? "Starting..." : "Sync Active Funds"}
+              {syncActiveMutation.isPending
+                ? "Starting..."
+                : "Sync Active Funds"}
             </button>
           </div>
         }
@@ -296,15 +319,18 @@ export default function MfApiSchemeListingPage() {
 
         <div className="flex flex-wrap gap-2 mb-4">
           {[
-            { key: "active",   label: "Active (Syncing)" },
-            { key: "all",      label: "All Schemes" },
+            { key: "active", label: "Active (Syncing)" },
+            { key: "all", label: "All Schemes" },
             { key: "inactive", label: "Inactive" },
-            { key: "new",      label: "New / Unreviewed" },
-            { key: "failed",   label: "Sync Failed" },
+            { key: "new", label: "New / Unreviewed" },
+            { key: "failed", label: "Sync Failed" },
           ].map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => { setActiveFilter(key as ActiveFilter); setPage(1); }}
+              onClick={() => {
+                setActiveFilter(key as ActiveFilter);
+                setPage(1);
+              }}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 activeFilter === key
                   ? "bg-[#043f79] text-white"
@@ -318,17 +344,31 @@ export default function MfApiSchemeListingPage() {
 
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-3">
-            <span className="text-sm font-medium text-blue-800">{selectedIds.size} selected</span>
-            <button onClick={() => handleBulkToggle(true)} className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white">
+            <span className="text-sm font-medium text-blue-800">
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={() => handleBulkToggle(true)}
+              className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white"
+            >
               Activate Selected
             </button>
-            <button onClick={() => handleBulkToggle(false)} className="rounded-md bg-gray-500 px-3 py-1.5 text-xs font-medium text-white">
+            <button
+              onClick={() => handleBulkToggle(false)}
+              className="rounded-md bg-gray-500 px-3 py-1.5 text-xs font-medium text-white"
+            >
               Deactivate Selected
             </button>
-            <button onClick={handleMarkReviewed} className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-white">
+            <button
+              onClick={handleMarkReviewed}
+              className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-white"
+            >
               Mark as Reviewed
             </button>
-            <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-xs text-blue-600 underline">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto text-xs text-blue-600 underline"
+            >
               Clear Selection
             </button>
           </div>
@@ -353,12 +393,11 @@ export default function MfApiSchemeListingPage() {
         />
       </div>
 
-      <SyncProgressModal 
-        role={role} 
-        isOpen={isSyncModalOpen} 
-        onClose={() => setIsSyncModalOpen(false)} 
+      <SyncProgressModal
+        role={role}
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
       />
     </div>
   );
 }
-
