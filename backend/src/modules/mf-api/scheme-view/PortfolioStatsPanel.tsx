@@ -1,4 +1,5 @@
 import { fmtCrore } from "./MfApiSchemeViewTypes";
+import { fmtPct } from "./formatters";
 
 interface PortfolioStatsPanelProps {
   // Market cap from API root level
@@ -180,7 +181,7 @@ export default function PortfolioStatsPanel({
                   <span className="text-xs text-gray-600">{label}</span>
                 </div>
                 <span className="text-sm font-bold text-gray-900">
-                  {val != null ? `${val.toFixed(2)}%` : "—"}
+                  {fmtPct(val)}
                 </span>
               </div>
             ))}

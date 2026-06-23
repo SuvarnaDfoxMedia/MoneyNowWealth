@@ -36,16 +36,7 @@ const resolveExportMode = (value: unknown): ExportMode => {
   throw new Error("Invalid export mode");
 };
 
-const cleanupUploadedFile = (filePath?: string) => {
-  if (!filePath) return;
-  try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-  } catch {
-    // Best effort cleanup.
-  }
-};
+import { cleanupUploadedFile } from "../utils/fileUtils";
 
 export const importExcel = async (req: Request, res: Response) => {
   const uploadedFilePath = req.file?.path;

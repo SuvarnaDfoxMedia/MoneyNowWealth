@@ -6,6 +6,12 @@ import { WorkbookDTO, ImportSummary } from "../../types/mfImportDto";
 import { MfTransactionService } from "./mfTransactionService";
 import { MfImportSummary } from "./mfImportSummary";
 import { MfAliasResolver } from "./MfAliasResolver";
+import { recomputeCategoryAverageReturns, recomputeAllCategoryAverageReturns } from "../mfCategoryService";
+
+const normalizeLookupKey = (value: unknown) =>
+  String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 
 export class MfImportEngine {
   summary: MfImportSummary;
@@ -15,6 +21,7 @@ export class MfImportEngine {
   }
 
   async processWorkbook(dto: WorkbookDTO): Promise<ImportSummary> {
+    const affectedCategoryIds = new Set<string>();
     await MfTransactionService.executeWithTransaction(async (session) => {
       // 1. Main Categories
       for (const raw of dto.mainCategories) {
@@ -46,7 +53,7 @@ export class MfImportEngine {
       // 4. Benchmarks
       for (const raw of dto.benchmarks) {
         if (!raw.benchmark_index_name) continue;
-        const mappedData = { ...raw };
+        const mappedData: any = { ...raw, name: raw.benchmark_index_name };
         if (raw.categoryName) {
           const cat = await MfAliasResolver.resolveCategory(raw.categoryName) 
             || await MfRepository.upsertCategory(raw.categoryName, { name: raw.categoryName }, session);
@@ -61,7 +68,9 @@ export class MfImportEngine {
         this.summary.incrementInserted("Benchmarks");
 
         // 5. Benchmark Returns inline processing
-        const returnRaw = dto.benchmarkReturns.find(r => r.benchmarkIndexName === raw.benchmark_index_name);
+        const returnRaw = dto.benchmarkReturns.find(
+          (r) => normalizeLookupKey(r.benchmarkIndexName) === normalizeLookupKey(raw.benchmark_index_name),
+        );
         if (returnRaw && returnRaw.date) {
           const returnData = { ...returnRaw, benchmark_id: benchmark._id };
           await MfRepository.upsertBenchmarkReturn({ benchmark_id: benchmark._id, date: returnRaw.date }, returnData, session);
@@ -90,10 +99,15 @@ export class MfImportEngine {
         }
         const fund = await MfRepository.upsertFund({ scheme_code: raw.scheme_code }, mappedData, session);
         this.summary.incrementInserted("Funds");
+        if (fund && fund.category_id) {
+          affectedCategoryIds.add(String(fund.category_id));
+        }
 
-        if (raw.nav_Current && raw.nav_date) {
+        // Accept both nav_Current (schema field name, API bridge path) and nav (legacy/alias)
+        const navValue = raw.nav_Current ?? raw.nav ?? null;
+        if (navValue != null && raw.nav_date) {
           const normalizedDate = normalizeDateOnly(new Date(raw.nav_date));
-          const nav = Number(raw.nav_Current);
+          const nav = Number(navValue);
           if (Number.isFinite(nav) && fund && fund._id) {
             await NavHistory.findOneAndUpdate(
               { schemeId: fund._id, date: normalizedDate },
@@ -124,6 +138,15 @@ export class MfImportEngine {
         this.summary.incrementInserted("Index Snapshots");
       }
     });
+
+    // Recompute category average returns for all affected categories
+    if (affectedCategoryIds.size > 0) {
+      for (const catId of affectedCategoryIds) {
+        await recomputeCategoryAverageReturns(catId).catch(() => {});
+      }
+    } else {
+      await recomputeAllCategoryAverageReturns().catch(() => {});
+    }
 
     // 9. Top Holdings (Bulk)
     if (dto.topHoldings.length > 0) {

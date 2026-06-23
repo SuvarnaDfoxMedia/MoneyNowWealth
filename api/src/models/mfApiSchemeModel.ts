@@ -175,6 +175,7 @@ export interface IMfApiScheme extends Document {
   nav_change_percentage?: number | null;
   // ─── Sync metadata ───────────────────────────────────────────────────────
   sync_status?: string;
+  has_returns_data?: boolean | null;
   last_synced_at?: Date | null;
   last_sync_error?: string;
   is_deleted?: boolean;
@@ -245,6 +246,7 @@ const mfApiSchemeSchema = new Schema<IMfApiScheme>(
     nav_change_percentage:{ type: Number, default: null },
     // ─── Sync metadata ─────────────────────────────────────────────────────
     sync_status:     { type: String, trim: true, default: "queued", index: true },
+    has_returns_data: { type: Boolean, default: null },
     last_synced_at:  { type: Date, default: null, index: true },
     last_sync_error: { type: String, trim: true, default: "" },
     is_deleted:      { type: Boolean, default: false, index: true },

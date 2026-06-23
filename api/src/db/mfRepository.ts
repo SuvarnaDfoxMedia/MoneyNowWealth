@@ -9,6 +9,30 @@ import MFTopHolding from "../models/mfTopHoldingModel";
 import MFBenchmarkReturn from "../models/mfBenchmarkReturnModel";
 import MFBenchmark from "../models/mfBenchmarkModel";
 import { MfAliasResolver } from "../services/mf-import/MfAliasResolver";
+import { parseCategoryPath } from "../utils/categoryParser";
+
+function expandDottedPaths(obj: any): any {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
+  const result: any = {};
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (key.includes(".")) {
+      const parts = key.split(".");
+      let current = result;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!current[part] || typeof current[part] !== "object") {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+      current[parts[parts.length - 1]] = val;
+    } else {
+      result[key] = val;
+    }
+  }
+  return result;
+}
 
 export class MfRepository {
   static async upsertMainCategory(matchKey: string, data: any, session?: mongoose.ClientSession) {
@@ -23,7 +47,15 @@ export class MfRepository {
   static async upsertCategory(matchKey: string, data: any, session?: mongoose.ClientSession) {
     const existing = await MfAliasResolver.resolveCategory(matchKey);
     if (!existing) {
-      return await MFCategory.create([data], { session }).then(res => res[0]);
+      // Auto-resolve or create main category if missing to prevent ValidationErrors
+      if (!data.main_category_id && (data.mainCategoryName || data.name)) {
+        const mainCatName = data.mainCategoryName || parseCategoryPath(data.name).mainCategoryName;
+        const mainCat = await MfAliasResolver.resolveMainCategory(mainCatName)
+          || await MfRepository.upsertMainCategory(mainCatName, { name: mainCatName }, session);
+        data.main_category_id = mainCat._id;
+      }
+      const expanded = expandDottedPaths(data);
+      return await MFCategory.create([expanded], { session }).then(res => res[0]);
     }
     await MFCategory.updateOne({ _id: existing._id }, { $set: data }, { session });
     return existing;
@@ -42,7 +74,8 @@ export class MfRepository {
     const searchPayload = { ...matchQuery, ...data };
     const existing = await MfAliasResolver.resolveFund(searchPayload);
     if (!existing) {
-      return await MFFund.create([data], { session }).then(res => res[0]);
+      const expanded = expandDottedPaths(data);
+      return await MFFund.create([expanded], { session }).then(res => res[0]);
     }
     await MFFund.updateOne({ _id: existing._id }, { $set: data }, { session });
     return existing;

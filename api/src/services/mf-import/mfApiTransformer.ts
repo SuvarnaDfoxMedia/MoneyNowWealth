@@ -1,4 +1,6 @@
 import { WorkbookDTO } from "../../types/mfImportDto";
+import { parseCategoryPath } from "../../utils/categoryParser";
+import { normalizeDateOnly } from "../navCalculationService";
 
 export class MfApiTransformer {
   static transformScheme(apiScheme: any): Partial<WorkbookDTO> {
@@ -36,23 +38,27 @@ export class MfApiTransformer {
 
     const categoryName = String(apiScheme.category || "").trim();
     if (categoryName) {
+      const parsed = parseCategoryPath(categoryName);
+      const categoryAvg = {
+        trailing: {
+          "1w": toN(cr["1w"]),
+          "1m": toN(cr["1m"]),
+          "3m": toN(cr["3m"]),
+          "6m": toN(cr["6m"]),
+          "1y": toN(cr["1y"]),
+          "2y": toN(cr["2y"]),
+          "3y": toN(cr["3y"]),
+          "5y": toN(cr["5y"]),
+          "10y": toN(cr["10y"]),
+          since_launch: toN(cr.since_launch),
+          ytd: toN(cr.ytd),
+        }
+      };
       dto.categories!.push({
         name: categoryName,
-        category_average_returns: {
-          trailing: {
-            "1w": toN(cr["1w"]),
-            "1m": toN(cr["1m"]),
-            "3m": toN(cr["3m"]),
-            "6m": toN(cr["6m"]),
-            "1y": toN(cr["1y"]),
-            "2y": toN(cr["2y"]),
-            "3y": toN(cr["3y"]),
-            "5y": toN(cr["5y"]),
-            "10y": toN(cr["10y"]),
-            since_launch: toN(cr.since_launch),
-            ytd: toN(cr.ytd),
-          }
-        }
+        mainCategoryName: parsed.mainCategoryName,
+        category_average_returns: categoryAvg,
+        category_returns: categoryAvg,
       });
     }
 
@@ -67,8 +73,9 @@ export class MfApiTransformer {
       if (br) {
         dto.benchmarkReturns!.push({
           benchmarkIndexName,
-          date: toD(apiScheme.latest_date) || new Date(),
+          date: normalizeDateOnly(toD(apiScheme.latest_date) || new Date()),
           trailing: {
+            "1w": toN(br["1w"]),
             "1m": toN(br["1m"]),
             "3m": toN(br["3m"]),
             "6m": toN(br["6m"]),
@@ -101,17 +108,17 @@ export class MfApiTransformer {
         amcName,
         categoryName,
         benchmarkIndexName,
-        nav: toN(apiScheme.latest_nav),
+        nav_Current: toN(apiScheme.latest_nav),
         nav_date: toD(apiScheme.latest_date),
-        aum: toN(apiScheme.scheme_assets),
+        aum_cr: toN(apiScheme.scheme_assets),
         expense_ratio: toN(apiScheme.expense_ratio_percentage),
         fund_manager: String(apiScheme.scheme_manager || "").trim(),
         fund_objective: String(apiScheme.scheme_objective || "").trim(),
-        inception_date: toD(apiScheme.scheme_inception_date),
+        launch_date: toD(apiScheme.scheme_inception_date),
         exit_load: String(apiScheme.exit_load || "").trim(),
-        minimum_investment: toN(apiScheme.minimum_investment),
+        min_investment: toN(apiScheme.minimum_investment),
         minimum_sip_investment: toN(apiScheme.sip_minimum_amount),
-        risk_level: String(apiScheme.riskometer_value || "").trim(),
+        riskometer_label: String(apiScheme.riskometer_value || "").trim(),
         
         large_cap_pct: toN(mc.large_cap_pct ?? apiScheme.market_cap_largecap_percent),
         mid_cap_pct: toN(mc.mid_cap_pct ?? apiScheme.market_cap_midcap_percent),
@@ -137,6 +144,7 @@ export class MfApiTransformer {
         "risk_metrics.std_dev_3y": toN(rm.volatility_3y),
         "risk_metrics.turnover_ratio": toN(rm.turnover_ratio),
         
+        "benchmark_returns_trailing.1w": toN(br["1w"]),
         "benchmark_returns_trailing.1m": toN(br["1m"]),
         "benchmark_returns_trailing.3m": toN(br["3m"]),
         "benchmark_returns_trailing.6m": toN(br["6m"]),
@@ -144,7 +152,9 @@ export class MfApiTransformer {
         "benchmark_returns_trailing.2y": toN(br["2y"]),
         "benchmark_returns_trailing.3y": toN(br["3y"]),
         "benchmark_returns_trailing.5y": toN(br["5y"]),
-        "benchmark_returns_trailing.10y": toN(br["10y"])
+        "benchmark_returns_trailing.10y": toN(br["10y"]),
+        "benchmark_returns_trailing.since_launch": toN(br.since_launch),
+        "benchmark_returns_trailing.ytd": toN(br.ytd)
       });
     }
 

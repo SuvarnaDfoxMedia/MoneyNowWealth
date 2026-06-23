@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import React, { useState, useMemo } from "react";
 import Chart from "react-apexcharts";
+import { fmtReturn, returnColorClass, fmtCurrency, fmtDate } from "../scheme-view/formatters";
 import type { ApexOptions } from "apexcharts";
 import * as XLSX from "xlsx";
 
@@ -38,39 +39,7 @@ import AssetAllocationChart  from "../scheme-view/AssetAllocationChart";
 import PortfolioStatsPanel   from "../scheme-view/PortfolioStatsPanel";
 import PeerComparisonTable   from "../scheme-view/PeerComparisonTable";
 
-// ─── Local helpers (retained for admin panels) ────────────────────────────────
-
-const fmtReturn = (val: number | null | undefined, period?: string): string => {
-  if (val === null || val === undefined) return "—";
-  if (val === 0 && period && ["3y", "5y", "10y"].includes(period)) return "—";
-  return `${val.toFixed(2)}%`;
-};
-
-const returnColorClass = (val: number | null | undefined, period?: string): string => {
-  if (val === null || val === undefined) return "text-gray-400";
-  if (val === 0 && period && ["3y", "5y", "10y"].includes(period)) return "text-gray-400";
-  if (val > 0) return "text-green-600 font-medium";
-  if (val < 0) return "text-red-600 font-medium";
-  return "text-gray-600";
-};
-
-const fmtCurrency = (val: number | null | undefined): string => {
-  if (val === null || val === undefined) return "—";
-  if (val >= 1e7) return `₹${(val / 1e7).toFixed(2)} Cr`;
-  if (val >= 1e5) return `₹${(val / 1e5).toFixed(2)} L`;
-  return `₹${val.toLocaleString("en-IN")}`;
-};
-
-const fmtDate = (d: string | null | undefined): string => {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleDateString("en-IN", {
-      day: "2-digit", month: "short", year: "numeric",
-    });
-  } catch {
-    return d;
-  }
-};
+// ─── Local helpers (imported from scheme-view/formatters) ───────────────────────
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 

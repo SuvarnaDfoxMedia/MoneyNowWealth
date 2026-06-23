@@ -2,27 +2,118 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 import * as XLSX from "xlsx";
+import { parsePagination } from "../mfUtils";
 import MfApiScheme from "../../models/mfApiSchemeModel";
 import MfApiSyncLog from "../../models/mfApiSyncLogModel";
 import MfApiNavHistory from "../../models/mfApiNavHistoryModel";
+import MfApiTopHolding from "../../models/mfApiTopHoldingModel";
 import MFFund from "../../models/mfFundModel";
-import { recomputeAllCategoryAverageReturns } from "../mfCategoryService";
+import NavHistory from "../../models/navHistoryModel";
+import MFBenchmarkReturn from "../../models/mfBenchmarkReturnModel";
+import { recomputeCategoryAverageReturns, recomputeAllCategoryAverageReturns } from "../mfCategoryService";
+import { normalizeDateOnly } from "../navCalculationService";
 import { MfApiTransformer } from "./mfApiTransformer";
 import { MfImportEngine } from "./mfImportEngine";
 import { MfWorkbookValidator } from "./MfWorkbookValidator";
 
+const validateSyncHealth = async (
+  scheme: any,
+  fundId: string
+): Promise<"success" | "partial_success"> => {
+  try {
+    const fund = await MFFund.findOne({ _id: fundId, is_deleted: false }).lean();
+    if (!fund) return "partial_success";
+
+    // 1. Check NAV date and NavHistory
+    if (scheme.latest_date) {
+      const normalizedDate = normalizeDateOnly(new Date(scheme.latest_date));
+      const navEntry = await NavHistory.findOne({ schemeId: fundId, date: normalizedDate }).lean();
+      if (!navEntry) return "partial_success";
+    }
+
+    // 2. Check Benchmark Returns
+    if (fund.benchmark_id) {
+      const benchmarkReturns = await MFBenchmarkReturn.findOne({
+        benchmark_id: fund.benchmark_id,
+        is_deleted: false,
+      }).lean();
+      if (!benchmarkReturns) return "partial_success";
+    }
+
+    // 3. Check Trailing Returns on the Fund itself
+    if (
+      !fund.returns ||
+      !fund.returns.trailing ||
+      Object.keys(fund.returns.trailing).length === 0 ||
+      fund.returns.trailing["1y"] == null
+    ) {
+      return "partial_success";
+    }
+
+    return "success";
+  } catch (error) {
+    console.error("[validateSyncHealth] Health check failed with error:", error);
+    return "partial_success";
+  }
+};
+
 export const syncApiSchemeToManual = async (id: string, options: any = {}) => {
   const saved = await MfApiScheme.findById(id);
   if (!saved || (!saved.is_active && !options.activating)) return { action: "skipped", reason: "Scheme is not active; MFFund not created yet" };
-  let dto = MfApiTransformer.transformScheme(saved.toObject ? saved.toObject() : saved);
-  const engine = new MfImportEngine();
-  dto = await MfWorkbookValidator.validate(dto as any, engine.summary);
-  if (engine.summary.errors.length > 0) {
-    return { action: "skipped", reason: "Validation failed: " + engine.summary.errors[0]?.message };
+  
+  try {
+    let dto = MfApiTransformer.transformScheme(saved.toObject ? saved.toObject() : saved);
+    const engine = new MfImportEngine();
+    dto = await MfWorkbookValidator.validate(dto as any, engine.summary, { skipOrphanCheck: true });
+    if (engine.summary.errors.length > 0) {
+      const errMsg = "Validation failed: " + engine.summary.errors[0]?.message;
+      await MfApiScheme.findByIdAndUpdate(saved._id, { $set: { sync_status: "partial_success", last_sync_error: errMsg } });
+      return { action: "skipped", reason: errMsg };
+    }
+    const existing = await MFFund.findOne({ scheme_code: saved.scheme_code });
+    await engine.processWorkbook(dto as any);
+    const fund = await MFFund.findOneAndUpdate(
+      { scheme_code: saved.scheme_code, is_deleted: false },
+      {
+        $set: {
+          mf_api_scheme_id: saved._id,
+          mf_api_external_key: saved.external_key || "",
+          mf_api_synced_at: new Date(),
+        },
+      },
+      { new: true },
+    );
+
+    // Post-sync health check & category recomputation
+    let finalStatus: "success" | "partial_success" = "success";
+    if (fund) {
+      finalStatus = await validateSyncHealth(saved, String(fund._id));
+      if (fund.category_id) {
+        await recomputeCategoryAverageReturns(String(fund.category_id)).catch(() => {});
+      }
+    } else {
+      finalStatus = "partial_success";
+    }
+
+    await MfApiScheme.findByIdAndUpdate(saved._id, {
+      $set: {
+        sync_status: finalStatus,
+        last_synced_at: new Date(),
+        last_sync_error: finalStatus === "partial_success" ? "Sync health check failed (missing NAV history or returns)" : ""
+      }
+    });
+
+    return { action: existing ? "updated" : "created" };
+  } catch (err: any) {
+    console.error(`[syncApiSchemeToManual] Sync failed for scheme ${id}:`, err);
+    await MfApiScheme.findByIdAndUpdate(saved._id, {
+      $set: {
+        sync_status: "partial_success",
+        last_sync_error: `Error: ${err?.message || err}`
+      }
+    });
+    throw err;
   }
-  const existing = await MFFund.findOne({ scheme_code: saved.scheme_code });
-  await engine.processWorkbook(dto as any);
-  return { action: existing ? "updated" : "created" };
 };
 
 const MF_API_BASE =
@@ -44,6 +135,7 @@ const asArray = (value: any): any[] => {
   if (Array.isArray(value?.result)) return value.result;
   if (Array.isArray(value?.schemes)) return value.schemes;
   if (Array.isArray(value?.scheme_list)) return value.scheme_list;
+  if (Array.isArray(value?.items)) return value.items;
   return [];
 };
 
@@ -88,14 +180,7 @@ const normalizeBoolean = (value: unknown) => {
   return null;
 };
 
-const asList = (value: any) => {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.list)) return value.list;
-  if (Array.isArray(value?.data)) return value.data;
-  if (Array.isArray(value?.result)) return value.result;
-  if (Array.isArray(value?.items)) return value.items;
-  return null;
-};
+
 
 const detailSource = (payload: RawObject, latestInfo?: RawObject | null) => ({
   ...payload,
@@ -240,32 +325,32 @@ const normalizeScheme = (payload: RawObject, latestInfo?: RawObject | null) => {
   };
 
   const performanceList =
-    asList(
+    asArray(
       pick(source, [
         "scheme_performance_list",
         "performance_list",
         "performance",
         "return_list",
       ]),
-    ) ?? [];
+    );
   const riskStatisticsList =
-    asList(
+    asArray(
       pick(source, [
         "risk_statistics_list",
         "risk_statistics",
         "risk_list",
         "riskStats",
       ]),
-    ) ?? [];
+    );
   const peerComparisonList =
-    asList(
+    asArray(
       pick(source, [
         "scheme_peer_comparision_list",
         "scheme_peer_comparison_list",
         "peer_comparison_list",
         "peer_list",
       ]),
-    ) ?? [];
+    );
 
   return {
     external_key: buildExternalKey(payload),
@@ -487,7 +572,7 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     "6m":         normalizeNumber(schemePerfRow.six_month_return),
     "1y":         normalizeNumber(schemePerfRow.one_year_return),
     "2y":         normalizeNumber(schemePerfRow.two_year_return),
-    "3y":         normalizeNumber(schemePerfRow.three_year_return),
+    "3y":         normalizeNumber(schemePerfRow.three_month_return),
     "5y":         normalizeNumber(schemePerfRow.five_year_return),
     "10y":        normalizeNumber(schemePerfRow.ten_year_return),
     since_launch: normalizeNumber(schemePerfRow.inception_year_return),
@@ -508,7 +593,7 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     "6m":           normalizeNumber(benchmarkRow.six_month_return),
     "1y":           normalizeNumber(benchmarkRow.one_year_return),
     "2y":           normalizeNumber(benchmarkRow.two_year_return),
-    "3y":           normalizeNumber(benchmarkRow.three_year_return),
+    "3y":           normalizeNumber(benchmarkRow.three_month_return),
     "5y":           normalizeNumber(benchmarkRow.five_year_return),
     "10y":          normalizeNumber(benchmarkRow.ten_year_return),
     since_launch:   normalizeNumber(benchmarkRow.inception_year_return),
@@ -570,20 +655,28 @@ const upsertScheme = async (payload: RawObject, latestInfo?: RawObject | null) =
 
   let sync_status = "queued";
   let last_sync_error = "";
+  let has_returns_data: boolean | null = null;
 
   if (latestInfo !== null) {
     const hasNav = normalized.latest_nav !== null && normalized.latest_nav !== undefined;
     const hasSchemeCode = Boolean(normalized.scheme_code);
     const hasSchemeName = Boolean(normalized.scheme_name);
-    
-    const tr = (structured as any).trailing_returns || {};
-    const hasTrailingReturns = Object.values(tr).some(v => v !== null && v !== undefined);
 
-    if (hasNav && hasSchemeCode && hasSchemeName && hasTrailingReturns) {
+    const tr = (structured as any).trailing_returns || {};
+    has_returns_data = Object.values(tr).some(v => v !== null && v !== undefined);
+
+    if (hasNav && hasSchemeCode && hasSchemeName) {
+      // NAV + code + name = valid sync. Absence of trailing returns is a data-quality
+      // issue (e.g. liquid/overnight funds), NOT a sync failure.
       sync_status = "success";
+      last_sync_error = "";
     } else {
       sync_status = "failed";
-      last_sync_error = "API returned empty or invalid object data";
+      last_sync_error = [
+        !hasNav ? "missing NAV" : "",
+        !hasSchemeCode ? "missing scheme_code" : "",
+        !hasSchemeName ? "missing scheme_name" : "",
+      ].filter(Boolean).join(", ");
     }
   }
 
@@ -593,6 +686,7 @@ const upsertScheme = async (payload: RawObject, latestInfo?: RawObject | null) =
     sync_status,
     last_synced_at: new Date(),
     last_sync_error,
+    ...(has_returns_data !== null ? { has_returns_data } : {}),
   };
 
   if (existing) {
@@ -1033,7 +1127,7 @@ export const syncOneScheme = async (
           existing._id,
           {
             ...normalized,
-            sync_status: "failed",
+            sync_status: "partial_success",
             last_synced_at: new Date(),
             last_sync_error: errorMessage,
           },
@@ -1041,7 +1135,7 @@ export const syncOneScheme = async (
         )
       : await MfApiScheme.create({
           ...normalized,
-          sync_status: "failed",
+          sync_status: "partial_success",
           last_synced_at: new Date(),
           last_sync_error: errorMessage,
         });
@@ -1080,28 +1174,25 @@ export const syncOneScheme = async (
 
   const structured = latestPayload ? extractStructuredFields(latestPayload) : {};
 
-  let saved;
-  if (existing) {
-    saved = await MfApiScheme.findByIdAndUpdate(
-      existing._id,
-      {
+  let saved = existing
+    ? await MfApiScheme.findByIdAndUpdate(
+        existing._id,
+        {
+          ...normalized,
+          ...structured,
+          sync_status: "success",
+          last_synced_at: new Date(),
+          last_sync_error: "",
+        },
+        { new: true, runValidators: true },
+      )
+    : await MfApiScheme.create({
         ...normalized,
         ...structured,
         sync_status: "success",
         last_synced_at: new Date(),
         last_sync_error: "",
-      },
-      { new: true, runValidators: true },
-    );
-  } else {
-    saved = await MfApiScheme.create({
-      ...normalized,
-      ...structured,
-      sync_status: "success",
-      last_synced_at: new Date(),
-      last_sync_error: "",
-    });
-  }
+      });
 
   // ─── Record NAV history snapshot (one entry per scheme per day) ─────────
   if (saved?.latest_nav != null && saved?.latest_date) {
@@ -1131,11 +1222,24 @@ export const syncOneScheme = async (
     try {
       let dto = MfApiTransformer.transformScheme(saved.toObject ? saved.toObject() : saved);
       const engine = new MfImportEngine();
-      dto = await MfWorkbookValidator.validate(dto as any, engine.summary);
+      dto = await MfWorkbookValidator.validate(dto as any, engine.summary, { skipOrphanCheck: true });
       if (engine.summary.errors.length > 0) {
+        const errMsg = "Validation failed: " + engine.summary.errors[0]?.message;
         console.error(`[API-Sync] Validation failed for API Scheme ${saved._id}:`, engine.summary.errors);
+        saved = await MfApiScheme.findByIdAndUpdate(saved._id, { $set: { sync_status: "partial_success", last_sync_error: errMsg } }, { new: true });
       } else {
         await engine.processWorkbook(dto as any);
+        const fund = await MFFund.findOneAndUpdate(
+          { scheme_code: saved.scheme_code, is_deleted: false },
+          {
+            $set: {
+              mf_api_scheme_id: saved._id,
+              mf_api_external_key: saved.external_key || "",
+              mf_api_synced_at: new Date(),
+            },
+          },
+          { new: false },
+        );
       }
     } catch (err: any) {
       console.error("[shared-engine] syncOneScheme → processWorkbook failed:", err?.message);
@@ -1229,9 +1333,7 @@ export const getDashboardSummary = async () => {
 };
 
 export const getSchemes = async (query: any) => {
-  const page = Math.max(Number(query?.page || 1), 1);
-  const limit = Math.max(Math.min(Number(query?.limit || 20), 100), 1);
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination(query);
   const filter: any = { is_deleted: { $ne: true } };
   if (query?.search) {
     const search = String(query.search).trim();
@@ -1322,9 +1424,7 @@ export const getSchemeById = async (id: string) => {
 };
 
 export const getSyncLogs = async (query: any) => {
-  const page = Math.max(Number(query?.page || 1), 1);
-  const limit = Math.max(Math.min(Number(query?.limit || 20), 100), 1);
-  const skip = (page - 1) * limit;
+  const { page, limit, skip } = parsePagination(query);
   const filter: any = {};
   if (query?.search) {
     const search = String(query.search).trim();
@@ -1732,6 +1832,7 @@ export const bulkToggleSchemeActive = async (ids: string[], is_active: boolean) 
         syncApiSchemeToManual(String(s._id), { activating: true }).catch(() => {})
       )
     ).catch(() => {});
+
   }
 
   return { success: true, modifiedCount: result.modifiedCount };
@@ -1745,3 +1846,60 @@ export const markSchemesAsReviewed = async (ids: string[]) => {
   return { success: true };
 };
 
+// ─── Top Holdings (service layer) ───────────────────────────────────────────
+
+export const importTopHoldingsForScheme = async (payload: {
+  schemeId: string;
+  holdings: any[];
+  portfolio_date?: string;
+  [key: string]: any;
+}) => {
+  const { schemeId, holdings, portfolio_date, ...rest } = payload;
+
+  const scheme = await MfApiScheme.findById(schemeId);
+  if (!scheme) throw new Error("Scheme not found");
+
+  await MfApiTopHolding.updateMany(
+    { mf_api_scheme_id: scheme._id, is_deleted: { $ne: true } },
+    { is_latest: false },
+  );
+
+  const portfolioDate = portfolio_date ? new Date(portfolio_date) : new Date();
+  const snap = await MfApiTopHolding.create({
+    mf_api_scheme_id: scheme._id,
+    external_key: scheme.external_key,
+    scheme_name: scheme.scheme_name,
+    portfolio_date: portfolioDate,
+    snapshot_month: portfolioDate.getMonth() + 1,
+    snapshot_year: portfolioDate.getFullYear(),
+    holdings: holdings || [],
+    holdings_count: (holdings || []).length,
+    is_latest: true,
+    uploaded_at: new Date(),
+    ...rest,
+  });
+
+  return snap;
+};
+
+export const getLatestTopHoldingsForScheme = async (schemeId: string) => {
+  return MfApiTopHolding.findOne({
+    mf_api_scheme_id: schemeId,
+    is_latest: true,
+    is_deleted: { $ne: true },
+  }).lean();
+};
+
+export const getNavHistoryForScheme = async (schemeId: string, days: number) => {
+  const clampedDays = Math.min(days, 1825); // max 5 years
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - clampedDays);
+
+  return MfApiNavHistory.find({
+    scheme_id: schemeId,
+    date: { $gte: fromDate },
+  })
+    .sort({ date: 1 })
+    .select("date nav nav_change nav_change_pct")
+    .lean();
+};

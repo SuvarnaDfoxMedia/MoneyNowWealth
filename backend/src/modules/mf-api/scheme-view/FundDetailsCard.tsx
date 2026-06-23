@@ -1,4 +1,5 @@
 import { fmtDate, fmtReturn, riskColor } from "./MfApiSchemeViewTypes";
+import { fmtCurrency, fmtPct } from "./formatters";
 
 interface FundDetailsCardProps {
   inceptionDate?: string | null;
@@ -41,10 +42,7 @@ export default function FundDetailsCard({
   }> = [
     {
       label: "Returns Since Inception",
-      value:
-        returnsSinceInception != null
-          ? `${returnsSinceInception.toFixed(2)}%`
-          : "—",
+      value: fmtPct(returnsSinceInception),
       valueClass:
         returnsSinceInception != null
           ? returnsSinceInception > 0
@@ -58,7 +56,7 @@ export default function FundDetailsCard({
     },
     {
       label: "Expense Ratio",
-      value: expenseRatio != null ? `${expenseRatio.toFixed(2)}%` : "—",
+      value: fmtPct(expenseRatio),
       subtext: expenseRatioDate
         ? `as on ${fmtDate(expenseRatioDate)}`
         : undefined,
@@ -69,24 +67,15 @@ export default function FundDetailsCard({
     },
     {
       label: "Min. Investment",
-      value:
-        minimumInvestment != null
-          ? `₹${minimumInvestment.toLocaleString("en-IN")}`
-          : "—",
+      value: fmtCurrency(minimumInvestment),
     },
     {
       label: "Min. SIP Amount",
-      value:
-        sipMinimum != null
-          ? `₹${sipMinimum.toLocaleString("en-IN")}`
-          : "—",
+      value: fmtCurrency(sipMinimum),
     },
     {
       label: "Min. Topup",
-      value:
-        minimumTopup != null
-          ? `₹${minimumTopup.toLocaleString("en-IN")}`
-          : "—",
+      value: fmtCurrency(minimumTopup),
     },
     {
       label: "Risk Status",

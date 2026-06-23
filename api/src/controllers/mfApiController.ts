@@ -12,12 +12,12 @@ import {
   toggleSchemeActive,
   bulkToggleSchemeActive,
   markSchemesAsReviewed,
+  importTopHoldingsForScheme,
+  getLatestTopHoldingsForScheme,
+  getNavHistoryForScheme,
 } from "../services/mfApiService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import type { AuthenticatedRequest } from "../middlewares/authMiddleware";
-import MfApiScheme from "../models/mfApiSchemeModel";
-import MfApiTopHolding from "../models/mfApiTopHoldingModel";
-import MfApiNavHistory from "../models/mfApiNavHistoryModel";
 
 const readContext = (req: Request) => ({
   role: (req as AuthenticatedRequest).user?.role,
@@ -189,44 +189,17 @@ export const importMfApiTopHoldings = async (req: Request, res: Response) => {
     const schemeId = bodySchemeId || req.params.id;
     if (!schemeId) return sendError(res, "scheme_id is required", 400);
 
-    const scheme = await MfApiScheme.findById(schemeId);
-    if (!scheme) return sendError(res, "Scheme not found", 404);
-
-    // Mark all previous snapshots for this scheme as not latest
-    await MfApiTopHolding.updateMany(
-      { mf_api_scheme_id: scheme._id, is_deleted: { $ne: true } },
-      { is_latest: false },
-    );
-
-    const portfolioDate = portfolio_date ? new Date(portfolio_date) : new Date();
-    const snap = await MfApiTopHolding.create({
-      mf_api_scheme_id: scheme._id,
-      external_key:     scheme.external_key,
-      scheme_name:      scheme.scheme_name,
-      portfolio_date:   portfolioDate,
-      snapshot_month:   portfolioDate.getMonth() + 1,
-      snapshot_year:    portfolioDate.getFullYear(),
-      holdings:         holdings || [],
-      holdings_count:   (holdings || []).length,
-      is_latest:        true,
-      uploaded_at:      new Date(),
-      ...rest,
-    });
-
+    const snap = await importTopHoldingsForScheme({ schemeId, holdings, portfolio_date, ...rest });
     return sendSuccess(res, "Top holdings imported", snap);
   } catch (error: any) {
-    return sendError(res, error?.message || "Failed to import top holdings", 500);
+    const is404 = error?.message === "Scheme not found";
+    return sendError(res, error?.message || "Failed to import top holdings", is404 ? 404 : 500);
   }
 };
 
 export const getMfApiTopHoldings = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const latest = await MfApiTopHolding.findOne({
-      mf_api_scheme_id: id,
-      is_latest: true,
-      is_deleted: { $ne: true },
-    }).lean();
+    const latest = await getLatestTopHoldingsForScheme(req.params.id);
     return sendSuccess(res, "Top holdings fetched", latest || null);
   } catch (error: any) {
     return sendError(res, error?.message || "Failed to fetch top holdings", 500);
@@ -237,19 +210,8 @@ export const getMfApiTopHoldings = async (req: Request, res: Response) => {
 
 export const getMfApiNavHistory = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const days = Math.min(Number(req.query.days || 365), 1825); // max 5 years
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - days);
-
-    const history = await MfApiNavHistory.find({
-      scheme_id: id,
-      date: { $gte: fromDate },
-    })
-      .sort({ date: 1 })
-      .select("date nav nav_change nav_change_pct")
-      .lean();
-
+    const days = Number(req.query.days || 365);
+    const history = await getNavHistoryForScheme(req.params.id, days);
     return sendSuccess(res, "NAV history fetched", history);
   } catch (error: any) {
     return sendError(res, error?.message || "Failed to fetch NAV history", 500);
@@ -261,9 +223,9 @@ export const syncSchemeToManual = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { syncApiSchemeToManual } = await import("../services/mf-import/MfApiSyncEngine");
     const result = await syncApiSchemeToManual(id, { activating: true });
-    return res.json({ success: true, ...result });
+    return sendSuccess(res, "Bridge sync completed", result);
   } catch (err: any) {
-    return res.status(500).json({ success: false, message: err?.message || "Bridge sync failed" });
+    return sendError(res, err?.message || "Bridge sync failed", 500);
   }
 };
 
@@ -278,22 +240,26 @@ export const resyncAllToManual = async (req: Request, res: Response) => {
       sync_status: "success",
     }).select("_id").lean();
 
-    // Fire and forget — run in background so the HTTP response returns immediately
+    // Fire and forget — HTTP responds immediately; sync runs in background
     (async () => {
       let done = 0;
+      let failed = 0;
       for (const s of schemes) {
-        await syncApiSchemeToManual(String(s._id), { activating: true }).catch(() => {});
-        done++;
+        try {
+          await syncApiSchemeToManual(String(s._id), { activating: true });
+          done++;
+        } catch (e: any) {
+          failed++;
+          console.error(`[resync-to-manual] Failed scheme ${s._id}:`, e?.message);
+        }
       }
-      console.log(`[resync-to-manual] Completed ${done}/${schemes.length} schemes`);
+      console.log(`[resync-to-manual] Completed ${done}/${schemes.length} schemes, ${failed} failed`);
     })().catch(console.error);
 
-    return res.json({
-      success: true,
-      message: `Bridge re-sync started for ${schemes.length} active schemes`,
+    return sendSuccess(res, `Bridge re-sync started for ${schemes.length} active schemes`, {
       total: schemes.length,
     });
   } catch (err: any) {
-    return res.status(500).json({ success: false, message: err?.message || "Resync failed" });
+    return sendError(res, err?.message || "Resync failed", 500);
   }
 };

@@ -7,6 +7,7 @@ const statusClasses: Record<string, string> = {
   failed: "bg-red-50 text-red-700",
   running: "bg-amber-50 text-amber-700",
   queued: "bg-sky-50 text-sky-700",
+  partial_success: "bg-indigo-50 text-indigo-700",
 };
 
 export default function StatusPill({ status }: StatusPillProps) {

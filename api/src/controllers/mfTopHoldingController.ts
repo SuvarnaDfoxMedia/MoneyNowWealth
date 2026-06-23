@@ -105,14 +105,7 @@ export const toggleTopHoldingStatus = async (req: Request, res: Response) => {
   }
 };
 
-const cleanupUploadedFile = (filePath?: string) => {
-  if (!filePath) return;
-  try {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch {
-    // Best effort cleanup.
-  }
-};
+import { cleanupUploadedFile } from "../utils/fileUtils";
 
 export const importTopHoldings = async (req: Request, res: Response) => {
   const uploadedFilePath = req.file?.path;

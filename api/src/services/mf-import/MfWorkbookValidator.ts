@@ -1,3 +1,8 @@
+/**
+ * MfWorkbookValidator — validates a parsed WorkbookDTO (post-parsing, pre-DB).
+ * Uses alias resolution (DB reads). For raw XLSX structure validation, see MfXlsxStructureValidator.
+ */
+
 import { WorkbookDTO } from "../../types/mfImportDto";
 import { MfImportSummary } from "./mfImportSummary";
 import { STANDARDIZED_CONFIGS, FieldConfig } from "./mfStandardization";
@@ -5,7 +10,17 @@ import { MfAliasResolver } from "./MfAliasResolver";
 
 export class MfWorkbookValidator {
   
-  static async validate(dto: WorkbookDTO, summary: MfImportSummary): Promise<WorkbookDTO> {
+  static async validate(dto: WorkbookDTO, summary: MfImportSummary, options: { skipOrphanCheck?: boolean } = {}): Promise<WorkbookDTO> {
+    dto.mainCategories = dto.mainCategories || [];
+    dto.categories = dto.categories || [];
+    dto.amcs = dto.amcs || [];
+    dto.funds = dto.funds || [];
+    dto.benchmarks = dto.benchmarks || [];
+    dto.benchmarkReturns = dto.benchmarkReturns || [];
+    dto.nfos = dto.nfos || [];
+    dto.indexSnapshots = dto.indexSnapshots || [];
+    dto.topHoldings = dto.topHoldings || [];
+
     const validatedDto: WorkbookDTO = {
       mainCategories: [],
       categories: [],
@@ -22,7 +37,7 @@ export class MfWorkbookValidator {
     // If essential sheets are entirely missing but required, we could flag it here.
     // We will just validate the rows.
 
-    validatedDto.mainCategories = await this.validateSection(dto.mainCategories, STANDARDIZED_CONFIGS.MAIN_CATEGORIES, "Main Categories", summary, "name", dto, null);
+    validatedDto.mainCategories = await this.validateSection(dto.mainCategories, STANDARDIZED_CONFIGS.MAIN_CATEGORIES, "Main Categories", summary, "name", dto, null, options);
     validatedDto.categories = await this.validateSection(dto.categories, STANDARDIZED_CONFIGS.CATEGORIES, "Categories", summary, "name", dto, async (item) => {
       if (item.mainCategoryName) {
         const found = await MfAliasResolver.resolveMainCategory(item.mainCategoryName);
@@ -32,11 +47,12 @@ export class MfWorkbookValidator {
         }
       }
       return true;
-    });
+    }, options);
 
-    validatedDto.amcs = await this.validateSection(dto.amcs, STANDARDIZED_CONFIGS.AMCS, "AMCs", summary, "name", dto, null);
+    validatedDto.amcs = await this.validateSection(dto.amcs, STANDARDIZED_CONFIGS.AMCS, "AMCs", summary, "name", dto, null, options);
     
     validatedDto.funds = await this.validateSection(dto.funds, STANDARDIZED_CONFIGS.FUNDS, "Funds", summary, "scheme_code", dto, async (item) => {
+      if (options.skipOrphanCheck) return true; // API bridge path: engine auto-creates missing refs
       let valid = true;
       if (item.amcName) {
         const found = await MfAliasResolver.resolveAmc(item.amcName);
@@ -60,9 +76,10 @@ export class MfWorkbookValidator {
         }
       }
       return valid;
-    });
+    }, options);
 
     validatedDto.benchmarks = await this.validateSection(dto.benchmarks, STANDARDIZED_CONFIGS.BENCHMARKS, "Benchmarks", summary, "benchmark_index_name", dto, async (item) => {
+      if (options.skipOrphanCheck) return true; // API bridge path: engine auto-creates missing refs
       let valid = true;
       if (item.categoryName) {
         const found = await MfAliasResolver.resolveCategory(item.categoryName);
@@ -72,11 +89,11 @@ export class MfWorkbookValidator {
         }
       }
       return valid;
-    });
+    }, options);
 
-    validatedDto.benchmarkReturns = await this.validateSection(dto.benchmarkReturns, STANDARDIZED_CONFIGS.BENCHMARK_RETURNS, "Benchmark Returns", summary, "benchmarkIndexName", dto, null);
-    validatedDto.nfos = await this.validateSection(dto.nfos, STANDARDIZED_CONFIGS.NFOS, "NFOs", summary, "nfo_name", dto, null);
-    validatedDto.indexSnapshots = await this.validateSection(dto.indexSnapshots, STANDARDIZED_CONFIGS.INDEX_SNAPSHOTS, "Index Snapshots", summary, "benchmark_index_name", dto, null);
+    validatedDto.benchmarkReturns = await this.validateSection(dto.benchmarkReturns, STANDARDIZED_CONFIGS.BENCHMARK_RETURNS, "Benchmark Returns", summary, "benchmarkIndexName", dto, null, options);
+    validatedDto.nfos = await this.validateSection(dto.nfos, STANDARDIZED_CONFIGS.NFOS, "NFOs", summary, "nfo_name", dto, null, options);
+    validatedDto.indexSnapshots = await this.validateSection(dto.indexSnapshots, STANDARDIZED_CONFIGS.INDEX_SNAPSHOTS, "Index Snapshots", summary, "benchmark_index_name", dto, null, options);
     
     validatedDto.topHoldings = await this.validateSection(dto.topHoldings, STANDARDIZED_CONFIGS.TOP_HOLDINGS, "Top Holdings", summary, "scheme_code", dto, async (item) => {
       let valid = true;
@@ -86,7 +103,7 @@ export class MfWorkbookValidator {
         valid = false;
       }
       return valid;
-    });
+    }, options);
 
     // Partial Import Prevention is handled by the caller checking summary.errors.length
 
@@ -100,8 +117,10 @@ export class MfWorkbookValidator {
     summary: MfImportSummary,
     identifierField: string,
     dto: WorkbookDTO,
-    customValidator: ((item: any) => Promise<boolean>) | null
+    customValidator: ((item: any) => Promise<boolean>) | null,
+    options: { skipOrphanCheck?: boolean } = {}
   ): Promise<Record<string, any>[]> {
+    items = items || [];
     const validItems: Record<string, any>[] = [];
     const requiredConfigs = configs.filter(c => c.required);
     
@@ -125,6 +144,12 @@ export class MfWorkbookValidator {
 
       // Required Fields & Type Mismatch Validation
       for (const config of configs) {
+        if (options.skipOrphanCheck && sheetName === "Funds" && config.dbPath === "mainCategoryName") {
+          continue;
+        }
+        if (options.skipOrphanCheck && sheetName === "Categories" && config.dbPath === "mainCategoryName") {
+          continue;
+        }
         const val = this.getNestedValue(item, config.dbPath);
         
         if (config.required && (val === undefined || val === null || val === "")) {
