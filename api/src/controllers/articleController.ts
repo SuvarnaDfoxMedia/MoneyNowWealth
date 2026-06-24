@@ -34,9 +34,6 @@ export const getArticles = async (req: Request, res: Response) => {
     const limit = Math.max(Number(req.query.limit) || 10, 1);
     const { status, search, topic_id } = req.query;
     const isPublicRequest = !req.params.role;
-    const allowedAccessTypes = isPublicRequest
-      ? await contentAccessService.getAllowedTopicAccessTypes(req.user?.id)
-      : undefined;
 
     const sort = { createdAt: -1 }; // latest first
 
@@ -48,7 +45,6 @@ export const getArticles = async (req: Request, res: Response) => {
       limit,
       sort,
       publishedOnly: isPublicRequest,
-      allowedAccessTypes,
     });
 
     const articles = result.articles || [];

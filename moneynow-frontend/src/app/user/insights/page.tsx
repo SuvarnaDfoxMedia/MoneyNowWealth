@@ -13,9 +13,5 @@ export async function generateMetadata() {
 }
 
 export default function InsightsPage() {
-  return (
-    <div className="py-6 px-2 sm:px-6 w-full">
-      <Insights />
-    </div>
-  );
+  return <Insights />;
 }

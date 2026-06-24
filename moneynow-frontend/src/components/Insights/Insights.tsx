@@ -275,7 +275,7 @@ export default function Insights() {
                       </div>
 
                       <Link
-                        href={`/blog/${article.slug}`}
+                        href={`/user/blog/${article.slug}`}
                         className="mt-4 inline-flex items-center gap-1.5 text-[15px] font-bold text-[#0A4A87] hover:underline"
                       >
                         Read More <ArrowRight className="h-4 w-4" />

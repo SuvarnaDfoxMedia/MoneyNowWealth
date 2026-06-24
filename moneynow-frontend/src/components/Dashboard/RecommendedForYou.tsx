@@ -18,6 +18,7 @@ export default function RecommendedForYou() {
   const { cards, loading, error } = useFetchCards(
     "/api/article/published/latest",
     4,
+    { visibilityField: "isDashboardFeatured" },
   );
 
   const leftCard = cards[0];
@@ -75,12 +76,12 @@ export default function RecommendedForYou() {
                   <span>5 min read</span>
                 </div>
 
-                <a
-                  href={`/blog/${leftCard.slug}`}
+                <Link
+                  href={`/user/blog/${leftCard.slug}`}
                   className="mt-3 mb-5 inline-flex items-center gap-2 text-[15px] font-bold text-[#0A4A87] hover:underline"
                 >
                   Read More <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </div>
               
             </div>
@@ -92,8 +93,8 @@ export default function RecommendedForYou() {
               Most Popular
             </h3>
             {rightCards.map((item, index) => (
-              <a
-                href={`/blog/${item.slug}`}
+              <Link
+                href={`/user/blog/${item.slug}`}
                 key={item.slug || index}
                 className={`flex items-center gap-5 py-5
                    ${
@@ -125,7 +126,7 @@ export default function RecommendedForYou() {
                 </div>
 
                 
-              </a>
+              </Link>
             ))}
           </div>
           

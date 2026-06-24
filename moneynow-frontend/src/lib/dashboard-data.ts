@@ -91,16 +91,16 @@ export const sidebarMenuItems: SidebarMenuItem[] = [
     href: "/wealth-toolkit",
     icon: "Wrench",
   },
-  {
-    id: "learn",
-    label: "Learn",
-    href: "/user/blog-listing",
-    icon: "GraduationCap",
-  },
+  // {
+  //   id: "learn",
+  //   label: "Learn",
+  //   href: "/user/blog-listing",
+  //   icon: "GraduationCap",
+  // },
   {
     id: "insights",
     label: "Insights",
-    href: "/blog-listing",
+    href: "/user/insights",
     icon: "Lightbulb",
   },
   // { id: "news", label: "News & Blogs", href: "/blog-listing", icon: "Newspaper" },

@@ -23,6 +23,7 @@ const LatestRecommendationBlogs: React.FC<LatestRecommendationBlogsProps> = ({
   const { cards, loading, error } = useFetchCards(
     "/api/article/published/latest",
     5,
+    { visibilityField: "isDashboardFeatured" },
   );
 
   return (

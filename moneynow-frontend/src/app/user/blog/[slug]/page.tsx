@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import BlogDetailsClient, { type Article } from "@/app/blog/[slug]/BlogDetailsClient";
+import UserBlogDetailsClient, { type Article } from "@/components/blog-details-Page/UserBlogDetailsClient";
 import SeoJsonLd from "@/components/seo/SeoJsonLd";
 import { buildPageMetadata, resolveSeoEntry, stripHtml } from "@/lib/seo";
 
@@ -126,7 +126,7 @@ export default async function UserBlogPage({ params }: PageProps) {
   return (
     <>
       <SeoJsonLd schema={seo?.page_schema} />
-      <BlogDetailsClient
+      <UserBlogDetailsClient
         article={article}
         error={error}
         topicTitle={article?.topic?.title || ""}
