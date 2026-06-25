@@ -146,10 +146,13 @@ export type MfApiImportReport = {
   message?: string;
   inserted?: number;
   updated?: number;
+  activated?: number;
   skipped?: number;
   rejected?: number;
   totalRows?: number;
   validRows?: number;
+  validateOnly?: boolean;
+  fileName?: string;
   errors?: Array<{
     row?: number;
     message?: string;
