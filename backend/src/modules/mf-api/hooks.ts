@@ -22,6 +22,7 @@ import {
   bulkToggleMfApiSchemes,
   markMfApiSchemesReviewed,
   syncMfApiToManualApi,
+  resyncAllToManualApi,
 } from "./api";
 import type { MfApiImportReport, MfApiSyncResult } from "./types";
 
@@ -144,8 +145,19 @@ export const useMfApiImport = (role: string) => {
       file: File;
       validateOnly: boolean;
     }) => importMfApiData(role, file, validateOnly),
-    onSuccess: (response: MfApiImportReport) => {
-      toast.success(response.message || "MF API import completed");
+    onSuccess: (report: MfApiImportReport) => {
+      const parts: string[] = [];
+      if (report.validateOnly) {
+        parts.push(`Validated ${report.totalRows ?? 0} rows`);
+        if ((report.errors?.length ?? 0) > 0) parts.push(`${report.errors!.length} issues found`);
+      } else {
+        if (report.inserted) parts.push(`${report.inserted} new`);
+        if (report.updated) parts.push(`${report.updated} updated`);
+        if (report.activated) parts.push(`${report.activated} bridged to manual`);
+        if (report.rejected) parts.push(`${report.rejected} rejected`);
+        if (!parts.length) parts.push("Import completed");
+      }
+      toast.success(parts.join(" · "));
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => {
@@ -246,6 +258,21 @@ export const useMfApiSyncToManual = (role: string) => {
     onError: (err: any) => {
       const errMsg = err?.response?.data?.message || err?.message || "Bridge sync failed";
       toast.error(errMsg);
+    },
+  });
+};
+
+export const useMfApiResyncToManual = (role: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => resyncAllToManualApi(role),
+    onSuccess: (response: any) => {
+      const total = response?.data?.total ?? response?.total ?? 0;
+      toast.success(`Re-sync started for ${total} active schemes → manual module`);
+      void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Re-sync failed");
     },
   });
 };

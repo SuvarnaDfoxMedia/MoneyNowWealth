@@ -48,7 +48,7 @@ export const importMfApiData = async (
   role: string,
   file: File,
   validateOnly: boolean,
-) => {
+): Promise<MfApiImportReport> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("validateOnly", String(validateOnly));
@@ -58,7 +58,8 @@ export const importMfApiData = async (
     formData,
     { headers: { "Content-Type": "multipart/form-data" } },
   );
-  return response.data;
+  // Return the inner report directly (not the ApiResponse wrapper)
+  return (response.data?.data ?? response.data) as MfApiImportReport;
 };
 
 export const exportMfApiData = async (role: string) =>
@@ -94,3 +95,6 @@ export const getMfApiNavHistoryApi = (role: string, id: string, days: number = 3
 
 export const syncMfApiToManualApi = async (role: string, id: string) =>
   axiosApi.post<any>(`/${role}/mf-api/schemes/${id}/sync-to-manual`, {});
+
+export const resyncAllToManualApi = async (role: string) =>
+  axiosApi.post<{ total: number }>(`/${role}/mf-api/resync-to-manual`, {});

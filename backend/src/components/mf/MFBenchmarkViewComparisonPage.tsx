@@ -155,7 +155,7 @@ const fromBenchmarkRow = (label: string, row?: BenchmarkReturnRow): SeriesPoint 
   m1: asNumber(row?.trailing?.["1m"] ?? row?.return_1m),
   m3: asNumber(row?.trailing?.["3m"] ?? row?.return_3m),
   m6: asNumber(row?.trailing?.["6m"] ?? row?.return_6m),
-  ytd: asNumber(row?.annual?.ytd ?? row?.return_ytd ?? row?.ytd ?? row?.ytd_return),
+  ytd: asNumber(row?.annual?.ytd ?? row?.trailing?.ytd ?? row?.return_ytd ?? row?.ytd ?? row?.ytd_return),
   y1: asNumber(row?.trailing?.["1y"] ?? row?.return_1y),
   y2: asNumber(row?.trailing?.["2y"] ?? row?.return_2y),
   y3: asNumber(row?.trailing?.["3y"] ?? row?.return_3y),

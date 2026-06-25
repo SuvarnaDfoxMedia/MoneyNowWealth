@@ -158,7 +158,7 @@ export default function MFBenchmarkReturnsManager() {
       { key: "1m", label: "1M", render: (row) => row?.trailing?.["1m"] ?? row.return_1m ?? "-" },
       { key: "3m", label: "3M", render: (row) => row?.trailing?.["3m"] ?? row.return_3m ?? "-" },
       { key: "6m", label: "6M", render: (row) => row?.trailing?.["6m"] ?? row.return_6m ?? "-" },
-      { key: "ytd", label: "YTD", render: (row) => row?.annual?.ytd ?? row.return_ytd ?? "-" },
+      { key: "ytd", label: "YTD", render: (row) => row?.annual?.ytd ?? row?.trailing?.ytd ?? row.return_ytd ?? "-" },
       { key: "1y", label: "1Y", render: (row) => row?.trailing?.["1y"] ?? row.return_1y ?? "-" },
       { key: "2y", label: "2Y", render: (row) => row?.trailing?.["2y"] ?? row.return_2y ?? "-" },
       { key: "3y", label: "3Y", render: (row) => row?.trailing?.["3y"] ?? row.return_3y ?? "-" },
