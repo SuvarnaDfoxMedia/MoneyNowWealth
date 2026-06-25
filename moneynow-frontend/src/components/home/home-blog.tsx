@@ -18,7 +18,7 @@ const HomeBlog: React.FC<HomeBlogProps> = ({ title, subtitle }) => {
     {
       withCredentials: false,
       forceFreeOnly: false,
-      visibilityField: "isHomeFeatured",
+      visibilityField: "show_on_home",
     },
   );
 

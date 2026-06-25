@@ -332,14 +332,19 @@ export const getLatestPublishedArticles = async (
       req.user?.id,
     );
 
+    const matchStage: any = {
+      is_deleted: false,
+      is_active: 1,
+      status: "published",
+      publish_date: { $lte: now },
+    };
+
+    if (req.query.show_on_home === "true") matchStage.show_on_home = true;
+    if (req.query.show_on_dashboard === "true") matchStage.show_on_dashboard = true;
+
     const articles = await Article.aggregate([
       {
-        $match: {
-          is_deleted: false,
-          is_active: 1,
-          status: "published",
-          publish_date: { $lte: now },
-        },
+        $match: matchStage,
       },
       {
         $lookup: {
@@ -385,6 +390,8 @@ export const getLatestPublishedArticles = async (
           introduction: 1,
           created_at: 1,
           publish_date: 1,
+          show_on_home: 1,
+          show_on_dashboard: 1,
           topic: {
             _id: "$topic._id",
             title: "$topic.title",

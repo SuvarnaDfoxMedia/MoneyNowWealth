@@ -17,9 +17,10 @@ export interface CardData {
   article_type?: string;
   plan_type?: string;
   is_premium?: boolean;
-  premium?: boolean;
   isHomeFeatured?: boolean;
   isDashboardFeatured?: boolean;
+  show_on_home?: boolean;
+  show_on_dashboard?: boolean;
 }
 
 const IMAGE_BASE = API.defaults.baseURL + "/uploads";
@@ -30,7 +31,7 @@ export const useFetchCards = (
   options?: {
     withCredentials?: boolean;
     forceFreeOnly?: boolean;
-    visibilityField?: "isHomeFeatured" | "isDashboardFeatured";
+    visibilityField?: "isHomeFeatured" | "isDashboardFeatured" | "show_on_home" | "show_on_dashboard";
   },
 ) => {
   const [cards, setCards] = useState<CardData[]>([]);
@@ -52,8 +53,12 @@ export const useFetchCards = (
       setError(null);
 
       try {
+        const queryParams: any = { limit };
+        if (visibilityField === "show_on_home") queryParams.show_on_home = "true";
+        if (visibilityField === "show_on_dashboard") queryParams.show_on_dashboard = "true";
+
         const { data } = await API.get(endpoint, {
-          params: { limit },
+          params: queryParams,
           withCredentials,
         });
 
@@ -169,6 +174,8 @@ export const useFetchCards = (
             premium: isPremium,
             isHomeFeatured: Boolean(article?.isHomeFeatured),
             isDashboardFeatured: Boolean(article?.isDashboardFeatured),
+            show_on_home: Boolean(article?.show_on_home),
+            show_on_dashboard: Boolean(article?.show_on_dashboard),
           };
         });
 

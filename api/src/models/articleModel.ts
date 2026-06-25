@@ -43,6 +43,8 @@ export interface IArticle extends Document {
   author?: string;
   is_active: number;
   is_deleted: boolean;
+  show_on_home: boolean;
+  show_on_dashboard: boolean;
 
   publish_date?: Date;
 
@@ -192,6 +194,16 @@ const articleSchema = new Schema<IArticle>(
       default: false,
     },
 
+    show_on_home: {
+      type: Boolean,
+      default: false,
+    },
+
+    show_on_dashboard: {
+      type: Boolean,
+      default: false,
+    },
+
     // Track if email notification has been sent for this article
     // IMPORTANT: Prevents duplicate emails on restart/retry
     is_email_sent: {
@@ -236,6 +248,8 @@ articleSchema.plugin(capitalizePlugin, {
     // Boolean fields
     "is_deleted",
     "is_email_sent",
+    "show_on_home",
+    "show_on_dashboard",
 
     // Date fields
     "publish_date",

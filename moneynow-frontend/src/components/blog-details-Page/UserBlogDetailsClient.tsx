@@ -280,23 +280,34 @@ const UserBlogDetailsClient = ({
           <div dangerouslySetInnerHTML={sanitizeAndNormalizeHtml(parts[0])} />
           
           {/* Comparison CTA Box */}
-          <div className="bg-[#FFF9F2] border border-[#FFE7CC] rounded-xl p-5 md:p-6 flex flex-col md:flex-row items-center justify-between gap-5 my-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center text-2xl shrink-0">
-                🧮
-              </div>
-              <div>
-                <h4 className="text-[17px] font-bold text-[#07112C] font-poppins">Want to compare debt funds?</h4>
-                <p className="text-[13px] text-[#5E6B85] mt-0.5">Use our free tools to analyse and compare funds better.</p>
-              </div>
-            </div>
-            <Link
-              href="/mutual-funds"
-              className="bg-[#0A4A87] hover:bg-[#083B6C] text-white px-5 py-3 rounded-lg text-[13px] font-bold transition-all shrink-0 font-poppins"
-            >
-              Open Fund Comparison Tools →
-            </Link>
-          </div>
+  <div className="bg-[#FFF9F2] border border-[#FFE7CC] rounded-xl px-6 py-6 md:px-8 md:py-6 flex flex-col md:flex-row items-center gap-6 md:gap-8 my-6">
+  <div className="shrink-0 flex items-center justify-center">
+    <Image
+      src="/images/want-to-compare-fund.png"
+      alt="Compare Funds"
+      width={160}
+      height={160}
+      className="object-contain w-[120px] md:w-[150px] h-auto"
+    />
+  </div>
+
+  <div className="flex flex-col items-start w-full -mt-5 md:-mt-7">
+    <h4 className="text-[18px] md:text-[20px] font-bold text-[#07112C] font-poppins leading-tight">
+      Want to compare debt funds?
+    </h4>
+
+    <p className="text-[14px] md:text-[15px] text-[#5E6B85] mt-2 mb-5">
+      Use our free tools to analyse and compare funds better.
+    </p>
+
+    <Link
+      href="/mutual-funds"
+      className="inline-block bg-[#0A4A87] hover:bg-[#083B6C] text-white px-6 py-3 rounded-lg text-[14px] font-bold transition-all font-poppins mb-1"
+    >
+      Open Fund Comparison Tools →
+    </Link>
+  </div>
+</div>
 
           <div dangerouslySetInnerHTML={sanitizeAndNormalizeHtml("<table" + parts[1])} />
         </div>
@@ -337,7 +348,7 @@ const UserBlogDetailsClient = ({
             </div>
 
             {/* Title */}
-            <h1 className="text-[24px] md:text-[34px] font-bold text-[#07112C] leading-snug md:leading-normal mb-4 font-poppins">
+            <h1 className="text-[24px] md:text-[30px] font-bold text-[#07112C] leading-snug md:leading-normal mb-4 font-poppins">
               {article.title}
             </h1>
 
@@ -349,14 +360,14 @@ const UserBlogDetailsClient = ({
             )}
 
             {/* Author details & share icons */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#EDF1F7] mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4  border-b border-[#EDF1F7] mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#07112C] text-white flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-full bg-[#001D3A] text-white flex items-center justify-center shrink-0">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                 </div>
                 <div className="font-poppins flex items-center gap-2">
                   <div className="flex items-center gap-1">
-                    <span className="text-[15px] font-bold text-[#23345A]">{article.author || "Team Money Now"}</span>
+                    <span className="text-[15px] font-bold text-[#0F172A]">{article.author || "Team Money Now"}</span>
                     <span className="w-4 h-4 bg-[#0A4A87] rounded-full flex items-center justify-center text-white text-[9px] font-extrabold" title="Verified Author">✓</span>
                   </div>
                   <span className="text-[#7A88A7] text-[15px]">|</span>
@@ -366,7 +377,7 @@ const UserBlogDetailsClient = ({
 
               {/* Share links */}
               <div className="flex items-center gap-2 font-poppins">
-                <span className="text-[13px] font-bold text-[#7A88A7] mr-1">Share:</span>
+                <span className="text-[13px] font-bold text-[#6B7280] mr-1">Share:</span>
                 <a
                   href={`https://www.facebook.com/sharer/sharer.php?u=${canonicalUrl}`}
                   target="_blank"
@@ -514,8 +525,8 @@ const UserBlogDetailsClient = ({
 
               {/* In This Article block */}
               {article.sections && article.sections.length > 0 && (
-                <div className="border border-[#DEE5F1] rounded-xl p-5 md:p-6 bg-[#FCFDFF] my-8 font-poppins">
-                  <h4 className="text-[17px] font-bold text-[#043F79] mb-4">In This Article</h4>
+                <div className="border border-[#DEE5F1] rounded-xl p-5 md:p-6 bg-[#FCFDFF] my-6 font-poppins">
+                  <h4 className="text-[17px] font-bold text-[#043F79] mb-4 !mt-0">In This Article</h4>
                   <div className="flex flex-wrap gap-2.5">
                     {article.introduction && (
                       <button
@@ -583,7 +594,7 @@ const UserBlogDetailsClient = ({
         <div className="lg:col-span-3 space-y-6 lg:sticky lg:top-24">
           
           {/* Reading Progress Card */}
-          <div className="bg-white border border-[#E7ECF5] rounded-[16px] p-5 shadow-[0_4px_20px_rgba(7,17,44,0.03)] font-poppins">
+          <div className="bg-white border border-[#E7ECF5] rounded-xl p-5 shadow-[0_4px_20px_rgba(7,17,44,0.03)] font-poppins">
             <h3 className="text-[16px] font-bold text-[#07112C] mb-4">Reading Progress</h3>
             
             <div className="flex items-center justify-between text-[14px] font-bold text-[#0A4A87] mb-2">
@@ -604,9 +615,15 @@ const UserBlogDetailsClient = ({
           </div>
 
           {/* Go Premium Card */}
-          <div className="bg-white border border-[#E7ECF5] rounded-[16px] p-5 text-center shadow-[0_4px_20px_rgba(7,17,44,0.03)] font-poppins flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full bg-[#FFF8EE] flex items-center justify-center mb-4 text-[22px]">
-              👑
+          <div className="bg-white border border-[#E7ECF5] rounded-xl p-5 text-center shadow-[0_4px_20px_rgba(7,17,44,0.03)] font-poppins flex flex-col items-center">
+            <div className="w-12 h-12 shrink-0 flex items-center justify-center mb-4">
+              <Image 
+                src="/images/premium-icon.png" 
+                alt="Go Premium" 
+                width={42} 
+                height={42} 
+                className="object-contain"
+              />
             </div>
             
             <h3 className="text-[18px] font-bold text-[#07112C] mb-2">Go Premium</h3>
@@ -616,14 +633,14 @@ const UserBlogDetailsClient = ({
 
             <Link 
               href="/user/dashboard/subscription" 
-              className="w-full py-3 bg-[#0A4A87] hover:bg-[#083B6C] text-white rounded-[10px] text-[14px] font-bold transition-all inline-block text-center shadow-[0_2px_4px_rgba(10,74,135,0.1)]"
+              className="w-full py-3 bg-[#0A4A87] hover:bg-[#083B6C] text-white rounded-[6px] text-[14px] font-bold transition-all inline-block text-center shadow-[0_2px_4px_rgba(10,74,135,0.1)]"
             >
               Upgrade Now
             </Link>
           </div>
 
           {/* Promotion Banner */}
-          <div className="relative w-full rounded-[16px] overflow-hidden border border-[#E7ECF5] shadow-[0_4px_20px_rgba(7,17,44,0.03)] bg-white">
+          <div className="relative w-full rounded-xl overflow-hidden border border-[#E7ECF5] shadow-[0_4px_20px_rgba(7,17,44,0.03)] bg-white">
             <Image 
               src="/images/blog-listing-right-banner2.png" 
               alt="MoneyNow Mutual Funds Banner" 

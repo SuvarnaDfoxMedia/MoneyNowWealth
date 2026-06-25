@@ -18,7 +18,7 @@ export default function RecommendedForYou() {
   const { cards, loading, error } = useFetchCards(
     "/api/article/published/latest",
     4,
-    { visibilityField: "isDashboardFeatured" },
+    { visibilityField: "show_on_dashboard" },
   );
 
   const leftCard = cards[0];

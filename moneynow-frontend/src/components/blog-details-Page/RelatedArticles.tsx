@@ -98,7 +98,7 @@ const RelatedArticles = ({ relatedArticles }: RelatedArticlesProps) => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <h4 className="text-[14px] font-bold text-[#07112C] leading-snug line-clamp-2 mb-2 hover:text-[#0A4A87] transition-all">
+                <h4 className="text-[16px] font-semibold leading-snug line-clamp-1 mb-2 hover:text-[#0A4A87] transition-all">
                   <Link href={`/user/blog/${art.slug}`}>
                     {art.title}
                   </Link>
@@ -108,7 +108,7 @@ const RelatedArticles = ({ relatedArticles }: RelatedArticlesProps) => {
                   {art.author || "Team Money Now"} &nbsp;|&nbsp; {dateStr}
                 </p>
 
-                <Link href={`/user/blog/${art.slug}`} className="text-[#0A4A87] hover:text-[#083B6C] text-[12px] font-bold inline-flex items-center gap-0.5">
+                <Link href={`/user/blog/${art.slug}`} className="text-[#0A4A87] hover:text-[#083B6C] text-[14px] font-bold inline-flex items-center gap-0.5">
                   <span>Read More</span>
                   <span>→</span>
                 </Link>

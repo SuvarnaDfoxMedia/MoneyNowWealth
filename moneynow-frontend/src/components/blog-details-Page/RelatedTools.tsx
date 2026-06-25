@@ -40,8 +40,8 @@ const RelatedTools = () => {
               />
             </div>
             <div className="flex flex-col justify-center flex-1 pr-2">
-              <h4 className="text-[16px] font-bold text-[#07112C] mb-1.5">{t.title}</h4>
-              <p className="text-[13px] text-[#4A5B83] leading-snug mb-2">{t.description}</p>
+              <h4 className="text-[15px] font-semibold mb-1.5 leading-[22px]">{t.title}</h4>
+              <p className="text-[13px] text-[#4A5B83] leading-snug mb-2 line-clamp-2">{t.description}</p>
               <Link href={t.href} className="text-[#0A4A87] hover:text-[#083B6C] text-[13px] font-bold inline-flex items-center gap-1">
                 <span>Calculate Now</span>
                 <span>→</span>
