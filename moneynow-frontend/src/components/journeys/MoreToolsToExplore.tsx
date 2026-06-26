@@ -78,10 +78,10 @@ export default function MoreToolsToExplore() {
 <section className="bg-gradient-to-b from-[#F8F8F8] to-[#ffffff] py-14 mt-[40px]">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
         <div className="mx-auto max-w-full text-center">
-          <h2 className="text-[40px] font-semibold tracking-[-0.03em]">
+          <h2 className="text-[28px] mb-3 md:text-[38px] font-semibold tracking-[-0.03em] leading-tight md:leading-normal">
             More Tools To Explore
           </h2>
-          <p className="mt-4 text-[18px] leading-8">
+          <p className=" md:mt-2 text-[16px] md:text-[18px] leading-relaxed md:leading-8">
             Use these simple tools to look at your money from a few different
             angles
           </p>

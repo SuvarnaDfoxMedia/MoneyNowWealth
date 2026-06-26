@@ -99,7 +99,7 @@ function AboutHowWeHelpYou() {
       >
         <span
           className={`
-            absolute right-6 top-4 text-[48px] font-semibold leading-none transition-colors
+            absolute right-6 top-4 text-[36px] md:text-[48px] font-semibold leading-none transition-colors
             ${isOpen ? "text-[#043F79]" : "text-[rgba(255,255,255,0.12)]"}
             group-hover:text-[#043F79]
           `}
@@ -130,7 +130,7 @@ function AboutHowWeHelpYou() {
 
         <h3
           className={`
-            mb-4 text-[20px] font-semibold leading-[28px] group-hover:text-black
+            mb-4 text-[18px] md:text-[20px] font-semibold leading-[26px] md:leading-[28px] group-hover:text-black
             ${isOpen ? "text-black" : ""}
           `}
         >
@@ -139,7 +139,7 @@ function AboutHowWeHelpYou() {
 
         <p
           className={`
-            overflow-hidden text-[16px] leading-[28px]
+            overflow-hidden text-[15px] md:text-[16px] leading-[24px] md:leading-[28px]
             transition-all duration-300 group-hover:text-gray-700
             ${isOpen ? "text-gray-700" : "text-[#ffffff]"}
             ${isOpen ? "mb-4" : "mb-1"}
@@ -156,7 +156,7 @@ function AboutHowWeHelpYou() {
             toggleCard(index);
           }}
           className={`
-            mt-auto self-start rounded-[6px] px-4 py-2 text-[14px] transition
+            mt-auto self-start rounded-[6px] px-4 py-2 text-[14px] md:text-[16px] transition
             ${isOpen ? "bg-[#0d3b66] text-white" : "bg-white text-[#043F79]"}
             group-hover:bg-[#0d3b66] group-hover:text-white
           `}
@@ -173,7 +173,7 @@ function AboutHowWeHelpYou() {
         className="bg-[#F8F8F8] py-[60px]"
         onClick={() => setExpanded(null)}
       >
-        <div ref={cardsRef} className="max-w-7xl mx-auto">
+        <div ref={cardsRef} className="max-w-7xl mx-auto px-4">
           <h2 className="mb-12 text-center text-[28px] font-semibold md:text-[36px]">
             How We Help You
           </h2>
@@ -195,9 +195,9 @@ function AboutHowWeHelpYou() {
       </section>
 
       <section className=" pt-[60px]">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="rounded-[12px] px-6 py-[46px] text-center shadow-[0_6px_20px_rgba(4,63,121,0.12)] md:px-12 md:py-10">
-            <p className="mx-auto max-w-5xl text-[18px] leading-[36px] font-medium md:text-[20px] mb-[40px]">
+            <p className="mx-auto max-w-5xl text-[16px] md:text-[20px] leading-[28px] md:leading-[36px] font-medium mb-[40px]">
               Moneynow is built on two decades of working with real families,
               real goals, and real market cycles. We combine that experience
               with a simple idea: make it easier for people to organise their
@@ -206,7 +206,7 @@ function AboutHowWeHelpYou() {
             </p>
 
             <button
-              className=" inline-flex py-[14px] items-center justify-center rounded-full bg-[#0B4A88] px-[35px] lg:px-[65px] text-[18px] font-medium text-[#ffffff] transition hover:bg-[#043F79]"
+              className=" inline-flex py-[14px] items-center justify-center rounded-full bg-[#0B4A88] px-[35px] lg:px-[65px] text-[16px] lg:text-[18px] font-medium text-[#ffffff] transition hover:bg-[#043F79]"
               type="button"
             >
               Register for free →

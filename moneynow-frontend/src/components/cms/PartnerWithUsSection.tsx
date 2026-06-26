@@ -14,7 +14,7 @@ const PartnerWithUsSection = () => {
   return (
     <section className="font-poppins bg-[#F8F8F8] pt-[60px]">
       <div className="mx-auto max-w-7xl px-4">
-        <p className="mx-auto max-w-5xl text-center text-[21px] font-medium leading-[38px]">
+        <p className="mx-auto max-w-5xl text-center text-[16px] md:text-[21px] font-medium leading-[28px] md:leading-[38px]">
           A Digital Mutual Fund Platform With Human Support - Designed For
           Distributors Who Want To Focus More On Clients And Less On Building
           Technology
@@ -23,7 +23,7 @@ const PartnerWithUsSection = () => {
         <div className="py-[60px] grid gap-6 lg:grid-cols-12 lg:items-start">
           {/* LEFT SIDE */}
           <div className="lg:col-span-5">
-            <h2 className="mb-[30px] text-[24px] md:text-[32px] font-semibold leading-tight ">
+            <h2 className="mb-[30px] text-center lg:text-left text-[24px] md:text-[32px] font-semibold leading-tight ">
               Who Can Partner With Us
             </h2>
 
@@ -38,14 +38,14 @@ const PartnerWithUsSection = () => {
                       height={44}
                       className=" shrink-0 self-start"
                     />
-                    <span className="text-[18] mb-0 leading-[32px]">
+                    <span className="text-[16px] md:text-[18px] mb-0 leading-[26px] md:leading-[32px]">
                       {point}
                     </span>
                   </li>
                 ))}
               </ul>
 
-              <p className="mt-8 text-[15px] leading-[28px] text-white">
+              <p className="mt-8 text-[14px] md:text-[15px] leading-[24px] md:leading-[28px] text-white">
                 All partnerships are structured within applicable SEBI and AMFI
                 regulations for mutual fund distributors.
               </p>

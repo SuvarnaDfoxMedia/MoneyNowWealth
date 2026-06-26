@@ -291,10 +291,10 @@ export default function OneCroreJourneyPage() {
             sizes="100vw"
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(23,56,74,0.93)_0%,rgba(23,56,74,0.82)_36%,rgba(23,56,74,0.40)_70%,rgba(23,56,74,0.12)_100%)]" />         <div className="relative z-10 px-5 py-8 md:px-8 md:py-10">
-            <h1 className="text-[34px] font-semibold leading-[1.18] tracking-[-0.03em] text-white md:text-[50px] mb-[15px]">
+            <h1 className="text-[28px] md:text-[50px] font-semibold leading-tight md:leading-[1.18] tracking-[-0.03em] text-white mb-[15px]">
             Plan your path to ₹1 Crore with clarity
             </h1>
-            <p className="md:leading-[28px] max-w-[840px] text-[16px] leading-7 text-[#ffffff] md:text-[18px]">
+            <p className="text-[15px] md:text-[18px] leading-relaxed md:leading-[28px] max-w-[840px] text-[#ffffff]">
             Start with an amount you’re comfortable investing each month and see how disciplined SIPs can grow over time towards your milestone without chasing the markets.
             </p>
           </div>

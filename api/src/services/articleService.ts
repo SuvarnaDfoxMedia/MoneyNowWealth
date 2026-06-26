@@ -14,6 +14,7 @@ export const getArticles = async (query: any) => {
     sortOrder,
     publishedOnly,
     allowedAccessTypes,
+    cluster_id,
   } = query || {};
 
   // Pagination
@@ -63,6 +64,10 @@ export const getArticles = async (query: any) => {
       topicFilter.access_type = { $in: allowedAccessTypes };
     }
 
+    if (cluster_id) {
+      topicFilter.cluster_id = cluster_id;
+    }
+
     const matchedTopics = await Topic.find(topicFilter).select("_id").lean();
     const topicIds = matchedTopics.map((topic) => topic._id);
 
@@ -81,6 +86,23 @@ export const getArticles = async (query: any) => {
     filter.is_active = 1;
     filter.publish_date = { $lte: now };
     filter.topic_id = topic_id || { $in: topicIds };
+  } else {
+    if (cluster_id && !topic_id) {
+      const matchedTopics = await Topic.find({ cluster_id }).select("_id").lean();
+      const topicIds = matchedTopics.map((topic) => topic._id);
+      
+      if (!topicIds.length) {
+        return {
+          success: true,
+          articles: [],
+          total: 0,
+          currentPage: pageNum,
+          totalPages: 0,
+          limit: perPage,
+        };
+      }
+      filter.topic_id = { $in: topicIds };
+    }
   }
 
   const [articles, total] = await Promise.all([

@@ -32,7 +32,7 @@ function PartnersWhatYouGet() {
   return (
     <section className="font-poppins py-[60px]">
       <div className="mx-auto max-w-7xl px-4">
-        <h2 className="text-center text-[34px] font-semibold leading-tight text-[#111111] md:text-[42px]">
+        <h2 className="text-center text-[28px] md:text-[42px] font-semibold leading-tight text-[#111111]">
           What You Get
         </h2>
 
@@ -52,11 +52,11 @@ function PartnersWhatYouGet() {
                 />
               </div>
 
-              <h3 className=" text-[20px] font-semibold leading-[30px]">
+              <h3 className=" text-[18px] md:text-[20px] font-semibold leading-[26px] md:leading-[30px]">
                 {title}
               </h3>
 
-              <p className="mt-5 text-[16px] leading-[28px] ">
+              <p className="mt-5 text-[15px] md:text-[16px] leading-[24px] md:leading-[28px] ">
                 {description}
               </p>
             </div>

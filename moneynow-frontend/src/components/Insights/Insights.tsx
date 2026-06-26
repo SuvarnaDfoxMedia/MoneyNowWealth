@@ -87,13 +87,19 @@ export default function Insights() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // When tag changes, reset page
+  // When tag or tab changes, reset page
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTag]);
+  }, [activeTag, activeTab]);
 
-  // Build search term
-  const effectiveSearch = debouncedSearch || (activeTag !== "All" ? activeTag : "");
+  // Find cluster ID if a tag is selected
+  const activeClusterId =
+    activeTag !== "All"
+      ? clusters.find((c) => c.title === activeTag)?._id
+      : undefined;
+
+  // Build search term (only use the text search query)
+  const effectiveSearch = debouncedSearch;
 
   // Fetch articles from API
   const { articles, loading, error, totalPages, getImageUrl } = useArticles({
@@ -101,6 +107,8 @@ export default function Insights() {
     limit: 9,
     status: "published",
     search: effectiveSearch,
+    access_type: activeTab === "Premium" ? "premium" : undefined,
+    cluster_id: activeClusterId,
   });
 
   return (

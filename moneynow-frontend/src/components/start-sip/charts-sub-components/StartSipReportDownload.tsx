@@ -453,8 +453,19 @@ export default function StartSipReportDownload({
           const barImg = barCanvas.toDataURL("image/png");
           const ratio = barCanvas.height / barCanvas.width;
           const availH = pageHeight - 80 - 70; // top zone + footer zone
-          const chartH = Math.min(PDF_BAR_MAX_HEIGHT, availH, contentWidth * ratio);
-          doc.addImage(barImg, "PNG", marginX, 80, contentWidth, chartH);
+          
+          let finalWidth = contentWidth;
+          let finalHeight = finalWidth * ratio;
+          
+          const maxAllowedHeight = Math.min(PDF_BAR_MAX_HEIGHT, availH);
+          if (finalHeight > maxAllowedHeight) {
+            finalHeight = maxAllowedHeight;
+            finalWidth = finalHeight / ratio;
+          }
+          
+          const startX = marginX + (contentWidth - finalWidth) / 2;
+          
+          doc.addImage(barImg, "PNG", startX, 80, finalWidth, finalHeight);
         } catch { /* skip */ }
       }
 

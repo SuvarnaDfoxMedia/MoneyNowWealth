@@ -114,7 +114,7 @@ const FAQPage = ({ data }: { data: any }) => {
       </div>
 
       {/* CONTENT */}
-      <div className="max-w-7xl mx-auto  mb-[60px] mt-10">
+      <div className="max-w-7xl mx-auto px-4 mb-[60px] mt-10">
         <div className="flex flex-col md:flex-row gap-10 items-start">
           {/* LEFT TOC */}
           <aside className="w-full md:w-80 md:sticky  md:top-75">

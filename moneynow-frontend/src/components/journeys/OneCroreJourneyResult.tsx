@@ -89,7 +89,7 @@ export default function OneCroreJourneyResult({
     if (!activeResult?.sip_amount) return null;
 
     return (
-      <p className="text-[16px] text-[#000000] leading-7">
+      <p className="text-[14px] md:text-[16px] text-[#000000] leading-6 md:leading-7">
         At an assumed return of {form.expected_return}% over {form.years} years,
         you may need to invest about Rs.{" "}
         {Number(activeResult.sip_amount).toLocaleString("en-IN")} per month to
@@ -103,7 +103,7 @@ export default function OneCroreJourneyResult({
     if (!activeResult?.invested_amount) return null;
 
     return (
-      <p className="text-[14px] text-[#000000] leading-6">
+      <p className="text-[13px] md:text-[14px] text-[#000000] leading-5 md:leading-6">
         Total invested over this period: Rs.{" "}
         {Number(activeResult.invested_amount).toLocaleString("en-IN")}. Potential
         growth over your invested amount: Rs.{" "}
@@ -115,7 +115,7 @@ export default function OneCroreJourneyResult({
   }, [activeResult?.growth_amount, activeResult?.invested_amount, activeResult?.target_wealth]);
 
   const preResultDetailSentence = (
-    <p className="text-[14px] text-[#000000] leading-6">
+    <p className="text-[13px] md:text-[14px] text-[#000000] leading-5 md:leading-6">
       Total invested over this period: Rs.{" "}
       {Number(fallbackResult.invested_amount).toLocaleString("en-IN")}.
       Potential growth over your invested amount: Rs.{" "}
@@ -130,11 +130,11 @@ export default function OneCroreJourneyResult({
       <section className="rounded-[8px] bg-[#ffffff] p-4 shadow-[0_10px_20px_rgba(15,23,42,0.12)] md:p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h2 className="text-[24px] font-semibold leading-[60px] text-[#000000]">
+            <h2 className="text-[20px] md:text-[24px] font-semibold leading-tight md:leading-[60px] text-[#000000]">
               Your SIP journey, in simple numbers
             </h2>
             {!hasCalculated ? (
-              <p className="mt-1 text-[16px] leading-[26px] mb-[15px]">
+              <p className="mt-2 md:mt-1 text-[14px] md:text-[16px] leading-relaxed md:leading-[26px] mb-[15px]">
                 Enter your assumptions and calculate the journey to see the
                 required SIP, invested amount, growth, and future value.
               </p>
@@ -177,10 +177,10 @@ export default function OneCroreJourneyResult({
                   key={item.label}
                   className="rounded-[14px] bg-[linear-gradient(90deg,#001D3A_0%,#043F79_100%)] py-6 px-4 shadow-[0_8px_18px_rgba(11,75,136,0.12)]"
                 >
-                  <p className="text-[13px] font-mediu text-[#ffffff]">
+                  <p className="text-[12px] md:text-[13px] font-medium text-[#ffffff]">
                     {item.label}
                   </p>
-                  <p className="mt-4 text-[#ffffff] text-[20px] font-semibold leading-tight">
+                  <p className="mt-2 md:mt-4 text-[#ffffff] text-[18px] md:text-[20px] font-semibold leading-tight">
                     {item.value}
                   </p>
                 </div>
@@ -240,11 +240,11 @@ export default function OneCroreJourneyResult({
                         className="inline-block h-3 w-3 rounded-full"
                         style={{ backgroundColor: item.color }}
                       />
-                      <p className="text-[14px] font-medium text-[#111111]">
+                      <p className="text-[13px] md:text-[14px] font-medium text-[#111111]">
                         {item.label}
                       </p>
                     </div>
-                    <p className="mt-3 text-[22px] font-semibold text-[#111111]">
+                    <p className="mt-2 md:mt-3 text-[18px] md:text-[22px] font-semibold text-[#111111]">
                       Rs. {Number(item.value).toLocaleString("en-IN")}
                     </p>
                     <p className="mt-1 text-[13px] text-[#4B5563]">

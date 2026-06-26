@@ -24,6 +24,8 @@ export function useArticles(params?: {
   status?: string;
   search?: string;
   topic_id?: string;
+  access_type?: string;
+  cluster_id?: string;
 }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export function useArticles(params?: {
 
   useEffect(() => {
     fetchArticles();
-  }, [params?.page, params?.limit, params?.status, params?.search, params?.topic_id, refreshTick, accessLevel]);
+  }, [params?.page, params?.limit, params?.status, params?.search, params?.topic_id, params?.access_type, params?.cluster_id, refreshTick, accessLevel]);
 
   const fetchArticles = async () => {
     const isInitialLoad = !hasLoadedRef.current;

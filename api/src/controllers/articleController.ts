@@ -32,7 +32,7 @@ export const getArticles = async (req: Request, res: Response) => {
   try {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.max(Number(req.query.limit) || 10, 1);
-    const { status, search, topic_id } = req.query;
+    const { status, search, topic_id, access_type, cluster_id } = req.query;
     const isPublicRequest = !req.params.role;
 
     const sort = { createdAt: -1 }; // latest first
@@ -45,6 +45,8 @@ export const getArticles = async (req: Request, res: Response) => {
       limit,
       sort,
       publishedOnly: isPublicRequest,
+      allowedAccessTypes: access_type ? [access_type] : undefined,
+      cluster_id,
     });
 
     const articles = result.articles || [];

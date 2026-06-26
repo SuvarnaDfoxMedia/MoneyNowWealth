@@ -57,7 +57,7 @@ const AboutUsPage: React.FC = () => {
                       height={28}
                     />
                   </div>
-                  <p className="text-[16px] leading-[26px]">
+                  <p className="text-[14px] md:text-[16px] leading-[22px] md:leading-[26px]">
                     AMFI Registered Mutual
                     <br className="hidden sm:block" /> Fund Distributor
                   </p>
@@ -74,7 +74,7 @@ const AboutUsPage: React.FC = () => {
                       height={28}
                     />
                   </div>
-                  <p className="text-[16px] leading-[26px]">ARN: XXXXXX</p>
+                  <p className="text-[14px] md:text-[16px] leading-[22px] md:leading-[26px]">ARN: XXXXXX</p>
                 </div>
 
                 {/* Item 3 */}
@@ -88,7 +88,7 @@ const AboutUsPage: React.FC = () => {
                       height={28}
                     />
                   </div>
-                  <p className="text-[16px] leading-[26px]">
+                  <p className="text-[14px] md:text-[16px] leading-[22px] md:leading-[26px]">
                     Trusted by 1,000+
                     <br className="hidden sm:block" /> families since 2003
                   </p>
@@ -105,7 +105,7 @@ const AboutUsPage: React.FC = () => {
                       height={28}
                     />
                   </div>
-                  <p className="text-[16px] leading-[26px]">
+                  <p className="text-[14px] md:text-[16px] leading-[22px] md:leading-[26px]">
                     30+ Fund
                     <br className="hidden sm:block" /> Houses
                   </p>
@@ -122,7 +122,7 @@ const AboutUsPage: React.FC = () => {
                       height={28}
                     />
                   </div>
-                  <p className="text-[16px] leading-[26px]">
+                  <p className="text-[14px] md:text-[16px] leading-[22px] md:leading-[26px]">
                     BSE StAR MF
                     <br className="hidden sm:block" /> Member
                   </p>
@@ -133,7 +133,7 @@ const AboutUsPage: React.FC = () => {
         </section>
 
         <section className="w-full mb-[60px]">
-          <div className="max-w-7xl mx-auto ">
+          <div className="max-w-7xl mx-auto px-4">
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
               {/* LEFT */}
               <div>
@@ -185,7 +185,7 @@ const AboutUsPage: React.FC = () => {
         </section>
 
         <section className="w-full bg-[#F8F8F8] py-[60px]">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto px-4">
             {/* Title */}
             <h2 className="text-center text-[28px] md:text-[45px] font-semibold text-black mb-12">
               Founder's Note
@@ -194,7 +194,7 @@ const AboutUsPage: React.FC = () => {
             {/* Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-center">
               {/* LEFT IMAGE (5 columns) */}
-              <div className="relative w-full h-[550px] rounded-[14px] overflow-hidden md:col-span-5">
+              <div className="relative w-full h-[350px] sm:h-[450px] md:h-[550px] rounded-[14px] overflow-hidden md:col-span-5">
                 <Image
                   src="/images/founder-note-img.png"
                   alt="Founder"
@@ -217,7 +217,7 @@ const AboutUsPage: React.FC = () => {
                 </div>
 
                 {/* Paragraphs */}
-                <p className="text-[16px] leading-[30px] mb-4">
+                <p className="text-[15px] md:text-[16px] leading-[26px] md:leading-[30px] mb-4">
                   When I began working with families in the early 2000s, most
                   conversations around money were one-sided. I realised that
                   money was rarely just about numbers — it was about people,
@@ -228,7 +228,7 @@ const AboutUsPage: React.FC = () => {
                   life.
                 </p>
 
-                <p className="text-[16px] leading-[30px] mb-4">
+                <p className="text-[15px] md:text-[16px] leading-[26px] md:leading-[30px] mb-4">
                   Over the years, it has been deeply fulfilling to see clients
                   move from their first salaries to their children's education
                   and eventually to a more secure and comfortable retirement —
@@ -237,7 +237,7 @@ const AboutUsPage: React.FC = () => {
                   consistent with their goals.
                 </p>
 
-                <p className="text-[16px] leading-[30px] mb-4">
+                <p className="text-[15px] md:text-[16px] leading-[26px] md:leading-[30px] mb-4">
                   More than two decades later, that same belief continues to
                   shape everything we do at Moneynow — building relationships
                   with care, staying consistent through changing times, and
@@ -249,7 +249,7 @@ const AboutUsPage: React.FC = () => {
                   <p className="text-[#043F79] font-semibold text-[18px] mb-1">
                     Anagha Raut
                   </p>
-                  <p className="font-medium text-[16px]">Founder & Director</p>
+                  <p className="font-medium text-[14px] md:text-[16px]">Founder & Director</p>
                 </div>
               </div>
             </div>
