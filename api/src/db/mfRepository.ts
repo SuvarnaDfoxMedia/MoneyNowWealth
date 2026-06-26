@@ -34,6 +34,21 @@ function expandDottedPaths(obj: any): any {
   return result;
 }
 
+function stripNullDottedPaths(obj: any): any {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
+  const result: any = {};
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    // Drop dotted-path keys that are null/undefined — $set with a dotted null
+    // key overwrites real nested data. Non-dotted nulls are kept (top-level fields).
+    if (key.includes(".") && (val === null || val === undefined)) {
+      continue;
+    }
+    result[key] = val;
+  }
+  return result;
+}
+
 export class MfRepository {
   static async upsertMainCategory(matchKey: string, data: any, session?: mongoose.ClientSession) {
     const existing = await MfAliasResolver.resolveMainCategory(matchKey);
@@ -57,7 +72,7 @@ export class MfRepository {
       const expanded = expandDottedPaths(data);
       return await MFCategory.create([expanded], { session }).then(res => res[0]);
     }
-    await MFCategory.updateOne({ _id: existing._id }, { $set: data }, { session });
+    await MFCategory.updateOne({ _id: existing._id }, { $set: stripNullDottedPaths(data) }, { session });
     return existing;
   }
 
@@ -72,12 +87,32 @@ export class MfRepository {
 
   static async upsertFund(matchQuery: any, data: any, session?: mongoose.ClientSession) {
     const searchPayload = { ...matchQuery, ...data };
-    const existing = await MfAliasResolver.resolveFund(searchPayload);
+    let existing = await MfAliasResolver.resolveFund(searchPayload);
+
+    // Direct DB fallback to prevent duplicates when alias resolver misses
+    if (!existing && data.scheme_code) {
+      existing = await MFFund.findOne({ scheme_code: data.scheme_code, is_deleted: false }).lean();
+      if (!existing) {
+        existing = await MFFund.findOne({ scheme_code: data.scheme_code, is_deleted: true }).lean();
+      }
+    }
+    if (!existing && data.isin) {
+      existing = await MFFund.findOne({ isin: data.isin, is_deleted: false }).lean();
+      if (!existing) {
+        existing = await MFFund.findOne({ isin: data.isin, is_deleted: true }).lean();
+      }
+    }
+
     if (!existing) {
       const expanded = expandDottedPaths(data);
       return await MFFund.create([expanded], { session }).then(res => res[0]);
     }
-    await MFFund.updateOne({ _id: existing._id }, { $set: data }, { session });
+    const safeData = stripNullDottedPaths(data);
+    if ((existing as any).is_deleted) {
+      safeData.is_deleted = false;
+      safeData.deleted_at = null;
+    }
+    await MFFund.updateOne({ _id: existing._id }, { $set: safeData }, { session });
     return existing;
   }
 
@@ -92,6 +127,17 @@ export class MfRepository {
   }
 
   static async upsertBenchmarkReturn(matchQuery: any, data: any, session?: mongoose.ClientSession) {
+    // Prevent overwriting existing populated returns with all-null/empty returns.
+    const incomingTrailing = data.trailing || {};
+    const hasIncomingData = Object.values(incomingTrailing).some(v => v !== null && v !== undefined);
+    
+    if (!hasIncomingData) {
+      const existing = await MFBenchmarkReturn.findOne(matchQuery).session(session).lean();
+      if (existing) {
+        return existing;
+      }
+    }
+    
     return await MFBenchmarkReturn.findOneAndUpdate(matchQuery, { $set: data }, { upsert: true, new: true, setDefaultsOnInsert: true, session });
   }
 

@@ -202,14 +202,16 @@ export default function ArticleListing() {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({
-      top: rect.bottom + window.scrollY + 6,
-      left: rect.right + window.scrollX - 144,
+      top: rect.bottom + 6,
+      left: rect.right - 144,
     });
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
 
   /* ------------------- Close dropdown on outside click ------------------- */
   useEffect(() => {
+    if (!openDropdownId) return;
+
     const handleClickOutside = (e: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -218,9 +220,15 @@ export default function ArticleListing() {
         setOpenDropdownId(null);
       }
     };
+    const handleScroll = () => setOpenDropdownId(null);
+
     document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [openDropdownId]);
 
   /* ------------------- Toggle Status ------------------- */
   const handleToggleStatus = async (id: string, currentStatus: number) => {

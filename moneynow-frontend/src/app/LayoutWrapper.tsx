@@ -21,18 +21,13 @@ export default function LayoutWrapper({
   const isAuthPage = pathname.startsWith("/auth");
   const isDashboardRoute = pathname.startsWith("/dashboard");
   const isUserDashboard = pathname.startsWith("/user/dashboard");
-  const isUserInsights = pathname.startsWith("/user/insights");
-  const isUserBlog = pathname.startsWith("/user/blog");
   const isBlogPageOrCluster =
     pathname.startsWith("/blog") ||
     pathname.startsWith("/cluster") ||
+    pathname.startsWith("/user/blog") ||
     pathname.startsWith("/user/cluster");
   const shouldHideGlobalChrome =
-    isAuthPage ||
-    isUserDashboard ||
-    isDashboardRoute ||
-    isUserInsights ||
-    isUserBlog;
+    isAuthPage || isUserDashboard || isDashboardRoute;
 
   return (
     <>

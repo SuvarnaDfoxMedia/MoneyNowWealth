@@ -23,20 +23,25 @@ import {
   markMfApiSchemesReviewed,
   syncMfApiToManualApi,
   resyncAllToManualApi,
+  resumeSyncMfApiApi,
 } from "./api";
 import type { MfApiImportReport, MfApiSyncResult } from "./types";
 
-export const useMfApiDashboard = (role: string, options?: { refetchInterval?: number }) =>
+export const useMfApiDashboard = (
+  role: string,
+  options?: { refetchInterval?: number | false; enabled?: boolean },
+) =>
   useQuery({
     queryKey: [role, "mf-api", "dashboard"],
     queryFn: () => fetchMfApiDashboard(role),
     refetchInterval: options?.refetchInterval,
+    enabled: options?.enabled,
   });
 
 export const useMfApiSchemes = (
   role: string,
   params: { search?: string; page?: number; limit?: number } = {},
-  options?: { refetchInterval?: number },
+  options?: { refetchInterval?: number | false },
 ) =>
   useQuery({
     queryKey: [role, "mf-api", "schemes", params],
@@ -45,8 +50,11 @@ export const useMfApiSchemes = (
     refetchInterval: options?.refetchInterval,
   });
 
-
-export const useMfApiScheme = (role: string, id?: string, options?: { refetchInterval?: number }) =>
+export const useMfApiScheme = (
+  role: string,
+  id?: string,
+  options?: { refetchInterval?: number | false },
+) =>
   useQuery({
     queryKey: [role, "mf-api", "scheme", id],
     queryFn: () => fetchMfApiScheme(role, id || ""),
@@ -57,11 +65,13 @@ export const useMfApiScheme = (role: string, id?: string, options?: { refetchInt
 export const useMfApiSyncLogs = (
   role: string,
   params: { page?: number; limit?: number; search?: string } = {},
+  options?: { refetchInterval?: number | false },
 ) =>
   useQuery({
     queryKey: [role, "mf-api", "sync-logs", params],
     queryFn: () => fetchMfApiSyncLogs(role, params),
     placeholderData: keepPreviousData,
+    refetchInterval: options?.refetchInterval,
   });
 
 export const useMfApiSyncAll = (role: string) => {
@@ -73,7 +83,8 @@ export const useMfApiSyncAll = (role: string) => {
       // Fix C: warn instead of success when the API rate-limited the sync
       if ((response as any)?.status === "rate_limited") {
         toast(
-          response.message || "Sync paused — API rate limited. Queued schemes will resume on next run.",
+          response.message ||
+            "Sync paused — API rate limited. Queued schemes will resume on next run.",
           { icon: "⚠️" },
         );
       } else {
@@ -96,7 +107,8 @@ export const useMfApiSyncActive = (role: string) => {
       // Fix C: warn instead of success when rate-limited
       if ((response as any)?.status === "rate_limited") {
         toast(
-          response.message || "Sync paused — API rate limited. Queued schemes will resume on next run.",
+          response.message ||
+            "Sync paused — API rate limited. Queued schemes will resume on next run.",
           { icon: "⚠️" },
         );
       } else {
@@ -149,15 +161,36 @@ export const useMfApiImport = (role: string) => {
       const parts: string[] = [];
       if (report.validateOnly) {
         parts.push(`Validated ${report.totalRows ?? 0} rows`);
-        if ((report.errors?.length ?? 0) > 0) parts.push(`${report.errors!.length} issues found`);
+        if ((report.errors?.length ?? 0) > 0)
+          parts.push(`${report.errors!.length} issues found`);
+        toast.success(parts.join(" · "));
       } else {
         if (report.inserted) parts.push(`${report.inserted} new`);
         if (report.updated) parts.push(`${report.updated} updated`);
-        if (report.activated) parts.push(`${report.activated} bridged to manual`);
+        if (report.activated)
+          parts.push(`${report.activated} bridged to manual`);
+        if (report.deactivated) parts.push(`${report.deactivated} deactivated`);
         if (report.rejected) parts.push(`${report.rejected} rejected`);
         if (!parts.length) parts.push("Import completed");
+
+        const hasWarnings =
+          (report.syncFailed ?? 0) > 0 || (report.syncPartial ?? 0) > 0;
+        toast.success(parts.join(" · "));
+        if (hasWarnings) {
+          const warnParts: string[] = [];
+          if ((report.syncFailed ?? 0) > 0)
+            warnParts.push(
+              `${report.syncFailed} hard-failed (check scheme error field)`,
+            );
+          if ((report.syncPartial ?? 0) > 0)
+            warnParts.push(
+              `${report.syncPartial} partial — missing AMC or category data (run Sync Active to fix)`,
+            );
+          toast(`⚠️ Bridge issues: ${warnParts.join(" · ")}`, {
+            duration: 8000,
+          });
+        }
       }
-      toast.success(parts.join(" · "));
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => {
@@ -168,7 +201,8 @@ export const useMfApiImport = (role: string) => {
 
 export const useMfApiExport = (role: string) =>
   useMutation({
-    mutationFn: () => exportMfApiData(role),
+    mutationFn: (params?: { active_only?: boolean }) =>
+      exportMfApiData(role, params),
     onError: () => {
       toast.error("MF API export failed");
     },
@@ -181,7 +215,6 @@ export const useMfApiToggleActive = (role: string) => {
       toggleMfApiSchemeActive(role, id, is_active),
     onSuccess: (_, { id, is_active }) => {
       toast.success(`Scheme ${is_active ? "activated" : "deactivated"}`);
-      // Immediate invalidation
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: () => toast.error("Failed to update scheme"),
@@ -194,7 +227,9 @@ export const useMfApiBulkToggle = (role: string) => {
     mutationFn: ({ ids, is_active }: { ids: string[]; is_active: boolean }) =>
       bulkToggleMfApiSchemes(role, ids, is_active),
     onSuccess: (_, { ids, is_active }) => {
-      toast.success(`${ids.length} schemes ${is_active ? "activated" : "deactivated"}`);
+      toast.success(
+        `${ids.length} schemes ${is_active ? "activated" : "deactivated"}`,
+      );
       // Immediate invalidation
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
@@ -218,14 +253,16 @@ export const useMfApiMarkReviewed = (role: string) => {
 export const useMfApiTopHoldings = (role: string, id: string) =>
   useQuery({
     queryKey: [role, "mf-api", "schemes", id, "top-holdings"],
-    queryFn: () => getMfApiTopHoldingsApi(role, id).then((r) => (r as any)?.data),
+    queryFn: () =>
+      getMfApiTopHoldingsApi(role, id).then((r) => (r as any)?.data),
     enabled: !!id,
   });
 
 export const useMfApiImportTopHoldings = (role: string, id: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Record<string, unknown>) => importMfApiTopHoldingsApi(role, id, data),
+    mutationFn: (data: Record<string, unknown>) =>
+      importMfApiTopHoldingsApi(role, id, data),
     onSuccess: () => {
       toast.success("Top holdings imported successfully");
       void queryClient.invalidateQueries({
@@ -238,10 +275,15 @@ export const useMfApiImportTopHoldings = (role: string, id: string) => {
 
 // ─── NAV History ────────────────────────────────────────────────────────────
 
-export const useMfApiNavHistory = (role: string, id: string, days: number = 365) =>
+export const useMfApiNavHistory = (
+  role: string,
+  id: string,
+  days: number = 365,
+) =>
   useQuery({
     queryKey: [role, "mf-api", "schemes", id, "nav-history", days],
-    queryFn: () => getMfApiNavHistoryApi(role, id, days).then((r) => (r as any)?.data ?? []),
+    queryFn: () =>
+      getMfApiNavHistoryApi(role, id, days).then((r) => (r as any)?.data ?? []),
     enabled: !!id,
   });
 
@@ -250,13 +292,19 @@ export const useMfApiSyncToManual = (role: string) => {
   return useMutation({
     mutationFn: (id: string) => syncMfApiToManualApi(role, id),
     onSuccess: (response: any) => {
-      const msg = response?.data?.message || response?.message || "Manual fund sync complete";
+      const msg =
+        response?.data?.message ||
+        response?.message ||
+        "Manual fund sync complete";
       toast.success(msg);
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
-      void queryClient.invalidateQueries({ queryKey: [role, "mf-api", "scheme"] });
+      void queryClient.invalidateQueries({
+        queryKey: [role, "mf-api", "scheme"],
+      });
     },
     onError: (err: any) => {
-      const errMsg = err?.response?.data?.message || err?.message || "Bridge sync failed";
+      const errMsg =
+        err?.response?.data?.message || err?.message || "Bridge sync failed";
       toast.error(errMsg);
     },
   });
@@ -268,11 +316,27 @@ export const useMfApiResyncToManual = (role: string) => {
     mutationFn: () => resyncAllToManualApi(role),
     onSuccess: (response: any) => {
       const total = response?.data?.total ?? response?.total ?? 0;
-      toast.success(`Re-sync started for ${total} active schemes → manual module`);
+      toast.success(`Manual reconciliation started for ${total} schemes`);
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || "Re-sync failed");
+    },
+  });
+};
+
+export const useMfApiSyncResume = (role: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => resumeSyncMfApiApi(role),
+    onSuccess: (response: any) => {
+      const msg =
+        response?.data?.message || response?.message || "Resume sync started";
+      toast.success(msg);
+      void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || "Resume sync failed");
     },
   });
 };

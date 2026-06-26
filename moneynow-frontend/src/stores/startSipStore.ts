@@ -284,13 +284,13 @@ export function buildStartSipChartData(
   if (!result) return null;
 
   // Determine years
-  let years = Math.max(1, Number(values.years || values.lumpsum_period || (values as any).stepup_years || values.loan_tenure || result.years || 1));
+  let years = Math.max(1, Number(values.years || values.lumpsum_period || values.stepup_years || values.loan_tenure || result.years || 1));
   if (activeCalculatorId === "children-education-planner" && values.children && values.children.length > 0) {
     years = Math.max(...values.children.map((c: any) => Math.max(Number(c.educationAge - c.currentAge) || 1, 1)), 1);
   } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
     years = Math.max(
       1,
-      Number(result.years || (values as any).goal_years || values.retirement_age - values.current_age || 1),
+      Number(result.years || values.goal_years || values.retirement_age - values.current_age || 1),
     );
   }
 
@@ -301,7 +301,7 @@ export function buildStartSipChartData(
   if (isLoan) {
     invested = Number(result.invested_amount || values.loan_amount || 0);
   } else if (activeCalculatorId === "children-education-planner") {
-    invested = Number((result as any).total_savings_amount || 0);
+    invested = Number(result.total_savings_amount || 0);
   } else if (activeCalculatorId === "spending-less") {
     invested = Number(result.savings_amount || 0);
   } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
@@ -310,7 +310,7 @@ export function buildStartSipChartData(
         result.target_savings ||
         result.savings_amount ||
         result.growth_savings_amount ||
-        (result as any).total_savings_amount ||
+        result.total_savings_amount ||
         0,
     );
   } else {
@@ -327,9 +327,9 @@ export function buildStartSipChartData(
   if (isLoan) {
     growth = Number(result.total_interest || result.growth_amount || 0);
   } else if (activeCalculatorId === "children-education-planner") {
-    growth = Number(((result as any).total_inflation_adjust_education_amount || 0) - ((result as any).total_savings_amount || 0));
+    growth = Number((result.total_inflation_adjust_education_amount || 0) - (result.total_savings_amount || 0));
   } else if (activeCalculatorId === "spending-less") {
-    growth = Number(((result as any).savings_maturity_amount || 0) - (result.savings_amount || 0));
+    growth = Number((result.savings_maturity_amount || 0) - (result.savings_amount || 0));
   } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
     const target = Number(result.target_amount || result.target_wealth || result.dream_amount_inflation || 0);
     growth = Math.max(target - invested, 0);
@@ -346,9 +346,9 @@ export function buildStartSipChartData(
 
   let maturity = 0;
   if (activeCalculatorId === "children-education-planner") {
-    maturity = Number((result as any).total_inflation_adjust_education_amount || 0);
+    maturity = Number(result.total_inflation_adjust_education_amount || 0);
   } else if (activeCalculatorId === "spending-less") {
-    maturity = Number((result as any).savings_maturity_amount || 0);
+    maturity = Number(result.savings_maturity_amount || 0);
   } else if (activeCalculatorId === "crore-journey" || activeCalculatorId === "goal-setting" || activeCalculatorId === "retirement-planning") {
     maturity = Number(result.target_amount || result.target_wealth || result.dream_amount_inflation || 0);
   } else {
@@ -396,7 +396,7 @@ export function buildStartSipChartData(
 export function buildStartSipResultRows(
   activeCalculatorId: string,
   values: StartSipValues,
-  result: any,
+  result: StartSipResult | null,
 ) {
   if (!result) return [];
 

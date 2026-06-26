@@ -164,14 +164,22 @@ export default function NewsletterListing() {
   };
 
   useEffect(() => {
+    if (!openDropdownId) return;
+
     const handleOutside = (event: MouseEvent) => {
       if (!dropdownRef.current?.contains(event.target as Node)) {
         setOpenDropdownId(null);
       }
     };
+    const handleScroll = () => setOpenDropdownId(null);
+
     window.addEventListener("click", handleOutside);
-    return () => window.removeEventListener("click", handleOutside);
-  }, []);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      window.removeEventListener("click", handleOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [openDropdownId]);
 
   const handleDelete = async () => {
     if (!deleteModalId) return;

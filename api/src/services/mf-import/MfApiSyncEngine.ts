@@ -14,11 +14,13 @@ import { recomputeCategoryAverageReturns, recomputeAllCategoryAverageReturns } f
 import { normalizeDateOnly } from "../navCalculationService";
 import { MfApiTransformer } from "./mfApiTransformer";
 import { MfImportEngine } from "./mfImportEngine";
-import { MfWorkbookValidator } from "./MfWorkbookValidator";
+import { MfApiSyncValidator } from "./MfApiSyncValidator";
+import { MfAliasResolver } from "./MfAliasResolver";
 
 const validateSyncHealth = async (
   scheme: any,
-  fundId: string
+  fundId: string,
+  options: { skipReturnsCheck?: boolean } = {}
 ): Promise<"success" | "partial_success"> => {
   try {
     const fund = await MFFund.findOne({ _id: fundId, is_deleted: false }).lean();
@@ -41,13 +43,15 @@ const validateSyncHealth = async (
     }
 
     // 3. Check Trailing Returns on the Fund itself
-    if (
-      !fund.returns ||
-      !fund.returns.trailing ||
-      Object.keys(fund.returns.trailing).length === 0 ||
-      fund.returns.trailing["1y"] == null
-    ) {
-      return "partial_success";
+    if (!options.skipReturnsCheck) {
+      if (
+        !fund.returns ||
+        !fund.returns.trailing ||
+        Object.keys(fund.returns.trailing).length === 0 ||
+        fund.returns.trailing["1y"] == null
+      ) {
+        return "partial_success";
+      }
     }
 
     return "success";
@@ -57,14 +61,114 @@ const validateSyncHealth = async (
   }
 };
 
+export const buildManualBridgeResetUpdate = () => ({
+  is_active: 0,
+  is_deleted: true,
+  deleted_at: new Date(),
+  data_source: "manual",
+  mf_api_synced_at: null,
+  amc_id: null,
+  category_id: null,
+  benchmark_id: null,
+  benchmark_index_name: "",
+  nav_Current: null,
+  nav_date: null,
+  nav_change: null,
+  nav_change_percentage: null,
+  benchmark_inception_return: null,
+  returns: {},
+  risk_metrics: {},
+  benchmark_returns_trailing: {
+    "1w": null,
+    "1m": null,
+    "3m": null,
+    "6m": null,
+    "1y": null,
+    "2y": null,
+    "3y": null,
+    "5y": null,
+    "10y": null,
+    since_launch: null,
+    ytd: null,
+  },
+  benchmark_returns_annual: {
+    y1: null,
+    y3: null,
+    y5: null,
+    y10: null,
+  },
+  fund_objective: "",
+  investment_strategy: "",
+});
+
+export const buildManualBridgeResetFilter = (schemeId?: string, schemeCode?: string) => {
+  const orFilters: Array<Record<string, unknown>> = [];
+  if (schemeId) orFilters.push({ mf_api_scheme_id: schemeId });
+  if (schemeCode) orFilters.push({ scheme_code: schemeCode });
+  return orFilters.length > 0 ? { $or: orFilters } : {};
+};
+
 export const syncApiSchemeToManual = async (id: string, options: any = {}) => {
   const saved = await MfApiScheme.findById(id);
   if (!saved || (!saved.is_active && !options.activating)) return { action: "skipped", reason: "Scheme is not active; MFFund not created yet" };
   
   try {
-    let dto = MfApiTransformer.transformScheme(saved.toObject ? saved.toObject() : saved);
+    // If this scheme has no nav/amc data but another doc with same scheme_code
+    // has been fully synced, use that one's data for the MFFund bridge.
+    let schemeForTransform: any = saved.toObject ? saved.toObject() : { ...saved };
+    if (!schemeForTransform.amc_name || !schemeForTransform.category || !schemeForTransform.latest_nav) {
+      const betterDoc = await MfApiScheme.findOne({
+        scheme_code: saved.scheme_code,
+        is_deleted: { $ne: true },
+        mf_api_synced_at: { $ne: null },
+        latest_nav: { $ne: null },
+        amc_name: { $ne: "" },
+      }).sort({ mf_api_synced_at: -1 }).lean();
+      if (betterDoc) {
+        schemeForTransform = betterDoc;
+      }
+    }
+
+    // Try to recover amc_name and category from raw_payload if they're missing.
+    // raw_payload always carries the original API master-list data from the external sync.
+    if (schemeForTransform.raw_payload) {
+      const rp = schemeForTransform.raw_payload as any;
+      if (!schemeForTransform.amc_name || String(schemeForTransform.amc_name).trim() === "") {
+        schemeForTransform.amc_name = rp.scheme_company || rp.amc_name || rp.amcName || rp.fund_house || "";
+      }
+      if (!schemeForTransform.category || String(schemeForTransform.category).trim() === "") {
+        schemeForTransform.category = rp.scheme_advisorkhoj_category || rp.scheme_category || rp.category || "";
+      }
+    }
+
+    // Auto-fill missing amc_name and category so processWorkbook can create MFFund
+    // without hitting the required-field ValidationError.
+    // These values will be overwritten on the next full API sync for this scheme.
+    if (!schemeForTransform.amc_name || String(schemeForTransform.amc_name).trim() === "") {
+      // Derive a placeholder AMC name from the scheme name first word + " Mutual Fund"
+      const firstWord = String(schemeForTransform.scheme_name || "Unknown").split(" ")[0];
+      schemeForTransform.amc_name = `${firstWord} Mutual Fund`;
+    }
+    if (!schemeForTransform.category || String(schemeForTransform.category).trim() === "") {
+      schemeForTransform.category = "Uncategorized";
+    }
+
+    // Guard: recover scheme_code from raw_payload if missing, or bail early.
+    // upsertFund uses scheme_code as the primary dedup key; empty code creates phantom records.
+    if (!schemeForTransform.scheme_code || String(schemeForTransform.scheme_code).trim() === "") {
+      const rp = schemeForTransform.raw_payload as any || {};
+      schemeForTransform.scheme_code = rp.scheme_code || rp.scheme_amfi_code || rp.external_key || "";
+    }
+    if (!schemeForTransform.scheme_code || String(schemeForTransform.scheme_code).trim() === "") {
+      await MfApiScheme.findByIdAndUpdate(saved._id, {
+        $set: { sync_status: "partial_success", last_sync_error: "scheme_code is empty \u2014 cannot bridge to MFFund" }
+      });
+      return { action: "skipped", reason: "scheme_code is empty" };
+    }
+
+    let dto = MfApiTransformer.transformScheme(schemeForTransform);
     const engine = new MfImportEngine();
-    dto = await MfWorkbookValidator.validate(dto as any, engine.summary, { skipOrphanCheck: true });
+    dto = await MfApiSyncValidator.validate(dto as any, engine.summary);
     if (engine.summary.errors.length > 0) {
       const errMsg = "Validation failed: " + engine.summary.errors[0]?.message;
       await MfApiScheme.findByIdAndUpdate(saved._id, { $set: { sync_status: "partial_success", last_sync_error: errMsg } });
@@ -72,34 +176,147 @@ export const syncApiSchemeToManual = async (id: string, options: any = {}) => {
     }
     const existing = await MFFund.findOne({ scheme_code: saved.scheme_code });
     await engine.processWorkbook(dto as any);
-    const fund = await MFFund.findOneAndUpdate(
-      { scheme_code: saved.scheme_code, is_deleted: false },
+
+    // Primary lookup: by scheme_code (restore soft-deleted bridges too)
+    let fund = await MFFund.findOneAndUpdate(
+      { scheme_code: saved.scheme_code },
       {
         $set: {
-          mf_api_scheme_id: saved._id,
-          mf_api_external_key: saved.external_key || "",
+          is_deleted: false,
+          is_active: 1,
+          deleted_at: null,
+          data_source: "api_sync",
+          mf_api_scheme_id: schemeForTransform._id || saved._id,
+          mf_api_external_key: schemeForTransform.external_key || saved.external_key || "",
           mf_api_synced_at: new Date(),
         },
       },
       { new: true },
     );
 
+    // Fallback: if scheme_code lookup missed (e.g. empty scheme_code), try by mf_api_scheme_id
+    if (!fund && (schemeForTransform._id || saved._id)) {
+      fund = await MFFund.findOneAndUpdate(
+        { mf_api_scheme_id: schemeForTransform._id || saved._id },
+        {
+          $set: {
+            is_deleted: false,
+            is_active: 1,
+            deleted_at: null,
+            data_source: "api_sync",
+            mf_api_external_key: schemeForTransform.external_key || saved.external_key || "",
+            mf_api_synced_at: new Date(),
+          },
+        },
+        { new: true },
+      );
+    }
+
+    // Second fallback: try by fund_name via MfAliasResolver
+    if (!fund && (schemeForTransform.scheme_name || saved.scheme_name)) {
+      const resolvedByName = await MfAliasResolver.resolveFund({ 
+        fund_name: schemeForTransform.scheme_name || saved.scheme_name,
+        plan_type: schemeForTransform.plan_type || saved.plan_type,
+        option_type: schemeForTransform.option_type || saved.option_type
+      });
+      if (resolvedByName) {
+        fund = await MFFund.findOneAndUpdate(
+          { _id: resolvedByName._id },
+          {
+            $set: {
+              is_deleted: false,
+              is_active: 1,
+              deleted_at: null,
+              data_source: "api_sync",
+              mf_api_scheme_id: schemeForTransform._id || saved._id,
+              scheme_code: schemeForTransform.scheme_code || saved.scheme_code || resolvedByName.scheme_code,
+              mf_api_external_key: schemeForTransform.external_key || saved.external_key || "",
+              mf_api_synced_at: new Date(),
+            },
+          },
+          { new: true },
+        );
+      }
+    }
+
+    if (fund) {
+      // Bridge historical NAV records from MfApiNavHistory to NavHistory
+      const apiNavs = await MfApiNavHistory.find({ scheme_id: schemeForTransform._id || saved._id }).lean();
+      if (apiNavs.length > 0) {
+        const ops = apiNavs.map((item) => ({
+          updateOne: {
+            filter: { schemeId: fund._id, date: item.date },
+            update: {
+              $setOnInsert: {   // Never overwrite existing nav written by processWorkbook
+                schemeId: fund._id,
+                date: item.date,
+                nav: item.nav,
+                totalAssets: item.nav,
+                totalLiabilities: 0,
+                totalUnits: 1,
+              },
+            },
+            upsert: true,
+          },
+        }));
+        await NavHistory.bulkWrite(ops);
+      }
+    }
+
     // Post-sync health check & category recomputation
     let finalStatus: "success" | "partial_success" = "success";
+    let healthError = "";
     if (fund) {
-      finalStatus = await validateSyncHealth(saved, String(fund._id));
+      // Run category recompute
       if (fund.category_id) {
         await recomputeCategoryAverageReturns(String(fund.category_id)).catch(() => {});
       }
+
+      if (options.activating) {
+        // Activation-only import path: skip NAV/benchmark health checks.
+        // BUT: if fund itself was not found/created, that is still a real failure.
+        if (fund) {
+          finalStatus = "success";
+          healthError = "";
+        } else {
+          finalStatus = "partial_success";
+          healthError = `MFFund not created or found for scheme_code: "${saved.scheme_code}" — check that amc_name and category are populated on this scheme`;
+        }
+      } else {
+        // Live sync path: run full health check (NAV + benchmark + returns)
+        finalStatus = await validateSyncHealth(schemeForTransform, String(fund._id), { skipReturnsCheck: false });
+        if (finalStatus === "partial_success") {
+          const freshFund = await MFFund.findOne({ _id: fund._id, is_deleted: false }).lean() as any;
+          if (!freshFund) {
+            healthError = "Fund document not found after processWorkbook";
+          } else if (schemeForTransform.latest_date) {
+            const normalizedDate = normalizeDateOnly(new Date(schemeForTransform.latest_date));
+            const navEntry = await NavHistory.findOne({ schemeId: String(fund._id), date: normalizedDate }).lean();
+            if (!navEntry) {
+              healthError = `NAV history missing for date ${normalizedDate.toISOString().slice(0, 10)}`;
+            } else if (freshFund.benchmark_id) {
+              const benchmarkReturns = await MFBenchmarkReturn.findOne({
+                benchmark_id: freshFund.benchmark_id,
+                is_deleted: false,
+              }).lean();
+              if (!benchmarkReturns) {
+                healthError = "Benchmark returns record missing";
+              }
+            }
+          }
+          if (!healthError) healthError = "Sync health check failed";
+        }
+      }
     } else {
       finalStatus = "partial_success";
+      healthError = `MFFund not found for scheme_code: ${saved.scheme_code}`;
     }
 
     await MfApiScheme.findByIdAndUpdate(saved._id, {
       $set: {
         sync_status: finalStatus,
         last_synced_at: new Date(),
-        last_sync_error: finalStatus === "partial_success" ? "Sync health check failed (missing NAV history or returns)" : ""
+        last_sync_error: healthError,
       }
     });
 
@@ -179,8 +396,6 @@ const normalizeBoolean = (value: unknown) => {
   if (["0", "false", "no", "n"].includes(text)) return false;
   return null;
 };
-
-
 
 const detailSource = (payload: RawObject, latestInfo?: RawObject | null) => ({
   ...payload,
@@ -410,13 +625,13 @@ const normalizeScheme = (payload: RawObject, latestInfo?: RawObject | null) => {
     rating: normalizeString(pick(source, ["rating", "scheme_rating"])),
     rating_value: normalizeNumber(pick(source, ["rating_value", "ratingScore"])),
     market_cap_largecap_percent: normalizeNumber(
-      pick(source, ["market_cap_largecap_percent", "large_cap_pct"]),
+      pick(source, ["market_cap_largecap_percent", "large_cap_pct", "mc_large_cap_pct"]),
     ),
     market_cap_midcap_percent: normalizeNumber(
-      pick(source, ["market_cap_midcap_percent", "mid_cap_pct"]),
+      pick(source, ["market_cap_midcap_percent", "mid_cap_pct", "mc_mid_cap_pct"]),
     ),
     market_cap_smallcap_percent: normalizeNumber(
-      pick(source, ["market_cap_smallcap_percent", "small_cap_pct"]),
+      pick(source, ["market_cap_smallcap_percent", "small_cap_pct", "mc_small_cap_pct"]),
     ),
     scheme_inception_return: normalizeNumber(
       pick(source, ["scheme_inception_return", "since_inception", "inception_return"]),
@@ -572,7 +787,7 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     "6m":         normalizeNumber(schemePerfRow.six_month_return),
     "1y":         normalizeNumber(schemePerfRow.one_year_return),
     "2y":         normalizeNumber(schemePerfRow.two_year_return),
-    "3y":         normalizeNumber(schemePerfRow.three_month_return),
+    "3y":         normalizeNumber(schemePerfRow.three_year_return),
     "5y":         normalizeNumber(schemePerfRow.five_year_return),
     "10y":        normalizeNumber(schemePerfRow.ten_year_return),
     since_launch: normalizeNumber(schemePerfRow.inception_year_return),
@@ -593,7 +808,7 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     "6m":           normalizeNumber(benchmarkRow.six_month_return),
     "1y":           normalizeNumber(benchmarkRow.one_year_return),
     "2y":           normalizeNumber(benchmarkRow.two_year_return),
-    "3y":           normalizeNumber(benchmarkRow.three_month_return),
+    "3y":           normalizeNumber(benchmarkRow.three_year_return),
     "5y":           normalizeNumber(benchmarkRow.five_year_return),
     "10y":          normalizeNumber(benchmarkRow.ten_year_return),
     since_launch:   normalizeNumber(benchmarkRow.inception_year_return),
@@ -626,9 +841,21 @@ const extractStructuredFields = (latestInfo: RawObject) => {
   };
 
   const market_cap = {
-    large_cap_pct: normalizeNumber(latestInfo?.market_cap_largecap_percent),
-    mid_cap_pct:   normalizeNumber(latestInfo?.market_cap_midcap_percent),
-    small_cap_pct: normalizeNumber(latestInfo?.market_cap_smallcap_percent),
+    large_cap_pct: normalizeNumber(
+      latestInfo?.market_cap_largecap_percent ??
+      latestInfo?.large_cap_pct ??
+      latestInfo?.mc_large_cap_pct
+    ),
+    mid_cap_pct: normalizeNumber(
+      latestInfo?.market_cap_midcap_percent ??
+      latestInfo?.mid_cap_pct ??
+      latestInfo?.mc_mid_cap_pct
+    ),
+    small_cap_pct: normalizeNumber(
+      latestInfo?.market_cap_smallcap_percent ??
+      latestInfo?.small_cap_pct ??
+      latestInfo?.mc_small_cap_pct
+    ),
   };
 
   return {
@@ -680,12 +907,31 @@ const upsertScheme = async (payload: RawObject, latestInfo?: RawObject | null) =
     }
   }
 
+  let is_new = existing ? existing.is_new : false;
+  if (latestInfo !== null) {
+    is_new = false;
+    const inceptionDate = normalized.scheme_inception_date;
+    if (inceptionDate) {
+      const inception = new Date(inceptionDate);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 180); // 180 days ago
+
+      const isCurrentlyActive = existing ? existing.is_active : false;
+      const isCurrentlyReviewed = existing ? existing.is_new === false : false;
+
+      if (inception >= cutoff && !isCurrentlyActive && !isCurrentlyReviewed) {
+        is_new = true;
+      }
+    }
+  }
+
   const updateData = {
     ...normalized,
     ...structured,
     sync_status,
     last_synced_at: new Date(),
     last_sync_error,
+    is_new,
     ...(has_returns_data !== null ? { has_returns_data } : {}),
   };
 
@@ -726,6 +972,35 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
   // automatically, without requiring a manual admin action.
   await expireIsNewFlag();
 
+  // For activeOnly sync: skip the master list fetch entirely.
+  // Per-scheme fresh data still comes from requestExternalLatestInfo inside syncOneScheme.
+  if (options.activeOnly) {
+    const log = await createSyncLog({
+      action: "sync-all",
+      status: "running",
+      message: "Active-only sync started — skipping master list fetch.",
+      response: {},
+      context,
+    });
+
+    // Mark all active schemes as queued so processDetailedSyncBatch picks them up
+    await MfApiScheme.updateMany(
+      { is_deleted: { $ne: true }, is_active: true },
+      { $set: { sync_status: "queued" } },
+    );
+
+    // Ensure all currently active schemes are bridged to the manual module (offline)
+    await bridgeAllActiveSchemesToManual().catch((err) => {
+      console.error("[bridge] Background active schemes bridge failed:", err);
+    });
+
+    processDetailedSyncBatch(String(log._id), context, options).catch(err => {
+      console.error("Background sync detail batch failed:", err);
+    });
+    return;
+  }
+
+  // Full sync: fetch the master list to discover new/updated schemes
   const externalResponse = await requestExternalSchemes();
   
   if (isRateLimitedResponse(externalResponse)) {
@@ -788,7 +1063,7 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
           },
           $setOnInsert: {
             is_active: false,
-            is_new: true,   // True for EVERY newly discovered scheme
+            is_new: false,  // Initialize as false, detailed sync will set to true if inception date is recent
             sync_status: "queued",
             first_seen_date: new Date(),
             latest_nav: null,
@@ -822,18 +1097,16 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
     response: { inserted, updated, failed, total: rows.length },
   });
 
-  if (options.activeOnly) {
-    await MfApiScheme.updateMany(
-      { is_deleted: { $ne: true }, is_active: true },
-      { $set: { sync_status: "queued" } },
-    );
-  } else {
-    // Reset all for full coverage
-    await MfApiScheme.updateMany(
-      { is_deleted: { $ne: true } },
-      { $set: { sync_status: "queued" } },
-    );
-  }
+  // Reset all for full coverage (full sync only — activeOnly branch returned early above)
+  await MfApiScheme.updateMany(
+    { is_deleted: { $ne: true } },
+    { $set: { sync_status: "queued" } },
+  );
+
+  // Ensure all currently active schemes are bridged to the manual module (offline)
+  await bridgeAllActiveSchemesToManual().catch((err) => {
+    console.error("[bridge] Background active schemes bridge failed:", err);
+  });
 
   // Kick off background job for detailed sync
   processDetailedSyncBatch(String(log._id), context, options).catch(err => {
@@ -848,14 +1121,7 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
  * (e.g. from a scheduled cron job) if needed.
  */
 export const expireIsNewFlag = async (): Promise<void> => {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
-  await MfApiScheme.updateMany(
-    {
-      is_new: true,
-      first_seen_date: { $lt: cutoff },
-    },
-    { $set: { is_new: false } },
-  );
+  // Disabling 24h auto-expiry. Schemes should persist in the "New" tab until activated or reviewed.
 };
 
 const updateSyncLogProgress = async (
@@ -1074,6 +1340,41 @@ export const processDetailedSyncBatch = async (
   }
 };
 
+/**
+ * Resume sync for schemes that are still in "queued" or "partial_success" (from a rate-limited abort).
+ * Re-uses the active-only batch logic — only picks up incomplete schemes, skips already-synced ones.
+ */
+export const resumeDetailedSyncBatch = async (context: SyncContext = {}) => {
+  const log = await createSyncLog({
+    action: "sync-resume",
+    status: "running",
+    message: "Resume sync started — picking up queued/partial schemes.",
+    response: {},
+    context,
+  });
+
+  // Re-queue any scheme that didn't complete (queued or partial_success from aborted run)
+  await MfApiScheme.updateMany(
+    {
+      is_deleted: { $ne: true },
+      is_active: true,
+      sync_status: { $in: ["queued", "partial_success"] },
+    },
+    { $set: { sync_status: "queued" } },
+  );
+
+  // Kick off the same detailed batch (activeOnly so it respects is_active filter)
+  processDetailedSyncBatch(String(log._id), context, { activeOnly: true }).catch((err) => {
+    console.error("Resume sync batch failed:", err);
+  });
+
+  return {
+    success: true,
+    message: "Resume sync started — queued/partial active schemes will be re-synced.",
+    logId: String(log._id),
+  };
+};
+
 export const syncOneScheme = async (
   payload: { schemeId?: string; schemeName?: string; externalSchemeId?: string },
   context: SyncContext = {},
@@ -1222,11 +1523,11 @@ export const syncOneScheme = async (
     try {
       let dto = MfApiTransformer.transformScheme(saved.toObject ? saved.toObject() : saved);
       const engine = new MfImportEngine();
-      dto = await MfWorkbookValidator.validate(dto as any, engine.summary, { skipOrphanCheck: true });
+      dto = await MfApiSyncValidator.validate(dto as any, engine.summary);
       if (engine.summary.errors.length > 0) {
         const errMsg = "Validation failed: " + engine.summary.errors[0]?.message;
         console.error(`[API-Sync] Validation failed for API Scheme ${saved._id}:`, engine.summary.errors);
-        saved = await MfApiScheme.findByIdAndUpdate(saved._id, { $set: { sync_status: "partial_success", last_sync_error: errMsg } }, { new: true });
+        await MfApiScheme.findByIdAndUpdate(saved._id, { $set: { sync_status: "partial_success", last_sync_error: errMsg } });
       } else {
         await engine.processWorkbook(dto as any);
         const fund = await MFFund.findOneAndUpdate(
@@ -1238,25 +1539,19 @@ export const syncOneScheme = async (
               mf_api_synced_at: new Date(),
             },
           },
-          { new: false },
+          { new: true },   // changed from false to true so we get the updated fund back
         );
+        // Recompute category averages now that this fund's returns are updated
+        if (fund?.category_id) {
+          await recomputeCategoryAverageReturns(String(fund.category_id)).catch(() => {});
+        }
       }
     } catch (err: any) {
       console.error("[shared-engine] syncOneScheme → processWorkbook failed:", err?.message);
     }
   }
 
-  await createSyncLog({
-    action: "sync-one",
-    status: "success",
-    message: `Synced ${saved.scheme_name}`,
-    scheme_id: String(saved._id),
-    scheme_name: saved.scheme_name,
-    external_scheme_id: saved.external_scheme_id || "",
-    response: latestInfo,
-    payloadData: payload,
-    context,
-  });
+  // We omit createSyncLog for successful individual sync-one runs to optimize DB space.
 
   return {
     success: true,
@@ -1304,7 +1599,17 @@ export const getDashboardSummary = async () => {
     .sort({ created_at: -1 })
     .lean();
 
-  const latestSyncJob = await MfApiSyncLog.findOne({ action: "sync-all" })
+  const latestRunningSyncJob = await MfApiSyncLog.findOne({
+    action: { $in: ["sync-all", "sync-resume"] },
+    status: { $in: ["running", "rate_limited", "queued"] },
+  })
+    .sort({ created_at: -1 })
+    .select("message status response created_at updated_at")
+    .lean();
+
+  const latestSyncJob = latestRunningSyncJob || await MfApiSyncLog.findOne({
+    action: { $in: ["sync-all", "sync-resume"] },
+  })
     .sort({ created_at: -1 })
     .select("message status response created_at updated_at")
     .lean();
@@ -1545,17 +1850,122 @@ export const importMfApiData = async ({
   let updated = 0;
   let skipped = 0;
   let rejected = 0;
+  let activated = 0;
+  let syncFailed = 0;
+  let syncPartial = 0;
   const errors: Array<{ row: number; message: string }> = [];
+  const bridgeFailed: Array<{ scheme_code: string; scheme_name: string; reason: string }> = [];
 
   for (let i = 0; i < rawRows.length; i += 1) {
     const row = rawRows[i];
     try {
+      // ── Detect "activation-only" rows (scheme_code present but no real scheme name) ──
+      const rawSchemeName = String(
+        row.scheme_name || row.schemeName || row.name || row.fund_name || row.scheme || row.scheme_amfi || ""
+      ).trim();
+      const isActivationOnly = !rawSchemeName && !!(
+        String(row.scheme_code || row.schemeCode || row.code || "").trim()
+      );
+
+      if (isActivationOnly) {
+        // ── Handle activation-only rows: only update is_active, never touch other fields ──
+        const code = String(row.scheme_code || row.schemeCode || row.code || "").trim();
+        if (!code) {
+          rejected += 1;
+          errors.push({ row: i + 1, message: "scheme_code is required for activation-only rows" });
+          continue;
+        }
+
+        const rawIsActive = row.is_active ?? row["Is_Active"] ?? row["IsActive"];
+        const importedIsActive = normalizeBoolean(rawIsActive);
+
+        if (validateOnly) {
+          const exists = await MfApiScheme.findOne({ scheme_code: code, is_deleted: { $ne: true } }).lean();
+          if (!exists) {
+            errors.push({ row: i + 1, message: `No MF API scheme found with scheme_code: ${code}` });
+          }
+          skipped += 1;
+          continue;
+        }
+
+        if (importedIsActive === null) {
+          skipped += 1;
+          continue;
+        }
+
+        const schemeDoc = await MfApiScheme.findOne({
+          scheme_code: code,
+          is_deleted: { $ne: true },
+          mf_api_synced_at: { $ne: null },
+          amc_name: { $ne: "" },
+        }).sort({ mf_api_synced_at: -1 })
+        || await MfApiScheme.findOne({ scheme_code: code, is_deleted: { $ne: true } });
+
+        if (!schemeDoc) {
+          errors.push({ row: i + 1, message: `No MF API scheme found with scheme_code: ${code}` });
+          skipped += 1;
+          continue;
+        }
+
+        await MfApiScheme.updateMany(
+          { scheme_code: code, is_deleted: { $ne: true } },
+          { $set: { is_active: importedIsActive, is_new: false } }
+        );
+        updated += 1;
+
+        if (importedIsActive) {
+          // Find the best document to use for bridging (prefer fully synced one)
+          const bestDoc = await MfApiScheme.findOne({
+            scheme_code: code,
+            is_deleted: { $ne: true },
+            latest_nav: { $ne: null },
+            amc_name: { $ne: "" },
+          }).sort({ mf_api_synced_at: -1 }).lean()
+            || await MfApiScheme.findOne({ scheme_code: code, is_deleted: { $ne: true } }).lean();
+
+          if (bestDoc) {
+            try {
+              await syncApiSchemeToManual(String(bestDoc._id), { activating: true });
+              // Check if the scheme actually got bridged (fund found/created)
+              const freshScheme = await MfApiScheme.findById(bestDoc._id).select("sync_status scheme_name").lean();
+              if (freshScheme?.sync_status === "partial_success") {
+                syncPartial += 1;
+                bridgeFailed.push({
+                  scheme_code: code,
+                  scheme_name: (bestDoc as any).scheme_name || code,
+                  reason: `Partial bridge: AMC or category missing`,
+                });
+              } else {
+                activated += 1;
+              }
+            } catch (syncErr: any) {
+              // sync failure logged inside syncApiSchemeToManual — don't block import
+              syncFailed += 1;
+              bridgeFailed.push({
+                scheme_code: code,
+                scheme_name: (schemeDoc as any).scheme_name || code,
+                reason: syncErr?.message || "Bridge failed",
+              });
+            }
+          }
+        }
+        continue;
+      }
+
+      // ── Full-data rows (scheme_name present) ──────────────────────────────────
       const normalized = normalizeScheme(row);
       if (!normalized.scheme_name) {
         rejected += 1;
         errors.push({ row: i + 1, message: "scheme_name is required" });
         continue;
       }
+
+      // Read is_active from the raw row before normalizing — supports yes/no/true/false/1/0
+      const rawIsActive = row.is_active ?? row["Is_Active"] ?? row["IsActive"] ?? null;
+      const importedIsActive: boolean | null =
+        rawIsActive === null || rawIsActive === undefined || String(rawIsActive).trim() === ""
+          ? null
+          : normalizeBoolean(rawIsActive);
 
       const existing = await MfApiScheme.findOne({ external_key: normalized.external_key, is_deleted: { $ne: true } });
       if (validateOnly) {
@@ -1568,40 +1978,66 @@ export const importMfApiData = async ({
       if (existing) {
         updated += 1;
         const {
-          is_active: _ia,      // exclude — must not overwrite admin-set value
-          is_new: _in,         // exclude — must not overwrite
-          is_deleted: _id,     // exclude
-          external_key: _ek,   // exclude — immutable identity
-          first_seen_date: _fsd, // exclude — immutable
+          is_active: _ia,
+          is_new: _in,
+          is_deleted: _id,
+          external_key: _ek,
+          first_seen_date: _fsd,
           ...safeNormalized
         } = normalized as any;
-        await MfApiScheme.findByIdAndUpdate(existing._id, {
-          $set: {
-            ...safeNormalized,
-            ...structuredFromRow,
-            sync_status: "success",
-            last_synced_at: new Date(),
-            last_sync_error: "",
-          },
-        });
+
+        const updatePayload: Record<string, any> = {
+          ...safeNormalized,
+          ...structuredFromRow,
+          sync_status: "success",
+          last_synced_at: new Date(),
+          last_sync_error: "",
+        };
+
+        // Only overwrite is_active when the import file explicitly specifies it
+        if (importedIsActive !== null) {
+          updatePayload.is_active = importedIsActive;
+          updatePayload.is_new = false;
+        }
+
+        await MfApiScheme.findByIdAndUpdate(existing._id, { $set: updatePayload });
       } else {
         inserted += 1;
-        await MfApiScheme.create({
+        const newDoc: Record<string, any> = {
           ...normalized,
           ...structuredFromRow,
           sync_status: "success",
           last_synced_at: new Date(),
           last_sync_error: "",
-        });
+        };
+        if (importedIsActive !== null) {
+          newDoc.is_active = importedIsActive;
+          newDoc.is_new = false;
+        } else {
+          newDoc.is_active = false;
+          newDoc.is_new = true;
+        }
+        await MfApiScheme.create(newDoc);
       }
 
-      // ── Bridge to manual module after import ──────────────────────────────────
+      // ── Bridge to manual module: fire if scheme is now active ─────────────────
       const importedScheme = await MfApiScheme.findOne({
         external_key: normalized.external_key,
         is_deleted: { $ne: true },
       }).lean();
       if (importedScheme && importedScheme.is_active) {
-        syncApiSchemeToManual(String(importedScheme._id)).catch(() => {});
+        try {
+          await syncApiSchemeToManual(String(importedScheme._id), { activating: true });
+          activated += 1;
+        } catch (syncErr: any) {
+          // sync failure logged inside syncApiSchemeToManual — don't block import
+          syncFailed += 1;
+          bridgeFailed.push({
+            scheme_code: normalized.scheme_code || "",
+            scheme_name: normalized.scheme_name || "",
+            reason: syncErr?.message || "Bridge failed",
+          });
+        }
       }
     } catch (error: any) {
       rejected += 1;
@@ -1614,8 +2050,8 @@ export const importMfApiData = async ({
     status: rejected > 0 ? "failed" : "success",
     message: validateOnly
       ? `Validated ${rawRows.length} rows`
-      : `Imported ${inserted} inserted, ${updated} updated`,
-    response: { inserted, updated, skipped, rejected, totalRows: rawRows.length, validateOnly },
+      : `Imported ${inserted} new, ${updated} updated, ${activated} bridged to manual${syncFailed > 0 ? `, ${syncFailed} bridge failed` : ""}${syncPartial > 0 ? `, ${syncPartial} bridge partial (missing AMC/category)` : ""}`,
+    response: { inserted, updated, activated, syncFailed, syncPartial, skipped, rejected, totalRows: rawRows.length, validateOnly },
     context,
   });
 
@@ -1625,15 +2061,23 @@ export const importMfApiData = async ({
     validateOnly,
     inserted,
     updated,
+    activated,
+    syncFailed,
+    syncPartial,
     skipped,
     rejected,
     totalRows: rawRows.length,
     errors,
+    bridgeFailed,
   };
 };
 
-export const exportMfApiData = async () => {
-  const rows = await MfApiScheme.find({ is_deleted: { $ne: true } })
+export const exportMfApiData = async (options: { activeOnly?: boolean } = {}) => {
+  const query: any = { is_deleted: { $ne: true } };
+  if (options.activeOnly) {
+    query.is_active = true;
+  }
+  const rows = await MfApiScheme.find(query)
     .sort({ updated_at: -1 })
     .lean();
 
@@ -1769,15 +2213,76 @@ export const exportMfApiData = async () => {
   await createSyncLog({
     action: "export",
     status: "success",
-    message: `Exported ${rows.length} schemes`,
+    message: `Exported ${rows.length} schemes (${options.activeOnly ? "active only" : "all"})`,
     response: { totalRows: rows.length },
   });
 
   return {
     buffer,
-    fileName: `mf-api-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+    fileName: options.activeOnly
+      ? `mf-api-active-export-${new Date().toISOString().slice(0, 10)}.xlsx`
+      : `mf-api-all-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
     contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   };
+};
+
+export const bridgeAllActiveSchemesToManual = async (): Promise<{
+  succeeded: string[];
+  failed: Array<{ scheme_code: string; scheme_name: string; reason: string }>;
+}> => {
+  // Get all active schemes — we'll deduplicate by scheme_code before bridging
+  const allActive = await MfApiScheme.find({ is_active: true, is_deleted: { $ne: true } })
+    .select("_id scheme_code scheme_name latest_nav mf_api_synced_at")
+    .lean();
+
+  // Deduplicate: one doc per scheme_code — prefer the one with latest_nav + most recent sync
+  const bestByCode = new Map<string, typeof allActive[0]>();
+  for (const s of allActive) {
+    const code: string = (s as any).scheme_code || "";
+    if (!code) continue; // skip docs with no scheme_code — guard catches them in syncApiSchemeToManual
+    const existing = bestByCode.get(code);
+    if (
+      !existing ||
+      ((s as any).latest_nav && !(existing as any).latest_nav) ||
+      ((s as any).mf_api_synced_at &&
+        (!( existing as any).mf_api_synced_at ||
+          new Date((s as any).mf_api_synced_at) > new Date((existing as any).mf_api_synced_at)))
+    ) {
+      bestByCode.set(code, s);
+    }
+  }
+
+  const uniqueDocs = Array.from(bestByCode.values());
+  const succeeded: string[] = [];
+  const failed: Array<{ scheme_code: string; scheme_name: string; reason: string }> = [];
+  const BATCH_SIZE = 20;
+
+  for (let i = 0; i < uniqueDocs.length; i += BATCH_SIZE) {
+    const batch = uniqueDocs.slice(i, i + BATCH_SIZE);
+    await Promise.allSettled(
+      batch.map(async (s) => {
+        try {
+          const result = await syncApiSchemeToManual(String(s._id), { activating: true });
+          if ((result as any).action === "skipped") {
+            failed.push({
+              scheme_code: (s as any).scheme_code || "",
+              scheme_name: (s as any).scheme_name || "",
+              reason: (result as any).reason || "Skipped",
+            });
+          } else {
+            succeeded.push((s as any).scheme_code || String(s._id));
+          }
+        } catch (err: any) {
+          failed.push({
+            scheme_code: (s as any).scheme_code || "",
+            scheme_name: (s as any).scheme_name || "",
+            reason: err?.message || "Unknown error",
+          });
+        }
+      })
+    );
+  }
+  return { succeeded, failed };
 };
 
 export const syncAllExternalSchemes = syncAllSchemes;
@@ -1803,7 +2308,14 @@ export const toggleSchemeActive = async (id: string, is_active: boolean) => {
     syncApiSchemeToManual(id, { activating: true }).catch((err) => {
       console.error("[hybrid-bridge] toggleSchemeActive → syncApiSchemeToManual failed:", err?.message);
     });
-
+  } else if (!is_active && scheme.scheme_code) {
+    // Soft-delete linked MFFund(s) and clear API-derived fields so activation rebuilds them cleanly.
+    MFFund.updateMany(
+      { ...buildManualBridgeResetFilter(String(scheme._id), scheme.scheme_code), is_deleted: false },
+      { $set: buildManualBridgeResetUpdate() }
+    ).catch((err: any) => {
+      console.error("[hybrid-bridge] toggleSchemeActive -> MFFund soft delete failed:", err?.message);
+    });
   }
 
   return { success: true, data: scheme };
@@ -1832,7 +2344,26 @@ export const bulkToggleSchemeActive = async (ids: string[], is_active: boolean) 
         syncApiSchemeToManual(String(s._id), { activating: true }).catch(() => {})
       )
     ).catch(() => {});
-
+  } else {
+    // Soft-delete linked MFFunds for all deactivated schemes and clear bridge-owned fields.
+    const deactivatedSchemes = await MfApiScheme.find({
+      _id: { $in: ids },
+      is_deleted: { $ne: true },
+    }).select("scheme_code").lean();
+    const codes = deactivatedSchemes.map((s: any) => s.scheme_code).filter(Boolean);
+    const deactivatedIds = deactivatedSchemes.map((s: any) => String(s._id)).filter(Boolean);
+    if (codes.length > 0) {
+      MFFund.updateMany(
+        {
+          is_deleted: false,
+          $or: [
+            ...(codes.length ? [{ scheme_code: { $in: codes } }] : []),
+            ...(deactivatedIds.length ? [{ mf_api_scheme_id: { $in: deactivatedIds } }] : []),
+          ],
+        },
+        { $set: buildManualBridgeResetUpdate() }
+      ).catch(() => {});
+    }
   }
 
   return { success: true, modifiedCount: result.modifiedCount };

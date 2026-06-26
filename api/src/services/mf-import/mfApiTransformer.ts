@@ -36,9 +36,16 @@ export class MfApiTransformer {
       dto.amcs!.push({ name: amcName });
     }
 
-    const categoryName = String(apiScheme.category || "").trim();
+    const categoryRaw = String(apiScheme.category || "").trim();
+    const parsed = categoryRaw ? parseCategoryPath(categoryRaw) : null;
+    // Use the clean sub-category name (e.g. "Ultra Short Duration") not the full path ("Debt: Ultra Short Duration")
+    const categoryName = parsed ? parsed.categoryName : "";
+    const mainCategoryName = parsed ? parsed.mainCategoryName : "";
     if (categoryName) {
-      const parsed = parseCategoryPath(categoryName);
+      // Ensure main category exists in the DTO so processWorkbook can resolve it
+      if (mainCategoryName && mainCategoryName !== categoryName) {
+        dto.mainCategories!.push({ name: mainCategoryName });
+      }
       const categoryAvg = {
         trailing: {
           "1w": toN(cr["1w"]),
@@ -56,7 +63,7 @@ export class MfApiTransformer {
       };
       dto.categories!.push({
         name: categoryName,
-        mainCategoryName: parsed.mainCategoryName,
+        mainCategoryName,
         category_average_returns: categoryAvg,
         category_returns: categoryAvg,
       });
@@ -71,23 +78,30 @@ export class MfApiTransformer {
       });
 
       if (br) {
-        dto.benchmarkReturns!.push({
-          benchmarkIndexName,
-          date: normalizeDateOnly(toD(apiScheme.latest_date) || new Date()),
-          trailing: {
-            "1w": toN(br["1w"]),
-            "1m": toN(br["1m"]),
-            "3m": toN(br["3m"]),
-            "6m": toN(br["6m"]),
-            "1y": toN(br["1y"]),
-            "2y": toN(br["2y"]),
-            "3y": toN(br["3y"]),
-            "5y": toN(br["5y"]),
-            "10y": toN(br["10y"]),
-            since_launch: toN(br.since_launch),
-            ytd: toN(br.ytd),
-          }
-        });
+        const trailing = {
+          "1w": toN(br["1w"]),
+          "1m": toN(br["1m"]),
+          "3m": toN(br["3m"]),
+          "6m": toN(br["6m"]),
+          "1y": toN(br["1y"]),
+          "2y": toN(br["2y"]),
+          "3y": toN(br["3y"]),
+          "5y": toN(br["5y"]),
+          "10y": toN(br["10y"]),
+          since_launch: toN(br.since_launch),
+          ytd: toN(br.ytd),
+        };
+        const hasData = Object.values(trailing).some(v => v !== null && v !== undefined);
+        if (hasData) {
+          dto.benchmarkReturns!.push({
+            benchmarkIndexName,
+            date: normalizeDateOnly(toD(apiScheme.latest_date) || new Date()),
+            trailing,
+            annual: {
+              ytd: toN(br.ytd),
+            }
+          });
+        }
       }
     }
 
@@ -103,13 +117,17 @@ export class MfApiTransformer {
         scheme_code: String(apiScheme.scheme_code || ""),
         fund_name: schemeName,
         isin: String(apiScheme.isin || ""),
+        isin_number: String(apiScheme.isin || ""),           // MFFund has both isin and isin_number
         plan_type,
         option_type,
         amcName,
-        categoryName,
+        categoryName,          // now the clean sub-name, e.g. "Ultra Short Duration"
+        mainCategoryName,      // needed by Fix 2b: fund upsert category fallback
         benchmarkIndexName,
         nav_Current: toN(apiScheme.latest_nav),
         nav_date: toD(apiScheme.latest_date),
+        nav_change: toN(apiScheme.nav_change ?? (apiScheme.latest_info as any)?.nav_change),
+        nav_change_percentage: toN(apiScheme.nav_change_percentage ?? (apiScheme.latest_info as any)?.nav_change_percentage),
         aum_cr: toN(apiScheme.scheme_assets),
         expense_ratio: toN(apiScheme.expense_ratio_percentage),
         fund_manager: String(apiScheme.scheme_manager || "").trim(),
@@ -118,6 +136,10 @@ export class MfApiTransformer {
         exit_load: String(apiScheme.exit_load || "").trim(),
         min_investment: toN(apiScheme.minimum_investment),
         minimum_sip_investment: toN(apiScheme.sip_minimum_amount),
+        min_sip_investment: toN(apiScheme.sip_minimum_amount),
+        min_lumpsum_investment: toN(apiScheme.minimum_topup),
+        sip_allowed: apiScheme.sip_minimum_amount != null ? true : undefined,
+        lumpsum_allowed: apiScheme.minimum_investment != null ? true : undefined,
         riskometer_label: String(apiScheme.riskometer_value || "").trim(),
         
         large_cap_pct: toN(mc.large_cap_pct ?? apiScheme.market_cap_largecap_percent),

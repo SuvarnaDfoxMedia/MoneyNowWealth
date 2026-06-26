@@ -15,11 +15,7 @@ const HomeBlog: React.FC<HomeBlogProps> = ({ title, subtitle }) => {
   const { cards, loading, error } = useFetchCards(
     "/api/article/published/latest",
     4,
-    {
-      withCredentials: false,
-      forceFreeOnly: false,
-      visibilityField: "isHomeFeatured",
-    },
+    { withCredentials: false, forceFreeOnly: true },
   );
 
   if (loading) return <p className="text-center py-10">Loading...</p>;
@@ -51,7 +47,7 @@ const HomeBlog: React.FC<HomeBlogProps> = ({ title, subtitle }) => {
             <Link
               key={index}
               href={`/blog/${card.slug}`}
-              className="group bg-white rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
+              className="bg-white rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
             >
               {/* Image */}
               <div className="relative w-full h-[200px]">
@@ -62,23 +58,12 @@ const HomeBlog: React.FC<HomeBlogProps> = ({ title, subtitle }) => {
                   className="object-cover"
                   unoptimized
                 />
-                <span
-                  className={`absolute right-4 top-4 z-10 rounded-full px-3 py-1 text-[12px] font-semibold ${
-                    card.is_premium
-                      ? "bg-[#FFF1E5] text-[#C2410C]"
-                      : "bg-[#ECFDF5] text-[#047857]"
-                  }`}
-                >
-                  {card.is_premium ? "Premium" : "Free"}
-                </span>
               </div>
 
               {/* Content */}
               <div className="p-6">
                 {/* Category */}
-                <div className="mb-2 flex items-center gap-2">
-                  <p className="text-[14px] font-medium">{card.category}</p>
-                </div>
+                <p className="text-[14px] font-medium mb-2">{card.category}</p>
 
                 {/* Title */}
                 <h3 className="font-semibold text-[20px] leading-[26px] mb-3 line-clamp-2">

@@ -616,19 +616,19 @@ export default function MfApiSchemeDetailPage() {
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 font-bold text-sm">!</span>
               <div>
                 <p className="text-sm font-semibold text-gray-900 text-amber-800">Not Linked Yet</p>
-                <p className="text-xs text-gray-500 mt-1">Activate this scheme to auto-create its manual fund entry.</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Use the button below to sync or repair the manual fund bridge for this scheme.
+                </p>
               </div>
             </div>
-            {isActive && (
-              <button
-                type="button"
-                onClick={() => id && syncToManualMutation.mutate(id)}
-                disabled={syncToManualMutation.isPending}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#043f79] rounded-md px-3 py-1.5 hover:bg-[#032d58] transition-colors disabled:opacity-60"
-              >
-                {syncToManualMutation.isPending ? "Syncing..." : "Sync to Manual Now"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => id && syncToManualMutation.mutate(id)}
+              disabled={syncToManualMutation.isPending}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#043f79] rounded-md px-3 py-1.5 hover:bg-[#032d58] transition-colors disabled:opacity-60"
+            >
+              {syncToManualMutation.isPending ? "Syncing..." : "Sync to Manual Now"}
+            </button>
           </div>
         )}
       </AdminSection>

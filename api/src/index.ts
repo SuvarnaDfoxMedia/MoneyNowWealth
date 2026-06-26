@@ -12,6 +12,7 @@ import cookieParser from "cookie-parser";
 import connectDatabase from "./db/dbConnection";
 import { cleanupLegacyMfIndexes } from "./db/cleanupLegacyMfIndexes";
 import { cleanupLegacySeoIndexes } from "./db/cleanupLegacySeoIndexes";
+import { cleanupLegacyCategoryFormats } from "./db/cleanupLegacyCategoryFormats";
 
 // Routes
 import authRoutes from "./routes/authRoutes";
@@ -42,15 +43,13 @@ import seoRoutes from "./routes/seoRoutes";
 import navRoutes from "./routes/navRoutes";
 import testimonialRoutes from "./routes/testimonialRoutes";
 import { validateEmailEnvironment } from "./config/emailEnv";
-// Chatbot integration is temporarily disabled for lead review; keep code commented instead of deleting it.
-// import chatRoutes from "./routes/chatbot/chatRoutes";
-// import { getGeminiApiKeyStatus } from "./controllers/chatbot/chatController.js";
 
 dotenv.config();
 validateEmailEnvironment();
 await connectDatabase();
 await cleanupLegacyMfIndexes();
 await cleanupLegacySeoIndexes();
+await cleanupLegacyCategoryFormats();
 startNewsletterPublishScheduler();
 startMfNfoScheduler();
 

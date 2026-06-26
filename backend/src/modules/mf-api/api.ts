@@ -62,8 +62,9 @@ export const importMfApiData = async (
   return (response.data?.data ?? response.data) as MfApiImportReport;
 };
 
-export const exportMfApiData = async (role: string) =>
+export const exportMfApiData = async (role: string, params?: { active_only?: boolean }) =>
   axiosInstance.get(`/${role}/mf-api/export`, {
+    params,
     responseType: "blob",
   });
 
@@ -98,3 +99,14 @@ export const syncMfApiToManualApi = async (role: string, id: string) =>
 
 export const resyncAllToManualApi = async (role: string) =>
   axiosApi.post<{ total: number }>(`/${role}/mf-api/resync-to-manual`, {});
+
+export const resumeSyncMfApiApi = async (role: string) =>
+  axiosApi.post<{ success: boolean; message: string; logId: string }>(`/${role}/mf-api/sync-resume`, {});
+
+export const fetchUnbridgedSchemesApi = async (role: string) =>
+  axiosApi.get<{
+    total_active: number;
+    total_bridged: number;
+    unbridged_count: number;
+    unbridged: Array<{ _id: string; scheme_code: string; scheme_name: string; amc_name: string; category: string; sync_status: string; last_sync_error: string }>;
+  }>(`/${role}/mf-api/unbridged-schemes`);

@@ -392,10 +392,10 @@ export default function MFImportExportActions({
   };
 
   const downloadErrorReport = () => {
-    if (!report || report.errors.length === 0) return;
+    if (!report || !report.errors || report.errors.length === 0) return;
     const lines = [
       ["sheet", "row", "identifier", "message"].join(","),
-      ...report.errors.map((item) =>
+      ...(report.errors || []).map((item) =>
         [item.sheet, String(item.row), item.identifier || "", item.message]
           .map((value) => `"${String(value).replace(/"/g, '""')}"`)
           .join(","),
@@ -407,7 +407,8 @@ export default function MFImportExportActions({
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${report.fileName.replace(/\.(xlsx|xls)$/i, "")}-validation-errors.csv`;
+    const downloadName = report.fileName || file?.name || "import";
+    anchor.download = `${downloadName.replace(/\.(xlsx|xls)$/i, "")}-validation-errors.csv`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();

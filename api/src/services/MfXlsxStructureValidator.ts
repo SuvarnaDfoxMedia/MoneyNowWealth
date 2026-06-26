@@ -30,11 +30,12 @@ export interface ValidationReport {
 }
 
 // --- Sheet aliases mirror mfImportService SHEETS constant ---
-const SHEET_ALIASES: Record<string, string[]> = {
+export const SHEET_ALIASES: Record<string, string[]> = {
   "main-categories":  ["Main_Categories", "Main Categories", "MainCategories"],
   categories:         ["Categories_Master", "Categories", "Category_Master"],
   amcs:               ["AMCs", "AMC", "Amc_Master"],
-  funds:              ["Scheme_Details", "Funds", "Popular_Funds"],
+  "funds-popular":    ["Popular_Funds", "Popular Funds", "PopularFunds"],
+  "funds-all":        ["Scheme_Details", "Funds", "Scheme Details", "SchemeDetails", "All Funds", "AllFunds"],
   benchmarks:         ["Benchmarks", "Benchmark_Master", "Benchmark Master"],
   "benchmark-returns":["Benchmark_Returns", "Benchmark Returns"],
   nfo:                ["NFO_List", "NFO", "NFOs"],
@@ -49,7 +50,13 @@ const REQUIRED_HEADERS: Record<string, string[][]> = {
     ["main_category_name", "main_category", "main_category_id", "fund_type"],
   ],
   amcs:               [["name", "amc_name", "amc"]],
-  funds:              [
+  "funds-popular":    [
+    ["scheme_code", "schemecode", "code"],
+    ["fund_name", "scheme_name", "fund"],
+    ["amc_name", "amc", "fund_house", "amc_id"],
+    ["category_name", "category", "subcategory_name", "category_id"],
+  ],
+  "funds-all":        [
     ["scheme_code", "schemecode", "code"],
     ["fund_name", "scheme_name", "fund"],
     ["amc_name", "amc", "fund_house", "amc_id"],
@@ -77,6 +84,8 @@ const REQUIRED_HEADERS: Record<string, string[][]> = {
     ["fund_name", "source_standard_name", "standard_name"],
   ],
 };
+
+const REQUIRED_SHEETS = ["categories", "amcs", "funds-all"];
 
 const normalizeHeader = (h: string) =>
   h.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -120,6 +129,14 @@ export const validateWorkbook = (filePath: string): ValidationReport => {
 
     if (!matchedSheetName) {
       sheetsMissing.push(aliases[0]);
+      if (REQUIRED_SHEETS.includes(entityKey)) {
+        issues.push({
+          sheet: aliases[0],
+          row: null,
+          code: "MISSING_SHEET",
+          message: `Required sheet "${aliases[0]}" is missing in the workbook.`,
+        });
+      }
       continue;
     }
 

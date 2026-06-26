@@ -86,16 +86,34 @@ export class MfImportEngine {
           const amc = await MfAliasResolver.resolveAmc(raw.amcName)
             || await MfRepository.upsertAmc(raw.amcName, { name: raw.amcName }, session);
           mappedData.amc_id = amc._id;
+        } else {
+          // amc_id is required on MFFund — use or create an "Unknown AMC" placeholder so the fund
+          // record can be created now. The correct AMC will be linked on the next full API sync.
+          const placeholderAmc = await MfAliasResolver.resolveAmc("Unknown AMC")
+            || await MfRepository.upsertAmc("Unknown AMC", { name: "Unknown AMC" }, session);
+          mappedData.amc_id = placeholderAmc._id;
         }
         if (raw.categoryName) {
           const cat = await MfAliasResolver.resolveCategory(raw.categoryName)
-            || await MfRepository.upsertCategory(raw.categoryName, { name: raw.categoryName }, session);
+            || await MfRepository.upsertCategory(raw.categoryName, {
+                name: raw.categoryName,
+                mainCategoryName: (raw as any).mainCategoryName || raw.categoryName,
+              }, session);
           mappedData.category_id = cat._id;
+        } else {
+          // category_id is required on MFFund — use or create an "Uncategorized" placeholder.
+          const placeholderCat = await MfAliasResolver.resolveCategory("Uncategorized")
+            || await MfRepository.upsertCategory("Uncategorized", {
+                name: "Uncategorized",
+                mainCategoryName: "Uncategorized",
+              }, session);
+          mappedData.category_id = placeholderCat._id;
         }
         if (raw.benchmarkIndexName) {
           const benchmark = await MfAliasResolver.resolveBenchmark(raw.benchmarkIndexName)
             || await MfRepository.upsertBenchmark({ name: raw.benchmarkIndexName }, { name: raw.benchmarkIndexName }, session);
           mappedData.benchmark_id = benchmark._id;
+          mappedData.benchmark_index_name = raw.benchmarkIndexName;  // write the string name field too
         }
         const fund = await MfRepository.upsertFund({ scheme_code: raw.scheme_code }, mappedData, session);
         this.summary.incrementInserted("Funds");

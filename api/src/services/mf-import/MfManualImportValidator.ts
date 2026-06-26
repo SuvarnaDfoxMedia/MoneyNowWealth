@@ -1,6 +1,6 @@
 /**
- * MfWorkbookValidator — validates a parsed WorkbookDTO (post-parsing, pre-DB).
- * Uses alias resolution (DB reads). For raw XLSX structure validation, see MfXlsxStructureValidator.
+ * MfManualImportValidator — validates a parsed WorkbookDTO (post-parsing, pre-DB).
+ * Strict checks (orphan, category, AMC, and duplicate checking) for manual human uploads.
  */
 
 import { WorkbookDTO } from "../../types/mfImportDto";
@@ -8,9 +8,9 @@ import { MfImportSummary } from "./mfImportSummary";
 import { STANDARDIZED_CONFIGS, FieldConfig } from "./mfStandardization";
 import { MfAliasResolver } from "./MfAliasResolver";
 
-export class MfWorkbookValidator {
+export class MfManualImportValidator {
   
-  static async validate(dto: WorkbookDTO, summary: MfImportSummary, options: { skipOrphanCheck?: boolean } = {}): Promise<WorkbookDTO> {
+  static async validate(dto: WorkbookDTO, summary: MfImportSummary): Promise<WorkbookDTO> {
     dto.mainCategories = dto.mainCategories || [];
     dto.categories = dto.categories || [];
     dto.amcs = dto.amcs || [];
@@ -33,11 +33,8 @@ export class MfWorkbookValidator {
       topHoldings: []
     };
 
-    // 1. Missing Sheets & Structural checks are implicitly handled because MfWorkbookMapper outputs empty arrays.
-    // If essential sheets are entirely missing but required, we could flag it here.
-    // We will just validate the rows.
-
-    validatedDto.mainCategories = await this.validateSection(dto.mainCategories, STANDARDIZED_CONFIGS.MAIN_CATEGORIES, "Main Categories", summary, "name", dto, null, options);
+    validatedDto.mainCategories = await this.validateSection(dto.mainCategories, STANDARDIZED_CONFIGS.MAIN_CATEGORIES, "Main Categories", summary, "name", dto, null);
+    
     validatedDto.categories = await this.validateSection(dto.categories, STANDARDIZED_CONFIGS.CATEGORIES, "Categories", summary, "name", dto, async (item) => {
       if (item.mainCategoryName) {
         const found = await MfAliasResolver.resolveMainCategory(item.mainCategoryName);
@@ -47,12 +44,11 @@ export class MfWorkbookValidator {
         }
       }
       return true;
-    }, options);
+    });
 
-    validatedDto.amcs = await this.validateSection(dto.amcs, STANDARDIZED_CONFIGS.AMCS, "AMCs", summary, "name", dto, null, options);
+    validatedDto.amcs = await this.validateSection(dto.amcs, STANDARDIZED_CONFIGS.AMCS, "AMCs", summary, "name", dto, null);
     
     validatedDto.funds = await this.validateSection(dto.funds, STANDARDIZED_CONFIGS.FUNDS, "Funds", summary, "scheme_code", dto, async (item) => {
-      if (options.skipOrphanCheck) return true; // API bridge path: engine auto-creates missing refs
       let valid = true;
       if (item.amcName) {
         const found = await MfAliasResolver.resolveAmc(item.amcName);
@@ -76,10 +72,9 @@ export class MfWorkbookValidator {
         }
       }
       return valid;
-    }, options);
+    });
 
     validatedDto.benchmarks = await this.validateSection(dto.benchmarks, STANDARDIZED_CONFIGS.BENCHMARKS, "Benchmarks", summary, "benchmark_index_name", dto, async (item) => {
-      if (options.skipOrphanCheck) return true; // API bridge path: engine auto-creates missing refs
       let valid = true;
       if (item.categoryName) {
         const found = await MfAliasResolver.resolveCategory(item.categoryName);
@@ -89,11 +84,11 @@ export class MfWorkbookValidator {
         }
       }
       return valid;
-    }, options);
+    });
 
-    validatedDto.benchmarkReturns = await this.validateSection(dto.benchmarkReturns, STANDARDIZED_CONFIGS.BENCHMARK_RETURNS, "Benchmark Returns", summary, "benchmarkIndexName", dto, null, options);
-    validatedDto.nfos = await this.validateSection(dto.nfos, STANDARDIZED_CONFIGS.NFOS, "NFOs", summary, "nfo_name", dto, null, options);
-    validatedDto.indexSnapshots = await this.validateSection(dto.indexSnapshots, STANDARDIZED_CONFIGS.INDEX_SNAPSHOTS, "Index Snapshots", summary, "benchmark_index_name", dto, null, options);
+    validatedDto.benchmarkReturns = await this.validateSection(dto.benchmarkReturns, STANDARDIZED_CONFIGS.BENCHMARK_RETURNS, "Benchmark Returns", summary, "benchmarkIndexName", dto, null);
+    validatedDto.nfos = await this.validateSection(dto.nfos, STANDARDIZED_CONFIGS.NFOS, "NFOs", summary, "nfo_name", dto, null);
+    validatedDto.indexSnapshots = await this.validateSection(dto.indexSnapshots, STANDARDIZED_CONFIGS.INDEX_SNAPSHOTS, "Index Snapshots", summary, "benchmark_index_name", dto, null);
     
     validatedDto.topHoldings = await this.validateSection(dto.topHoldings, STANDARDIZED_CONFIGS.TOP_HOLDINGS, "Top Holdings", summary, "scheme_code", dto, async (item) => {
       let valid = true;
@@ -103,9 +98,7 @@ export class MfWorkbookValidator {
         valid = false;
       }
       return valid;
-    }, options);
-
-    // Partial Import Prevention is handled by the caller checking summary.errors.length
+    });
 
     return validatedDto;
   }
@@ -117,8 +110,7 @@ export class MfWorkbookValidator {
     summary: MfImportSummary,
     identifierField: string,
     dto: WorkbookDTO,
-    customValidator: ((item: any) => Promise<boolean>) | null,
-    options: { skipOrphanCheck?: boolean } = {}
+    customValidator: ((item: any) => Promise<boolean>) | null
   ): Promise<Record<string, any>[]> {
     items = items || [];
     const validItems: Record<string, any>[] = [];
@@ -144,23 +136,11 @@ export class MfWorkbookValidator {
 
       // Required Fields & Type Mismatch Validation
       for (const config of configs) {
-        if (options.skipOrphanCheck && sheetName === "Funds" && config.dbPath === "mainCategoryName") {
-          continue;
-        }
-        if (options.skipOrphanCheck && sheetName === "Categories" && config.dbPath === "mainCategoryName") {
-          continue;
-        }
         const val = this.getNestedValue(item, config.dbPath);
         
         if (config.required && (val === undefined || val === null || val === "")) {
           summary.addError(sheetName, i + 2, `Missing required field: ${config.header}`, identifier);
           isValid = false;
-        }
-        
-        // Pseudo-type checking for explicitly parsed nulls on expected types
-        if (val === null && !config.required) {
-          // If it was supposed to be a number but parser returned null...
-          // We assume MfFieldMapping did its best.
         }
       }
 

@@ -195,6 +195,8 @@ export default function NewsletterPublishListing() {
   };
 
   useEffect(() => {
+    if (!openDropdownId) return;
+
     const handleOutside = (e: MouseEvent) => {
       if (
         dropdownRef.current &&
@@ -203,9 +205,15 @@ export default function NewsletterPublishListing() {
         setOpenDropdownId(null);
       }
     };
+    const handleScroll = () => setOpenDropdownId(null);
+
     document.addEventListener("click", handleOutside);
-    return () => document.removeEventListener("click", handleOutside);
-  }, []);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("click", handleOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [openDropdownId]);
 
   /* ---------------- View PDF ---------------- */
   const viewFile = (newsletter: NewsletterPublish) => {

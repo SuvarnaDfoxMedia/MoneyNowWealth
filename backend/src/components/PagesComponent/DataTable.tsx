@@ -6,6 +6,7 @@ export interface TableColumn<T> {
   label: string;
   render?: (row: T, index: number) => React.ReactNode;
   sortable?: boolean;
+  renderHeader?: () => React.ReactNode;
 }
 
 interface DataTableProps<T> {
@@ -129,6 +130,7 @@ function DataTableComponent<T = Record<string, unknown>>({
             <tr>
               {columns.map((col) => {
                 const isSorted = sortField === col.key;
+                const headerContent = col.renderHeader ? col.renderHeader() : col.label;
                 return (
                   <th
                     key={col.key as string}
@@ -138,7 +140,11 @@ function DataTableComponent<T = Record<string, unknown>>({
                       ${isSorted ? "bg-gray-100" : ""}`}
                   >
                     <div className="flex items-center justify-between">
-                      <span>{col.label}</span>
+                      {typeof headerContent === "string" ? (
+                        <span>{headerContent}</span>
+                      ) : (
+                        headerContent
+                      )}
                       {col.sortable && (
                         <span className="flex flex-col ml-2">
                           <FiArrowUp

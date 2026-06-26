@@ -8,8 +8,8 @@ import {
   useMfApiSyncActive,
   useMfApiSyncOne,
   useMfApiToggleActive,
-  useMfApiBulkToggle,
   useMfApiMarkReviewed,
+  useMfApiSyncResume,
 } from "../hooks";
 import {
   formatDateTime,
@@ -91,18 +91,29 @@ export default function MfApiSchemeListingPage() {
   const syncActiveMutation = useMfApiSyncActive(role);
   const syncOneMutation = useMfApiSyncOne(role);
   const toggleActiveMutation = useMfApiToggleActive(role);
-  const bulkToggleMutation = useMfApiBulkToggle(role);
   const markReviewedMutation = useMfApiMarkReviewed(role);
+  const resumeSyncMutation = useMfApiSyncResume(role);
 
   const rows = schemeRows;
   const totalRecords = schemesQuery.data?.total ?? 0;
   const totalPages = Math.max(Math.ceil(totalRecords / recordsPerPage), 1);
 
-  const handleBulkToggle = (is_active: boolean) => {
-    bulkToggleMutation.mutate(
-      { ids: Array.from(selectedIds), is_active },
-      { onSuccess: () => setSelectedIds(new Set()) },
-    );
+  const [isFetchingAll, setIsFetchingAll] = useState(false);
+
+  const handleSelectAllFromTab = async () => {
+    try {
+      setIsFetchingAll(true);
+      // Fetch matching schemes without page/limit constraints (page=1, limit=999999)
+      const fetchParams = { ...params, page: 1, limit: 999999 };
+      const { fetchMfApiSchemes } = await import("../api");
+      const result = await fetchMfApiSchemes(role, fetchParams);
+      const allIds = (result.data || []).map((row: any) => row._id);
+      setSelectedIds(new Set(allIds));
+    } catch (error) {
+      console.error("Failed to select all tab schemes", error);
+    } finally {
+      setIsFetchingAll(false);
+    }
   };
 
   const handleMarkReviewed = () => {
@@ -132,6 +143,31 @@ export default function MfApiSchemeListingPage() {
     {
       key: "select",
       label: "",
+      renderHeader: () => {
+        const allVisibleSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row._id));
+        return (
+          <input
+            type="checkbox"
+            checked={allVisibleSelected}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  rows.forEach((row) => next.add(row._id));
+                  return next;
+                });
+              } else {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  rows.forEach((row) => next.delete(row._id));
+                  return next;
+                });
+              }
+            }}
+            className="h-4 w-4 rounded border-gray-300 accent-[#043f79] cursor-pointer"
+          />
+        );
+      },
       render: (row) => (
         <input
           type="checkbox"
@@ -298,6 +334,18 @@ export default function MfApiSchemeListingPage() {
             <button
               type="button"
               onClick={() => {
+                resumeSyncMutation.mutate(undefined, {
+                  onSuccess: () => setIsSyncModalOpen(true),
+                });
+              }}
+              disabled={resumeSyncMutation.isPending}
+              className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+            >
+              {resumeSyncMutation.isPending ? "Resuming..." : "Resume Sync"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 syncActiveMutation.mutate();
                 setIsSyncModalOpen(true);
               }}
@@ -343,28 +391,26 @@ export default function MfApiSchemeListingPage() {
         </div>
 
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-3">
+          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-3 flex-wrap">
             <span className="text-sm font-medium text-blue-800">
               {selectedIds.size} selected
             </span>
-            <button
-              onClick={() => handleBulkToggle(true)}
-              className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white"
-            >
-              Activate Selected
-            </button>
-            <button
-              onClick={() => handleBulkToggle(false)}
-              className="rounded-md bg-gray-500 px-3 py-1.5 text-xs font-medium text-white"
-            >
-              Deactivate Selected
-            </button>
             <button
               onClick={handleMarkReviewed}
               className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-white"
             >
               Mark as Reviewed
             </button>
+            
+            <button
+              type="button"
+              disabled={isFetchingAll}
+              onClick={handleSelectAllFromTab}
+              className="rounded-md border border-[#043f79] text-[#043f79] hover:bg-blue-100/50 px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+            >
+              {isFetchingAll ? "Selecting..." : `Select All ${totalRecords} Schemes`}
+            </button>
+
             <button
               onClick={() => setSelectedIds(new Set())}
               className="ml-auto text-xs text-blue-600 underline"

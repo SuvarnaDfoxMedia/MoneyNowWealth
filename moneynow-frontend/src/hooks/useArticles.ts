@@ -22,8 +22,6 @@ export function useArticles(params?: {
   page?: number;
   limit?: number;
   status?: string;
-  search?: string;
-  topic_id?: string;
 }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +34,7 @@ export function useArticles(params?: {
 
   useEffect(() => {
     fetchArticles();
-  }, [params?.page, params?.limit, params?.status, params?.search, params?.topic_id, refreshTick, accessLevel]);
+  }, [params?.page, params?.limit, params?.status, refreshTick, accessLevel]);
 
   const fetchArticles = async () => {
     const isInitialLoad = !hasLoadedRef.current;
@@ -65,14 +63,11 @@ export function useArticles(params?: {
   };
 
   const getImageUrl = (imagePath?: string) => {
-    if (!imagePath) return "/images/article-img-1.png";
+    if (!imagePath) return "/images/default-article.jpg";
 
     if (imagePath.startsWith("http")) return imagePath;
 
-    const fileName = imagePath.replace(/\\/g, "/").split("/").pop();
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
-
-    return `${baseUrl}/uploads/hero/${fileName}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/uploads/hero/${imagePath}`;
   };
 
   return {

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FiX, FiCheckCircle, FiRefreshCw, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMfApiDashboard, useMfApiSyncActive } from "../hooks";
+import { useMfApiDashboard, useMfApiSyncActive, useMfApiSyncLogs } from "../hooks";
 
 interface SyncProgressModalProps {
   role: string;
@@ -13,22 +13,41 @@ interface SyncProgressModalProps {
 export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgressModalProps) {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+
   const { data, refetch } = useMfApiDashboard(role, {
-    refetchInterval: isOpen ? 1500 : undefined,
+    refetchInterval: isOpen ? 3000 : false,
+    enabled: isOpen,
+  });
+  const { data: logsData } = useMfApiSyncLogs(role, { page: 1, limit: 8 }, {
+    refetchInterval: isOpen ? 3000 : false,
   });
   const retrySyncMutation = useMfApiSyncActive(role);
 
   const dashboard = data?.data;
-  const latestJob = dashboard?.latestSyncJob || null;
-  const totalSchemes = latestJob?.response?.total ?? dashboard?.totalSchemes ?? 0;
-  const activeSchemes = latestJob?.response?.active ?? dashboard?.activeSchemes ?? 0;
-  const inactiveSchemes = latestJob?.response?.inactive ?? dashboard?.inactiveSchemes ?? 0;
-  const processedSchemes = latestJob?.response?.processed ?? 0;
-  const failedSchemes = latestJob?.response?.errors ?? dashboard?.failedSchemes ?? 0;
+  const logRows: any[] = logsData?.data ?? [];
+  const latestLogJob: any = logRows.find((log) => log.status === "running" || log.status === "rate_limited")
+    || logRows.find((log) => log.action === "sync-all" || log.action === "sync-resume")
+    || null;
+  const latestJob = latestLogJob || dashboard?.latestSyncJob || null;
+  const totalSchemes = Number(latestJob?.response?.total ?? dashboard?.totalSchemes ?? 0) || 0;
+  const activeSchemes = Number(latestJob?.response?.active ?? dashboard?.activeSchemes ?? 0) || 0;
+  const inactiveSchemes = Number(latestJob?.response?.inactive ?? dashboard?.inactiveSchemes ?? 0) || 0;
+  const processedSchemes = Number(latestJob?.response?.processed ?? 0) || 0;
+  const failedSchemes = Number(latestJob?.response?.errors ?? dashboard?.failedSchemes ?? 0) || 0;
+  const currentPhase = String(latestJob?.response?.phase || "idle");
   const syncMessage = latestJob?.message || dashboard?.lastSyncMessage || dashboard?.runningMessage || "";
-  const isRunning = latestJob?.status === "running";
+  const isCurrentlyRunning = latestJob?.status === "running" || latestJob?.status === "rate_limited";
   const isRateLimited = latestJob?.status === "rate_limited";
-  const hasFinishedJob = latestJob ? (latestJob.status !== "running" && latestJob.status !== "rate_limited") : false;
+  const isCompleted = latestJob
+    ? (latestJob.status === "success" ||
+      latestJob.status === "failed" ||
+      String(latestJob.status).startsWith("partial"))
+    : false;
+
+  useEffect(() => {
+    setIsRunning(isCurrentlyRunning);
+  }, [isCurrentlyRunning]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -98,15 +117,25 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
                 </div>
               </div>
             </div>
-          ) : hasFinishedJob ? (
+          ) : isCompleted ? (
             <div className="mb-6 flex items-center gap-3 text-green-600">
               <FiCheckCircle className="h-5 w-5" />
-              <p className="font-medium">Sync process completed!</p>
+              <div>
+                <p className="font-medium">Sync process completed!</p>
+                <p className="mt-1 text-xs text-green-500">
+                  Phase: {currentPhase}. Processed {processedSchemes} of {totalSchemes}.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="mb-6 flex items-center gap-3 text-gray-600">
               <FiAlertCircle className="h-5 w-5" />
-              <p className="font-medium">Sync is currently idle.</p>
+              <div>
+                <p className="font-medium">Sync is currently idle.</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Processed {processedSchemes} of {totalSchemes} schemes.
+                </p>
+              </div>
             </div>
           )}
 
@@ -123,6 +152,9 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Processed {processedSchemes} of {totalSchemes} schemes{currentPhase !== "idle" ? ` • Phase: ${currentPhase}` : ""}.
+          </p>
 
           {/* Stats Grid */}
           <div className="mt-8 grid grid-cols-2 gap-4">

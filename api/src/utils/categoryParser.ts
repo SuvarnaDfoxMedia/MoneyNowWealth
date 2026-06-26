@@ -1,3 +1,20 @@
+const KNOWN_MAIN_CATEGORIES = [
+  "equity",
+  "debt",
+  "hybrid",
+  "solution oriented",
+  "other",
+  "others",
+  "fund of funds",
+  "fof",
+  "commodity",
+  "commodities",
+  "alternative",
+  "alternatives",
+  "cash",
+  "money market"
+];
+
 export const parseCategoryPath = (rawCategory: string): {
   mainCategoryName: string;
   categoryName: string;
@@ -7,7 +24,7 @@ export const parseCategoryPath = (rawCategory: string): {
     return { mainCategoryName: "Uncategorized", categoryName: "Uncategorized" };
   }
 
-  // Format: "Equity: Sectoral-Banking and Financial Services"
+  // Format 1: "Equity: Sectoral-Banking and Financial Services"
   if (clean.includes(":")) {
     const colonIdx = clean.indexOf(":");
     const mainRaw = clean.slice(0, colonIdx).trim();
@@ -18,7 +35,20 @@ export const parseCategoryPath = (rawCategory: string): {
     };
   }
 
-  // Format: "Fund of Funds-Domestic-Silver" — treat entire string as both main and sub
+  // Format 2: "Fund of Funds-Domestic-Silver" -> main="Fund of Funds", sub="Domestic-Silver"
+  if (clean.includes("-")) {
+    const hyphenIdx = clean.indexOf("-");
+    const mainRaw = clean.slice(0, hyphenIdx).trim();
+    const subRaw  = clean.slice(hyphenIdx + 1).trim();
+    if (KNOWN_MAIN_CATEGORIES.includes(mainRaw.toLowerCase())) {
+      return {
+        mainCategoryName: mainRaw || "Uncategorized",
+        categoryName:     subRaw  || mainRaw || "Uncategorized",
+      };
+    }
+  }
+
+  // Fallback: treat entire string as both main and sub
   return {
     mainCategoryName: clean,
     categoryName:     clean,

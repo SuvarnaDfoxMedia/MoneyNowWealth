@@ -1,13 +1,16 @@
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
 import StatusPill from "../components/StatusPill";
+import SyncProgressModal from "../components/SyncProgressModal";
 import {
   useMfApiDashboard,
   useMfApiSchemes,
   useMfApiSyncAll,
   useMfApiSyncLogs,
+  useMfApiResyncToManual,
 } from "../hooks";
 import {
   formatDateTime,
@@ -19,12 +22,34 @@ import {
 
 export default function MfApiDashboardPage() {
   const { role = "admin" } = useParams();
-  const dashboardQuery = useMfApiDashboard(role);
-  const schemesQuery = useMfApiSchemes(role, { page: 1, limit: 5 });
-  const logsQuery = useMfApiSyncLogs(role, { page: 1, limit: 5 });
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+
+  const dashboardQuery = useMfApiDashboard(role, {
+    refetchInterval: isRunning ? 3000 : false,
+  });
+  const schemesQuery = useMfApiSchemes(
+    role,
+    { page: 1, limit: 5 },
+    { refetchInterval: isRunning ? 3000 : false }
+  );
+  const logsQuery = useMfApiSyncLogs(
+    role,
+    { page: 1, limit: 5 },
+    { refetchInterval: isRunning ? 3000 : false }
+  );
   const syncAllMutation = useMfApiSyncAll(role);
+  const resyncToManualMutation = useMfApiResyncToManual(role);
 
   const dashboard = dashboardQuery.data?.data;
+
+  useEffect(() => {
+    const running =
+      dashboard?.latestSyncJob?.status === "running" ||
+      dashboard?.latestSyncJob?.status === "rate_limited";
+    setIsRunning(running);
+  }, [dashboard]);
+
   const recentSchemes = dashboard?.recentSchemes ?? schemesQuery.data?.data ?? [];
   const recentLogs = dashboard?.recentLogs ?? logsQuery.data?.data ?? [];
 
@@ -51,12 +76,38 @@ export default function MfApiDashboardPage() {
           <>
             <button
               type="button"
-              onClick={() => syncAllMutation.mutate()}
+              onClick={() => setIsSyncModalOpen(true)}
+              className="rounded-lg border border-[#043f79] text-[#043f79] bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              View Sync Progress
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                syncAllMutation.mutate(undefined, {
+                  onSuccess: () => setIsSyncModalOpen(true),
+                });
+              }}
               disabled={syncAllMutation.isPending}
               className="rounded-lg bg-[#043f79] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {syncAllMutation.isPending ? "Syncing..." : "Sync All"}
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                resyncToManualMutation.mutate(undefined, {
+                  onSuccess: () => setIsSyncModalOpen(true),
+                });
+              }}
+              disabled={resyncToManualMutation.isPending}
+              className="rounded-lg border border-emerald-500 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+            >
+              {resyncToManualMutation.isPending ? "Reconciling..." : "Reconcile Manual"}
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -227,6 +278,11 @@ export default function MfApiDashboardPage() {
           </div>
         </div>
       </div>
+      <SyncProgressModal
+        role={role}
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+      />
     </div>
   );
 }

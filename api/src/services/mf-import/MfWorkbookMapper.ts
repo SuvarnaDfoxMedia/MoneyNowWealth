@@ -1,7 +1,9 @@
 import { WorkbookDTO } from "../../types/mfImportDto";
 import { MfFieldMapping } from "./MfFieldMapping";
 import { MfHeaderResolution } from "./MfHeaderResolution";
-import { STANDARDIZED_CONFIGS, MF_SHEET_NAMES, FieldConfig } from "./mfStandardization";
+import { STANDARDIZED_CONFIGS, FieldConfig } from "./mfStandardization";
+import { MfAliasResolver } from "./MfAliasResolver";
+import { SHEET_ALIASES } from "../MfXlsxStructureValidator";
 
 export class MfWorkbookMapper {
   static mapToDTO(workbookData: Record<string, Record<string, unknown>[]>): WorkbookDTO {
@@ -17,31 +19,65 @@ export class MfWorkbookMapper {
       topHoldings: []
     };
 
-    this.processSheet(workbookData, MF_SHEET_NAMES.MAIN_CATEGORIES, STANDARDIZED_CONFIGS.MAIN_CATEGORIES, dto.mainCategories);
-    this.processSheet(workbookData, MF_SHEET_NAMES.CATEGORIES, STANDARDIZED_CONFIGS.CATEGORIES, dto.categories);
-    this.processSheet(workbookData, MF_SHEET_NAMES.AMCS, STANDARDIZED_CONFIGS.AMCS, dto.amcs);
+    this.processSheet(workbookData, "main-categories", STANDARDIZED_CONFIGS.MAIN_CATEGORIES, dto.mainCategories);
+    this.processSheet(workbookData, "categories", STANDARDIZED_CONFIGS.CATEGORIES, dto.categories);
+    this.processSheet(workbookData, "amcs", STANDARDIZED_CONFIGS.AMCS, dto.amcs);
     
-    // We want to process BOTH Popular_Funds and Scheme_Details into dto.funds
-    this.processSheet(workbookData, MF_SHEET_NAMES.FUNDS_POPULAR, STANDARDIZED_CONFIGS.FUNDS, dto.funds);
-    this.processSheet(workbookData, MF_SHEET_NAMES.FUNDS_ALL, STANDARDIZED_CONFIGS.FUNDS, dto.funds);
+    const fundsPopular: Record<string, any>[] = [];
+    const fundsAll: Record<string, any>[] = [];
 
-    this.processSheet(workbookData, MF_SHEET_NAMES.BENCHMARKS, STANDARDIZED_CONFIGS.BENCHMARKS, dto.benchmarks);
-    this.processSheet(workbookData, MF_SHEET_NAMES.BENCHMARKS, STANDARDIZED_CONFIGS.BENCHMARK_RETURNS, dto.benchmarkReturns);
+    this.processSheet(workbookData, "funds-popular", STANDARDIZED_CONFIGS.FUNDS, fundsPopular);
+    this.processSheet(workbookData, "funds-all", STANDARDIZED_CONFIGS.FUNDS, fundsAll);
+
+    // Keep all funds-all rows (FUNDS_ALL is source of truth)
+    dto.funds.push(...fundsAll);
+
+    // Track unique scheme codes from funds-all
+    const existingCodes = new Set<string>();
+    for (const fund of fundsAll) {
+      if (fund.scheme_code) {
+        const norm = MfAliasResolver.normalizeString(fund.scheme_code);
+        if (norm) {
+          existingCodes.add(norm);
+        }
+      }
+    }
+
+    // Append funds-popular rows only if they are not already present in funds-all
+    for (const fund of fundsPopular) {
+      if (fund.scheme_code) {
+        const norm = MfAliasResolver.normalizeString(fund.scheme_code);
+        if (norm && !existingCodes.has(norm)) {
+          dto.funds.push(fund);
+          existingCodes.add(norm);
+        }
+      } else {
+        // Also check if there's an existing fund with same name to prevent duplicates
+        const normName = fund.fund_name ? MfAliasResolver.normalizeString(fund.fund_name) : "";
+        const existsByName = dto.funds.some(f => f.fund_name && MfAliasResolver.normalizeString(f.fund_name) === normName);
+        if (!existsByName) {
+          dto.funds.push(fund);
+        }
+      }
+    }
+
+    this.processSheet(workbookData, "benchmarks", STANDARDIZED_CONFIGS.BENCHMARKS, dto.benchmarks);
+    this.processSheet(workbookData, "benchmark-returns", STANDARDIZED_CONFIGS.BENCHMARK_RETURNS, dto.benchmarkReturns);
     
-    this.processSheet(workbookData, MF_SHEET_NAMES.NFOS, STANDARDIZED_CONFIGS.NFOS, dto.nfos);
-    this.processSheet(workbookData, MF_SHEET_NAMES.INDEX_SNAPSHOTS, STANDARDIZED_CONFIGS.INDEX_SNAPSHOTS, dto.indexSnapshots);
-    this.processSheet(workbookData, MF_SHEET_NAMES.TOP_HOLDINGS, STANDARDIZED_CONFIGS.TOP_HOLDINGS, dto.topHoldings);
+    this.processSheet(workbookData, "nfo", STANDARDIZED_CONFIGS.NFOS, dto.nfos);
+    this.processSheet(workbookData, "index-snapshots", STANDARDIZED_CONFIGS.INDEX_SNAPSHOTS, dto.indexSnapshots);
+    this.processSheet(workbookData, "top-holdings", STANDARDIZED_CONFIGS.TOP_HOLDINGS, dto.topHoldings);
 
     return dto;
   }
 
   private static processSheet(
     workbookData: Record<string, Record<string, unknown>[]>, 
-    sheetMatch: string, 
+    sheetKey: string, 
     configs: FieldConfig[], 
     targetArray: Record<string, any>[]
   ) {
-    const sheet = this.getSheet(workbookData, sheetMatch);
+    const sheet = this.getSheet(workbookData, sheetKey);
     if (!sheet) return;
 
     for (const row of sheet) {
@@ -86,8 +122,15 @@ export class MfWorkbookMapper {
     }
   }
 
-  private static getSheet(workbookData: Record<string, Record<string, unknown>[]>, sheetMatch: string) {
-    const key = Object.keys(workbookData).find(k => k.toLowerCase().includes(sheetMatch.toLowerCase()));
+  private static getSheet(workbookData: Record<string, Record<string, unknown>[]>, sheetKey: string) {
+    const aliases = SHEET_ALIASES[sheetKey] || [sheetKey];
+    const key = Object.keys(workbookData).find(k => {
+      const normalizedK = k.trim().toLowerCase().replace(/[\s_-]+/g, "");
+      return aliases.some(alias => {
+        const normalizedAlias = alias.trim().toLowerCase().replace(/[\s_-]+/g, "");
+        return normalizedK === normalizedAlias;
+      });
+    });
     return key ? workbookData[key] : null;
   }
 

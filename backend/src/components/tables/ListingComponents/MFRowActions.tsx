@@ -22,14 +22,22 @@ export default function MFRowActions({
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
+    if (!open) return;
+
     const handleOutside = (event: MouseEvent) => {
       if (!wrapperRef.current?.contains(event.target as Node)) {
         setOpen(false);
       }
     };
+    const handleScroll = () => setOpen(false);
+
     window.addEventListener("click", handleOutside);
-    return () => window.removeEventListener("click", handleOutside);
-  }, []);
+    window.addEventListener("scroll", handleScroll, true); // capture: true catches all scroll events
+    return () => {
+      window.removeEventListener("click", handleOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [open]);
 
   return (
     <div ref={wrapperRef} className="relative dropdown">

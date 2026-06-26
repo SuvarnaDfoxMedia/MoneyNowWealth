@@ -19,6 +19,8 @@ import {
   getMfApiNavHistory,
   syncSchemeToManual,
   resyncAllToManual,
+  resumeMfApiSync,
+  getUnbridgedSchemes,
 } from "../controllers/mfApiController";
 
 const router = express.Router();
@@ -52,5 +54,11 @@ router.get("/:role/mf-api/schemes/:id/nav-history", ...adminEditorMiddleware, ge
 
 // ─ Bulk bridge re-sync: repopulates MFFund from stored MfApiScheme data ─
 router.post("/:role/mf-api/resync-to-manual", ...adminEditorMiddleware, resyncAllToManual);
+
+// ─ Resume sync: re-processes queued/partial_success active schemes after rate-limit abort ─
+router.post("/:role/mf-api/sync-resume", ...adminEditorMiddleware, resumeMfApiSync);
+
+// ─ Diagnostic: find active API schemes not yet bridged to the manual module ─
+router.get("/:role/mf-api/unbridged-schemes", ...adminEditorMiddleware, getUnbridgedSchemes);
 
 export default router;

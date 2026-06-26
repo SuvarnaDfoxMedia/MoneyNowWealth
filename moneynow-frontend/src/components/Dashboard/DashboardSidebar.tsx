@@ -43,9 +43,7 @@ export default function DashboardSidebar() {
           const isActive =
             item.href === "/user/dashboard"
               ? pathname === item.href
-              : item.id === "insights"
-                ? pathname.startsWith(item.href) || pathname.startsWith("/user/blog")
-                : pathname.startsWith(item.href);
+              : pathname.startsWith(item.href);
 
           return (
             <Link

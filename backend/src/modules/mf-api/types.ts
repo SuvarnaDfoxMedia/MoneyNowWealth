@@ -98,13 +98,18 @@ export type MfApiSyncLog = {
   _id: string;
   action?: string;
   schemeId?: string;
+  scheme_id?: string;
   schemeName?: string;
+  scheme_name?: string;
   status?: "success" | "failed" | "running" | "queued" | string;
   message?: string;
   error?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: string;     // alias — may be present if server serialises differently
+  updatedAt?: string;     // alias
+  created_at?: string;    // actual DB field (timestamps: { createdAt: "created_at" })
+  updated_at?: string;    // actual DB field
   payload?: unknown;
+  response?: Record<string, unknown> | null;
 };
 
 export type MfApiDashboardSummary = {
@@ -147,6 +152,9 @@ export type MfApiImportReport = {
   inserted?: number;
   updated?: number;
   activated?: number;
+  deactivated?: number;
+  syncFailed?: number;   // schemes that activated but failed to bridge to the manual module
+  syncPartial?: number;  // schemes activated but MFFund not found/created (missing AMC or category)
   skipped?: number;
   rejected?: number;
   totalRows?: number;
@@ -157,6 +165,11 @@ export type MfApiImportReport = {
     row?: number;
     message?: string;
     identifier?: string;
+  }>;
+  bridgeFailed?: Array<{
+    scheme_code: string;
+    scheme_name: string;
+    reason: string;
   }>;
 };
 

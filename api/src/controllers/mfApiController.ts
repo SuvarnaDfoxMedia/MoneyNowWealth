@@ -15,6 +15,9 @@ import {
   importTopHoldingsForScheme,
   getLatestTopHoldingsForScheme,
   getNavHistoryForScheme,
+  resumeDetailedSyncBatch,
+  buildManualBridgeResetUpdate,
+  buildManualBridgeResetFilter,
 } from "../services/mfApiService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import type { AuthenticatedRequest } from "../middlewares/authMiddleware";
@@ -128,9 +131,10 @@ export const importMfApi = async (req: Request, res: Response) => {
   }
 };
 
-export const exportMfApi = async (_req: Request, res: Response) => {
+export const exportMfApi = async (req: Request, res: Response) => {
   try {
-    const exported = await exportMfApiData();
+    const activeOnly = req.query.active_only === "true" || req.query.type === "active";
+    const exported = await exportMfApiData({ activeOnly });
     res.setHeader("Content-Type", exported.contentType);
     res.setHeader("Content-Disposition", `attachment; filename="${exported.fileName}"`);
     return res.status(200).send(exported.buffer);
@@ -221,9 +225,45 @@ export const getMfApiNavHistory = async (req: Request, res: Response) => {
 export const syncSchemeToManual = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { syncApiSchemeToManual } = await import("../services/mf-import/MfApiSyncEngine");
-    const result = await syncApiSchemeToManual(id, { activating: true });
-    return sendSuccess(res, "Bridge sync completed", result);
+    const MfApiScheme = (await import("../models/mfApiSchemeModel")).default;
+    const MFFund = (await import("../models/mfFundModel")).default;
+    const scheme = await MfApiScheme.findById(id).select("_id scheme_code scheme_name is_active").lean();
+
+    if (!scheme) {
+      return sendError(res, "Scheme not found", 404);
+    }
+
+    if (scheme.is_active) {
+      const { syncApiSchemeToManual } = await import("../services/mf-import/MfApiSyncEngine");
+      const result = await syncApiSchemeToManual(id, { activating: true });
+      return sendSuccess(res, "Bridge sync completed", result);
+    }
+
+    if (!scheme.scheme_code) {
+      return sendSuccess(res, "Manual bridge reconcile skipped", {
+        action: "skipped",
+        reason: "scheme_code missing for inactive scheme",
+      });
+    }
+
+    const softDeleted = await MFFund.updateMany(
+      { ...buildManualBridgeResetFilter(id, scheme.scheme_code), is_deleted: false },
+      { $set: buildManualBridgeResetUpdate() },
+    );
+
+    await MfApiScheme.findByIdAndUpdate(id, {
+      $set: {
+        sync_status: "success",
+        last_sync_error: "",
+        last_synced_at: new Date(),
+      },
+    });
+
+    return sendSuccess(res, "Manual bridge reconciled", {
+      action: "soft_deleted",
+      matchedCount: softDeleted.matchedCount,
+      modifiedCount: softDeleted.modifiedCount,
+    });
   } catch (err: any) {
     return sendError(res, err?.message || "Bridge sync failed", 500);
   }
@@ -233,33 +273,97 @@ export const resyncAllToManual = async (req: Request, res: Response) => {
   try {
     const { syncApiSchemeToManual } = await import("../services/mf-import/MfApiSyncEngine");
     const MfApiScheme = (await import("../models/mfApiSchemeModel")).default;
+    const MFFund = (await import("../models/mfFundModel")).default;
 
     const schemes = await MfApiScheme.find({
       is_deleted: { $ne: true },
-      is_active: true,
-      sync_status: "success",
-    }).select("_id").lean();
+    })
+      .select("_id scheme_code is_active")
+      .lean();
 
-    // Fire and forget — HTTP responds immediately; sync runs in background
+    // Fire and forget — HTTP responds immediately; reconciliation runs in background
     (async () => {
-      let done = 0;
+      let activated = 0;
+      let deactivated = 0;
       let failed = 0;
       for (const s of schemes) {
         try {
-          await syncApiSchemeToManual(String(s._id), { activating: true });
-          done++;
+          if ((s as any).is_active) {
+            await syncApiSchemeToManual(String(s._id), { activating: true });
+            activated++;
+          } else if ((s as any).scheme_code) {
+            await MFFund.updateMany(
+              {
+                ...buildManualBridgeResetFilter(String(s._id), (s as any).scheme_code),
+                is_deleted: false,
+              },
+              { $set: buildManualBridgeResetUpdate() },
+            );
+            deactivated++;
+          }
         } catch (e: any) {
           failed++;
           console.error(`[resync-to-manual] Failed scheme ${s._id}:`, e?.message);
         }
       }
-      console.log(`[resync-to-manual] Completed ${done}/${schemes.length} schemes, ${failed} failed`);
+      console.log(
+        `[resync-to-manual] Completed ${schemes.length} schemes, ${activated} activated, ${deactivated} deactivated, ${failed} failed`,
+      );
     })().catch(console.error);
 
-    return sendSuccess(res, `Bridge re-sync started for ${schemes.length} active schemes`, {
+    return sendSuccess(res, `Bridge reconciliation started for ${schemes.length} schemes`, {
       total: schemes.length,
     });
   } catch (err: any) {
     return sendError(res, err?.message || "Resync failed", 500);
+  }
+};
+
+export const resumeMfApiSync = async (req: Request, res: Response) => {
+  try {
+    const response = await resumeDetailedSyncBatch(readContext(req));
+    return sendSuccess(res, response.message, response);
+  } catch (error: any) {
+    return sendError(res, error?.message || "Failed to resume sync", 500);
+  }
+};
+
+export const getUnbridgedSchemes = async (_req: Request, res: Response) => {
+  try {
+    const MfApiScheme = (await import("../models/mfApiSchemeModel")).default;
+    const MFFund = (await import("../models/mfFundModel")).default;
+
+    const activeSchemes = await MfApiScheme.find({
+      is_active: true,
+      is_deleted: { $ne: true },
+    })
+      .select("_id scheme_code scheme_name amc_name category last_sync_error sync_status")
+      .lean();
+
+    // Build a set of scheme_codes that are already bridged (have an MFFund record)
+    const bridgedFunds = await MFFund.find({
+      is_deleted: false,
+      is_active: 1,
+      scheme_code: { $ne: "" },
+    })
+      .select("scheme_code")
+      .lean();
+
+    const bridgedCodes = new Set(bridgedFunds.map((f: any) => f.scheme_code).filter(Boolean));
+
+    const unbridged = activeSchemes.filter((s: any) => !bridgedCodes.has(s.scheme_code));
+
+    return sendSuccess(
+      res,
+      `${unbridged.length} active schemes not found in manual module`,
+      {
+        total_active: activeSchemes.length,
+        total_bridged: bridgedCodes.size,
+        unbridged_count: unbridged.length,
+        unbridged,
+      }
+    );
+  } catch (err: any) {
+    return sendError(res, err?.message || "Failed to fetch unbridged schemes", 500);
   }
 };
