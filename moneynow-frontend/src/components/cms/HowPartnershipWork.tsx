@@ -29,7 +29,7 @@ function HowPartnershipWork() {
   return (
     <section className="font-poppins py-[60px] bg-[#F8F8F8]">
       <div className="mx-auto max-w-7xl px-4">
-        <h2 className="text-center text-[34px] font-semibold leading-tight  md:text-[40px]">
+        <h2 className="text-center text-[28px] md:text-[40px] font-semibold leading-tight">
           How The Partnership Works
         </h2>
 
@@ -40,19 +40,19 @@ function HowPartnershipWork() {
               className="group rounded-[14px]  bg-white px-6 py-5 text-[#111111] shadow-md transition duration-300  hover:bg-[#043F79] hover:text-white md:min-h-[146px] md:px-6 md:py-5"
             >
               <div
-                className="inline-flex rounded-[6px] bg-[#043F79]/12 px-4 py-3 text-[16px] font-medium leading-none text-[#164D86] transition duration-300 group-hover:bg-[rgba(255,255,255,0.12)] group-hover:text-white"
+                className="inline-flex rounded-[6px] bg-[#043F79]/12 px-4 py-3 text-[14px] md:text-[16px] font-medium leading-none text-[#164D86] transition duration-300 group-hover:bg-[rgba(255,255,255,0.12)] group-hover:text-white"
               >
                 {step}
               </div>
 
               <h3
-                className="mt-3 text-[20px] font-semibold  text-[#043F79] transition duration-300 group-hover:text-[#ffffff]"
+                className="mt-3 text-[18px] md:text-[20px] font-semibold  text-[#043F79] transition duration-300 group-hover:text-[#ffffff]"
               >
                 {title}
               </h3>
 
               <p
-                className="mt-3 text-[16px] leading-[28px]  transition duration-300 group-hover:text-white"
+                className="mt-3 text-[15px] md:text-[16px] leading-[24px] md:leading-[28px]  transition duration-300 group-hover:text-white"
               >
                 {description}
               </p>
@@ -60,7 +60,7 @@ function HowPartnershipWork() {
           ))}
         </div>
 
-        <p className="mx-auto mt-15 max-w-7xl text-center text-[16px] leading-[28px]">
+        <p className="mx-auto mt-15 max-w-7xl text-center text-[15px] md:text-[16px] leading-[24px] md:leading-[28px]">
           All partnerships are operated strictly within the SEBI Mutual Fund
           Regulations and AMFI guidelines applicable to mutual fund
           distributors and their empanelled sub-distributors / authorised

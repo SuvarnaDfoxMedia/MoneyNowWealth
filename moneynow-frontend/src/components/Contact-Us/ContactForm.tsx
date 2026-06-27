@@ -200,7 +200,7 @@ const ContactForm = () => {
     <section className="font-poppins relative">
       <CMSBanner title="Contact Us" bgImage="/images/contact-bg.png" />
 
-      <div className="relative max-w-7xl mx-auto  mb-[60px]">
+      <div className="relative max-w-7xl mx-auto px-4 mb-[60px]">
         <div
           className="mx-auto grid w-full overflow-hidden rounded-[14px] bg-white 
   shadow-[0px_-4px_20px_rgba(0,0,0,0.03),0px_10px_30px_rgba(0,0,0,0.05)] 
@@ -256,7 +256,7 @@ const ContactForm = () => {
             </div>
           </div>
 
-          <div className="p-6 p-10 ">
+          <div className="p-6 md:p-10">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="w-full">

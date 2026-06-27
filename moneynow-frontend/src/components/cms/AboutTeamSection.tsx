@@ -26,17 +26,17 @@ const teamData = [
 const TeamSection = () => {
   return (
     <section className="w-full py-[60px]">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Heading */}
         <h2 className="text-center text-[28px] md:text-[40px] font-semibold mb-3">
           The People Behind Your Money
         </h2>
-        <p className="text-center mb-3 max-w-3xl mx-auto text-[18px]">
+        <p className="text-center mb-3 max-w-3xl mx-auto text-[16px] md:text-[18px]">
           Every platform has technology. What matters just as much is who stands
           behind it.
         </p>
 
-        <p className="text-center mb-12 max-w-3xl mx-auto text-[16px]">
+        <p className="text-center mb-12 max-w-3xl mx-auto text-[15px] md:text-[16px]">
           Together, our core team brings 70+ years of investing experience with
           1000+ families.
         </p>
@@ -49,7 +49,7 @@ const TeamSection = () => {
               className="group bg-white rounded-[14px] overflow-hidden shadow-md transition-all duration-300 h-fit"
             >
               {/* Image */}
-              <div className="relative w-full h-[450px] overflow-hidden">
+              <div className="relative w-full h-[350px] sm:h-[400px] md:h-[450px] overflow-hidden">
                 <Image
                   src={member.img}
                   alt={member.name}
@@ -60,15 +60,15 @@ const TeamSection = () => {
 
               {/* Content */}
               <div className="p-5">
-                <h3 className="text-[24px] font-semibold mb-2">
+                <h3 className="text-[20px] md:text-[24px] font-semibold mb-2">
                   {member.name}
                 </h3>
-                <p className="text-[16px] text-[#043F79] mb-3">{member.role}</p>
+                <p className="text-[14px] md:text-[16px] text-[#043F79] mb-3">{member.role}</p>
 
                 {/* Description */}
                 <p
                   className="
-                    text-[16px] leading-[26px]
+                    text-[15px] md:text-[16px] leading-[24px] md:leading-[26px]
                     max-h-none overflow-visible pb-0
                     md:max-h-[50px] md:overflow-hidden md:pb-3
                     md:group-hover:max-h-[1000px] md:group-hover:pb-0

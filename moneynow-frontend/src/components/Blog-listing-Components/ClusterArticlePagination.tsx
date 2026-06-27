@@ -94,7 +94,7 @@ const ClusterArticlePagination: React.FC<Props> = ({
                 <div
                   className=" mt-2 font-inter line-clamp-3
                        [&_p]:inline
-                       [&_p]:!text-[20px]
+                       [&_p]:!text-[16px]
                        [&_p]:!leading-[30px]
                        [&_p]:mb-0
                        [&_ul]:my-2

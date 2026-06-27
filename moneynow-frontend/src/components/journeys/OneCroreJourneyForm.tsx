@@ -42,7 +42,7 @@ function JourneyField({
 }) {
   return (
     <div className="rounded-[8px] border border-[#F0F0F0] bg-[#FAFCFE] p-4">
-      <label className="block text-[18px] font-medium text-[#000000]">
+      <label className="block text-[16px] md:text-[18px] font-medium text-[#000000]">
         {label}
       </label>
       <input
@@ -98,10 +98,10 @@ export default function OneCroreJourneyForm({
   onFormChange,
 }: OneCroreJourneyFormProps) {
   return (
-<section className="rounded-[8px] bg-[#ffffff] p-4 shadow-[0_4px_10px_rgba(15,23,42,0.08)] md:py-[30px] px-[20px]">      <p className="text-[16px] text-[#000000]">
-        See how your SIP can grow towards Rs.1crore and beyond
-      </p>
-      <h2 className="text-[32px] mb-[30px] font-semibold leading-[60px] text-[#000000]">
+<section className="rounded-[8px] bg-[#ffffff] p-4 shadow-[0_4px_10px_rgba(15,23,42,0.08)] md:py-[30px] px-[20px]">     <p className="mb-4 md:mb-0 text-[14px] md:text-[16px] text-[#000000]">
+  See how your SIP can grow towards Rs.1crore and beyond
+</p>
+      <h2 className="text-[22px] md:text-[32px] mb-[20px] md:mb-[30px] font-semibold leading-tight md:leading-[60px] text-[#000000]">
         Tell us what you’re aiming for
       </h2>
 
@@ -146,7 +146,7 @@ export default function OneCroreJourneyForm({
         />
 
         <div className="rounded-[8px] border border-[#E7EDF3] bg-[#FAFCFE] p-4">
-          <label className="block text-[14px] font-medium text-[#000]">
+          <label className="block text-[13px] md:text-[14px] font-medium text-[#000]">
             What rate of return would you expect your SIP investment to
             generate (% per annum)
           </label>

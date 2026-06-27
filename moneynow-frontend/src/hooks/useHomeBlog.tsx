@@ -17,7 +17,10 @@ export interface CardData {
   article_type?: string;
   plan_type?: string;
   is_premium?: boolean;
-  premium?: boolean;
+  isHomeFeatured?: boolean;
+  isDashboardFeatured?: boolean;
+  show_on_home?: boolean;
+  show_on_dashboard?: boolean;
 }
 
 const IMAGE_BASE = API.defaults.baseURL + "/uploads";
@@ -28,6 +31,7 @@ export const useFetchCards = (
   options?: {
     withCredentials?: boolean;
     forceFreeOnly?: boolean;
+    visibilityField?: "isHomeFeatured" | "isDashboardFeatured" | "show_on_home" | "show_on_dashboard";
   },
 ) => {
   const [cards, setCards] = useState<CardData[]>([]);
@@ -38,6 +42,7 @@ export const useFetchCards = (
   const { accessLevel } = useContentAccess();
   const withCredentials = options?.withCredentials ?? true;
   const forceFreeOnly = options?.forceFreeOnly ?? false;
+  const visibilityField = options?.visibilityField;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,8 +53,12 @@ export const useFetchCards = (
       setError(null);
 
       try {
+        const queryParams: any = { limit };
+        if (visibilityField === "show_on_home") queryParams.show_on_home = "true";
+        if (visibilityField === "show_on_dashboard") queryParams.show_on_dashboard = "true";
+
         const { data } = await API.get(endpoint, {
-          params: { limit },
+          params: queryParams,
           withCredentials,
         });
 
@@ -69,8 +78,18 @@ export const useFetchCards = (
           return;
         }
 
+        const hasVisibilityField =
+          visibilityField &&
+          articles.some((article: any) =>
+            Object.prototype.hasOwnProperty.call(article, visibilityField),
+          );
+
+        const filteredByVisibility = hasVisibilityField
+          ? articles.filter((article: any) => Boolean(article?.[visibilityField]))
+          : articles;
+
         const freeOnlyArticles = forceFreeOnly
-          ? articles.filter((article: any) => {
+          ? filteredByVisibility.filter((article: any) => {
               const level = String(
                 article?.access_level ||
                   article?.content_type ||
@@ -88,9 +107,23 @@ export const useFetchCards = (
 
               return !level.includes("premium");
             })
-          : articles;
+          : filteredByVisibility;
 
         const formattedCards: CardData[] = freeOnlyArticles.map((article: any) => {
+          const accessLevel = String(
+            article?.access_level ||
+              article?.content_type ||
+              article?.article_type ||
+              article?.plan_type ||
+              "",
+          ).toLowerCase();
+
+          const isPremium = Boolean(
+            article?.is_premium === true ||
+              article?.premium === true ||
+              accessLevel.includes("premium"),
+          );
+
           let imageSrc = "/no-image.png";
 
           if (article.hero_image) {
@@ -133,6 +166,16 @@ export const useFetchCards = (
               "",
             author: article.author || "Team Money Now",
             created_at: article.created_at,
+            access_level: article?.access_level,
+            content_type: article?.content_type,
+            article_type: article?.article_type,
+            plan_type: article?.plan_type,
+            is_premium: isPremium,
+            premium: isPremium,
+            isHomeFeatured: Boolean(article?.isHomeFeatured),
+            isDashboardFeatured: Boolean(article?.isDashboardFeatured),
+            show_on_home: Boolean(article?.show_on_home),
+            show_on_dashboard: Boolean(article?.show_on_dashboard),
           };
         });
 
@@ -151,7 +194,15 @@ export const useFetchCards = (
     };
 
     fetchData();
-  }, [endpoint, limit, refreshTick, accessLevel, withCredentials, forceFreeOnly]);
+  }, [
+    endpoint,
+    limit,
+    refreshTick,
+    accessLevel,
+    withCredentials,
+    forceFreeOnly,
+    visibilityField,
+  ]);
 
   return { cards, loading, error, refetch: refresh };
 };

@@ -427,20 +427,20 @@ export default function FinancialWellnessResultView({
 
       <div className="mt-10 rounded-[8px] border border-[#C9DCEB] bg-[#F7FBFF] p-5 md:p-8">
         <div className="mx-auto max-w-[930px] rounded-[8px] bg-[#053D73] p-6 text-white shadow-[0_14px_28px_rgba(5,47,86,0.26)] md:p-8">
-          <h3 className="text-[24px] font-semibold">
-            Want this plan in your inbox?
-          </h3>
+          <h3 className="text-[24px] font-semibold leading-8 sm:leading-normal">
+  Want this plan in your inbox?
+</h3>
           <p className="mt-3 text-[14px] leading-6 text-white/90">
             We&apos;ll send you a simple summary of your SIP journey and an
             option to talk to a Moneynow executive.
           </p>
 
-          <form
+          {/* <form
             noValidate
             onSubmit={handleLeadSubmit}
             className="mt-6 grid gap-5 md:grid-cols-3"
           >
-            <label className="text-[12px] font-medium">
+            <label className="block text-[12px] font-medium">
               Full name <span className="text-[#FF5B5B]">*</span>
               <input
                 value={lead.full_name}
@@ -462,7 +462,7 @@ export default function FinancialWellnessResultView({
                 </p>
               ) : null}
             </label>
-            <label className="text-[12px] font-medium">
+            <label className="block text-[12px] font-medium">
               Email <span className="text-[#FF5B5B]">*</span>
               <input
                 type="text"
@@ -484,7 +484,7 @@ export default function FinancialWellnessResultView({
                 <p className="mt-1 text-xs text-red-300">{leadErrors.email}</p>
               ) : null}
             </label>
-            <label className="text-[12px] font-medium">
+            <label className="block text-[12px] font-medium one-crore-phone-field">
               Mobile number <span className="text-[#FF5B5B]">*</span>
               <input
                 ref={phoneRef}
@@ -536,7 +536,121 @@ export default function FinancialWellnessResultView({
                 {leadErrors.submit}
               </div>
             ) : null}
-          </form>
+          </form> */}
+
+          <form
+  noValidate
+  onSubmit={handleLeadSubmit}
+  className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5"
+>
+  <label className="block w-full text-[12px] font-medium">
+    Full name <span className="text-[#FF5B5B]">*</span>
+    <input
+      value={lead.full_name}
+      onChange={(event) => {
+        setLead((prev) => ({ ...prev, full_name: event.target.value }));
+        setLeadErrors((prev) => ({
+          ...prev,
+          full_name: undefined,
+          submit: undefined,
+        }));
+      }}
+      className={`mt-2 h-12 w-full rounded-[3px] border-0 bg-white px-3 text-[#111827] outline-none ${
+        leadErrors.full_name ? "ring-2 ring-red-400" : ""
+      }`}
+    />
+    {leadErrors.full_name ? (
+      <p className="mt-1 text-xs text-red-300">
+        {leadErrors.full_name}
+      </p>
+    ) : null}
+  </label>
+
+  <label className="block w-full text-[12px] font-medium">
+    Email <span className="text-[#FF5B5B]">*</span>
+    <input
+      type="text"
+      inputMode="email"
+      value={lead.email}
+      onChange={(event) => {
+        setLead((prev) => ({ ...prev, email: event.target.value }));
+        setLeadErrors((prev) => ({
+          ...prev,
+          email: undefined,
+          submit: undefined,
+        }));
+      }}
+      className={`mt-2 h-12 w-full rounded-[3px] border-0 bg-white px-3 text-[#111827] outline-none ${
+        leadErrors.email ? "ring-2 ring-red-400" : ""
+      }`}
+    />
+    {leadErrors.email ? (
+      <p className="mt-1 text-xs text-red-300">
+        {leadErrors.email}
+      </p>
+    ) : null}
+  </label>
+
+  <label className="block w-full text-[12px] font-medium one-crore-phone-field">
+    Mobile number <span className="text-[#FF5B5B]">*</span>
+    <input
+      ref={phoneRef}
+      type="tel"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      placeholder="Enter mobile number"
+      className={`mt-2 h-12 w-full rounded-[3px] border-0 bg-white px-3 text-[#111827] outline-none ${
+        leadErrors.mobile ? "ring-2 ring-red-400" : ""
+      }`}
+    />
+    {leadErrors.mobile ? (
+      <p className="mt-1 text-xs text-red-300">
+        {leadErrors.mobile}
+      </p>
+    ) : null}
+  </label>
+
+  <label className="flex items-start gap-3 text-left text-[13px] leading-5 text-white/90 md:col-span-3 md:items-center md:justify-center md:text-center">
+    <input
+      type="checkbox"
+      checked={lead.wants_callback}
+      onChange={(event) =>
+        setLead((prev) => ({
+          ...prev,
+          wants_callback: event.target.checked,
+        }))
+      }
+      className="mt-1 h-4 w-4 shrink-0 accent-[#0F4C81] md:mt-0"
+    />
+    <span>
+      I&apos;d like a Moneynow advisor to walk me through this on a
+      quick call.
+    </span>
+  </label>
+
+  <div className="flex w-full md:col-span-3 md:justify-center">
+    <button
+      type="submit"
+      disabled={submitLoading}
+      className="w-full rounded-[4px] bg-white px-6 py-4 text-[14px] font-semibold text-[#07427B] transition hover:bg-[#EAF5FD] md:min-w-[270px] md:w-auto"
+    >
+      {submitLoading ? "Sending..." : "Talk to someone about this"}
+    </button>
+  </div>
+
+  {leadSubmitted ? (
+    <div className="md:col-span-3 rounded-[8px] border border-[#C8E6D4] bg-[#F2FBF6] px-4 py-3 text-sm text-[#17663A]">
+      Your request has been submitted. Our team will reach out soon.
+    </div>
+  ) : null}
+
+  {leadErrors.submit ? (
+    <div className="md:col-span-3 rounded-[8px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {leadErrors.submit}
+    </div>
+  ) : null}
+</form>
+
         </div>
 
         <p className="mx-auto mt-8 max-w-[790px] text-center text-[12px] leading-6 text-[#59677C]">

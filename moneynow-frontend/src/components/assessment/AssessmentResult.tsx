@@ -173,7 +173,7 @@ export default function AssessmentResult({ result }: AssessmentResultProps) {
           </p>
           <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h2 className="max-w-[320px] text-[34px] font-semibold leading-[1.1] text-[#072A4A] md:text-[56px]">
+              <h2 className="max-w-[320px] text-[34px] font-semibold leading-[1.4] text-[#072A4A] md:text-[56px]">
                 {result.category}
               </h2>
               <p className="mt-4 max-w-[420px] text-[15px] leading-8 text-[#667789]">
@@ -315,7 +315,7 @@ export default function AssessmentResult({ result }: AssessmentResultProps) {
                 {pillar.title}
               </h3>
               <span
-                className={`mt-4 inline-flex rounded-full border px-3 py-1.5 text-[12px] font-semibold ${statusStyle[pillar.status]}`}
+                className={`mt-4 inline-flex rounded-full border px-3 py-1.5 text-[10px] md:text-[12px] font-semibold ${statusStyle[pillar.status]}`}
               >
                 {pillar.status}
               </span>

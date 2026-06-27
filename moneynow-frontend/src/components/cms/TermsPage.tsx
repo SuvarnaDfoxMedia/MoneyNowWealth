@@ -90,7 +90,7 @@ const TermsPage = ({ data }: { data: any }) => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto  mb-[60px]">
+      <div className="max-w-7xl mx-auto px-4 mb-[60px]">
         <div className="flex flex-col md:flex-row gap-10 items-start">
           <div ref={contentRef} className="flex-1 space-y-10 md:space-y-12">
             {sections.map((section: any, index: number) => (

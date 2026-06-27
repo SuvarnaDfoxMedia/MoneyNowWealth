@@ -24,7 +24,7 @@ export default function JourneyArticlesSection({
        <section className="bg-[#f8f8f8] py-[40px]">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
         <div className="text-center">
-          <h2 className="text-[34px] font-semibold tracking-[-0.03em] md:text-[40px]">
+          <h2 className="text-[26px] font-semibold tracking-[-0.03em] md:text-[38px]">
           {title}
           </h2>
         </div>
