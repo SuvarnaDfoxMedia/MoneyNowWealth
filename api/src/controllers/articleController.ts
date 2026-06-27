@@ -1048,6 +1048,16 @@ export const getLatestPublishedArticles = async (
     if (req.query.show_on_dashboard === "true")
       matchStage.show_on_dashboard = true;
 
+    const matchStage: any = {
+      is_deleted: false,
+      is_active: 1,
+      status: "published",
+      publish_date: { $lte: now },
+    };
+
+    if (req.query.show_on_home === "true") matchStage.show_on_home = true;
+    if (req.query.show_on_dashboard === "true") matchStage.show_on_dashboard = true;
+
     const articles = await Article.aggregate([
       {
         $match: matchStage,

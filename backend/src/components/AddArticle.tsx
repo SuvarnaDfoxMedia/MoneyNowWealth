@@ -54,6 +54,8 @@ interface ArticleForm {
   faqs: Faq[];
   tools: Tool[];
   related_reads: RelatedRead[];
+  show_on_home: boolean;
+  show_on_dashboard: boolean;
 }
 
 const API_ORIGIN =
@@ -98,6 +100,8 @@ export default function AddArticle() {
     faqs: [],
     tools: [],
     related_reads: [],
+    show_on_home: false,
+    show_on_dashboard: false,
   });
 
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -155,7 +159,7 @@ export default function AddArticle() {
     const loadData = async () => {
       try {
         const raw = await getOne(id);
-        const data = (raw?.data ?? raw) as ArticleForm;
+        const data = (raw?.data ?? raw) as any;
         if (!data) return;
 
         setValues({
@@ -183,6 +187,8 @@ export default function AddArticle() {
             content: r.content || "",
           })),
           hero_image: data.hero_image ?? "",
+          show_on_home: data.show_on_home === "true" || data.show_on_home === true || data.show_on_home === 1,
+          show_on_dashboard: data.show_on_dashboard === "true" || data.show_on_dashboard === true || data.show_on_dashboard === 1,
         });
 
         setSlugEdited(false);
@@ -206,10 +212,11 @@ export default function AddArticle() {
   const onChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
-    const { name, value } = e.target;
+    const { name, type } = e.target;
+    const value = type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setValues((prev) => {
       const updated = { ...prev, [name]: value } as ArticleForm;
-      if (name === "title" && !slugEdited) updated.slug = generateSlug(value);
+      if (name === "title" && !slugEdited) updated.slug = generateSlug(value as string);
       if (name === "slug") setSlugEdited(true);
       return updated;
     });
@@ -277,6 +284,8 @@ export default function AddArticle() {
       faqs: [],
       tools: [],
       related_reads: [],
+      show_on_home: false,
+      show_on_dashboard: false,
     });
     setFile(null);
     setPreviewUrl("");
@@ -311,6 +320,7 @@ export default function AddArticle() {
       const formData = new FormData();
       Object.entries(values).forEach(([key, value]) => {
         if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
+        else if (typeof value === "boolean") formData.append(key, String(value));
         else if (value !== undefined && value !== null)
           formData.append(key, String(value));
       });
@@ -708,6 +718,30 @@ export default function AddArticle() {
             </div>
           );
         })}
+
+        {/* Display Settings */}
+        <div className="grid md:grid-cols-2 gap-6 p-4 border border-gray-200 rounded-xl bg-gray-50">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="show_on_home"
+              checked={values.show_on_home}
+              onChange={onChange}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+            />
+            <span className="text-gray-700 font-medium">Show for the home page</span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="show_on_dashboard"
+              checked={values.show_on_dashboard}
+              onChange={onChange}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+            />
+            <span className="text-gray-700 font-medium">Show for the user dashboard</span>
+          </label>
+        </div>
 
         {/* Submit & Reset */}
         <div className="flex justify-end gap-4 pt-8 border-t border-gray-100">
