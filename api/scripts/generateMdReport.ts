@@ -23,7 +23,7 @@ const run = async () => {
   for (const scheme of schemes) {
     if (!scheme.scheme_name) continue;
     const parsed = parseSchemeTitle(scheme.scheme_name);
-    md += `| "${scheme.scheme_name}" | "${parsed.baseName}" | "${parsed.planType || "N/A"}" | "${parsed.optionType || "N/A"}" |\n`;
+    md += `| ${scheme.scheme_name} | ${parsed.baseName} | ${parsed.planType || "N/A"} | ${parsed.optionType || "N/A"} |\n`;
   }
   
   const reportPath = path.join(process.cwd(), "scratch/parsing_report.md");

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import connectDatabase from "../src/db/dbConnection";
 import MfApiScheme from "../src/models/mfApiSchemeModel";
-import { syncApiSchemeToManual } from "../src/services/mfApiService";
+import { syncApiSchemeToManual } from "../src/services/mf-import/MfApiSyncEngine";
 
 const run = async () => {
   await connectDatabase();
