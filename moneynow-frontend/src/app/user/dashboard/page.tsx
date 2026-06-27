@@ -4,7 +4,7 @@ import DashboardPremiumUpgradeSection from "@/components/Dashboard/DashboardPrem
 import DashboardQuickActions from "@/components/Dashboard/DashboardQuickActions";
 import DashboardWelcomeSection from "@/components/Dashboard/DashboardWelcomeSection";
 import RecommendedForYou from "@/components/Dashboard/RecommendedForYou";
-import TopPerformingCategories from "@/components/Dashboard/TopPerformingCategories";
+import TopPerformingFunds from "@/components/Dashboard/TopPerformingFunds";
 import NewsletterBanner from "@/components/Dashboard/NewsletterBanner";
 
 export default function Page() {
@@ -14,7 +14,7 @@ export default function Page() {
       <DashboardWelcomeSection />
       <NewsletterBanner />
       <RecommendedForYou />
-      <TopPerformingCategories />
+      <TopPerformingFunds />
       <DashboardInsightsGrid />
       <DashboardPremiumUpgradeSection />
       <DashboardQuickActions />

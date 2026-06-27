@@ -42,6 +42,7 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
       address: user.address || null,
       role: user.role,
       profileImage: toPublicProfileImage(user.profileImage),
+      created_at: user.created_at,
     };
 
     return sendSuccess(res, "Profile fetched successfully", profile, 200, {
@@ -118,6 +119,7 @@ export const updateProfile = async (
       address: updatedUser.address,
       role: updatedUser.role,
       profileImage: toPublicProfileImage(updatedUser.profileImage),
+      created_at: updatedUser.created_at,
     };
 
     return sendSuccess(res, "Profile updated successfully", profile, 200, {
@@ -156,6 +158,7 @@ export const getCurrentUser = async (
       address: user.address,
       role: user.role,
       profileImage: toPublicProfileImage(user.profileImage),
+      created_at: user.created_at,
     };
 
     return sendSuccess(res, "Current user fetched successfully", profile, 200, {

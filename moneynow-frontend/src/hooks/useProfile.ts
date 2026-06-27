@@ -12,6 +12,7 @@ export interface UserProfile {
   address?: string;
   profileImage?: string;
   countryCode?: string;
+  created_at?: string;
 }
 
 const IMAGE_BASE = process.env.NEXT_PUBLIC_IMAGE_URL ?? "";
@@ -89,6 +90,7 @@ export const useFetchProfile = () => {
         address: payload.address || "",
         profileImage: payload.profileImage || undefined,
         countryCode,
+        created_at: payload.created_at || undefined,
       };
 
       console.log("Setting profile in store:", userProfile);
@@ -179,6 +181,7 @@ export const useUpdateProfile = () => {
         address: updatedUser.address || "",
         countryCode: updatedUser.countryCode || "+91",
         profileImage: updatedUser.profileImage || profile?.profileImage,
+        created_at: updatedUser.created_at || profile?.created_at,
       };
 
       console.log("Updated profile object:", updatedProfile);
