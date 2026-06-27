@@ -48,8 +48,8 @@ const setAuthCookies = (
 ) => {
   const baseCookieOptions = {
     httpOnly: true as const,
-    secure: false,
-    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
     path: "/",
     maxAge: JWT_EXPIRES,
   };
@@ -64,8 +64,8 @@ const setAuthCookies = (
 const clearAuthCookie = (res: Response, cookieName: string) => {
   res.cookie(cookieName, "", {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     expires: new Date(0),
   });
@@ -699,12 +699,19 @@ export const logoutPublicUser = (_req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-    const user: IUser | null = await User.findOne({ email });
-    if (!user) return sendError(res, "User not found", 404);
+    const user: IUser | null = await User.findOne({ email, is_deleted: false });
+    if (!user) {
+      // Return success regardless — do not reveal whether email exists
+      return sendSuccess(res, "If this email is registered, a reset link has been sent.", null);
+    }
 
-    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_KEY!, {
-      expiresIn: "10m",
-    });
+    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_KEY!, { expiresIn: "10m" });
+
+    // Store a hash so the raw token is never in the DB
+    const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+    user.resetPasswordToken = tokenHash;
+    user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
 
     const resetUrl = `${process.env.WEBSITE_URL}/auth/set-new-password?token=${resetToken}`;
 
@@ -742,19 +749,29 @@ export const resetPassword = async (req: Request, res: Response) => {
     const { password, confirmPassword } = req.body;
 
     if (!token) return sendError(res, "Token missing", 400);
-    if (!password || !confirmPassword)
-      return sendError(res, "All fields are required", 400);
-    if (password !== confirmPassword)
-      return sendError(res, "Passwords do not match", 400);
+    if (!password || !confirmPassword) return sendError(res, "All fields are required", 400);
+    if (password !== confirmPassword) return sendError(res, "Passwords do not match", 400);
 
-    const decoded = jwt.verify(token, process.env.JWT_KEY as string) as {
-      id: string;
-    };
+    let decoded: { id: string };
+    try {
+      decoded = jwt.verify(token, process.env.JWT_KEY as string) as { id: string };
+    } catch {
+      return sendError(res, "Invalid or expired reset link", 400);
+    }
 
-    const user = await User.findById(decoded.id);
-    if (!user) return sendError(res, "User not found", 404);
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      _id: decoded.id,
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) return sendError(res, "Invalid or expired reset link", 400);
 
     user.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
     await user.save();
 
     return sendSuccess(res, "Password reset successfully", null);
@@ -827,9 +844,11 @@ export const changePassword = async (
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.max(Number(req.query.limit) || 10, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 200);
     const search = String(req.query.search || "").trim();
-    const sortField = String(req.query.sortField || "created_at");
+    const ALLOWED_SORT_FIELDS = ["created_at", "updated_at", "firstname", "lastname", "email", "role"];
+    const rawSortField = String(req.query.sortField || "created_at");
+    const sortField = ALLOWED_SORT_FIELDS.includes(rawSortField) ? rawSortField : "created_at";
     const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
 
     const query: any = { role: "user", is_deleted: false };

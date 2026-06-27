@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { newsletterPublishService } from "../services/newsletterPublishService";
+import { acquireLock, releaseLock } from "../db/cronLock";
 
 /* ============================================
    Newsletter Publishing Scheduler
@@ -9,6 +10,11 @@ export function startNewsletterPublishScheduler() {
   cron.schedule(
     "*/5 * * * *",
     async () => {
+      const acquired = await acquireLock("newsletter-publish-scheduler", 4 * 60 * 1000);
+      if (!acquired) {
+        console.log("[Cron] newsletter-publish-scheduler: lock held by another instance, skipping");
+        return;
+      }
       try {
         console.log(
           "Newsletter publish scheduler running at:",
@@ -23,6 +29,8 @@ export function startNewsletterPublishScheduler() {
         );
       } catch (error) {
         console.error("Error in newsletter publish scheduler:", error);
+      } finally {
+        await releaseLock("newsletter-publish-scheduler");
       }
     },
     { timezone: "Asia/Kolkata" },

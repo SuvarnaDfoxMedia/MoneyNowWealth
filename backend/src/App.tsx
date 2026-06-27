@@ -77,6 +77,7 @@ import NavHistoryPage from "./modules/nav/pages/NavHistoryPage";
 import { renderMfApiRoutes } from "./modules/mf-api";
 import FinancialWellnessEnquiryView from "./components/FinancialWellnessEnquiryView";
 import TestimonialsPage from "./pages/Testimonials/TestimonialsPage";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 export default function App() {
   return (
@@ -91,14 +92,15 @@ export default function App() {
           },
         }}
       />
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </Router>
   );
 }
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-
   if (loading) return <p className="p-5 text-center">Loading...</p>;
 
   const role = user?.role?.toLowerCase();

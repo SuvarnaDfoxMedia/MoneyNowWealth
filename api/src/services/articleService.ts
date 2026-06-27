@@ -19,7 +19,7 @@ export const getArticles = async (query: any) => {
 
   // Pagination
   const pageNum = Math.max(parseInt(page as string) || 1, 1);
-  const perPage = Math.max(parseInt(limit as string) || 10, 1);
+  const perPage = Math.min(Math.max(parseInt(limit as string) || 10, 1), 200);
   const skip = (pageNum - 1) * perPage;
 
   const filter: Record<string, any> = { is_deleted: false };
@@ -40,14 +40,12 @@ export const getArticles = async (query: any) => {
   }
 
   // Sorting
+  const ALLOWED_SORT_FIELDS = ["created_at", "updated_at", "publish_date", "title", "read_time", "is_active"];
+  const safeSortField = ALLOWED_SORT_FIELDS.includes(sortField) ? sortField : "publish_date";
+
   const sortConfig: Record<string, 1 | -1> = {};
-  if (sortField) {
-    sortConfig[sortField] = sortOrder === "desc" ? -1 : 1;
-    if (sortField !== "created_at") {
-      sortConfig.created_at = -1;
-    }
-  } else {
-    sortConfig.publish_date = -1;
+  sortConfig[safeSortField] = sortOrder === "desc" ? -1 : 1;
+  if (safeSortField !== "created_at") {
     sortConfig.created_at = -1;
   }
 

@@ -101,7 +101,7 @@ export const getNfos = async (query: any) => {
     ];
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { subscription_end_date: 1, created_at: -1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { subscription_end_date: 1, created_at: -1 }, ["fund_name", "subscription_start_date", "subscription_end_date", "created_at", "updated_at"]);
   const openOnly = shouldReturnOnlyOpenNfos(query);
   const prioritizeOpenActive = shouldPrioritizeOpenActive(query);
 

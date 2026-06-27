@@ -19,7 +19,7 @@ export const getAmcs = async (query: any) => {
     filter.name = { $regex: s, $options: "i" };
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { name: 1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { name: 1 }, ["name", "amc_code", "is_active", "created_at", "updated_at"]);
   const [data, total] = await Promise.all([
     MFAmc.find(filter).sort(sort).skip(skip).limit(limit).lean(),
     MFAmc.countDocuments(filter),

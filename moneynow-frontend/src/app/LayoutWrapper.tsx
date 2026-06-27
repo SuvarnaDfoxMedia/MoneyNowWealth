@@ -2,8 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import Header from "@/components/Header";
 import BlogNav from "@/components/BlogNav";
+import ErrorBoundary from "@/components/ErrorBoundary";
 // Chatbot is temporarily disabled across the project to avoid serving inactive assistant flows.
 // import ChatbotLayout from "@/components/chatbot/ChatbotLayout";
 
@@ -43,7 +45,19 @@ export default function LayoutWrapper({
       {!shouldHideGlobalChrome &&
         (isBlogPageOrCluster ? <BlogNav /> : <Header />)}
 
-      <main className="flex-grow">{children}</main>
+      <main className="flex-grow">
+        <ErrorBoundary
+          fallback={
+            <div style={{ padding: "4rem", textAlign: "center" }}>
+              <h2>Something went wrong</h2>
+              <p>Please refresh the page or try again later.</p>
+              <Link href="/">Go to homepage</Link>
+            </div>
+          }
+        >
+          {children}
+        </ErrorBoundary>
+      </main>
 
       {!shouldHideGlobalChrome && <Footer />}
     </>

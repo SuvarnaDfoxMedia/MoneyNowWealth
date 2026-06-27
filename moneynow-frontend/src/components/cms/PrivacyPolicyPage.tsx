@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { FaChevronUp, FaChevronDown } from "react-icons/fa";
 import CMSBanner from "./CmsBanner";
+import { sanitizeHtml } from "@/utils/sanitize";
 
 const PrivacyPolicyPage = ({ data }: { data: any }) => {
   // First section open by default
@@ -70,7 +71,7 @@ const PrivacyPolicyPage = ({ data }: { data: any }) => {
                     <div
                       className="text-[15px] md:text-[16px] text-black leading-[28px] prose max-w-none 
                                  font-poppins prose-p:mb-5 prose-strong:font-bold prose-ul:list-disc prose-ul:pl-6"
-                      dangerouslySetInnerHTML={{ __html: section.content }}
+                      dangerouslySetInnerHTML={sanitizeHtml(section.content)}
                     />
                   </div>
                 </div>

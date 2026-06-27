@@ -36,7 +36,8 @@ export const subscriptionPlanService = {
     planType,
     includeInactive = false,
   }: GetPlansParams): Promise<PaginationResult<ISubscriptionPlan>> => {
-    const skip = (page - 1) * limit;
+    const finalLimit = Math.min(Math.max(Number(limit) || 10, 1), 200);
+    const skip = (page - 1) * finalLimit;
 
     // Base filter - only show non-deleted
     const filter: Record<string, any> = { is_deleted: false };
@@ -77,7 +78,7 @@ export const subscriptionPlanService = {
       SubscriptionPlan.find(filter)
         .sort(sortQuery)
         .skip(skip)
-        .limit(limit)
+        .limit(finalLimit)
         .lean(),
       SubscriptionPlan.countDocuments(filter),
     ]);
@@ -86,7 +87,7 @@ export const subscriptionPlanService = {
       plans,
       total,
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(total / finalLimit),
     };
   },
 

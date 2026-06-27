@@ -1,6 +1,4 @@
-import fs from "fs";
-import express, { Request, Response } from "express";
-import { sendError, sendSuccess } from "../utils/apiResponse";
+import express from "express";
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 import {
   addCategory,
@@ -78,7 +76,6 @@ import {
   updateBenchmark,
 } from "../controllers/mfBenchmarkController";
 import { exportExcel, importExcel } from "../controllers/mfImportController";
-import MfImportLog from "../models/mfImportLogModel";
 import { getMfDiscover, getMfFilters, getMfHome } from "../controllers/mfDiscoveryController";
 import { uploadMfExcel } from "../middlewares/uploadMiddleware";
 import { handleValidationErrors } from "../middlewares/validationMiddleware";
@@ -198,122 +195,11 @@ router.put("/:role/mf/top-holdings/edit/:id", ...adminEditorMiddleware, updateTo
 
 /* -------------------- ADMIN CLEAN CRUD ROUTES -------------------- */
 router.post(
-  "/:role/mf/main-categories",
-  ...adminEditorMiddleware,
-  createMainCategoryValidators,
-  handleValidationErrors,
-  addMainCategory,
-);
-router.put(
-  "/:role/mf/main-categories/:id",
-  ...adminEditorMiddleware,
-  updateMainCategoryValidators,
-  handleValidationErrors,
-  updateMainCategory,
-);
-router.delete("/:role/mf/main-categories/:id", ...adminEditorMiddleware, deleteMainCategory);
-
-router.post(
-  "/:role/mf/categories",
-  ...adminEditorMiddleware,
-  createCategoryValidators,
-  handleValidationErrors,
-  addCategory,
-);
-router.put(
-  "/:role/mf/categories/:id",
-  ...adminEditorMiddleware,
-  updateCategoryValidators,
-  handleValidationErrors,
-  updateCategory,
-);
-router.post(
   "/:role/mf/categories/recompute-averages",
   ...adminEditorMiddleware,
   recomputeAllCategoryAverages,
 );
-router.delete("/:role/mf/categories/:id", ...adminEditorMiddleware, deleteCategory);
 
-router.post(
-  "/:role/mf/funds",
-  ...adminEditorMiddleware,
-  createFundValidators,
-  handleValidationErrors,
-  addFund,
-);
-router.put(
-  "/:role/mf/funds/:id",
-  ...adminEditorMiddleware,
-  updateFundValidators,
-  handleValidationErrors,
-  updateFund,
-);
-router.delete("/:role/mf/funds/:id", ...adminEditorMiddleware, deleteFund);
-
-router.post(
-  "/:role/mf/nfo",
-  ...adminEditorMiddleware,
-  createNfoValidators,
-  handleValidationErrors,
-  addNfo,
-);
-router.put(
-  "/:role/mf/nfo/:id",
-  ...adminEditorMiddleware,
-  updateNfoValidators,
-  handleValidationErrors,
-  updateNfo,
-);
-router.delete("/:role/mf/nfo/:id", ...adminEditorMiddleware, deleteNfo);
-
-router.post(
-  "/:role/mf/amcs",
-  ...adminEditorMiddleware,
-  createAmcValidators,
-  handleValidationErrors,
-  addAmc,
-);
-router.put(
-  "/:role/mf/amcs/:id",
-  ...adminEditorMiddleware,
-  updateAmcValidators,
-  handleValidationErrors,
-  updateAmc,
-);
-router.patch("/:role/mf/amcs/toggle-status/:id", ...adminEditorMiddleware, toggleAmcStatus);
-router.delete("/:role/mf/amcs/:id", ...adminEditorMiddleware, deleteAmc);
-
-router.post(
-  "/:role/mf/index-snapshots",
-  ...adminEditorMiddleware,
-  createIndexSnapshotValidators,
-  handleValidationErrors,
-  addIndexSnapshot,
-);
-router.put(
-  "/:role/mf/index-snapshots/:id",
-  ...adminEditorMiddleware,
-  updateIndexSnapshotValidators,
-  handleValidationErrors,
-  updateIndexSnapshot,
-);
-router.delete("/:role/mf/index-snapshots/:id", ...adminEditorMiddleware, deleteIndexSnapshot);
-
-router.post(
-  "/:role/mf/benchmarks",
-  ...adminEditorMiddleware,
-  createBenchmarkValidators,
-  handleValidationErrors,
-  addBenchmark,
-);
-router.put(
-  "/:role/mf/benchmarks/:id",
-  ...adminEditorMiddleware,
-  updateBenchmarkValidators,
-  handleValidationErrors,
-  updateBenchmark,
-);
-router.delete("/:role/mf/benchmarks/:id", ...adminEditorMiddleware, deleteBenchmark);
 router.post(
   "/:role/mf/benchmark-returns",
   ...adminEditorMiddleware,
@@ -396,6 +282,7 @@ router.delete(
   ...adminEditorMiddleware,
   deleteFund,
 );
+
 router.post(
   "/:role/mf/nfo/create",
   ...adminEditorMiddleware,
@@ -441,6 +328,7 @@ router.delete(
   ...adminEditorMiddleware,
   deleteIndexSnapshot,
 );
+
 router.post(
   "/:role/mf/benchmarks/create",
   ...adminEditorMiddleware,
@@ -460,11 +348,7 @@ router.delete(
   ...adminEditorMiddleware,
   deleteBenchmark,
 );
-router.delete(
-  "/:role/mf/top-holdings/:id",
-  ...adminEditorMiddleware,
-  deleteTopHolding,
-);
+
 router.delete(
   "/:role/mf/top-holdings/delete/:id",
   ...adminEditorMiddleware,
@@ -509,5 +393,3 @@ router.get(
 );
 
 export default router;
-
-

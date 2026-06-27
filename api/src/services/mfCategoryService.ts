@@ -155,7 +155,7 @@ export const getMainCategories = async (query: any) => {
     filter.$or = [{ name: { $regex: s, $options: "i" } }];
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { sort_order: 1, name: 1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { sort_order: 1, name: 1 }, ["name", "sort_order", "is_active", "created_at", "updated_at"]);
   const [data, total] = await Promise.all([
     MFMainCategory.find(filter).sort(sort).skip(skip).limit(limit).lean(),
     MFMainCategory.countDocuments(filter),
@@ -246,7 +246,7 @@ export const getCategories = async (query: any) => {
     filter.$or = [{ name: { $regex: s, $options: "i" } }];
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { name: 1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { name: 1 }, ["name", "main_category_id", "is_active", "created_at", "updated_at"]);
   const [data, total] = await Promise.all([
     MFCategory.find(filter)
       .populate("main_category_id", "name")

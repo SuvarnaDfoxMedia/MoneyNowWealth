@@ -58,7 +58,7 @@ export const getIndexSnapshots = async (query: any) => {
     if (toDate) filter.last_updated_date.$lte = toDate;
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { last_updated_date: -1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { last_updated_date: -1 }, ["last_updated_date", "created_at", "updated_at", "value", "change", "percent_change"]);
   const [data, total] = await Promise.all([
     MFIndexSnapshot.find(filter)
       .populate({ path: "category_id", select: "name main_category_id", populate: { path: "main_category_id", select: "name" } })

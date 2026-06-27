@@ -209,7 +209,7 @@ export const getFunds = async (query: any) => {
     aum: { aum_cr: -1 },
     launch_date: { launch_date: -1 },
   };
-  const sort = sortMap[query?.sort] || buildSort(query?.sortBy, query?.sortOrder, { created_at: -1 });
+  const sort = sortMap[query?.sort] || buildSort(query?.sortBy, query?.sortOrder, { created_at: -1 }, ["fund_name", "nav_Current", "aum_cr", "expense_ratio", "created_at", "updated_at", "returns.trailing.1y"]);
   const [data, total] = await Promise.all([
     MFFund.find(filter)
       .populate("amc_id", "name")

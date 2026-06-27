@@ -232,6 +232,18 @@ export const getSubscriptionPaymentById = async (
       return sendError(res, "Payment not found", 404);
     }
 
+    const recordUserId = (payment.user_id as any)?._id
+      ? (payment.user_id as any)._id.toString()
+      : payment.user_id?.toString();
+
+    if (
+      (req as any).user?.role !== "admin" &&
+      (req as any).user?.role !== "editor" &&
+      recordUserId !== (req as any).user?.id
+    ) {
+      return sendError(res, "Access denied", 403);
+    }
+
     return sendSuccess(res, "Payment fetched successfully", payment);
   } catch (error: any) {
     console.error("Get payment error:", error);
@@ -321,6 +333,14 @@ export const getUserSubscriptionHistory = async (
       return sendError(res, "Invalid user ID", 400);
     }
 
+    if (
+      (req as any).user?.role !== "admin" &&
+      (req as any).user?.role !== "editor" &&
+      (req as any).user?.id !== userId
+    ) {
+      return sendError(res, "Access denied", 403);
+    }
+
     const payments = await UserSubscriptionPayment.find({
       user_id: new Types.ObjectId(userId),
     })
@@ -401,6 +421,18 @@ export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
 
     if (!payment) {
       return sendError(res, "Invoice not found", 404);
+    }
+
+    const recordUserId = (payment.user_id as any)?._id
+      ? (payment.user_id as any)._id.toString()
+      : payment.user_id?.toString();
+
+    if (
+      (req as any).user?.role !== "admin" &&
+      (req as any).user?.role !== "editor" &&
+      recordUserId !== (req as any).user?.id
+    ) {
+      return sendError(res, "Access denied", 403);
     }
 
     const plan = payment.plan_id as any;

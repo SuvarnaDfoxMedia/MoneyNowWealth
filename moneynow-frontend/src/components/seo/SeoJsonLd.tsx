@@ -28,11 +28,15 @@ export default function SeoJsonLd({ schema }: SeoJsonLdProps) {
   const schemaContent = extractSchemaContent(trimmed);
   if (!schemaContent) return null;
 
-  let safeSchema = schemaContent;
+  let safeSchema: string;
   try {
     safeSchema = JSON.stringify(JSON.parse(schemaContent));
   } catch {
-    safeSchema = schemaContent;
+    // If schema is not valid JSON, don't inject it — return null to skip rendering
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[SeoJsonLd] Invalid JSON-LD schema — skipping injection:", schemaContent.slice(0, 100));
+    }
+    return null;
   }
 
   const scriptId = `seo-jsonld-${hashValue(safeSchema)}`;

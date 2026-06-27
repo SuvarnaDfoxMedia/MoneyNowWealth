@@ -69,12 +69,14 @@ export const toBoolean = (value: any, defaultValue = false): boolean => {
   return defaultValue;
 };
 
+const MAX_PAGINATION_LIMIT = 200;
+
 export const parsePagination = (query: any) => {
   const page = Math.max(Number(query?.page) || 1, 1);
-  // Respect caller-provided limits so option/dropdown fetches can request
-  // complete datasets when needed. Paginated tables still control their own
-  // page size by sending smaller limits from the UI.
-  const limit = Math.max(Number(query?.limit) || 10, 1);
+  const limit = Math.min(
+    Math.max(Number(query?.limit) || 10, 1),
+    MAX_PAGINATION_LIMIT,
+  );
   const skip = (page - 1) * limit;
   return { page, limit, skip };
 };
@@ -83,9 +85,12 @@ export const buildSort = (
   sortBy: any,
   sortOrder: any,
   fallback: Record<string, 1 | -1> = { created_at: -1 },
+  allowedFields?: string[],
 ) => {
   if (!sortBy) return fallback;
-  return { [String(sortBy)]: sortOrder === "asc" ? 1 : -1 } as Record<string, 1 | -1>;
+  const key = String(sortBy);
+  if (allowedFields && !allowedFields.includes(key)) return fallback;
+  return { [key]: sortOrder === "asc" ? 1 : -1 } as Record<string, 1 | -1>;
 };
 
 export const baseSlug = (value: string) =>

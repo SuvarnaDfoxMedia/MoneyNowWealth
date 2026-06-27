@@ -1,4 +1,18 @@
+process.on("uncaughtException", (error: Error) => {
+  console.error("[FATAL] Uncaught Exception:", error.message, error.stack);
+  // Give active requests 5 seconds to complete before exiting
+  setTimeout(() => process.exit(1), 5000).unref();
+});
+
+process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
+  console.error("[FATAL] Unhandled Promise Rejection:", reason);
+  // Log but don't crash on unhandled rejections — let the cron/request continue
+  // If this becomes frequent, it indicates a missing catch block
+});
+
+import mongoose from "mongoose";
 // src/server.ts
+
 
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
@@ -10,9 +24,7 @@ import cookieParser from "cookie-parser";
 
 // Database
 import connectDatabase from "./db/dbConnection";
-import { cleanupLegacyMfIndexes } from "./db/cleanupLegacyMfIndexes";
-import { cleanupLegacySeoIndexes } from "./db/cleanupLegacySeoIndexes";
-import { cleanupLegacyCategoryFormats } from "./db/cleanupLegacyCategoryFormats";
+
 
 // Routes
 import authRoutes from "./routes/authRoutes";
@@ -47,9 +59,7 @@ import { validateEmailEnvironment } from "./config/emailEnv";
 dotenv.config();
 validateEmailEnvironment();
 await connectDatabase();
-await cleanupLegacyMfIndexes();
-await cleanupLegacySeoIndexes();
-await cleanupLegacyCategoryFormats();
+
 startNewsletterPublishScheduler();
 startMfNfoScheduler();
 
@@ -107,6 +117,16 @@ app.use(helmet());
 // Basic in-memory rate limiter for auth-sensitive/public endpoints.
 // Replace with Redis-backed limiter for multi-instance production.
 const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+
+// Purge expired rate-limit buckets every 5 minutes to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of requestBuckets.entries()) {
+    if (now > bucket.resetAt) {
+      requestBuckets.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const MAX_REQ = Number(process.env.RATE_LIMIT_MAX || 120);
 app.use((req, res, next) => {
@@ -282,4 +302,15 @@ app.use(
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+process.on("SIGTERM", () => {
+  console.log("[Server] SIGTERM received. Shutting down gracefully...");
+  // Close the HTTP server first, then disconnect MongoDB
+  server.close(async () => {
+    await mongoose.connection.close();
+    console.log("[Server] Shutdown complete.");
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 30000).unref(); // Force kill after 30s
+});

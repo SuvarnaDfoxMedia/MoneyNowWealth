@@ -30,7 +30,6 @@ const adminMiddleware = roleFromUrl(["admin"]);
 router.post("/register", validateRegister, registerUser);
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
-router.get("/users", getAllUsers);
 
 router.post("/google-login", googleLogin);
 router.post("/admin/login", loginAdmin);

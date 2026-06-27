@@ -26,6 +26,18 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
       return sendError(res, "Subscription not found", 404);
     }
 
+    const recordUserId = (subscription.user_id as any)?._id
+      ? (subscription.user_id as any)._id.toString()
+      : subscription.user_id.toString();
+
+    if (
+      (req as any).user?.role !== "admin" &&
+      (req as any).user?.role !== "editor" &&
+      recordUserId !== (req as any).user?.id
+    ) {
+      return sendError(res, "Access denied", 403);
+    }
+
     const payment =
       await userSubscriptionPaymentService.getLatestBySubscriptionId(
         subscription._id.toString(),

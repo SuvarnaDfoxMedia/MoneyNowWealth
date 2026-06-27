@@ -1,33 +1,32 @@
 import crypto from "crypto";
 import { Types } from "mongoose";
-import MFTopHolding from "../models/mfTopHoldingModel";
+import MFTopHolding, { IMFTopHolding } from "../models/mfTopHoldingModel";
 import MFFund from "../models/mfFundModel";
 import { buildSort, parsePagination, toDateOrNull, toNumberOrNull } from "./mfUtils";
 
-const normalizeIdentityPart = (value: unknown) =>
-  String(value || "").trim().toUpperCase();
+const normalizeIdentityPart = (value: any) => String(value || "").trim().toUpperCase();
 
-export const buildTopHoldingSchemeIdentity = (schemeCode: unknown, sourceIsin?: unknown) => {
+export const buildTopHoldingSchemeIdentity = (schemeCode: string, sourceIsin: string) => {
   const scheme = normalizeIdentityPart(schemeCode);
   const isin = normalizeIdentityPart(sourceIsin);
   if (!scheme) return "";
   return isin ? `${scheme}::${isin}` : scheme;
 };
 
-const stableForHash = (value: unknown): unknown => {
+const stableForHash = (value: any): any => {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   if (Array.isArray(value)) return value.map(stableForHash);
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
+      Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, item]) => [key, stableForHash(item)]),
+        .map(([key, item]) => [key, stableForHash(item)])
     );
   }
   return value === undefined ? null : value;
 };
 
-export const computeTopHoldingSnapshotHash = (payload: Record<string, unknown>) => {
+export const computeTopHoldingSnapshotHash = (payload: any) => {
   const hashPayload = {
     scheme_code: normalizeIdentityPart(payload.scheme_code),
     source_isin: normalizeIdentityPart(payload.source_isin),
@@ -41,14 +40,13 @@ export const computeTopHoldingSnapshotHash = (payload: Record<string, unknown>) 
     security_type_counts: payload.security_type_counts ?? {},
     holdings: payload.holdings ?? [],
   };
-
   return crypto
     .createHash("sha256")
     .update(JSON.stringify(stableForHash(hashPayload)))
     .digest("hex");
 };
 
-const normalizeHoldingsSummary = (value: unknown): string[] => {
+const normalizeHoldingsSummary = (value: any) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || "").trim()).filter(Boolean);
   }
@@ -58,10 +56,10 @@ const normalizeHoldingsSummary = (value: unknown): string[] => {
     .filter(Boolean);
 };
 
-const normalizeHoldingsRows = (value: unknown) => {
+const normalizeHoldingsRows = (value: any) => {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item: any) => ({
+    .map((item) => ({
       name: String(item?.name || "").trim(),
       net_assets_pct: toNumberOrNull(item?.net_assets_pct),
       market_value: toNumberOrNull(item?.market_value),
@@ -77,9 +75,9 @@ const normalizeHoldingsRows = (value: unknown) => {
     .sort((a, b) => (b.net_assets_pct || 0) - (a.net_assets_pct || 0));
 };
 
-const normalizeSecurityType = (raw: string) => String(raw || "").trim().toLowerCase();
+const normalizeSecurityType = (raw: any) => String(raw || "").trim().toLowerCase();
 
-const buildSecurityTypeCounts = (holdings: Array<{ security_type?: string }>) => {
+const buildSecurityTypeCounts = (holdings: any[]) => {
   const counts: Record<string, number> = {};
   for (const row of holdings) {
     const key = normalizeSecurityType(row.security_type || "");
@@ -104,13 +102,10 @@ const resolveFundReference = async (payload: any) => {
       fund_name: String(payload?.fund_name || "").trim(),
     };
   }
-
   const fund = await MFFund.findOne({ _id: fundId, is_deleted: false })
     .select("_id scheme_code fund_name")
     .lean();
-
   if (!fund) throw new Error("Selected fund not found");
-
   return {
     fund_id: new Types.ObjectId(String(fund._id)),
     scheme_code: String(payload?.scheme_code || fund.scheme_code || "").trim(),
@@ -127,6 +122,7 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
   const securityTypeCounts = buildSecurityTypeCounts(holdings);
   const stockHoldingsCount = countSecurityTypes(securityTypeCounts, ["equity", "stock", "share"]);
   const bondHoldingsCount = countSecurityTypes(securityTypeCounts, ["bond", "debt", "fixed income"]);
+
   const schemeCode = String(fundRef.scheme_code || payload?.scheme_code || "").trim();
   const sourceIsin = String(payload?.source_isin || "").trim();
   const schemeIdentity = buildTopHoldingSchemeIdentity(schemeCode, sourceIsin);
@@ -140,10 +136,8 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
     source_isin: sourceIsin,
     portfolio_date: toDateOrNull(payload?.portfolio_date),
     prev_portfolio_date: toDateOrNull(payload?.prev_portfolio_date),
-    stock_holdings:
-      holdings.length > 0 ? stockHoldingsCount : toNumberOrNull(payload?.stock_holdings),
-    bond_holdings:
-      holdings.length > 0 ? bondHoldingsCount : toNumberOrNull(payload?.bond_holdings),
+    stock_holdings: holdings.length > 0 ? stockHoldingsCount : toNumberOrNull(payload?.stock_holdings),
+    bond_holdings: holdings.length > 0 ? bondHoldingsCount : toNumberOrNull(payload?.bond_holdings),
     assets_top_10_holdings_pct: toNumberOrNull(payload?.assets_top_10_holdings_pct),
     turnover_pct: toNumberOrNull(payload?.turnover_pct),
     top_holdings_summary: normalizeHoldingsSummary(payload?.top_holdings_summary),
@@ -236,11 +230,16 @@ export const getTopHoldings = async (query: any) => {
     }
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, {
-    portfolio_date: -1,
-    uploaded_at: -1,
-    _id: -1,
-  });
+  const sort = buildSort(
+    query?.sortBy,
+    query?.sortOrder,
+    {
+      portfolio_date: -1,
+      uploaded_at: -1,
+      _id: -1,
+    },
+    ["portfolio_date", "uploaded_at", "created_at", "updated_at"],
+  );
 
   const [result] = await MFTopHolding.aggregate([
     { $match: filter },

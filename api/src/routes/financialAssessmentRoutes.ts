@@ -9,6 +9,7 @@ import {
 } from "../controllers/financialAssessmentController";
 
 import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
+import { adminProtect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.post("/financial-assessment", submitAssessment);
 /* ---------------------------------------------------
    2. Get Single Assessment (Optional)
 --------------------------------------------------- */
-router.get("/financial-assessment/:id", getAssessmentById);
+router.get("/:role/financial-assessment/:id", ...roleFromUrl(["admin", "editor"]), getAssessmentById);
 
 /* ============================================
    ADMIN ROUTES (LEAD MANAGEMENT)

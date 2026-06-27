@@ -2,7 +2,7 @@ import FinancialWellnessPage from "@/components/assessment/FinancialWellnessPage
 import SeoJsonLd from "@/components/seo/SeoJsonLd";
 import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata() {
   return buildPageMetadata("/financial-wellness", {

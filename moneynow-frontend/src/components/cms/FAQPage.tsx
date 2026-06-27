@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { FaSearch } from "react-icons/fa";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { sanitizeHtml } from "@/utils/sanitize";
 
 const FAQPage = ({ data }: { data: any }) => {
   const [activeId, setActiveId] = useState("");
@@ -176,7 +177,7 @@ const FAQPage = ({ data }: { data: any }) => {
                       [&_p]:leading-[26px]
                       [&_p]:mb-3
                     "
-                    dangerouslySetInnerHTML={{ __html: section.content }}
+                    dangerouslySetInnerHTML={sanitizeHtml(section.content)}
                   />
                 </section>
               );

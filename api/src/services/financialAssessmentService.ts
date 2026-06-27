@@ -390,7 +390,8 @@ export const financialAssessmentService = {
   }: GetAssessmentParams): Promise<
     PaginationResult<IFinancialAssessment>
   > => {
-    const skip = (page - 1) * limit;
+    const finalLimit = Math.min(Math.max(Number(limit) || 10, 1), 200);
+    const skip = (page - 1) * finalLimit;
 
     const filter: Record<string, any> = {};
     if (!includeDeleted) filter.is_deleted = false;
@@ -417,7 +418,7 @@ export const financialAssessmentService = {
       FinancialAssessment.find(filter)
         .sort(sortConfig)
         .skip(skip)
-        .limit(limit)
+        .limit(finalLimit)
         .lean(),
       FinancialAssessment.countDocuments(filter),
     ]);

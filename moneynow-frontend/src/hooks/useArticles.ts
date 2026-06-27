@@ -72,7 +72,13 @@ export function useArticles(params?: {
     if (imagePath.startsWith("http")) return imagePath;
 
     const fileName = imagePath.replace(/\\/g, "/").split("/").pop();
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5000";
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE;
+    if (!baseUrl) {
+      throw new Error(
+        "[useArticles] NEXT_PUBLIC_API_BASE environment variable is not set. " +
+        "Add it to .env.local for development or your deployment environment variables for production."
+      );
+    }
 
     return `${baseUrl}/uploads/hero/${fileName}`;
   };

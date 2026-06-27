@@ -65,7 +65,7 @@ export const getClusters = async (query: any) => {
   }
 
   const pageNum = Math.max(Number(page) || 1, 1);
-  const perPage = Math.max(Number(limit) || 10, 1);
+  const perPage = Math.min(Math.max(Number(limit) || 10, 1), 200);
   const skip = (pageNum - 1) * perPage;
 
   const finalSort = sort || { created_at: -1 };
@@ -97,7 +97,7 @@ export const getActiveClusters = async (query: any) => {
 
   /* ------------------ PAGINATION ------------------ */
   const pageNum = Math.max(Number(page), 1);
-  const perPage = Math.max(Number(limit), 1);
+  const perPage = Math.min(Math.max(Number(limit) || 10, 1), 200);
   const skip = (pageNum - 1) * perPage;
 
   /* ------------------ SORT ------------------ */

@@ -86,7 +86,8 @@ export const newsletterPublishService = {
   }: GetNewsletterPublishParams): Promise<
     PaginationResult<INewsletterPublish>
   > => {
-    const skip = (page - 1) * limit;
+    const finalLimit = Math.min(Math.max(Number(limit) || 10, 1), 200);
+    const skip = (page - 1) * finalLimit;
     const filter: Record<string, any> = {};
 
     if (!includeDeleted) filter.is_deleted = false;
@@ -109,13 +110,15 @@ export const newsletterPublishService = {
     }
 
     const sortConfig: Record<string, 1 | -1> = {};
-    sortConfig[sortField] = sortOrder === "desc" ? -1 : 1;
+    const ALLOWED_SORT_FIELDS = ["publish_date", "created_at", "updated_at", "title", "frequency", "status"];
+    const safeSortField = ALLOWED_SORT_FIELDS.includes(sortField) ? sortField : "publish_date";
+    sortConfig[safeSortField] = sortOrder === "desc" ? -1 : 1;
 
     const [newsletters, total] = await Promise.all([
       NewsletterPublish.find(filter)
         .sort(sortConfig)
         .skip(skip)
-        .limit(limit)
+        .limit(finalLimit)
         .lean(),
       NewsletterPublish.countDocuments(filter),
     ]);
@@ -124,8 +127,8 @@ export const newsletterPublishService = {
       newsletters,
       total,
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
-      limit,
+      totalPages: Math.ceil(total / finalLimit),
+      limit: finalLimit,
     };
   },
 

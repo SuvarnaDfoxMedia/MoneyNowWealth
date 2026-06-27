@@ -1,9 +1,9 @@
 import React from "react";
-import CommingSoon from "../CommingSoon";
+import ComingSoon from "../ComingSoon";
 
 const DefaultPage = () => {
   return (
-    <CommingSoon />
+    <ComingSoon />
   );
 };
 

@@ -58,7 +58,7 @@ async function fetchArticleBySlug(slug: string) {
       {
         method: "GET",
         headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-        cache: "no-store",
+        next: { revalidate: 120 },
       },
     );
 

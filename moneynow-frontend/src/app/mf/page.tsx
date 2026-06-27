@@ -25,10 +25,6 @@ type FundCard = {
   data: AnyObject | null;
 };
 
-const API_KEY = "42842c3f-57f9-4444-8dc8-953c1183e99b";
-const ALL_SCHEMES_URL = `https://mfapi.advisorkhoj.com/getAllMutualFundSchemesRegAndDir?key=${API_KEY}`;
-const SCHEME_INFO_URL = `https://mfapi.advisorkhoj.com/getSchemeInfoLatest?key=${API_KEY}&scheme=`;
-
 const DEFAULT_HIDDEN_KEYS = new Set([
   "status",
   "status_msg",
@@ -168,7 +164,7 @@ export default function PaidCalPage() {
       setListLoading(true);
       setListError(null);
       try {
-        const response = await fetch(ALL_SCHEMES_URL, { method: "POST" });
+        const response = await fetch("/api/mf-schemes?type=all");
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const json: AllSchemesResponse = await response.json();
@@ -197,7 +193,7 @@ export default function PaidCalPage() {
 
   const fetchSchemeInfo = useCallback(async (schemeName: string, cardId: string) => {
     try {
-      const response = await fetch(`${SCHEME_INFO_URL}${encodeURIComponent(schemeName)}`, { method: "POST" });
+      const response = await fetch(`/api/mf-schemes?type=scheme&scheme=${encodeURIComponent(schemeName)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const json = (await response.json()) as unknown;

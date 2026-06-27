@@ -11,7 +11,7 @@ export const getPages = async (query: any) => {
   } = query;
 
   const pageNum = Math.max(Number(page) || 1, 1);
-  const perPage = Math.max(Number(limit) || 10, 1);
+  const perPage = Math.min(Math.max(Number(limit) || 10, 1), 200);
   const skip = (pageNum - 1) * perPage;
 
   const filter: Record<string, any> = { is_deleted: { $ne: true } };

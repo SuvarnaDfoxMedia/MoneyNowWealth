@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import CMSBanner from "./CmsBanner";
+import { sanitizeHtml } from "@/utils/sanitize";
 
 const TermsPage = ({ data }: { data: any }) => {
   const [activeId, setActiveId] = useState("");
@@ -116,7 +117,7 @@ const TermsPage = ({ data }: { data: any }) => {
                     [&_ul]:pl-5
                     [&_ul]:list-disc
                   "
-                  dangerouslySetInnerHTML={{ __html: section.content }}
+                  dangerouslySetInnerHTML={sanitizeHtml(section.content)}
                 />
               </section>
             ))}
@@ -130,7 +131,7 @@ const TermsPage = ({ data }: { data: any }) => {
                   [&_li]:text-[16px]
                   [&_li]:leading-[28px]
                 "
-                dangerouslySetInnerHTML={{ __html: data.content }}
+                dangerouslySetInnerHTML={sanitizeHtml(data.content ?? "")}
               />
             )}
           </div>

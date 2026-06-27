@@ -656,21 +656,37 @@ const normalizeScheme = (payload: RawObject, latestInfo?: RawObject | null) => {
 };
 
 const requestExternalSchemes = async () => {
-  const response = await axios.get(`${MF_API_BASE}/getAllMutualFundSchemesRegAndDir`, {
-    params: { key: MF_API_KEY },
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`${MF_API_BASE}/getAllMutualFundSchemesRegAndDir`, {
+      params: { key: MF_API_KEY },
+      timeout: 20000,
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 429 || error.code === "ECONNABORTED" || error.message?.toLowerCase().includes("timeout")) {
+      return { status: 429, msg: "External API rate limit reached / Timeout" };
+    }
+    throw error;
+  }
 };
 
 const requestExternalLatestInfo = async (schemeName: string) => {
-  const response = await axios.post(
-    `${MF_API_BASE}/getSchemeInfoLatest`,
-    {},
-    {
-      params: { key: MF_API_KEY, scheme: schemeName },
-    },
-  );
-  return response.data;
+  try {
+    const response = await axios.post(
+      `${MF_API_BASE}/getSchemeInfoLatest`,
+      {},
+      {
+        params: { key: MF_API_KEY, scheme: schemeName },
+        timeout: 20000,
+      },
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 429 || error.code === "ECONNABORTED" || error.message?.toLowerCase().includes("timeout")) {
+      return { status: 429, msg: "External API rate limit reached / Timeout" };
+    }
+    throw error;
+  }
 };
 
 const normalizeLatestInfo = (value: any) => {
@@ -684,7 +700,9 @@ const normalizeLatestInfo = (value: any) => {
 
 const isRateLimitedResponse = (value: any) =>
   Number(value?.status) === 429 ||
-  /maximum number of allowed requests exceeded/i.test(String(value?.msg || value?.message || ""));
+  value?.code === "ECONNABORTED" ||
+  /maximum number of allowed requests exceeded/i.test(String(value?.msg || value?.message || "")) ||
+  /timeout/i.test(String(value?.message || ""));
 
 const getLatestInfoErrorMessage = (value: any) => {
   if (isRateLimitedResponse(value)) return "External API rate limit reached";

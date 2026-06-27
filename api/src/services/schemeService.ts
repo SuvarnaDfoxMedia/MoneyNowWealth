@@ -19,7 +19,7 @@ export const getSchemes = async (query: Record<string, unknown>) => {
     filter.is_active = String(query.status).toLowerCase() === "active" ? 1 : 0;
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { fund_name: 1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { fund_name: 1 }, ["fund_name", "scheme_code", "is_active", "created_at", "updated_at"]);
   const [data, total] = await Promise.all([
     MFFund.find(filter)
       .populate("amc_id", "name")

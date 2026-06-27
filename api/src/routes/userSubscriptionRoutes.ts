@@ -28,7 +28,7 @@ router.post(
   userProtect,
   upgradeMySubscriptionToPremiumTrial,
 );
-router.get("/subscriptions/:id", getUserSubscriptionById);
+router.get("/subscriptions/:id", userProtect, getUserSubscriptionById);
 
 /* -------------------- ADMIN ROUTES -------------------- */
 const adminMiddleware = roleFromUrl(["admin"]);
@@ -36,70 +36,61 @@ const adminMiddleware = roleFromUrl(["admin"]);
 /* -------------------- ADMIN VIEW -------------------- */
 router.get(
   "/:role/subscriptions/:id",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   getUserSubscriptionById,
 );
 
 router.get(
   "/:role/subscriptions",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   getUserSubscriptions,
 );
 
 router.get(
   "/:role/subscriptions/user/:userId/history",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   getUserSubscriptionHistory,
 );
 
 /* -------------------- CREATE -------------------- */
 router.post(
   "/:role/subscriptions/create",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   addUserSubscription,
 );
 
 /* -------------------- MANUAL ASSIGNMENT -------------------- */
 router.post(
   "/:role/subscriptions/assign",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   assignUserSubscription,
 );
 
 /* -------------------- UPDATE -------------------- */
 router.put(
   "/:role/subscriptions/edit/:id",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   updateUserSubscription,
 );
 
 /* -------------------- TOGGLE STATUS -------------------- */
 router.patch(
   "/:role/subscriptions/change/:id/status",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   toggleUserSubscriptionStatus,
 );
 
 /* -------------------- DELETE -------------------- */
 router.delete(
   "/:role/subscriptions/delete/:id",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   deleteUserSubscription,
 );
 
 /* -------------------- RESTORE -------------------- */
 router.patch(
   "/:role/subscriptions/:id/restore",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   restoreUserSubscription,
 );
 

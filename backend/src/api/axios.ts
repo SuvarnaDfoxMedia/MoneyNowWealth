@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from "axios";
-import { refreshAuthUser, logoutAuth } from "../context/authSession";
+import { logoutAuth } from "../context/authSession";
 
 export interface QueryParams {
   [key: string]: string | number | boolean | undefined | null;
@@ -24,14 +24,17 @@ export const axiosInstance: AxiosInstance = axios.create({
   // - multipart/form-data for FormData
 });
 
+let isLoggingOut = false;
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !isLoggingOut) {
+      isLoggingOut = true;
       try {
-        await refreshAuthUser();
-      } catch {
         await logoutAuth();
+      } finally {
+        isLoggingOut = false;
         if (typeof window !== "undefined") {
           window.location.href = "/signin";
         }
@@ -59,7 +62,7 @@ export const axiosApi = {
   get: <T>(endpoint: string, params?: QueryParams) =>
     handleRequest<T>(axiosInstance.get(endpoint, { params })),
 
-getList: <T>(endpoint: string, params?: QueryParams) => {
+  getList: <T>(endpoint: string, params?: QueryParams) => {
     const qp = { ...params };
     // Transform parameters to match backend expectations
     if ("searchValue" in qp) {

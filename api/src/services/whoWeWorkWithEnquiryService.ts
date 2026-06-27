@@ -55,11 +55,12 @@ export const whoWeWorkWithEnquiryService = {
     sort = { created_at: -1 } as Record<string, SortOrder>,
   }: GetAllParams) => {
     const finalFilter = { is_active: 1, ...filter };
+    const finalLimit = Math.min(Math.max(Number(limit) || 10, 1), 200);
 
     const enquiries = await WhoWeWorkWithEnquiry.find(finalFilter)
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(finalLimit);
 
     const total = await WhoWeWorkWithEnquiry.countDocuments(finalFilter);
 

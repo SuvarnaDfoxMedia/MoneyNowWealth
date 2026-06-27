@@ -65,7 +65,7 @@ async function fetchClusterBySlug(slug: string) {
   try {
     const response = await fetch(`${API_BASE}/api/cluster/slug/${encodeURIComponent(slug)}/`, {
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-      cache: "no-store",
+      next: { revalidate: 300 },
     });
 
     if (!response.ok) {

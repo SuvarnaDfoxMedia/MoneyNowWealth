@@ -1,6 +1,6 @@
-﻿import TestimonialsSection from "@/components/Testimonials/TestimonialsSection";
+import TestimonialsSection from "@/components/Testimonials/TestimonialsSection";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default function TestimonialsPage() {
   return (

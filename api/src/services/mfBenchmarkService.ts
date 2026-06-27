@@ -61,7 +61,7 @@ export const getBenchmarks = async (query: any) => {
     filter.category_id = query.category_id;
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { name: 1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { name: 1 }, ["name", "type", "is_active", "created_at", "updated_at"]);
   const [data, total] = await Promise.all([
     MFBenchmark.find(filter)
       .populate("main_category_id", "name")

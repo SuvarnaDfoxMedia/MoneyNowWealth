@@ -22,7 +22,7 @@ export const getNewsletters = async (query: any) => {
   }
 
   const pageNum = Math.max(Number(page) || 1, 1);
-  const perPage = Math.max(Number(limit) || 10, 1);
+  const perPage = Math.min(Math.max(Number(limit) || 10, 1), 200);
   const skip = (pageNum - 1) * perPage;
 
   const finalSort = sort || { created_at: -1 };

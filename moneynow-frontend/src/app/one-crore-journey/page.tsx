@@ -2,7 +2,7 @@ import OneCroreJourneyPage from "@/components/journeys/OneCroreJourneyPage";
 import SeoJsonLd from "@/components/seo/SeoJsonLd";
 import { buildPageMetadata, resolveSeoEntry } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata() {
   return buildPageMetadata("/one-crore-journey", {

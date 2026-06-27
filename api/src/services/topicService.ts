@@ -128,14 +128,15 @@ export const topicService = {
     page = 1,
     limit = 10,
   ): Promise<PaginationResult<ITopic>> => {
-    const skip = (page - 1) * limit;
+    const finalLimit = Math.min(Math.max(Number(limit) || 10, 1), 200);
+    const skip = (page - 1) * finalLimit;
 
     const [topics, total] = await Promise.all([
       Topic.find(filter)
         .populate("cluster_id", "cluster_code title")
         .sort({ created_at: -1, _id: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(finalLimit),
       Topic.countDocuments(filter),
     ]);
 

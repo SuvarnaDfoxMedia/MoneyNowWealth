@@ -1,6 +1,7 @@
 import multer, { FileFilterCallback } from "multer";
 import path from "path";
 import fs from "fs";
+import { randomUUID } from "crypto";
 import type { Request } from "express";
 
 /* --------------------------------------------------------
@@ -99,9 +100,9 @@ ensureDir(clusterDir);
 const clusterStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, clusterDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `cluster-thumb-${unique}${ext}`);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
+    const safeName = `${randomUUID()}${ext}`;
+    cb(null, safeName);
   },
 });
 
@@ -119,9 +120,9 @@ ensureDir(heroDir);
 const heroStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, heroDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `hero-${unique}${ext}`);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
+    const safeName = `${randomUUID()}${ext}`;
+    cb(null, safeName);
   },
 });
 
@@ -139,9 +140,9 @@ ensureDir(sectionDir);
 const sectionStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, sectionDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `section-${unique}${ext}`);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
+    const safeName = `${randomUUID()}${ext}`;
+    cb(null, safeName);
   },
 });
 
@@ -159,9 +160,9 @@ ensureDir(articleDir);
 const articleStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, articleDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `article-body-${unique}${ext}`);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
+    const safeName = `${randomUUID()}${ext}`;
+    cb(null, safeName);
   },
 });
 
@@ -179,15 +180,9 @@ ensureDir(mfImportDir);
 const mfImportStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mfImportDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || "") || ".xlsx";
-    const base = path
-      .basename(file.originalname || "mf-import", ext)
-      .replace(/[^a-zA-Z0-9_-]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 60) || "mf-import";
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${base}-${unique}${ext.toLowerCase()}`);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
+    const safeName = `${randomUUID()}${ext}`;
+    cb(null, safeName);
   },
 });
 

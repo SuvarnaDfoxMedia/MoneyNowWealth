@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { FaChevronUp, FaChevronDown } from "react-icons/fa";
 import CMSBanner from "./CmsBanner";
+import { sanitizeHtml } from "@/utils/sanitize";
 
 const GeneralDisclaimerPage = ({ data }: { data: any }) => {
   // First section open by default
@@ -84,7 +85,7 @@ const GeneralDisclaimerPage = ({ data }: { data: any }) => {
                         prose-ul:list-disc
                         prose-ul:pl-6
                       "
-                      dangerouslySetInnerHTML={{ __html: section.content }}
+                      dangerouslySetInnerHTML={sanitizeHtml(section.content)}
                     />
                   </div>
                 </div>

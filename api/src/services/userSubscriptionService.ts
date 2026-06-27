@@ -689,7 +689,7 @@ export const userSubscriptionService = {
       ? Math.max(requestedPage, 1)
       : 1;
     const perPage = Number.isFinite(requestedLimit)
-      ? Math.max(requestedLimit, 1)
+      ? Math.min(Math.max(requestedLimit, 1), 200)
       : 10;
     const skip = (pageNum - 1) * perPage;
 

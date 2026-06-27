@@ -21,9 +21,9 @@ router.post(
   userPurchaseSubscription,
 );
 router.get("/subscription-payment/history/me", userProtect, getMyPaymentHistory);
-router.get("/subscription-payment/:id", getSubscriptionPaymentById);
-router.get("/subscription-payment/invoice/:paymentId", getInvoiceByPaymentId);
-router.get("/subscription-payment/history/:userId", getUserSubscriptionHistory);
+router.get("/subscription-payment/:id", userProtect, getSubscriptionPaymentById);
+router.get("/subscription-payment/invoice/:paymentId", userProtect, getInvoiceByPaymentId);
+router.get("/subscription-payment/history/:userId", userProtect, getUserSubscriptionHistory);
 
 /* -------------------- ADMIN ROUTES -------------------- */
 const adminMiddleware = roleFromUrl(["admin"]);
@@ -31,24 +31,21 @@ const adminMiddleware = roleFromUrl(["admin"]);
 /* -------------------- CREATE -------------------- */
 router.post(
   "/:role/subscription-payment/create",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   addSubscriptionPayment,
 );
 
 /* -------------------- UPDATE -------------------- */
 router.put(
   "/:role/subscription-payment/edit/:id",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   updateSubscriptionPayment,
 );
 
 /* -------------------- GET LATEST PAYMENT -------------------- */
 router.get(
   "/:role/subscription-payment/user/:user_id/latest",
-  adminProtect,
-  adminMiddleware,
+  ...adminMiddleware,
   getLatestPaymentByUser,
 );
 

@@ -533,7 +533,7 @@ export const getNavHistory = async (schemeId: string, query: Record<string, unkn
     }
   }
 
-  const sort = buildSort(query?.sortBy, query?.sortOrder, { date: -1 });
+  const sort = buildSort(query?.sortBy, query?.sortOrder, { date: -1 }, ["date", "nav", "created_at", "updated_at"]);
   const [data, total] = await Promise.all([
     NavHistory.find(filter).sort(sort).skip(skip).limit(limit).lean(),
     NavHistory.countDocuments(filter),
