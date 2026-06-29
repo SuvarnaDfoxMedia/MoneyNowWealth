@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { useFetchMFData } from "../../hooks/useFetchMFcategeory";
 import { usePopularFunds } from "../../hooks/usePopularFunds";
+import { useRouter } from "next/navigation";
 import { useNfoFunds } from "../../hooks/useNfoFunds";
 
 const MAIN_TABS = ["Categories", "Popular Funds", "New Fund Offers"];
@@ -14,6 +15,7 @@ type SortConfig = {
 };
 
 type TableRow = {
+  id?: string;
   name: string;
   y3: string;
   y5: string;
@@ -88,6 +90,7 @@ const SortIcons = ({
 };
 
 export default function MFMainCategory() {
+  const router = useRouter();
   const [activeMainTab, setActiveMainTab] = useState("Categories");
   const [activeCategory, setActiveCategory] = useState("");
   const [activeSubTab, setActiveSubTab] = useState("");
@@ -149,6 +152,7 @@ export default function MFMainCategory() {
   const baseData = useMemo(() => {
     if (isPopularTab) {
       return popularFunds.map((fund) => ({
+        id: fund._id,
         name: fund.fund_name,
         y3: getTrailingReturn(fund.returns, "3y", "y3_cagr")?.toString?.() || "-",
         y5: getTrailingReturn(fund.returns, "5y", "y5_cagr")?.toString?.() || "-",
@@ -158,6 +162,7 @@ export default function MFMainCategory() {
 
     if (isNfoTab) {
       return nfos.map((fund) => ({
+        id: fund._id,
         name: fund.fund_name,
         y3: "-",
         y5: "-",
@@ -397,7 +402,9 @@ export default function MFMainCategory() {
                             <button className="bg-[#043F79] text-white text-[12px] font-medium px-2.5 py-1.5 rounded-[3px] shadow-sm hover:bg-[#032d56] whitespace-nowrap">
                               Start SIP
                             </button>
-                            <button className="border border-[#F39C12] text-[#F39C12] text-[12px] font-medium px-2 py-1.5 rounded-[3px] hover:bg-orange-50 whitespace-nowrap">
+                            <button 
+                              onClick={() => { if (fund.id) router.push(`/funds/${fund.id}`); }}
+                              className="border border-[#F39C12] text-[#F39C12] text-[12px] font-medium px-2 py-1.5 rounded-[3px] hover:bg-orange-50 whitespace-nowrap">
                               Explore
                             </button>
                           </div>

@@ -34,6 +34,7 @@ export const useMfApiDashboard = (
   useQuery({
     queryKey: [role, "mf-api", "dashboard"],
     queryFn: () => fetchMfApiDashboard(role),
+    placeholderData: keepPreviousData,
     refetchInterval: options?.refetchInterval,
     enabled: options?.enabled,
   });
@@ -59,6 +60,7 @@ export const useMfApiScheme = (
     queryKey: [role, "mf-api", "scheme", id],
     queryFn: () => fetchMfApiScheme(role, id || ""),
     enabled: Boolean(id),
+    placeholderData: keepPreviousData,
     refetchInterval: options?.refetchInterval,
   });
 
@@ -92,8 +94,17 @@ export const useMfApiSyncAll = (role: string) => {
       }
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
-    onError: () => {
-      toast.error("Failed to start MF API sync");
+    onError: (err: any) => {
+      const status = err?.response?.status;
+      if (status === 409) {
+        toast.error(
+          err?.response?.data?.message ||
+            "A sync is already in progress. Check the sync progress or wait for it to finish.",
+          { duration: 6000 },
+        );
+      } else {
+        toast.error("Failed to start MF API sync");
+      }
     },
   });
 };
@@ -116,8 +127,17 @@ export const useMfApiSyncActive = (role: string) => {
       }
       void queryClient.invalidateQueries({ queryKey: [role, "mf-api"] });
     },
-    onError: () => {
-      toast.error("Failed to start active MF API sync");
+    onError: (err: any) => {
+      const status = err?.response?.status;
+      if (status === 409) {
+        toast.error(
+          err?.response?.data?.message ||
+            "A sync is already in progress. Check the sync progress or wait for it to finish.",
+          { duration: 6000 },
+        );
+      } else {
+        toast.error("Failed to start active MF API sync");
+      }
     },
   });
 };

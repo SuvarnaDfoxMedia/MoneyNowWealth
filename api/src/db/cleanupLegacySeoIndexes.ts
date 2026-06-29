@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { logger } from "../utils/logger";
 
 const legacySeoIndexMap: Record<string, string[]> = {
   seos: ["route_path_1"],
@@ -19,20 +20,20 @@ export const cleanupLegacySeoIndexes = async () => {
 
         try {
           await collection.dropIndex(indexName);
-          console.log(
-            `[SEO Cleanup] Dropped legacy index ${collectionName}.${indexName}`,
+          logger.info(
+            `[SEO Cleanup] Dropped legacy index ${collectionName}.${indexName}`
           );
         } catch (error) {
-          console.warn(
-            `[SEO Cleanup] Failed to drop index ${collectionName}.${indexName}:`,
-            error,
+          logger.warn(
+            `[SEO Cleanup] Failed to drop index ${collectionName}.${indexName}: ` +
+            error
           );
         }
       }
     } catch (error) {
-      console.warn(
-        `[SEO Cleanup] Unable to inspect indexes for ${collectionName}:`,
-        error,
+      logger.warn(
+        `[SEO Cleanup] Unable to inspect indexes for ${collectionName}: ` +
+        error
       );
     }
   }

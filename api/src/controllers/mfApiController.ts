@@ -21,6 +21,7 @@ import {
 } from "../services/mfApiService";
 import { sendError, sendSuccess } from "../utils/apiResponse";
 import type { AuthenticatedRequest } from "../middlewares/authMiddleware";
+import MfApiSyncLog from "../models/mfApiSyncLogModel";
 
 const readContext = (req: Request) => ({
   role: (req as AuthenticatedRequest).user?.role,
@@ -77,6 +78,13 @@ export const getMfApiLogs = async (req: Request, res: Response) => {
 
 export const syncAllMfApiSchemes = async (req: Request, res: Response) => {
   try {
+    const activeSync = await MfApiSyncLog.findOne({
+      action: { $in: ["sync-all", "sync-resume"] },
+      status: { $in: ["running", "rate_limited"] },
+    });
+    if (activeSync) {
+      return sendError(res, "A sync is already in progress. Please wait for it to finish or check the sync progress modal.", 409);
+    }
     const response = await syncAllExternalSchemes(readContext(req));
     return sendSuccess(res, response.message || "MF API sync started", response);
   } catch (error: any) {
@@ -86,6 +94,13 @@ export const syncAllMfApiSchemes = async (req: Request, res: Response) => {
 
 export const syncActiveMfApiSchemes = async (req: Request, res: Response) => {
   try {
+    const activeSync = await MfApiSyncLog.findOne({
+      action: { $in: ["sync-all", "sync-resume"] },
+      status: { $in: ["running", "rate_limited"] },
+    });
+    if (activeSync) {
+      return sendError(res, "A sync is already in progress. Please wait for it to finish or check the sync progress modal.", 409);
+    }
     const response = await syncActiveExternalSchemes(readContext(req));
     return sendSuccess(res, response.message || "Active MF API sync started", response);
   } catch (error: any) {

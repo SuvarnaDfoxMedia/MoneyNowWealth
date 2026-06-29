@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import MFFund, { IMFFund } from "../models/mfFundModel";
 import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
+import MfApiNavHistory from "../models/mfApiNavHistoryModel";
 import {
   buildSort,
   normalizeYearValueMap,
@@ -279,15 +280,44 @@ export const getPopularFunds = async (query: any) => {
 
 export const getFundById = async (id: string) => {
   const doc = await MFFund.findOne({ _id: id, is_deleted: false })
+    .select("-data_source -last_manual_import_at -mf_api_external_key")
     .populate("amc_id", "name")
     .populate({
       path: "category_id",
       select: "name main_category_id",
       populate: { path: "main_category_id", select: "name" },
     })
+    .populate({
+      path: "mf_api_scheme_id",
+      select: "scheme_performance_list scheme_peer_comparision_list risk_statistics_list rating rating_value",
+    })
     .lean();
   if (!doc) throw new Error("Fund not found");
   return doc;
+};
+
+export const getFundNavHistory = async (id: string, days: number = 365) => {
+  const fund = await MFFund.findById(id).select("mf_api_scheme_id").lean();
+  if (!fund) throw new Error("Fund not found");
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+  
+  // Use NavHistory from the bridging table instead of MfApiNavHistory
+  // Wait, MfApiNavHistory has nav_change, nav_change_pct which are required by the chart!
+  // NavHistory might not have them? Actually, NavMovementChart doesn't use nav_change for historical points, only for the latest.
+  // Wait, `mf_api_scheme_id` is the key for MfApiNavHistory. Let's just query MfApiNavHistory directly to save processing!
+  
+  if (!fund.mf_api_scheme_id) {
+    return [];
+  }
+  
+  const history = await MfApiNavHistory.find({
+    scheme_id: fund.mf_api_scheme_id,
+    date: { $gte: cutoffDate }
+  }).sort({ date: -1 }).lean();
+  
+  return history;
 };
 
 export const createFund = async (payload: Partial<IMFFund> & any) => {

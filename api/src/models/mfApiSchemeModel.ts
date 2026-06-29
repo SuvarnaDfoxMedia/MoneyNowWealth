@@ -75,6 +75,7 @@ const mfApiRiskMetricsSchema = new Schema(
     sortino:           { type: Number, default: null }, // from shortino_ratio
     yield_to_maturity: { type: Number, default: null },
     average_maturity:  { type: Number, default: null },
+    turnover_ratio:    { type: Number, default: null },
   },
   { _id: false },
 );
@@ -164,7 +165,7 @@ export interface IMfApiScheme extends Document {
     volatility_3y?: number | null; sharpe_3y?: number | null;
     alpha_1y?: number | null; beta_1y?: number | null;
     sortino?: number | null; yield_to_maturity?: number | null;
-    average_maturity?: number | null;
+    average_maturity?: number | null; turnover_ratio?: number | null;
   };
   market_cap?: {
     large_cap_pct?: number | null;

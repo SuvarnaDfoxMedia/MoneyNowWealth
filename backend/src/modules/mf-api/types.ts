@@ -24,23 +24,51 @@ export type MfApiScheme = {
   schemeCode?: string;
   scheme_code?: string;
   isin?: string;
+  isin_no?: string;
   planType?: string;
   plan_type?: string;
   optionType?: string;
   option_type?: string;
   category?: string;
+  scheme_category?: string;
   subCategory?: string;
   sub_category?: string;
   latestNav?: number | string | null;
   latest_nav?: number | null;
   latestDate?: string | null;
   latest_date?: string | null;
+  nav?: number | null;
+  nav_date?: string | null;
+  scheme_benchmark?: string;
+  scheme_assets?: number | null;
+  scheme_asset_date?: string | null;
+  scheme_manager?: string;
+  riskometer_value?: string | null;
+  scheme_objective?: string;
+  scheme_inception_date?: string | null;
+  scheme_inception_return?: number | null;
+  expense_ratio_percentage?: number | null;
+  expense_ratio_date?: string | null;
+  scheme_status?: string;
+  minimum_investment?: number | null;
+  minimum_topup?: number | null;
+  sip_minimum_amount?: number | null;
+  scheme_turnover?: number | null;
+  upmarket_capture_ratio?: number | null;
+  downmarket_capture_ratio?: number | null;
+  market_cap_largecap_percent?: number | null;
+  market_cap_midcap_percent?: number | null;
+  market_cap_smallcap_percent?: number | null;
+  scheme_performance_list?: unknown[];
+  risk_statistics_list?: unknown[];
+  scheme_peer_comparision_list?: unknown[];
   lastSyncedAt?: string | null;
   last_synced_at?: string | null;
   last_sync_error?: string;
   syncStatus?: string;
   sync_status?: string;
   rawPayload?: unknown;
+  raw_payload?: unknown;
   is_active?: boolean;
   is_new?: boolean;
   first_seen_date?: string | null;
@@ -147,25 +175,20 @@ export type MfApiDashboardSummary = {
 };
 
 export type MfApiImportReport = {
-  success?: boolean;
-  message?: string;
+  success: boolean;
+  message: string;
+  totalRows?: number;
   inserted?: number;
   updated?: number;
-  activated?: number;
-  deactivated?: number;
-  syncFailed?: number;   // schemes that activated but failed to bridge to the manual module
-  syncPartial?: number;  // schemes activated but MFFund not found/created (missing AMC or category)
   skipped?: number;
   rejected?: number;
-  totalRows?: number;
-  validRows?: number;
+  activated?: number;
+  deactivated?: number;
+  syncFailed?: number;
+  syncPartial?: number;
   validateOnly?: boolean;
   fileName?: string;
-  errors?: Array<{
-    row?: number;
-    message?: string;
-    identifier?: string;
-  }>;
+  errors?: Array<{ row: number; field: string; message: string }>;
   bridgeFailed?: Array<{
     scheme_code: string;
     scheme_name: string;

@@ -1,4 +1,4 @@
-import MFMainCategory from '@/components/Mutual-Funds-Master-Categeory/MF-Main-Category'
+import MFMainCategory from '@/components/Mutual-Funds-Master-Category/MF-Main-Category'
 import React from 'react'
 
 const page = () => {

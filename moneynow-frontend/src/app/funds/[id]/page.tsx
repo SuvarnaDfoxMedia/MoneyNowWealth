@@ -1,62 +1,28 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { mfService } from "@/services/mfService";
 import { useRefreshSignal } from "@/hooks/useRefreshSignal";
 
-interface FundDetail {
-  scheme_code?: string;
-  fund_name: string;
-  amc_id?: { name?: string };
-  category_id?: { name?: string };
-  min_sip_investment?: number | null;
-  min_lumpsum_investment?: number | null;
-  sip_allowed?: boolean;
-  lumpsum_allowed?: boolean;
-  riskometer_label?: string;
-  nav_Current?: number | null;
-  nav_date?: Date | string | null;
-  nav_change?: number | null;
-  nav_change_percentage?: number | null;
-  benchmark_index_name?: string;
-  benchmark_returns_trailing?: {
-    d1?: number | null;
-    m1?: number | null;
-    m3?: number | null;
-    m6?: number | null;
-    y1?: number | null;
-    y3?: number | null;
-    y5?: number | null;
-    y10?: number | null;
-  };
-  benchmark_returns_annual?: {
-    y1?: number | null;
-    y3?: number | null;
-    y5?: number | null;
-    y10?: number | null;
-  };
-  returns?: {
-    trailing?: Record<string, number | null>;
-    annual?: { ytd?: number | null; yearly_returns?: Record<string, number | null> };
-    d1?: number | null;
-    m1?: number | null;
-    m3?: number | null;
-    m6?: number | null;
-    y1?: number | null;
-    y3_cagr?: number | null;
-    y5_cagr?: number | null;
-    y10_cagr?: number | null;
-  };
-}
-
-const getFundTrailing = (fund: FundDetail | null | undefined, key: string, legacyKey?: string) =>
-  fund?.returns?.trailing?.[key] ?? (legacyKey ? (fund?.returns as any)?.[legacyKey] : null);
+import { mapMFFundToFundCardProps } from "@/components/fund-card/mapMFFundToFundCardProps";
+import SchemeHeroCard from "@/components/fund-card/SchemeHeroCard";
+import InvestmentObjectiveCard from "@/components/fund-card/InvestmentObjectiveCard";
+import FundDetailsCard from "@/components/fund-card/FundDetailsCard";
+import ReturnsComparisonTable from "@/components/fund-card/ReturnsComparisonTable";
+import NavMovementChart from "@/components/fund-card/NavMovementChart";
+import HoldingsSplitTable from "@/components/fund-card/HoldingsSplitTable";
+import SectorAllocationTable from "@/components/fund-card/SectorAllocationTable";
+import AssetAllocationChart from "@/components/fund-card/AssetAllocationChart";
+import PortfolioStatsPanel from "@/components/fund-card/PortfolioStatsPanel";
+import PeerComparisonTable from "@/components/fund-card/PeerComparisonTable";
 
 export default function FundDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
-  const [fund, setFund] = useState<FundDetail | null>(null);
+  const [fund, setFund] = useState<any | null>(null);
+  const [navHistory, setNavHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { refreshTick } = useRefreshSignal();
 
@@ -64,120 +30,195 @@ export default function FundDetailPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await mfService.getFundById(id);
-        setFund((res?.data || null) as FundDetail | null);
+        const [res, navRes] = await Promise.all([
+          mfService.getFundById(id),
+          mfService.getFundNavHistory(id, { days: 365 }).catch(() => ({ data: [] }))
+        ]);
+        setFund(res?.data || res || null);
+        setNavHistory(navRes?.data || navRes || []);
       } catch {
         setFund(null);
+        setNavHistory([]);
       } finally {
         setLoading(false);
       }
     };
-
     if (id) load();
   }, [id, refreshTick]);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F7FA]">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-[#043F79]/20 border-t-[#043F79] rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500 font-medium">Loading Fund Details…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!fund) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F7FA]">
+        <div className="text-center">
+          <div className="text-4xl mb-4">📊</div>
+          <p className="text-slate-600 font-semibold text-lg mb-2">
+            Fund not found
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="text-[#043F79] underline text-sm"
+          >
+            ← Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const props = mapMFFundToFundCardProps(fund);
+
   return (
-    <div className="max-w-5xl mx-auto p-6 font-sans text-[#1e293b] min-h-screen bg-white">
-      {loading ? (
-        <div className="py-20 text-center text-gray-400 animate-pulse">
-          Loading fund details...
+    <div className="min-h-screen bg-[#F5F7FA] font-[Poppins,sans-serif]">
+      {/* ── Header / Back Nav ───────────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-[#043F79] via-[#0a5ba5] to-[#1475c4] text-white px-4 sm:px-6 pt-4 pb-2">
+        <div className="max-w-6xl mx-auto">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-white/70 hover:text-white text-[13px] mb-4 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Funds
+          </button>
         </div>
-      ) : fund ? (
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{fund.fund_name}</h1>
-            <p className="text-gray-500 text-[14px]">
-              {[fund.amc_id?.name || "AMC", fund.category_id?.name || "Category"].join(" | ")}
-            </p>
-            <p className="text-gray-500 text-[14px] mt-1">
-              {[
-                fund.scheme_code ? `Scheme Code: ${fund.scheme_code}` : null,
-                fund.riskometer_label ? `Riskometer: ${fund.riskometer_label}` : null,
-              ]
-                .filter(Boolean)
-                .join(" | ")}
-            </p>
-          </div>
+      </div>
 
-          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm flex items-center gap-4">
-            <div>
-              <div className="text-gray-500 text-sm">NAV</div>
-              <div className="text-2xl font-bold text-[#1e293b]">
-                {fund.nav_Current ? `₹${fund.nav_Current.toFixed(4)}` : "N/A"}
-              </div>
-            </div>
-            {fund.nav_change != null && (
-              <div className={`mt-4 font-medium ${fund.nav_change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {fund.nav_change > 0 ? "+" : ""}
-                {fund.nav_change.toFixed(4)} ({fund.nav_change > 0 ? "+" : ""}
-                {fund.nav_change_percentage?.toFixed(2)}%)
-              </div>
-            )}
-            <div className="mt-4 text-xs text-gray-400">
-              {fund.nav_date ? `As of ${new Date(fund.nav_date).toLocaleDateString()}` : ""}
-            </div>
-          </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <SchemeHeroCard
+          schemeName={props.schemeName}
+          amcName={props.amcName}
+          category={props.category}
+          benchmark={props.benchmarkName}
+          planType={props.planType}
+          optionType={props.optionType}
+          schemeAssets={props.aum}
+          schemeManager={props.fundManager}
+          nav={props.nav}
+          navDate={props.navDate}
+          navChange={props.navChange}
+          navChangePct={props.navChangePct}
+          exitLoad={props.exitLoad}
+          rating={props.rating}
+          ratingValue={props.ratingValue}
+          riskometer={props.riskometerLabel}
+          isin={props.isin}
+          schemeCode={props.schemeCode}
+        />
 
-          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
-            <h2 className="text-[16px] font-semibold mb-3">Performance</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-8 gap-4 text-[13px] text-[#495057]">
-              <div>1D Return: {fund.returns?.d1 ?? 0}</div>
-              <div>1M Return: {getFundTrailing(fund, "1m", "m1") ?? 0}</div>
-              <div>3M Return: {getFundTrailing(fund, "3m", "m3") ?? 0}</div>
-              <div>6M Return: {getFundTrailing(fund, "6m", "m6") ?? 0}</div>
-              <div>1Y Return: {getFundTrailing(fund, "1y", "y1") ?? "-"}</div>
-              <div>3Y CAGR: {getFundTrailing(fund, "3y", "y3_cagr") ?? "-"}</div>
-              <div>5Y CAGR: {getFundTrailing(fund, "5y", "y5_cagr") ?? "-"}</div>
-              <div>10Y CAGR: {getFundTrailing(fund, "10y", "y10_cagr") ?? "-"}</div>
-            </div>
-          </div>
+        <InvestmentObjectiveCard
+          schemeObjective={props.fundObjective}
+        />
 
-          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
-            <h2 className="text-[16px] font-semibold mb-3">Minimum Investment</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px] text-[#495057]">
-              <div>
-                Minimum SIP: {fund.sip_allowed ? fund.min_sip_investment ?? "-" : "Not Available"}
-              </div>
-              <div>
-                Minimum Lumpsum: {fund.lumpsum_allowed ? fund.min_lumpsum_investment ?? "-" : "Not Available"}
-              </div>
-            </div>
-          </div>
+        <FundDetailsCard
+          inceptionDate={props.launchDate}
+          expenseRatio={props.expenseRatio}
+          minimumInvestment={props.minInvestment}
+          minimumTopup={props.minLumpsum}
+          sipMinimum={props.minSip}
+          riskStatus={props.riskometerLabel}
+          returnsSinceInception={props.returnsSinceInception}
+          upmarketCapture={props.upmarketCapture}
+          downmarketCapture={props.downmarketCapture}
+          schemeTurnover={props.schemeTurnover != null ? `${props.schemeTurnover}%` : null}
+        />
 
-          <div className="border border-[#E4E4E4] rounded-lg p-5 bg-white shadow-sm">
-            <h2 className="text-[16px] font-semibold mb-3">Benchmark Returns</h2>
-            <div className="mb-4 text-[13px] text-[#495057]">
-              Benchmark Index: {fund.benchmark_index_name || "-"}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[13px] text-[#495057]">
-              <div>
-                <div className="font-semibold mb-2">Trailing</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>1D: {fund.benchmark_returns_trailing?.d1 ?? 0}</div>
-                  <div>1M: {fund.benchmark_returns_trailing?.m1 ?? 0}</div>
-                  <div>3M: {fund.benchmark_returns_trailing?.m3 ?? 0}</div>
-                  <div>6M: {fund.benchmark_returns_trailing?.m6 ?? 0}</div>
-                  <div>1Y: {fund.benchmark_returns_trailing?.y1 ?? "-"}</div>
-                  <div>3Y: {fund.benchmark_returns_trailing?.y3 ?? "-"}</div>
-                  <div>5Y: {fund.benchmark_returns_trailing?.y5 ?? "-"}</div>
-                  <div>10Y: {fund.benchmark_returns_trailing?.y10 ?? "-"}</div>
-                </div>
-              </div>
-              <div>
-                <div className="font-semibold mb-2">Annual</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>1Y: {fund.benchmark_returns_annual?.y1 ?? "-"}</div>
-                  <div>3Y: {fund.benchmark_returns_annual?.y3 ?? "-"}</div>
-                  <div>5Y: {fund.benchmark_returns_annual?.y5 ?? "-"}</div>
-                  <div>10Y: {fund.benchmark_returns_annual?.y10 ?? "-"}</div>
-                </div>
-              </div>
-            </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-base font-bold tracking-tight text-slate-800">
+            Performance Returns
+          </h2>
+          <ReturnsComparisonTable
+            performanceList={props.performanceList}
+            rankWithinCategory={null}
+            totalFundsInCategory={null}
+          />
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <NavMovementChart 
+            history={navHistory} 
+            isLoading={loading}
+            selectedDays={365}
+            onPeriodChange={() => {}}
+            currentNav={props.nav}
+            navDate={props.navDate}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <HoldingsSplitTable holdings={props.topHoldings} />
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <SectorAllocationTable holdings={props.topHoldings} />
           </div>
         </div>
-      ) : (
-        <div className="py-20 text-center text-gray-400">Fund not found</div>
-      )}
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <AssetAllocationChart
+              assetAllocation={{
+                domestic_equity_pct: props.domesticEquityPct,
+                international_equity_pct: props.internationalEquityPct,
+                debt_pct: props.debtPct,
+                cash_pct: props.cashPct,
+                gold_pct: props.goldPct,
+                other_pct: props.otherPct,
+              }}
+            />
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <PortfolioStatsPanel
+              marketCapLargecapPct={props.largeCapPct}
+              marketCapMidcapPct={props.midCapPct}
+              marketCapSmallcapPct={props.smallCapPct}
+              volatility3y={props.stdDev}
+              volatility5y={props.stdDev5y}
+              sharpeRatio3y={props.sharpe}
+              sharpeRatio5y={props.sharpe5y}
+              alpha1y={props.alpha}
+              alpha3y={props.alpha3y}
+              alpha5y={props.alpha5y}
+              beta1y={props.beta}
+              beta3y={props.beta3y}
+              beta5y={props.beta5y}
+              sortino={props.sortino}
+              ytm={props.yieldToMaturity}
+              avgMaturity={props.averageMaturity}
+              maxDrawdown5y={props.maxDrawdown5y}
+              maxDrawdown10y={props.maxDrawdown10y}
+              turnoverRatio={props.schemeTurnover}
+              upmarketCapture={props.upmarketCapture}
+              downmarketCapture={props.downmarketCapture}
+              assetAllocation={{
+                domestic_equity_pct: props.domesticEquityPct,
+                international_equity_pct: props.internationalEquityPct,
+                debt_pct: props.debtPct,
+                other_pct: props.otherPct,
+                gold_pct: props.goldPct,
+                cash_pct: props.cashPct,
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-hidden">
+          <PeerComparisonTable
+            peers={props.peerList}
+          />
+        </div>
+      </div>
     </div>
   );
 }

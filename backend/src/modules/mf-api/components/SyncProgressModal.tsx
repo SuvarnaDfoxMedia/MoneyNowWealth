@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { FiX, FiCheckCircle, FiRefreshCw, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,22 +13,33 @@ interface SyncProgressModalProps {
 export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgressModalProps) {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
 
   const { data, refetch } = useMfApiDashboard(role, {
-    refetchInterval: isOpen ? 3000 : false,
+    refetchInterval: isOpen ? 2000 : false,
     enabled: isOpen,
   });
   const { data: logsData } = useMfApiSyncLogs(role, { page: 1, limit: 8 }, {
-    refetchInterval: isOpen ? 3000 : false,
+    refetchInterval: isOpen ? 2000 : false,
   });
   const retrySyncMutation = useMfApiSyncActive(role);
 
   const dashboard = data?.data;
   const logRows: any[] = logsData?.data ?? [];
-  const latestLogJob: any = logRows.find((log) => log.status === "running" || log.status === "rate_limited")
-    || logRows.find((log) => log.action === "sync-all" || log.action === "sync-resume")
-    || null;
+  const latestLogJob: any = useMemo(() => {
+    const sorted = [...logRows].sort((a, b) => {
+      const aTime = new Date((a as any)?.updated_at ?? (a as any)?.created_at ?? a.updatedAt ?? a.createdAt ?? 0).getTime();
+      const bTime = new Date((b as any)?.updated_at ?? (b as any)?.created_at ?? b.updatedAt ?? b.createdAt ?? 0).getTime();
+      return bTime - aTime;
+    });
+
+    return (
+      sorted.find((log) =>
+        ["running", "rate_limited", "queued", "processing"].includes(String(log.status)),
+      ) ||
+      sorted.find((log) => log.action === "sync-all" || log.action === "sync-resume") ||
+      null
+    );
+  }, [logRows]);
   const latestJob = latestLogJob || dashboard?.latestSyncJob || null;
   const totalSchemes = Number(latestJob?.response?.total ?? dashboard?.totalSchemes ?? 0) || 0;
   const activeSchemes = Number(latestJob?.response?.active ?? dashboard?.activeSchemes ?? 0) || 0;
@@ -36,8 +47,13 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
   const processedSchemes = Number(latestJob?.response?.processed ?? 0) || 0;
   const failedSchemes = Number(latestJob?.response?.errors ?? dashboard?.failedSchemes ?? 0) || 0;
   const currentPhase = String(latestJob?.response?.phase || "idle");
+  const currentPhaseLabel = currentPhase === "idle"
+    ? "Idle"
+    : currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1);
   const syncMessage = latestJob?.message || dashboard?.lastSyncMessage || dashboard?.runningMessage || "";
-  const isCurrentlyRunning = latestJob?.status === "running" || latestJob?.status === "rate_limited";
+  const isCurrentlyRunning =
+    ["running", "rate_limited", "queued"].includes(String(latestJob?.status)) ||
+    ["active", "inactive", "processing"].includes(currentPhase);
   const isRateLimited = latestJob?.status === "rate_limited";
   const isCompleted = latestJob
     ? (latestJob.status === "success" ||
@@ -45,16 +61,11 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
       String(latestJob.status).startsWith("partial"))
     : false;
 
-  useEffect(() => {
-    setIsRunning(isCurrentlyRunning);
-  }, [isCurrentlyRunning]);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await queryClient.invalidateQueries({
-        queryKey: [role, "mf-api", "dashboard"],
-        exact: true,
+        queryKey: [role, "mf-api"],
       });
       await refetch();
     } finally {
@@ -85,7 +96,7 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
 
         {/* Content */}
         <div className="p-6">
-          {isRunning ? (
+          {isCurrentlyRunning ? (
             <div className="mb-6 flex items-center gap-3 text-blue-600">
               <FiRefreshCw className="h-5 w-5 animate-spin" />
               <div>
@@ -147,7 +158,7 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
           <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
             <div
               className={`h-full transition-all duration-500 ${
-                isRunning ? "bg-blue-500" : "bg-green-500"
+                isCurrentlyRunning ? "bg-blue-500" : "bg-green-500"
               }`}
               style={{ width: `${progressPercentage}%` }}
             />

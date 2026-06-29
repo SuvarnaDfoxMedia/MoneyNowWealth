@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { logger } from "../utils/logger";
 
 const legacyIndexMap: Record<string, string[]> = {
   mfschemes: ["scheme_code_1", "slug_1", "code_1"],
@@ -23,21 +24,18 @@ export const cleanupLegacyMfIndexes = async () => {
         if (!existingNames.has(indexName)) continue;
         try {
           await collection.dropIndex(indexName);
-          // eslint-disable-next-line no-console
-          console.log(`[MF Cleanup] Dropped legacy index ${collectionName}.${indexName}`);
+          logger.info(`[MF Cleanup] Dropped legacy index ${collectionName}.${indexName}`);
         } catch (error) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `[MF Cleanup] Failed to drop index ${collectionName}.${indexName}:`,
-            error,
+          logger.warn(
+            `[MF Cleanup] Failed to drop index ${collectionName}.${indexName}: ` +
+            error
           );
         }
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        `[MF Cleanup] Unable to inspect indexes for ${collectionName}:`,
-        error,
+      logger.warn(
+        `[MF Cleanup] Unable to inspect indexes for ${collectionName}: ` +
+        error
       );
     }
   }

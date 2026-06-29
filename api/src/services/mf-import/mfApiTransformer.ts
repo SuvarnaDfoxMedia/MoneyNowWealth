@@ -2,8 +2,84 @@ import { WorkbookDTO } from "../../types/mfImportDto";
 import { parseCategoryPath } from "../../utils/categoryParser";
 import { normalizeDateOnly } from "../navCalculationService";
 
+type MfPrimitive = string | number | boolean | Date | null | undefined;
+type MfDatePrimitive = string | number | Date | null | undefined;
+
+interface MfApiReturnBucket {
+  d1?: MfPrimitive;
+  "1w"?: MfPrimitive;
+  "1m"?: MfPrimitive;
+  "3m"?: MfPrimitive;
+  "6m"?: MfPrimitive;
+  "1y"?: MfPrimitive;
+  "2y"?: MfPrimitive;
+  "3y"?: MfPrimitive;
+  "5y"?: MfPrimitive;
+  "10y"?: MfPrimitive;
+  since_launch?: MfPrimitive;
+  ytd?: MfPrimitive;
+  benchmark_name?: string;
+}
+
+interface MfApiSchemeRow {
+  scheme_name?: string;
+  scheme_code?: string;
+  isin?: string;
+  amc_name?: string;
+  amc?: string;
+  category?: string;
+  scheme_benchmark?: string;
+  plan_type?: string;
+  option_type?: string;
+  latest_nav?: MfPrimitive;
+  latest_date?: MfDatePrimitive;
+  nav_change?: MfPrimitive;
+  nav_change_percentage?: MfPrimitive;
+  scheme_assets?: MfPrimitive;
+  expense_ratio_percentage?: MfPrimitive;
+  scheme_manager?: string;
+  scheme_objective?: string;
+  scheme_inception_date?: MfDatePrimitive;
+  exit_load?: string;
+  rating?: string;
+  rating_value?: MfPrimitive;
+  upmarket_capture_ratio?: MfPrimitive;
+  downmarket_capture_ratio?: MfPrimitive;
+  scheme_turnover?: MfPrimitive;
+  minimum_investment?: MfPrimitive;
+  sip_minimum_amount?: MfPrimitive;
+  minimum_topup?: MfPrimitive;
+  riskometer_value?: string;
+  market_cap_largecap_percent?: MfPrimitive;
+  market_cap_midcap_percent?: MfPrimitive;
+  market_cap_smallcap_percent?: MfPrimitive;
+  scheme_inception_return?: MfPrimitive;
+  latest_info?: unknown;
+  trailing_returns?: unknown;
+  risk_metrics?: unknown;
+  market_cap?: unknown;
+  benchmark_returns?: unknown;
+  category_avg_returns?: unknown;
+  scheme_performance_list?: unknown;
+  risk_statistics_list?: unknown;
+  scheme_peer_comparision_list?: unknown;
+}
+
+type MfApiKnownReturns = MfApiReturnBucket;
+
+interface MfApiKnownRiskMetrics {
+    sharpe_3y?: MfPrimitive;
+    alpha_1y?: MfPrimitive;
+    beta_1y?: MfPrimitive;
+    volatility_3y?: MfPrimitive;
+    turnover_ratio?: MfPrimitive;
+    sortino?: MfPrimitive;
+    yield_to_maturity?: MfPrimitive;
+    average_maturity?: MfPrimitive;
+}
+
 export class MfApiTransformer {
-  static transformScheme(apiScheme: any): Partial<WorkbookDTO> {
+  static transformScheme(apiScheme: MfApiSchemeRow): Partial<WorkbookDTO> {
     const dto: Partial<WorkbookDTO> = {
       funds: [],
       amcs: [],
@@ -13,23 +89,40 @@ export class MfApiTransformer {
       mainCategories: []
     };
 
-    const toN = (v: any) => {
+    const toN = (v: MfPrimitive) => {
       if (v === null || v === undefined || v === "") return null;
       const n = Number(String(v).replace(/,/g, "").replace(/%/g, "").trim());
       return Number.isFinite(n) ? n : null;
     };
 
-    const toD = (v: any) => {
+    const toD = (v: MfDatePrimitive) => {
       if (!v) return null;
       const d = new Date(v);
       return Number.isNaN(d.getTime()) ? null : d;
     };
 
-    const tr = apiScheme.trailing_returns || {};
-    const rm = apiScheme.risk_metrics || {};
-    const mc = apiScheme.market_cap || {};
-    const br = apiScheme.benchmark_returns || {};
-    const cr = apiScheme.category_avg_returns || {};
+    const tr = (apiScheme.trailing_returns && typeof apiScheme.trailing_returns === "object"
+      ? apiScheme.trailing_returns
+      : {}) as MfApiKnownReturns;
+    const rm = (apiScheme.risk_metrics && typeof apiScheme.risk_metrics === "object"
+      ? apiScheme.risk_metrics
+      : {}) as MfApiKnownRiskMetrics;
+    const mc = (apiScheme.market_cap && typeof apiScheme.market_cap === "object"
+      ? apiScheme.market_cap
+      : {}) as {
+        large_cap_pct?: MfPrimitive;
+        mid_cap_pct?: MfPrimitive;
+        small_cap_pct?: MfPrimitive;
+      };
+    const br = (apiScheme.benchmark_returns && typeof apiScheme.benchmark_returns === "object"
+      ? apiScheme.benchmark_returns
+      : {}) as MfApiKnownReturns;
+    const cr = (apiScheme.category_avg_returns && typeof apiScheme.category_avg_returns === "object"
+      ? apiScheme.category_avg_returns
+      : {}) as MfApiKnownReturns;
+    const latestInfo = (apiScheme.latest_info && typeof apiScheme.latest_info === "object"
+      ? apiScheme.latest_info
+      : null) as { nav_change?: MfPrimitive; nav_change_percentage?: MfPrimitive } | null;
 
     const amcName = String(apiScheme.amc_name || apiScheme.amc || "").trim();
     if (amcName) {
@@ -126,14 +219,18 @@ export class MfApiTransformer {
         benchmarkIndexName,
         nav_Current: toN(apiScheme.latest_nav),
         nav_date: toD(apiScheme.latest_date),
-        nav_change: toN(apiScheme.nav_change ?? (apiScheme.latest_info as any)?.nav_change),
-        nav_change_percentage: toN(apiScheme.nav_change_percentage ?? (apiScheme.latest_info as any)?.nav_change_percentage),
+        nav_change: toN(apiScheme.nav_change ?? latestInfo?.nav_change),
+        nav_change_percentage: toN(apiScheme.nav_change_percentage ?? latestInfo?.nav_change_percentage),
         aum_cr: toN(apiScheme.scheme_assets),
         expense_ratio: toN(apiScheme.expense_ratio_percentage),
         fund_manager: String(apiScheme.scheme_manager || "").trim(),
         fund_objective: String(apiScheme.scheme_objective || "").trim(),
         launch_date: toD(apiScheme.scheme_inception_date),
         exit_load: String(apiScheme.exit_load || "").trim(),
+        rating: String(apiScheme.rating || "").trim(),
+        rating_value: toN(apiScheme.rating_value),
+        upmarket_capture_ratio: toN(apiScheme.upmarket_capture_ratio),
+        downmarket_capture_ratio: toN(apiScheme.downmarket_capture_ratio),
         min_investment: toN(apiScheme.minimum_investment),
         minimum_sip_investment: toN(apiScheme.sip_minimum_amount),
         min_sip_investment: toN(apiScheme.sip_minimum_amount),
@@ -145,6 +242,10 @@ export class MfApiTransformer {
         large_cap_pct: toN(mc.large_cap_pct ?? apiScheme.market_cap_largecap_percent),
         mid_cap_pct: toN(mc.mid_cap_pct ?? apiScheme.market_cap_midcap_percent),
         small_cap_pct: toN(mc.small_cap_pct ?? apiScheme.market_cap_smallcap_percent),
+        
+        scheme_performance_list: apiScheme.scheme_performance_list ?? null,
+        risk_statistics_list: apiScheme.risk_statistics_list ?? null,
+        scheme_peer_comparision_list: apiScheme.scheme_peer_comparision_list ?? null,
         
         "returns.since_inception": toN(apiScheme.scheme_inception_return),
         "returns.d1": toN(tr.d1),
@@ -165,6 +266,9 @@ export class MfApiTransformer {
         "risk_metrics.beta_1y": toN(rm.beta_1y),
         "risk_metrics.std_dev_3y": toN(rm.volatility_3y),
         "risk_metrics.turnover_ratio": toN(rm.turnover_ratio),
+        "risk_metrics.sortino": toN(rm.sortino),
+        "risk_metrics.yield_to_maturity": toN(rm.yield_to_maturity),
+        "risk_metrics.average_maturity": toN(rm.average_maturity),
         
         "benchmark_returns_trailing.1w": toN(br["1w"]),
         "benchmark_returns_trailing.1m": toN(br["1m"]),

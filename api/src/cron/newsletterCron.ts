@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import User from "../models/userModel";
 import { getResponseEmailService } from "../services/getResponseEmailService";
+import { logger } from "../utils/logger";
 
 export function startNewsletterScheduler() {
   cron.schedule(
@@ -25,9 +26,9 @@ export function startNewsletterScheduler() {
         //   newsletterUrl,
         // );
 
-        console.log(`Newsletter job queued for ${users.length} users`);
+        logger.info(`Newsletter job queued for ${users.length} users`);
       } catch (error) {
-        console.error("Newsletter cron failed:", error);
+        logger.error("Newsletter cron failed: " + error);
       }
     },
     { timezone: "Asia/Kolkata" },

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import { logger } from "../utils/logger";
 
 dotenv.config(); 
 
@@ -20,19 +21,19 @@ const connectDatabase = async (): Promise<void> => {
     });
 
     mongoose.connection.on("disconnected", () => {
-      console.error("[MongoDB] Disconnected from database");
+      logger.error("[MongoDB] Disconnected from database");
     });
 
     mongoose.connection.on("reconnected", () => {
-      console.log("[MongoDB] Reconnected to database");
+      logger.info("[MongoDB] Reconnected to database");
     });
 
     mongoose.connection.on("error", (err) => {
-      console.error("[MongoDB] Connection error:", err);
+      logger.error("[MongoDB] Connection error: " + err);
     });
-    console.log("MongoDB connected successfully");
+    logger.info("MongoDB connected successfully");
   } catch (error: any) {
-    console.error("MongoDB connection error:", error.message || error);
+    logger.error("MongoDB connection error: " + (error.message || error));
     process.exit(1);
   }
 };

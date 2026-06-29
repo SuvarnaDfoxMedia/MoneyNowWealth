@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import SipBarChart from "@/components/home/SipBarChart";
-import PDFDownloadButton from "@/components/Mutual-Funds-Master-Categeory/downloadPDF";
+import PDFDownloadButton from "@/components/Mutual-Funds-Master-Category/downloadPDF";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 
 interface CalculatorResultsProps {

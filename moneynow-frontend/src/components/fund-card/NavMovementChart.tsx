@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import Chart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
-import type { MfApiNavHistoryEntry } from "../types";
+import type { MfApiNavHistoryEntry } from "./MfApiSchemeViewTypes";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -178,8 +178,8 @@ export default function NavMovementChart({
               d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" />
           </svg>
           <p className="text-sm font-medium text-gray-700 mb-1">NAV history is being built</p>
-          <p className="text-xs text-gray-400 mb-3">
-            History accumulates one entry per sync cycle. Check back after the next sync.
+          <p className="mt-2 text-xs text-slate-400">
+            Check back later for historical data.
           </p>
           {currentNav != null && (
             <p className="text-xs font-medium text-gray-600">

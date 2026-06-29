@@ -92,7 +92,13 @@ export interface IMFFund extends Document {
     max_drawdown_5y?: number | null;
     max_drawdown_10y?: number | null;
     turnover_ratio?: number | null;
+    sortino?: number | null;
+    yield_to_maturity?: number | null;
+    average_maturity?: number | null;
   };
+  scheme_performance_list?: unknown;
+  risk_statistics_list?: unknown;
+  scheme_peer_comparision_list?: unknown;
   fund_manager?: string;
   launch_date?: Date | null;
   benchmark_id?: mongoose.Types.ObjectId | null;
@@ -124,6 +130,10 @@ export interface IMFFund extends Document {
   lumpsum_allowed?: boolean;
   min_lumpsum_investment?: number | null;
   exit_load?: string;
+  rating?: string;
+  rating_value?: number | null;
+  upmarket_capture_ratio?: number | null;
+  downmarket_capture_ratio?: number | null;
   is_featured?: boolean;
   is_popular?: boolean;
   fund_objective?: string;
@@ -194,6 +204,9 @@ const mfFundSchema = new Schema<IMFFund>(
       max_drawdown_5y: { type: Number, default: null },
       max_drawdown_10y: { type: Number, default: null },
       turnover_ratio: { type: Number, default: null },
+      sortino: { type: Number, default: null },
+      yield_to_maturity: { type: Number, default: null },
+      average_maturity: { type: Number, default: null },
     },
     fund_manager: { type: String, trim: true, default: "" },
     launch_date: { type: Date, default: null },
@@ -226,6 +239,10 @@ const mfFundSchema = new Schema<IMFFund>(
     lumpsum_allowed: { type: Boolean, default: true },
     min_lumpsum_investment: { type: Number, default: null },
     exit_load: { type: String, trim: true, default: "" },
+    rating: { type: String, trim: true, default: "" },
+    rating_value: { type: Number, default: null },
+    upmarket_capture_ratio: { type: Number, default: null },
+    downmarket_capture_ratio: { type: Number, default: null },
     is_featured: { type: Boolean, default: false, index: true },
     is_popular: { type: Boolean, default: false, index: true },
     fund_objective: { type: String, trim: true, default: "" },

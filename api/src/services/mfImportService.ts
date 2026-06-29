@@ -1,9 +1,12 @@
-export { MfImportEngineLegacy as SharedImportEngine } from "./mf-import/MfImportEngineLegacy";
-export { MfImportEngineLegacy } from "./mf-import/MfImportEngineLegacy";
+export { MfManualImportOrchestrator } from "./mf-import/MfManualImportOrchestrator";
 
-import { MfImportEngineLegacy } from "./mf-import/MfImportEngineLegacy";
+// Backward-compatible re-export aliases
+export { MfManualImportOrchestrator as MfImportEngineLegacy } from "./mf-import/MfManualImportOrchestrator";
+export { MfManualImportOrchestrator as SharedImportEngine } from "./mf-import/MfManualImportOrchestrator";
+
+import { MfManualImportOrchestrator } from "./mf-import/MfManualImportOrchestrator";
 import { MfExportEngine } from "./mf-import/MfExportEngine";
 
-export const importMfExcel = MfImportEngineLegacy.importMfExcel;
+export const importMfExcel = MfManualImportOrchestrator.importMfExcel;
 export const exportMfExcel = MfExportEngine.exportMfExcel.bind(MfExportEngine);
 export const cleanupUploadedFile = () => {}; 

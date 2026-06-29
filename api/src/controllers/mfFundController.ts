@@ -57,6 +57,16 @@ export const getFundById = async (req: Request, res: Response) => {
   }
 };
 
+export const getFundNavHistory = async (req: Request, res: Response) => {
+  try {
+    const days = parseInt(req.query.days as string, 10) || 365;
+    const history = await mfFundService.getFundNavHistory(req.params.id, days);
+    return sendSuccess(res, "NAV history fetched successfully", history);
+  } catch (error: any) {
+    return sendError(res, error.message || "Failed to fetch NAV history", 404);
+  }
+};
+
 export const addFund = async (req: Request, res: Response) => {
   try {
     if (!hasValidBody(req.body)) {

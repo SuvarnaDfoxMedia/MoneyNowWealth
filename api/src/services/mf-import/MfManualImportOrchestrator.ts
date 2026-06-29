@@ -7,7 +7,7 @@ import { MfLoggingService } from "./mfLoggingService";
 import { MfManualImportValidator } from "./MfManualImportValidator";
 import { validateWorkbook } from "../MfXlsxStructureValidator";
 
-export class MfImportEngineLegacy {
+export class MfManualImportOrchestrator {
   static async importMfExcel(options: ImportOptions) {
     const {
       filePath,

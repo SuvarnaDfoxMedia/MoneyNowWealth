@@ -1,5 +1,6 @@
 import { EmailJob } from "./types";
 import { sendEmail } from "./sendEmail";
+import { logger } from "../utils/logger";
 
 class EmailQueue {
   private queue: EmailJob[] = [];
@@ -56,11 +57,11 @@ class EmailQueue {
         await sendEmail(job);
       }
 
-      console.log(` Email sent successfully: ${job.subject}`);
+      logger.info(` Email sent successfully: ${job.subject}`);
     } catch (error) {
-      console.error(
-        ` Failed to send email (attempt ${retryCount + 1}/${this.maxRetries}):`,
-        error,
+      logger.error(
+        ` Failed to send email (attempt ${retryCount + 1}/${this.maxRetries}): ` +
+        error
       );
 
       if (retryCount < this.maxRetries) {
@@ -71,7 +72,7 @@ class EmailQueue {
           5000 * (retryCount + 1),
         ); // Exponential backoff
       } else {
-        console.error(` Max retries exceeded for email: ${job.subject}`);
+        logger.error(` Max retries exceeded for email: ${job.subject}`);
         // TODO: Log to monitoring service or database
       }
     }

@@ -25,6 +25,7 @@ import {
   deleteFund,
   getPopularFunds,
   getFundById,
+  getFundNavHistory,
   getFunds,
   toggleFundStatus,
   updateFund,
@@ -109,6 +110,7 @@ router.get("/mf/categories/:identifier", getCategoryByIdentifier);
 
 router.get("/mf/funds", getFunds);
 router.get("/mf/funds/:id", getFundById);
+router.get("/mf/funds/:id/nav-history", getFundNavHistory);
 router.get("/mf/popular-funds", getPopularFunds);
 
 router.get("/mf/nfo", getNfos);

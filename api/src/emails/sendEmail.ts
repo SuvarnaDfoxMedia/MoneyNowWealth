@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import { getSmtpConfig } from "../config/emailEnv";
 import { SendEmailParams } from "./types";
+import { logger } from "../utils/logger";
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ const createTransporter = async () => {
   });
 
   await transporter.verify();
-  console.log(`SMTP transporter verified host=${host} port=${port}`);
+  logger.info(`SMTP transporter verified host=${host} port=${port}`);
 
   return transporter;
 };
@@ -28,7 +29,7 @@ const getTransporter = async () => {
   if (!transporterPromise) {
     transporterPromise = createTransporter().catch((error) => {
       transporterPromise = null;
-      console.error("SMTP transporter initialization failed", error);
+      logger.error("SMTP transporter initialization failed: " + error);
       throw error;
     });
   }
@@ -51,7 +52,7 @@ export const sendEmail = async ({
   const attemptLabel = metadata?.type ? ` type=${metadata.type}` : "";
 
   try {
-    console.log(
+    logger.info(
       `EMAIL_SEND_ATTEMPT channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString}`,
     );
 
@@ -64,18 +65,18 @@ export const sendEmail = async ({
       attachments: attachments.length > 0 ? attachments : undefined,
     });
 
-    console.log(
+    logger.info(
       `EMAIL_SENT_SMTP recipients=${recipients.length}${attemptLabel} to=${recipientString}`,
     );
   } catch (err: unknown) {
     if (err instanceof Error) {
-      console.error(
+      logger.error(
         `EMAIL_FAILED channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString} message=${err.message}`,
       );
     } else {
-      console.error(
-        `EMAIL_FAILED channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString}`,
-        err,
+      logger.error(
+        `EMAIL_FAILED channel=smtp recipients=${recipients.length}${attemptLabel} to=${recipientString}: ` +
+        err
       );
     }
     throw err;

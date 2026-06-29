@@ -5,6 +5,7 @@ import MFFund from "../models/mfFundModel";
 import MFBenchmark from "../models/mfBenchmarkModel";
 import MfApiScheme from "../models/mfApiSchemeModel";
 import { parseCategoryPath } from "../utils/categoryParser";
+import { logger } from "../utils/logger";
 
 const STANDARD_MAIN_MAP: Record<string, string> = {
   "Retirement Fund": "Solution Oriented",
@@ -24,8 +25,7 @@ export const cleanupLegacyCategoryFormats = async () => {
   try {
     const categories = await MFCategory.find({ is_deleted: false }).populate("main_category_id", "name").lean() as any[];
     
-    // eslint-disable-next-line no-console
-    console.log(`[MF Category Cleanup] Starting cleanup scan for ${categories.length} categories...`);
+    logger.info(`[MF Category Cleanup] Starting cleanup scan for ${categories.length} categories...`);
 
     for (const cat of categories) {
       const originalName = String(cat.name || "").trim();
@@ -70,8 +70,7 @@ export const cleanupLegacyCategoryFormats = async () => {
             is_active: 1,
             is_deleted: false,
           });
-          // eslint-disable-next-line no-console
-          console.log(`[MF Category Cleanup] Created Main Category: "${cleanMainName}"`);
+          logger.info(`[MF Category Cleanup] Created Main Category: "${cleanMainName}"`);
         }
 
         if (subCategoryChanged) {
@@ -94,8 +93,7 @@ export const cleanupLegacyCategoryFormats = async () => {
               { $set: { is_deleted: true, is_active: 0, deleted_at: new Date() } }
             );
 
-            // eslint-disable-next-line no-console
-            console.log(
+            logger.info(
               `[MF Category Cleanup] Merged legacy category "${originalName}" into "${cleanSubName}" (Updated ${fundRes.modifiedCount} funds, ${benchmarkRes.modifiedCount} benchmarks)`
             );
           } else {
@@ -104,8 +102,7 @@ export const cleanupLegacyCategoryFormats = async () => {
               { _id: cat._id },
               { $set: { name: cleanSubName, main_category_id: mainCat._id } }
             );
-            // eslint-disable-next-line no-console
-            console.log(`[MF Category Cleanup] Renamed legacy category "${originalName}" to "${cleanSubName}" under main category "${cleanMainName}"`);
+            logger.info(`[MF Category Cleanup] Renamed legacy category "${originalName}" to "${cleanSubName}" under main category "${cleanMainName}"`);
           }
         } else if (mainCategoryChanged) {
           // Just main category changed (e.g. Overnight -> Debt)
@@ -113,8 +110,7 @@ export const cleanupLegacyCategoryFormats = async () => {
             { _id: cat._id },
             { $set: { main_category_id: mainCat._id } }
           );
-          // eslint-disable-next-line no-console
-          console.log(`[MF Category Cleanup] Updated category "${originalName}" main category to "${cleanMainName}"`);
+          logger.info(`[MF Category Cleanup] Updated category "${originalName}" main category to "${cleanMainName}"`);
         }
       }
     }
@@ -132,15 +128,12 @@ export const cleanupLegacyCategoryFormats = async () => {
           { _id: mc._id },
           { $set: { is_deleted: true, is_active: 0, deleted_at: new Date() } }
         );
-        // eslint-disable-next-line no-console
-        console.log(`[MF Category Cleanup] Cleaned up legacy empty Main Category: "${mc.name}"`);
+        logger.info(`[MF Category Cleanup] Cleaned up legacy empty Main Category: "${mc.name}"`);
       }
     }
 
-    // eslint-disable-next-line no-console
-    console.log("[MF Category Cleanup] Finished category scan and cleanup successfully.");
+    logger.info("[MF Category Cleanup] Finished category scan and cleanup successfully.");
   } catch (err: any) {
-    // eslint-disable-next-line no-console
-    console.error("[MF Category Cleanup] Error during category scan:", err.message || err);
+    logger.error("[MF Category Cleanup] Error during category scan: " + (err.message || err));
   }
 };

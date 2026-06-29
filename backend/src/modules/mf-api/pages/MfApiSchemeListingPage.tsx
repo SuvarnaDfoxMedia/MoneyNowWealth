@@ -78,8 +78,13 @@ export default function MfApiSchemeListingPage() {
 
   React.useEffect(() => {
     const data = dashboardQuery.data?.data;
+    const phase = String(data?.latestSyncJob?.response?.phase || "").toLowerCase();
     const pending = (data?.pendingSchemes ?? 0) > 0;
-    const running = data?.recentLogs?.[0]?.status === "running";
+    const running =
+      data?.recentLogs?.[0]?.status === "running" ||
+      data?.recentLogs?.[0]?.status === "rate_limited" ||
+      data?.recentLogs?.[0]?.status === "queued" ||
+      ["active", "inactive", "processing"].includes(phase);
     setIsSyncing(pending || running);
   }, [dashboardQuery.data]);
 
@@ -339,6 +344,7 @@ export default function MfApiSchemeListingPage() {
                 });
               }}
               disabled={resumeSyncMutation.isPending}
+              title="Re-processes queued or partial_success active schemes that were interrupted by a rate limit"
               className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
             >
               {resumeSyncMutation.isPending ? "Resuming..." : "Resume Sync"}
@@ -349,11 +355,18 @@ export default function MfApiSchemeListingPage() {
                 syncActiveMutation.mutate();
                 setIsSyncModalOpen(true);
               }}
-              disabled={syncActiveMutation.isPending}
+              disabled={syncActiveMutation.isPending || isSyncing}
+              title={
+                isSyncing
+                  ? "A sync is already in progress. Check the sync progress or wait for it to finish."
+                  : "Sync all active funds now"
+              }
               className="rounded-lg bg-[#043f79] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {syncActiveMutation.isPending
                 ? "Starting..."
+                : isSyncing
+                  ? "Sync In Progress"
                 : "Sync Active Funds"}
             </button>
           </div>

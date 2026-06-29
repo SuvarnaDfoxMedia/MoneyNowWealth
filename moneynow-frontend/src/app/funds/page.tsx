@@ -1,4 +1,4 @@
-import FundListing from '@/components/Mutual-Funds-Master-Categeory/FundListing'
+import FundListing from '@/components/Mutual-Funds-Master-Category/FundListing'
 import React from 'react'
 
 export const metadata = {

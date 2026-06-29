@@ -9,6 +9,7 @@ export interface MasterCategory {
 }
 
 export interface FundData {
+  id?: string;
   name: string;
   y3: string;
   y5: string;
@@ -29,6 +30,7 @@ interface ApiCategory {
 }
 
 interface ApiFund {
+  _id: string;
   fund_name: string;
   is_featured?: boolean;
   returns?: {
@@ -113,7 +115,16 @@ export const useFetchMFData = (
           }),
         );
 
-        setMasterCategories(mappedCategories);
+        const uniqueCategories: MasterCategory[] = [];
+        const seenNames = new Set<string>();
+        for (const cat of mappedCategories) {
+          if (!seenNames.has(cat.name)) {
+            uniqueCategories.push(cat);
+            seenNames.add(cat.name);
+          }
+        }
+
+        setMasterCategories(uniqueCategories);
       } catch {
         setError("Failed to load categories");
         setMasterCategories([]);
@@ -196,6 +207,7 @@ export const useFetchMFData = (
         const funds = extractList<ApiFund>(fundRes);
 
         const mappedFunds: FundData[] = funds.map((s) => ({
+          id: s._id,
           name: s.fund_name,
           y3: getTrailingReturn(s.returns, "3y", "y3_cagr")?.toString?.() || "-",
           y5: getTrailingReturn(s.returns, "5y", "y5_cagr")?.toString?.() || "-",

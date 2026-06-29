@@ -672,13 +672,16 @@ const requestExternalSchemes = async () => {
 
 const requestExternalLatestInfo = async (schemeName: string) => {
   try {
+    const reqConfig = {
+      url: `${MF_API_BASE}/getSchemeInfoLatest`,
+      params: { key: MF_API_KEY, scheme: schemeName },
+      timeout: 20000,
+    };
+    console.log("OUTGOING_URL_LOG:", axios.getUri(reqConfig));
     const response = await axios.post(
-      `${MF_API_BASE}/getSchemeInfoLatest`,
+      reqConfig.url,
       {},
-      {
-        params: { key: MF_API_KEY, scheme: schemeName },
-        timeout: 20000,
-      },
+      { params: reqConfig.params, timeout: reqConfig.timeout }
     );
     return response.data;
   } catch (error: any) {
@@ -692,9 +695,16 @@ const requestExternalLatestInfo = async (schemeName: string) => {
 const normalizeLatestInfo = (value: any) => {
   if (!value || typeof value !== "object") return null;
   if (Array.isArray(value)) return value[0] ?? null;
-  if (value?.scheme_info && typeof value.scheme_info === "object") return value.scheme_info;
-  if (value?.data && typeof value.data === "object") return value.data;
-  if (value?.result && typeof value.result === "object") return value.result;
+  
+  if (value?.scheme_info && typeof value.scheme_info === "object") {
+    return { ...value, ...value.scheme_info };
+  }
+  if (value?.data && typeof value.data === "object") {
+    return { ...value, ...value.data };
+  }
+  if (value?.result && typeof value.result === "object") {
+    return { ...value, ...value.result };
+  }
   return value;
 };
 
@@ -856,6 +866,7 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     sortino:           normalizeNumber(riskRow.shortino_ratio),
     yield_to_maturity: normalizeNumber(riskRow.yield_to_maturity),
     average_maturity:  normalizeNumber(riskRow.average_maturity),
+    turnover_ratio:    normalizeNumber(latestInfo?.scheme_turnover),
   };
 
   const market_cap = {
@@ -885,6 +896,10 @@ const extractStructuredFields = (latestInfo: RawObject) => {
     market_cap,
     nav_change:            normalizeNumber(latestInfo?.nav_change),
     nav_change_percentage: normalizeNumber(latestInfo?.nav_change_percentage),
+    rating:                  normalizeString(latestInfo?.rating || ""),
+    rating_value:            normalizeNumber(latestInfo?.rating_value),
+    upmarket_capture_ratio:  normalizeNumber(latestInfo?.upmarket_capture_ratio),
+    downmarket_capture_ratio: normalizeNumber(latestInfo?.downmarket_capture_ratio),
   };
 };
 
@@ -1002,16 +1017,22 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
     });
 
     // Mark all active schemes as queued so processDetailedSyncBatch picks them up
+    // Fetch IDs of all MfApiSchemes whose bridged MFFund is active
+    const activeFundIds = await MFFund.find({ is_active: 1, is_deleted: { $ne: true } })
+      .distinct("mf_api_scheme_id");
+
     await MfApiScheme.updateMany(
-      { is_deleted: { $ne: true }, is_active: true },
+      { 
+        is_deleted: { $ne: true },
+        $or: [
+          { is_active: true },
+          { _id: { $in: activeFundIds } }
+        ]
+      },
       { $set: { sync_status: "queued" } },
     );
 
-    // Ensure all currently active schemes are bridged to the manual module (offline)
-    await bridgeAllActiveSchemesToManual().catch((err) => {
-      console.error("[bridge] Background active schemes bridge failed:", err);
-    });
-
+    // Detailed processing will bridge active schemes after fresh data is fetched.
     processDetailedSyncBatch(String(log._id), context, options).catch(err => {
       console.error("Background sync detail batch failed:", err);
     });
@@ -1121,11 +1142,6 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
     { $set: { sync_status: "queued" } },
   );
 
-  // Ensure all currently active schemes are bridged to the manual module (offline)
-  await bridgeAllActiveSchemesToManual().catch((err) => {
-    console.error("[bridge] Background active schemes bridge failed:", err);
-  });
-
   // Kick off background job for detailed sync
   processDetailedSyncBatch(String(log._id), context, options).catch(err => {
     console.error("Background sync detail batch failed:", err);
@@ -1159,10 +1175,17 @@ export const processDetailedSyncBatch = async (
   options: SyncOptions = {},
 ) => {
   try {
+    // Fetch IDs of all MfApiSchemes whose bridged MFFund is active
+    const activeFundIds = await MFFund.find({ is_active: 1, is_deleted: { $ne: true } })
+      .distinct("mf_api_scheme_id");
+
     // ── Phase 1: Active schemes first ──────────────────────────────────────
     const activeSchemes = await MfApiScheme.find({
       is_deleted: { $ne: true },
-      is_active: true,
+      $or: [
+        { is_active: true },
+        { _id: { $in: activeFundIds } }
+      ],
       sync_status: "queued",
     }).select("_id scheme_name raw_payload external_scheme_id scheme_code isin amc_name plan_type option_type").lean();
 
@@ -1172,6 +1195,7 @@ export const processDetailedSyncBatch = async (
       : await MfApiScheme.find({
           is_deleted: { $ne: true },
           is_active: { $ne: true },
+          _id: { $nin: activeFundIds },
           sync_status: "queued",
         }).select("_id scheme_name raw_payload external_scheme_id scheme_code isin amc_name plan_type option_type").lean();
 
@@ -1206,6 +1230,7 @@ export const processDetailedSyncBatch = async (
     const processBatch = async (batch: typeof activeSchemes, delayMs: number): Promise<boolean> => {
       const results = await Promise.allSettled(
         batch.map(async (schemeDoc) => {
+          await new Promise((r) => setTimeout(r, batch.indexOf(schemeDoc) * 150));
           try {
             await syncOneScheme(
               {
@@ -1252,8 +1277,8 @@ export const processDetailedSyncBatch = async (
       return false;
     };
 
-    // Phase 1: Active in batches of 20, 200ms between batches
-    const activeBatchSize = 20;
+    // Phase 1: Active in batches of 10, 200ms between batches
+    const activeBatchSize = 10;
     for (let i = 0; i < activeSchemes.length; i += activeBatchSize) {
       const batch = activeSchemes.slice(i, i + activeBatchSize);
       const shouldAbort = await processBatch(batch, 200);
@@ -1415,7 +1440,14 @@ export const syncOneScheme = async (
   if (options.offlineMode) {
     latestInfo = schemeDoc?.latest_info_raw || {};
   } else {
-    latestInfo = await requestExternalLatestInfo(schemeName);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      latestInfo = await requestExternalLatestInfo(schemeName);
+      if (attempt < 3 && isRateLimitedResponse(normalizeLatestInfo(latestInfo))) {
+        await new Promise((resolve) => setTimeout(resolve, attempt === 1 ? 1000 : 2500));
+      } else {
+        break;
+      }
+    }
   }
   
   const latestPayload = normalizeLatestInfo(latestInfo);
@@ -1737,10 +1769,57 @@ export const getSchemeById = async (id: string) => {
   const linkedFund = await MFFund.findOne({
     mf_api_scheme_id: scheme._id,
     is_deleted: false,
-  }).select("_id fund_name nav_Current nav_date mf_api_synced_at is_active").lean();
+  })
+    .select("_id fund_name nav_Current nav_date mf_api_synced_at is_active amc_id category_id benchmark_id")
+    .populate("amc_id", "name")
+    .populate("category_id", "name")
+    .lean();
+
+  // Build a merged raw payload so the detail page can always read live API-shaped
+  // fields, even for older imports that never stored raw_payload.
+  const storedRawPayload = (scheme as any).raw_payload as Record<string, unknown> | null | undefined;
+  const fallbackRawPayload: Record<string, unknown> = {
+    nav: (scheme as any).latest_nav ?? null,
+    nav_date: (scheme as any).latest_date ?? null,
+    nav_change: (scheme as any).nav_change ?? null,
+    nav_change_percentage: (scheme as any).nav_change_percentage ?? null,
+    scheme_assets: (scheme as any).scheme_assets ?? null,
+    scheme_asset_date: (scheme as any).scheme_asset_date ?? null,
+    scheme_manager: (scheme as any).scheme_manager ?? null,
+    scheme_objective: (scheme as any).scheme_objective ?? null,
+    scheme_benchmark: (scheme as any).scheme_benchmark ?? null,
+    riskometer_value: (scheme as any).riskometer_value ?? null,
+    scheme_category: (scheme as any).category ?? null,
+    isin_no: (scheme as any).isin ?? null,
+    expense_ratio_percentage: (scheme as any).expense_ratio_percentage ?? null,
+    expense_ratio_date: (scheme as any).expense_ratio_date ?? null,
+    scheme_inception_date: (scheme as any).scheme_inception_date ?? null,
+    scheme_inception_return: (scheme as any).trailing_returns?.since_launch ?? null,
+    scheme_status: (scheme as any).scheme_status ?? null,
+    minimum_investment: (scheme as any).minimum_investment ?? null,
+    minimum_topup: (scheme as any).minimum_topup ?? null,
+    sip_minimum_amount: (scheme as any).sip_minimum_amount ?? null,
+    scheme_turnover: (scheme as any).scheme_turnover ?? null,
+    upmarket_capture_ratio: (scheme as any).upmarket_capture_ratio ?? null,
+    downmarket_capture_ratio: (scheme as any).downmarket_capture_ratio ?? null,
+    market_cap_largecap_percent: (scheme as any).market_cap?.large_cap_pct ?? null,
+    market_cap_midcap_percent: (scheme as any).market_cap?.mid_cap_pct ?? null,
+    market_cap_smallcap_percent: (scheme as any).market_cap?.small_cap_pct ?? null,
+    rating: (scheme as any).rating ?? null,
+    rating_value: (scheme as any).rating_value ?? null,
+    exit_load: (scheme as any).exit_load ?? null,
+    scheme_performance_list: (scheme as any).scheme_performance_list ?? null,
+    risk_statistics_list: (scheme as any).risk_statistics_list ?? null,
+    scheme_peer_comparision_list: (scheme as any).scheme_peer_comparision_list ?? null,
+  };
+  const mergedRawPayload: Record<string, unknown> = {
+    ...fallbackRawPayload,
+    ...(storedRawPayload && typeof storedRawPayload === "object" ? storedRawPayload : {}),
+  };
 
   return {
     ...scheme,
+    raw_payload: mergedRawPayload,
     syncHistory,
     linked_manual_fund: linkedFund || null,
   };

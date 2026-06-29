@@ -8,6 +8,13 @@ import cron from "node-cron";
 import Topic, { type ITopic } from "../models/topicModel";
 import Article from "../models/articleModel";
 import User from "../models/userModel";
+import { logger } from "../utils/logger";
+
+/* ---------------------------------------------------
+   Topic & Article Scheduler (runs every 5 minutes)
+   Handles BOTH topics and articles publishing notifications
+--------------------------------------------------- */
+
 
 /* ---------------------------------------------------
    Topic & Article Scheduler (runs every 5 minutes)
@@ -20,9 +27,9 @@ export function startTopicScheduler() {
     "*/5 * * * *",
     async () => {
       try {
-        console.log(
-          " Topic & Article scheduler running at:",
-          new Date().toISOString(),
+        logger.info(
+          " Topic & Article scheduler running at: " +
+          new Date().toISOString()
         );
         const now = new Date();
 
@@ -59,13 +66,13 @@ export function startTopicScheduler() {
           is_deleted: false,
         }).populate("topic_id", "title slug");
 
-        console.log(` Found ${topicsToNotify.length} new topic(s) to notify`);
-        console.log(
+        logger.info(` Found ${topicsToNotify.length} new topic(s) to notify`);
+        logger.info(
           ` Found ${articlesToNotify.length} new article(s) to notify`,
         );
 
         if (!topicsToNotify.length && !articlesToNotify.length) {
-          console.log(
+          logger.info(
             " No new topics or articles to notify subscribers about.",
           );
           return;
@@ -115,11 +122,11 @@ export function startTopicScheduler() {
           .filter((email): email is string => !!email && email.includes("@"));
 
         if (!subscriberEmails.length) {
-          console.log(" No active subscribers found to notify.");
+          logger.info(" No active subscribers found to notify.");
           return;
         }
 
-        console.log(` Found ${subscriberEmails.length} active subscribers`);
+        logger.info(` Found ${subscriberEmails.length} active subscribers`);
 
         // ============================================
         // 4. SEND EMAILS FOR NEW TOPICS
@@ -138,9 +145,9 @@ export function startTopicScheduler() {
 
                 try {
                 } catch (grError: any) {
-                  console.error(
-                    ` EMAIL_FAILED channel=getresponse to=${subscriber.email} operation=topic_notification`,
-                    grError?.message || grError,
+                  logger.error(
+                    ` EMAIL_FAILED channel=getresponse to=${subscriber.email} operation=topic_notification: ` +
+                    (grError?.message || grError)
                   );
                 }
               }
@@ -152,11 +159,11 @@ export function startTopicScheduler() {
               updated_at: new Date(),
             });
 
-            console.log(` Email notifications sent for topic: ${topic.title}`);
+            logger.info(` Email notifications sent for topic: ${topic.title}`);
           } catch (err) {
-            console.error(
-              ` Failed to send email for topic ${topic.title}:`,
-              err,
+            logger.error(
+              ` Failed to send email for topic ${topic.title}: ` +
+              err
             );
           }
         }
@@ -187,9 +194,9 @@ export function startTopicScheduler() {
 
                 try {
                 } catch (grError: any) {
-                  console.error(
-                    ` EMAIL_FAILED channel=getresponse to=${subscriber.email} operation=article_notification`,
-                    grError?.message || grError,
+                  logger.error(
+                    ` EMAIL_FAILED channel=getresponse to=${subscriber.email} operation=article_notification: ` +
+                    (grError?.message || grError)
                   );
                 }
               }
@@ -201,24 +208,24 @@ export function startTopicScheduler() {
               updated_at: new Date(),
             });
 
-            console.log(
-              ` Email notifications sent for article: ${article.title}`,
+            logger.info(
+              ` Email notifications sent for article: ${article.title}`
             );
           } catch (err) {
-            console.error(
-              ` Failed to send email for article ${article.title}:`,
-              err,
+            logger.error(
+              ` Failed to send email for article ${article.title}: ` +
+              err
             );
           }
         }
 
-        console.log(" Topic & Article email notifications completed.");
+        logger.info(" Topic & Article email notifications completed.");
       } catch (error) {
-        console.error(" Error in topic & article scheduler:", error);
+        logger.error(" Error in topic & article scheduler: " + error);
       }
     },
     { timezone: "Asia/Kolkata" },
   );
 
-  console.log(" Topic & Article scheduler started (runs every 5 minutes IST)");
+  logger.info(" Topic & Article scheduler started (runs every 5 minutes IST)");
 }

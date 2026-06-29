@@ -1,5 +1,5 @@
 export class MfHeaderResolution {
-  static valueByAliases(row: Record<string, unknown>, aliases: string[]): any {
+  static valueByAliases(row: Record<string, unknown>, aliases: string[]): unknown {
     const keys = Object.keys(row);
     for (const alias of aliases) {
       const match = keys.find(k => k.toLowerCase().trim() === alias.toLowerCase().trim() || 

@@ -28,6 +28,10 @@ export const mfService = {
     const { data } = await API.get(`/api/mf/funds/${id}`);
     return data;
   },
+  getFundNavHistory: async (id: string, params?: MfQueryParams) => {
+    const { data } = await API.get(`/api/mf/funds/${id}/nav-history`, { params });
+    return data;
+  },
   getPopularFunds: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/popular-funds", { params });
     return data;
@@ -50,10 +54,6 @@ export const mfService = {
   },
   getFilters: async (params?: MfQueryParams) => {
     const { data } = await API.get("/api/mf/filters", { params });
-    return data;
-  },
-  getMfApiSchemes: async (params?: MfQueryParams) => {
-    const { data } = await API.get("/api/mf-api/schemes", { params });
     return data;
   },
 };

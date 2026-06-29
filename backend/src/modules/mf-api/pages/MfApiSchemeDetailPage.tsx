@@ -105,6 +105,18 @@ function ReturnCell({
   );
 }
 
+/**
+ * Parses a date string that may be in "DD-MM-YYYY" (AdvisorKhoj) or ISO-8601 format.
+ * Returns a value suitable for the existing display helpers.
+ */
+function parseFlexDate(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw;
+  const m = raw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return raw;
+}
+
 // ─── Top Holdings Admin Tab (upload modal preserved) ─────────────────────────
 
 function TopHoldingsAdmin({ role, id, scheme }: { role: string; id: string; scheme: any }) {
@@ -311,13 +323,16 @@ export default function MfApiSchemeDetailPage() {
   const [hasPendingSync, setHasPendingSync] = React.useState(false);
 
   const schemeQuery = useMfApiScheme(role, id, {
-    refetchInterval: hasPendingSync ? 3000 : undefined,
+    refetchInterval: hasPendingSync ? 8000 : false,
   });
   const scheme = schemeQuery.data?.data;
 
   React.useEffect(() => {
     if (!scheme) return;
-    const isSyncing = scheme.sync_status === "queued" || scheme.sync_status === "running";
+    const isSyncing =
+      scheme.sync_status === "queued" ||
+      scheme.sync_status === "running" ||
+      scheme.sync_status === "processing";
     const isActivating = scheme.is_active && !scheme.linked_manual_fund;
     setHasPendingSync(Boolean(isSyncing || isActivating));
   }, [scheme]);
@@ -331,49 +346,70 @@ export default function MfApiSchemeDetailPage() {
   const rawData    = rawPayload as any;
 
   // ── Derived data ────────────────────────────────────────────────────────────
-  const fallbackPerformanceList = scheme?.trailing_returns
-    ? [
-        {
-          scheme_name: getMfApiSchemeName(scheme),
-          one_month_return:     scheme?.trailing_returns?.["1m"] ?? null,
-          three_month_return:   scheme?.trailing_returns?.["3m"] ?? null,
-          six_month_return:     scheme?.trailing_returns?.["6m"] ?? null,
-          one_year_return:      scheme?.trailing_returns?.["1y"] ?? null,
-          two_year_return:      scheme?.trailing_returns?.["2y"] ?? null,
-          three_year_return:    scheme?.trailing_returns?.["3y"] ?? null,
-          five_year_return:     scheme?.trailing_returns?.["5y"] ?? null,
-          ten_year_return:      scheme?.trailing_returns?.["10y"] ?? null,
-          inception_year_return:scheme?.trailing_returns?.since_launch ?? scheme?.trailing_returns?.inception_year_return ?? null,
-          ytd_return:           scheme?.annual_returns?.ytd ?? scheme?.trailing_returns?.ytd ?? scheme?.annual_returns?.ytd_return ?? null,
-        },
-        {
-          scheme_name: scheme?.benchmark_returns?.benchmark_name ?? "Benchmark",
-          one_month_return:     scheme?.benchmark_returns?.["1m"] ?? null,
-          three_month_return:   scheme?.benchmark_returns?.["3m"] ?? null,
-          six_month_return:     scheme?.benchmark_returns?.["6m"] ?? null,
-          one_year_return:      scheme?.benchmark_returns?.["1y"] ?? null,
-          two_year_return:      scheme?.benchmark_returns?.["2y"] ?? null,
-          three_year_return:    scheme?.benchmark_returns?.["3y"] ?? null,
-          five_year_return:     scheme?.benchmark_returns?.["5y"] ?? null,
-          ten_year_return:      scheme?.benchmark_returns?.["10y"] ?? null,
-          inception_year_return:scheme?.benchmark_returns?.since_launch ?? scheme?.benchmark_returns?.inception_year_return ?? null,
-          ytd_return:           scheme?.benchmark_returns?.ytd ?? scheme?.benchmark_returns?.ytd_return ?? null,
-        },
-        {
-          scheme_name: scheme?.category_avg_returns?.category_name ?? "Category Avg",
-          one_month_return:     scheme?.category_avg_returns?.["1m"] ?? null,
-          three_month_return:   scheme?.category_avg_returns?.["3m"] ?? null,
-          six_month_return:     scheme?.category_avg_returns?.["6m"] ?? null,
-          one_year_return:      scheme?.category_avg_returns?.["1y"] ?? null,
-          two_year_return:      scheme?.category_avg_returns?.["2y"] ?? null,
-          three_year_return:    scheme?.category_avg_returns?.["3y"] ?? null,
-          five_year_return:     scheme?.category_avg_returns?.["5y"] ?? null,
-          ten_year_return:      scheme?.category_avg_returns?.["10y"] ?? null,
-          inception_year_return:scheme?.category_avg_returns?.since_launch ?? scheme?.category_avg_returns?.inception_year_return ?? null,
-          ytd_return:           scheme?.category_avg_returns?.ytd ?? scheme?.category_avg_returns?.ytd_return ?? null,
-        },
-      ]
-    : [];
+  const fallbackPerformanceList = useMemo(() => {
+    if (!scheme?.trailing_returns) return [];
+
+    return [
+      {
+        scheme_name: getMfApiSchemeName(scheme),
+        one_month_return: scheme.trailing_returns?.["1m"] ?? null,
+        three_month_return: scheme.trailing_returns?.["3m"] ?? null,
+        six_month_return: scheme.trailing_returns?.["6m"] ?? null,
+        one_year_return: scheme.trailing_returns?.["1y"] ?? null,
+        two_year_return: scheme.trailing_returns?.["2y"] ?? null,
+        three_year_return: scheme.trailing_returns?.["3y"] ?? null,
+        five_year_return: scheme.trailing_returns?.["5y"] ?? null,
+        ten_year_return: scheme.trailing_returns?.["10y"] ?? null,
+        inception_year_return:
+          scheme.trailing_returns?.since_launch ??
+          scheme.trailing_returns?.inception_year_return ??
+          null,
+        ytd_return:
+          scheme.annual_returns?.ytd ??
+          scheme.trailing_returns?.ytd ??
+          scheme.annual_returns?.ytd_return ??
+          null,
+      },
+      {
+        scheme_name: scheme.benchmark_returns?.benchmark_name ?? "Benchmark",
+        one_month_return: scheme.benchmark_returns?.["1m"] ?? null,
+        three_month_return: scheme.benchmark_returns?.["3m"] ?? null,
+        six_month_return: scheme.benchmark_returns?.["6m"] ?? null,
+        one_year_return: scheme.benchmark_returns?.["1y"] ?? null,
+        two_year_return: scheme.benchmark_returns?.["2y"] ?? null,
+        three_year_return: scheme.benchmark_returns?.["3y"] ?? null,
+        five_year_return: scheme.benchmark_returns?.["5y"] ?? null,
+        ten_year_return: scheme.benchmark_returns?.["10y"] ?? null,
+        inception_year_return:
+          scheme.benchmark_returns?.since_launch ??
+          scheme.benchmark_returns?.inception_year_return ??
+          null,
+        ytd_return: scheme.benchmark_returns?.ytd ?? scheme.benchmark_returns?.ytd_return ?? null,
+      },
+      {
+        scheme_name: scheme.category_avg_returns?.category_name ?? "Category Avg",
+        one_month_return: scheme.category_avg_returns?.["1m"] ?? null,
+        three_month_return: scheme.category_avg_returns?.["3m"] ?? null,
+        six_month_return: scheme.category_avg_returns?.["6m"] ?? null,
+        one_year_return: scheme.category_avg_returns?.["1y"] ?? null,
+        two_year_return: scheme.category_avg_returns?.["2y"] ?? null,
+        three_year_return: scheme.category_avg_returns?.["3y"] ?? null,
+        five_year_return: scheme.category_avg_returns?.["5y"] ?? null,
+        ten_year_return: scheme.category_avg_returns?.["10y"] ?? null,
+        inception_year_return:
+          scheme.category_avg_returns?.since_launch ??
+          scheme.category_avg_returns?.inception_year_return ??
+          null,
+        ytd_return: scheme.category_avg_returns?.ytd ?? scheme.category_avg_returns?.ytd_return ?? null,
+      },
+    ];
+  }, [
+    scheme,
+    scheme?.annual_returns,
+    scheme?.benchmark_returns,
+    scheme?.category_avg_returns,
+    scheme?.trailing_returns,
+  ]);
 
   const performanceList = useMemo(
     () => {
@@ -457,7 +493,7 @@ export default function MfApiSchemeDetailPage() {
         schemeAssetDate={rawData?.scheme_asset_date ?? (scheme as any)?.scheme_asset_date}
         schemeManager={rawData?.scheme_manager ?? (scheme as any)?.scheme_manager}
         nav={rawData?.nav ?? latestNav}
-        navDate={rawData?.nav_date ?? latestDate}
+        navDate={parseFlexDate(rawData?.nav_date) ?? parseFlexDate(latestDate as string)}
         navChange={rawData?.nav_change ?? (scheme as any)?.nav_change}
         navChangePct={rawData?.nav_change_percentage ?? (scheme as any)?.nav_change_percentage}
         riskometer={rawData?.riskometer_value ?? (scheme as any)?.riskometer_value}
@@ -466,13 +502,19 @@ export default function MfApiSchemeDetailPage() {
         isin={rawData?.isin_no ?? scheme?.isin}
         schemeCode={scheme?.schemeCode || scheme?.scheme_code}
         syncStatus={syncStatus}
-        onSyncNow={() =>
-          syncOneMutation.mutate({
-            schemeId: id,
-            schemeName: getMfApiSchemeName(scheme),
-            externalSchemeId: scheme?.schemeCode || scheme?.scheme_code,
-          })
-        }
+        onSyncNow={() => {
+          setHasPendingSync(true);
+          syncOneMutation.mutate(
+            {
+              schemeId: id,
+              schemeName: getMfApiSchemeName(scheme),
+              externalSchemeId: scheme?.schemeCode || scheme?.scheme_code,
+            },
+            {
+              onError: () => setHasPendingSync(false),
+            },
+          );
+        }}
         isSyncing={syncOneMutation.isPending}
       />
 
@@ -490,7 +532,10 @@ export default function MfApiSchemeDetailPage() {
 
       {/* ── 3. FUND DETAILS ────────────────────────────────────────────────── */}
       <FundDetailsCard
-        inceptionDate={rawData?.scheme_inception_date ?? (scheme as any)?.scheme_inception_date}
+        inceptionDate={
+          parseFlexDate(rawData?.scheme_inception_date) ??
+          parseFlexDate((scheme as any)?.scheme_inception_date)
+        }
         expenseRatio={rawData?.expense_ratio_percentage ?? (scheme as any)?.expense_ratio_percentage}
         expenseRatioDate={rawData?.expense_ratio_date ?? (scheme as any)?.expense_ratio_date}
         fundStatus={rawData?.scheme_status ?? (scheme as any)?.scheme_status}
@@ -522,7 +567,7 @@ export default function MfApiSchemeDetailPage() {
         onPeriodChange={setSelectedNavDays}
         selectedDays={selectedNavDays}
         currentNav={rawData?.nav ?? latestNav}
-        navDate={rawData?.nav_date ?? latestDate}
+        navDate={parseFlexDate(rawData?.nav_date) ?? parseFlexDate(latestDate as string)}
       />
 
       {/* ── 6 & 7. EQUITY + DEBT HOLDINGS ─────────────────────────────────── */}

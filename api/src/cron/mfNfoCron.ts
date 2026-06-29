@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import MFNfo from "../models/mfNfoModel";
 import { acquireLock, releaseLock } from "../db/cronLock";
+import { logger } from "../utils/logger";
 
 const cloneDate = (value: Date | string | null | undefined) => {
   if (!value) return null;
@@ -73,17 +74,17 @@ export const startMfNfoScheduler = () => {
     async () => {
       const acquired = await acquireLock("mf-nfo-scheduler", 4 * 60 * 1000);
       if (!acquired) {
-        console.log("[Cron] mf-nfo-scheduler: lock held by another instance, skipping");
+        logger.info("[Cron] mf-nfo-scheduler: lock held by another instance, skipping");
         return;
       }
       try {
-        console.log("MF NFO scheduler running at:", new Date().toISOString());
+        logger.info("MF NFO scheduler running at: " + new Date().toISOString());
 
         const closedCount = await closeExpiredNfos();
 
-        console.log(`MF NFO scheduler completed. closed_count=${closedCount}`);
+        logger.info(`MF NFO scheduler completed. closed_count=${closedCount}`);
       } catch (error) {
-        console.error("Error in MF NFO scheduler:", error);
+        logger.error("Error in MF NFO scheduler: " + error);
       } finally {
         await releaseLock("mf-nfo-scheduler");
       }
@@ -91,5 +92,5 @@ export const startMfNfoScheduler = () => {
     { timezone: "Asia/Kolkata" },
   );
 
-  console.log("MF NFO scheduler started (runs every 5 minute IST)");
+  logger.info("MF NFO scheduler started (runs every 5 minute IST)");
 };

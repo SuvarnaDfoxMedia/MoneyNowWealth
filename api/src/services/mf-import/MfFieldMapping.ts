@@ -1,12 +1,12 @@
 export class MfFieldMapping {
-  static normalizeDateValue(val: any): Date | null {
+  static normalizeDateValue(val: unknown): Date | null {
     if (!val) return null;
     if (val instanceof Date) return val;
     const num = Number(val);
     if (!isNaN(num) && num > 20000 && num < 60000) {
       return new Date((num - 25569) * 86400 * 1000);
     }
-    const d = new Date(val);
+    const d = new Date(String(val));
     if (!isNaN(d.getTime())) return d;
     return null;
   }

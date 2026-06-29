@@ -44,9 +44,12 @@ export default function MfApiDashboardPage() {
   const dashboard = dashboardQuery.data?.data;
 
   useEffect(() => {
+    const phase = String(dashboard?.latestSyncJob?.response?.phase || "").toLowerCase();
     const running =
       dashboard?.latestSyncJob?.status === "running" ||
-      dashboard?.latestSyncJob?.status === "rate_limited";
+      dashboard?.latestSyncJob?.status === "rate_limited" ||
+      dashboard?.latestSyncJob?.status === "queued" ||
+      ["active", "inactive", "processing"].includes(phase);
     setIsRunning(running);
   }, [dashboard]);
 
@@ -89,10 +92,19 @@ export default function MfApiDashboardPage() {
                   onSuccess: () => setIsSyncModalOpen(true),
                 });
               }}
-              disabled={syncAllMutation.isPending}
+              disabled={syncAllMutation.isPending || isRunning}
+              title={
+                isRunning
+                  ? "A sync is already in progress. Check the sync progress or wait for it to finish."
+                  : "Start a full MF API sync"
+              }
               className="rounded-lg bg-[#043f79] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {syncAllMutation.isPending ? "Syncing..." : "Sync All"}
+              {syncAllMutation.isPending
+                ? "Syncing..."
+                : isRunning
+                  ? "Sync In Progress"
+                  : "Sync All"}
             </button>
 
             <button
