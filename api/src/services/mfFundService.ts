@@ -282,6 +282,7 @@ export const getFundById = async (id: string) => {
   const doc = await MFFund.findOne({ _id: id, is_deleted: false })
     .select("-data_source -last_manual_import_at -mf_api_external_key")
     .populate("amc_id", "name")
+    .populate("benchmark_id")
     .populate({
       path: "category_id",
       select: "name main_category_id category_average_returns category_returns",
@@ -289,7 +290,7 @@ export const getFundById = async (id: string) => {
     })
     .populate({
       path: "mf_api_scheme_id",
-      select: "scheme_performance_list scheme_peer_comparision_list risk_statistics_list rating rating_value",
+      select: "scheme_performance_list scheme_peer_comparision_list risk_statistics_list rating rating_value scheme_status latest_info_raw raw_payload benchmark_returns scheme_benchmark",
     })
     .lean();
   if (!doc) throw new Error("Fund not found");

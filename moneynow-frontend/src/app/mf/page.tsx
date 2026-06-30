@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mapLocalFundToAdviserKhojShape } from "../../utils/benchmarkMapper";
 
 type Primitive = string | number | boolean | null | undefined;
 type AnyObject = Record<string, unknown>;
@@ -137,12 +138,11 @@ const getScalarFields = (data: AnyObject | null) => {
 };
 
 export default function PaidCalPage() {
-  const [allSchemes, setAllSchemes] = useState<SchemeListItem[]>([]);
-  const [listLoading, setListLoading] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
-
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
   const [cards, setCards] = useState<FundCard[]>([]);
   const [listSelections, setListSelections] = useState<Record<string, Record<string, number>>>({});
   const [cardUiState, setCardUiState] = useState<Record<string, { risk: boolean; peers: boolean; objective: boolean }>>({});
@@ -158,46 +158,35 @@ export default function PaidCalPage() {
   }, [query]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const loadSchemes = async () => {
-      setListLoading(true);
+    if (!debouncedQuery) {
+      setSuggestions([]);
+      return;
+    }
+    const loadSuggestions = async () => {
+      setSuggestionsLoading(true);
       setListError(null);
       try {
-        const response = await fetch("/api/mf-schemes?type=all");
+        const response = await fetch(`/api/mf/funds?search=${encodeURIComponent(debouncedQuery)}&limit=15`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const json: AllSchemesResponse = await response.json();
-        const list = (json.scheme_list ?? []).filter((item) => safeText(item.scheme_amfi, "") !== "");
-        if (!cancelled) setAllSchemes(list);
+        const json = await response.json();
+        setSuggestions(json.data || json || []);
       } catch (error) {
-        if (!cancelled) {
-          setListError(error instanceof Error ? error.message : "Unable to load schemes");
-        }
+        setListError(error instanceof Error ? error.message : "Unable to load schemes");
       } finally {
-        if (!cancelled) setListLoading(false);
+        setSuggestionsLoading(false);
       }
     };
+    loadSuggestions();
+  }, [debouncedQuery]);
 
-    loadSchemes();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const suggestions = useMemo(() => {
-    if (!debouncedQuery) return [];
-    const q = debouncedQuery.toLowerCase();
-    return allSchemes.filter((item) => (item.scheme_amfi ?? "").toLowerCase().includes(q)).slice(0, 15);
-  }, [allSchemes, debouncedQuery]);
-
-  const fetchSchemeInfo = useCallback(async (schemeName: string, cardId: string) => {
+  const fetchSchemeInfo = useCallback(async (fundId: string, cardId: string) => {
     try {
-      const response = await fetch(`/api/mf-schemes?type=scheme&scheme=${encodeURIComponent(schemeName)}`);
+      const response = await fetch(`/api/mf/funds/${fundId}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const json = (await response.json()) as unknown;
-      const info = pickObjectFromResponse(json);
+      const json = await response.json();
+      const fund = json.data || json;
+      const info = mapLocalFundToAdviserKhojShape(fund);
 
       setCards((prev) =>
         prev.map((card) =>
@@ -223,13 +212,11 @@ export default function PaidCalPage() {
   }, []);
 
   const addFund = useCallback(
-    (inputName: string) => {
-      const schemeName = inputName.trim();
-      if (!schemeName) return;
-
+    (fund: any) => {
+      if (!fund || !fund._id) return;
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setCards((prev) => [{ id, schemeName, loading: true, error: null, data: null }, ...prev]);
-      fetchSchemeInfo(schemeName, id);
+      setCards((prev) => [{ id, schemeName: fund.fund_name, loading: true, error: null, data: null }, ...prev]);
+      fetchSchemeInfo(fund._id, id);
       setQuery("");
       setDebouncedQuery("");
     },
@@ -264,31 +251,27 @@ export default function PaidCalPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  addFund(query);
+                  if (suggestions.length > 0) {
+                    addFund(suggestions[0]);
+                  }
                 }
               }}
               placeholder="Search by scheme name"
               className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-900 outline-none ring-blue-200 transition focus:ring-2"
-              list="scheme-suggestions"
             />
-            <datalist id="scheme-suggestions">
-              {allSchemes.slice(0, 5000).map((item, idx) => (
-                <option key={`${item.scheme_amfi_code ?? idx}-${item.scheme_amfi}`} value={item.scheme_amfi ?? ""} />
-              ))}
-            </datalist>
 
             {debouncedQuery && suggestions.length > 0 ? (
               <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                 {suggestions.map((item, idx) => (
                   <button
-                    key={`${item.scheme_amfi_code ?? idx}-${item.scheme_amfi}`}
+                    key={item._id ?? idx}
                     type="button"
                     className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm hover:bg-slate-50"
-                    onClick={() => addFund(item.scheme_amfi ?? "")}
+                    onClick={() => addFund(item)}
                   >
-                    <div className="font-medium text-slate-800">{safeText(item.scheme_amfi)}</div>
+                    <div className="font-medium text-slate-800">{safeText(item.fund_name)}</div>
                     <div className="text-xs text-slate-500">
-                      {safeText(item.scheme_company)} | {safeText(item.scheme_advisorkhoj_category)}
+                      {safeText(item.amc_id?.name)} | {safeText(item.category_id?.name)}
                     </div>
                   </button>
                 ))}
@@ -297,7 +280,11 @@ export default function PaidCalPage() {
           </div>
           <button
             type="button"
-            onClick={() => addFund(query)}
+            onClick={() => {
+              if (suggestions.length > 0) {
+                addFund(suggestions[0]);
+              }
+            }}
             className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
           >
             Add Fund
@@ -305,11 +292,11 @@ export default function PaidCalPage() {
         </div>
 
         <div className="mt-2 text-xs text-slate-500">
-          {listLoading
-            ? "Loading all schemes..."
+          {suggestionsLoading
+            ? "Loading suggestions..."
             : listError
               ? `Scheme list error: ${listError}`
-              : `${allSchemes.length} schemes loaded`}
+              : `${suggestions.length} suggestions found`}
         </div>
       </div>
 
@@ -317,9 +304,44 @@ export default function PaidCalPage() {
         {cards.map((card) => {
           const data = card.data;
           const perfList = Array.isArray(data?.scheme_performance_list) ? (data.scheme_performance_list as AnyObject[]) : [];
-          const fundPerf = perfList[0] ?? null;
-          const benchmarkPerf = perfList[1] ?? null;
-          const categoryPerf = perfList[2] ?? null;
+
+          const fundName = String(data?.scheme_name || "").toLowerCase().trim();
+          const benchmarkName = String(data?.scheme_benchmark || "").toLowerCase().trim();
+          const categoryName = String(data?.scheme_category || "").toLowerCase().trim();
+          const fundPrefix = fundName.slice(0, 10);
+
+          const looksLikeCategory = (row: any): boolean => {
+            const name = String(row?.scheme_name || "").toLowerCase().trim();
+            return (
+              name.includes(":") ||
+              name === categoryName ||
+              name.includes("category average") ||
+              name.includes("category avg")
+            );
+          };
+
+          const fundPerf = (fundPrefix
+            ? perfList.find((r: any) =>
+                String(r?.scheme_name || "").toLowerCase().startsWith(fundPrefix)
+              )
+            : undefined) || perfList[0] || null;
+
+          const benchmarkPerf = (benchmarkName
+            ? perfList.find((r: any) =>
+                r !== fundPerf &&
+                String(r?.scheme_name || "").toLowerCase().includes(benchmarkName.slice(0, 10))
+              )
+            : undefined) ||
+            perfList.find((r: any) => r !== fundPerf && !looksLikeCategory(r)) ||
+            perfList[1] ||
+            null;
+
+          const categoryPerf =
+            perfList.find((r: any) => r !== fundPerf && r !== benchmarkPerf && looksLikeCategory(r)) ||
+            perfList.find((r: any) => r !== fundPerf && r !== benchmarkPerf) ||
+            perfList[2] ||
+            null;
+
           const riskStats = Array.isArray(data?.risk_statistics_list)
             ? ((data.risk_statistics_list as AnyObject[])[0] ?? null)
             : null;

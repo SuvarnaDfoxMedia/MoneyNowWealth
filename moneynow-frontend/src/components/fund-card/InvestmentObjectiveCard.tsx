@@ -8,17 +8,13 @@ export default function InvestmentObjectiveCard({
   if (!schemeObjective) return null;
 
   return (
-    <div className="rounded-xl border border-blue-100 bg-blue-50 shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-blue-100 bg-blue-100/60">
-        <h2 className="text-sm font-bold text-blue-800 uppercase tracking-wide">
-          Investment Objective
-        </h2>
-      </div>
-      <div className="px-5 py-4">
-        <p className="text-sm text-blue-900 leading-relaxed">
-          {schemeObjective}
-        </p>
-      </div>
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5">
+      <h2 className="text-base font-bold tracking-tight text-slate-800 mb-4">
+        Investment Objective
+      </h2>
+      <p className="text-sm text-slate-600 leading-relaxed max-w-4xl">
+        {schemeObjective}
+      </p>
     </div>
   );
 }

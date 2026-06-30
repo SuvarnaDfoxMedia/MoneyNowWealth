@@ -23,6 +23,8 @@ import { normalizeReturnsObject } from "../utils/returnMapper";
 
 const normalizeCategoryReturns = (value: any) => normalizeReturnsObject(value);
 
+const LONG_TERM_KEYS = new Set(["3y", "5y", "10y", "since_launch"]);
+
 export const recomputeCategoryAverageReturns = async (categoryId: string) => {
   const funds = await MFFund.find({
     category_id: categoryId,
@@ -64,6 +66,7 @@ export const recomputeCategoryAverageReturns = async (categoryId: string) => {
         returns?.trailing?.[field.key] ?? returns?.[field.fallback],
       );
       if (value === null) continue;
+      if (LONG_TERM_KEYS.has(field.key) && value === 0) continue; // young fund placeholder, not real data
       sums[field.key] = (sums[field.key] || 0) + value;
       counts[field.key] = (counts[field.key] || 0) + 1;
     }

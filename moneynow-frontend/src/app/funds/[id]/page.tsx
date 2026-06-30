@@ -165,12 +165,13 @@ export default function FundDetailPage() {
           returnsSinceInception={props.returnsSinceInception}
           upmarketCapture={props.upmarketCapture}
           downmarketCapture={props.downmarketCapture}
+          fundStatus={fund?.mf_api_scheme_id?.scheme_status}
           schemeTurnover={
             props.schemeTurnover != null ? `${props.schemeTurnover}%` : null
           }
         />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
           <h2 className="mb-4 text-base font-bold tracking-tight text-slate-800">
             Performance Returns
           </h2>
@@ -181,7 +182,7 @@ export default function FundDetailPage() {
           />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-0 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-0 shadow-sm overflow-hidden">
           <NavMovementChart
             history={navHistory}
             isLoading={navLoading}
@@ -193,16 +194,16 @@ export default function FundDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
             <HoldingsSplitTable holdings={props.topHoldings} />
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
             <SectorAllocationTable holdings={props.topHoldings} />
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
             <AssetAllocationChart
               assetAllocation={{
                 domestic_equity_pct: props.domesticEquityPct,
@@ -214,7 +215,7 @@ export default function FundDetailPage() {
               }}
             />
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
             <PortfolioStatsPanel
               marketCapLargecapPct={props.largeCapPct}
               marketCapMidcapPct={props.midCapPct}
@@ -249,7 +250,7 @@ export default function FundDetailPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-hidden">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm overflow-hidden">
           <PeerComparisonTable peers={props.peerList} />
         </div>
       </div>

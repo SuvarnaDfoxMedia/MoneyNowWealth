@@ -9,6 +9,7 @@ export const sendSuccess = (
   statusCode = 200,
   extra: ExtraFields = {},
 ) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   return res.status(statusCode).json({
     success: true,
     message,
@@ -24,6 +25,7 @@ export const sendError = (
   data: unknown = null,
   extra: ExtraFields = {},
 ) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   return res.status(statusCode).json({
     success: false,
     message,

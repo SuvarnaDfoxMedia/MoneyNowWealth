@@ -123,6 +123,11 @@ export default function NavMovementChart({
         yaxis: { lines: { show: true } },
       },
       tooltip: {
+        theme: "light",
+        style: {
+          fontSize: "12px",
+          fontFamily: "Poppins, sans-serif",
+        },
         x: { format: "dd MMM yyyy" },
         y: { formatter: (value: number) => `₹${value.toFixed(4)}` },
       },
@@ -155,7 +160,7 @@ export default function NavMovementChart({
             <button
               type="button"
               onClick={() => setShowAllHistory((value) => !value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 cursor-pointer"
             >
               {showAllHistory ? "Show less" : "View all"}
             </button>
@@ -165,7 +170,7 @@ export default function NavMovementChart({
               key={label}
               type="button"
               onClick={() => onPeriodChange(days)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                 selectedDays === days
                   ? "bg-[#043f79] text-white shadow-sm"
                   : "border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -178,12 +183,21 @@ export default function NavMovementChart({
       </div>
 
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center px-4 text-sm text-slate-400">
-          <svg className="mr-2 h-5 w-5 animate-spin text-[#043f79]" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-          </svg>
-          Loading NAV history...
+        <div className="p-5 animate-pulse space-y-4">
+          <div className="h-48 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center">
+            <div className="flex items-center text-sm text-slate-400 font-semibold">
+              <svg className="mr-2.5 h-5 w-5 animate-spin text-[#043f79]" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Loading NAV trends...
+            </div>
+          </div>
+          <div className="space-y-2 mt-4 pt-4 border-t border-slate-100">
+            <div className="h-6 bg-slate-50 rounded w-1/4"></div>
+            <div className="h-9 bg-slate-50 rounded"></div>
+            <div className="h-9 bg-slate-50 rounded"></div>
+          </div>
         </div>
       ) : sortedHistory.length > 0 ? (
         <>

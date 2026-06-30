@@ -1,3 +1,5 @@
+import { getStandardizedBenchmark } from "../../utils/benchmarkMapper";
+
 const buildSchemePerformanceRow = (schemeName: string, source: any) => ({
   scheme_name: schemeName,
   one_week_return: source?.trailing?.["1w"] ?? source?.["1w"] ?? null,
@@ -21,18 +23,24 @@ const buildSchemePerformanceRow = (schemeName: string, source: any) => ({
   rating_value: source?.rating_value ?? null,
 });
 
-const getManualPerformanceList = (fund: any) => {
+export const mapMFFundToFundCardProps = (fund: any) => {
+  const {
+    benchmarkName,
+    benchmarkReturnsTrailing,
+    benchmarkReturnsAnnual,
+    benchmarkInceptionReturn,
+  } = getStandardizedBenchmark(fund);
+
   const category = fund.category_id || {};
-  const categoryReturns = category.category_average_returns || category.category_returns || {};
-  const benchmarkTrailing = fund.benchmark_returns_trailing || {};
+  // Prioritize category_returns (manual) over category_average_returns (computed)
+  const categoryReturns = category.category_returns || category.category_average_returns || {};
 
-
-  return [
+  const performanceList = [
     buildSchemePerformanceRow(fund.fund_name || "Fund", fund.returns || {}),
-    buildSchemePerformanceRow(fund.benchmark_index_name || "Benchmark", {
-      trailing: benchmarkTrailing,
-      annual: { ytd: benchmarkTrailing?.ytd ?? null },
-      since_launch: benchmarkTrailing?.since_launch ?? null,
+    buildSchemePerformanceRow(benchmarkName || "Benchmark", {
+      trailing: benchmarkReturnsTrailing,
+      annual: { ytd: benchmarkReturnsTrailing?.ytd ?? null },
+      since_launch: benchmarkReturnsTrailing?.since_launch ?? null,
       rating: null,
       rating_value: null,
     }),
@@ -48,15 +56,12 @@ const getManualPerformanceList = (fund: any) => {
       expense_ratio_percentage: null,
       rating: null,
       rating_value: null,
-
     }),
   ];
-};
 
-export const mapMFFundToFundCardProps = (fund: any) => {
   return {
     schemeName: fund.fund_name,
-    benchmarkName: fund.benchmark_index_name,
+    benchmarkName: benchmarkName,
     amcName: fund.amc_id?.name ?? "",
     category: fund.category_id?.name ?? "",
     nav: fund.nav_Current,
@@ -78,9 +83,9 @@ export const mapMFFundToFundCardProps = (fund: any) => {
     launchDate: fund.launch_date,
     returnsSinceInception: fund.returns?.since_inception,
     returnsAnnualYtd: fund.returns?.annual?.ytd,
-    benchmarkReturnsAnnual: fund.benchmark_returns_annual,
-    benchmarkReturnsTrailing: fund.benchmark_returns_trailing,
-    benchmarkInceptionReturn: fund.benchmark_inception_return,
+    benchmarkReturnsAnnual: benchmarkReturnsAnnual,
+    benchmarkReturnsTrailing: benchmarkReturnsTrailing,
+    benchmarkInceptionReturn: benchmarkInceptionReturn,
     minInvestment: fund.min_investment,
     minSip: fund.min_sip_investment,
     minLumpsum: fund.min_lumpsum_investment,
@@ -124,12 +129,9 @@ export const mapMFFundToFundCardProps = (fund: any) => {
     returns: fund.returns,
 
     // Manual performance comparison rows
-    performanceList: getManualPerformanceList(fund),
+    performanceList,
     riskStatsList: fund.mf_api_scheme_id?.risk_statistics_list || [],
     peerList: fund.mf_api_scheme_id?.scheme_peer_comparision_list || [],
     topHoldings: fund.top_holdings?.holdings || [],
   };
 };
-
-
-

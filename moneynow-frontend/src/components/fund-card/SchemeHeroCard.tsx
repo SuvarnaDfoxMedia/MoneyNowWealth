@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { fmtCrore, fmtDate, riskColor } from "./MfApiSchemeViewTypes";
 
 interface SchemeHeroCardProps {
@@ -42,6 +43,9 @@ export default function SchemeHeroCard({
   isin,
   schemeCode,
 }: SchemeHeroCardProps) {
+  const [isExitLoadExpanded, setIsExitLoadExpanded] = useState(false);
+  const shouldTruncateExitLoad = exitLoad != null && exitLoad.length > 150;
+
   // ── NAV change formatting ──────────────────────────────────────────────────
   const navChangeColor =
     navChange == null
@@ -91,10 +95,10 @@ export default function SchemeHeroCard({
       : benchmark;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
 
       {/* ── PART A: Top strip ─────────────────────────────────────────────── */}
-      <div className="px-6 py-5 flex flex-row items-start justify-between gap-6">
+      <div className="px-6 py-5 flex flex-col md:flex-row items-start justify-between gap-6">
 
         {/* LEFT COLUMN */}
         <div className="flex-1 min-w-0">
@@ -110,44 +114,40 @@ export default function SchemeHeroCard({
             {schemeName || "—"}
           </h2>
 
-          {/* Pill row */}
-          <div className="flex flex-wrap gap-2 mt-2">
-            {category && (
-              <span className="bg-blue-50 text-blue-700 text-xs font-medium rounded-full px-3 py-0.5">
-                {category}
-              </span>
-            )}
-            {benchmarkLabel && (
-              <span className="bg-purple-50 text-purple-700 text-xs rounded-full px-3 py-0.5">
-                {benchmarkLabel}
+          {/* Subtitle row combining Category + Benchmark + AUM */}
+          <div className="text-xs text-slate-500 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            {category && <span className="font-semibold text-[#043F79]">{category}</span>}
+            {category && benchmark && <span className="text-slate-300">•</span>}
+            {benchmark && <span>Benchmark: {benchmark}</span>}
+            {(category || benchmark) && schemeAssets != null && <span className="text-slate-300">•</span>}
+            {schemeAssets != null && (
+              <span>
+                AUM: {fmtCrore(schemeAssets)}
+                {schemeAssetDate ? ` (as on ${fmtDate(schemeAssetDate)})` : ""}
               </span>
             )}
             {planType && (
-              <span className="bg-gray-100 text-gray-600 text-xs rounded-full px-3 py-0.5">
-                {planType}
-              </span>
+              <>
+                <span className="text-slate-300">•</span>
+                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-medium">{planType}</span>
+              </>
             )}
             {optionType && (
-              <span className="bg-gray-100 text-gray-600 text-xs rounded-full px-3 py-0.5">
-                {optionType}
-              </span>
+              <>
+                <span className="text-slate-300">•</span>
+                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-medium">{optionType}</span>
+              </>
             )}
           </div>
 
-          {/* AUM line */}
-          <p className="text-xs text-gray-400 mt-2">
-            AUM: {fmtCrore(schemeAssets)}
-            {schemeAssetDate ? ` as on ${fmtDate(schemeAssetDate)}` : ""}
-          </p>
-
           {/* Fund Manager */}
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-2">
             Fund Manager: {schemeManager || "—"}
           </p>
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="text-right min-w-[160px] flex-shrink-0">
+        <div className="text-left md:text-right min-w-[160px] md:flex-shrink-0 w-full md:w-auto border-t border-gray-100 md:border-none pt-4 md:pt-0">
           {/* NAV */}
           <p className="text-4xl font-black text-gray-900">
             {nav != null ? `₹${Number(nav).toFixed(2)}` : "—"}
@@ -167,7 +167,7 @@ export default function SchemeHeroCard({
 
           {/* Rating badge */}
           {rating && (
-            <div className="mt-2 flex justify-end">
+            <div className="mt-2 flex md:justify-end">
               <span className="bg-amber-50 text-amber-700 text-xs font-semibold rounded-full px-2.5 py-0.5">
                 ⭐ {rating}
               </span>
@@ -177,10 +177,10 @@ export default function SchemeHeroCard({
       </div>
 
       {/* ── PART B: Bottom strip ──────────────────────────────────────────── */}
-      <div className="border-t border-gray-100 bg-gray-50 px-6 py-3 flex flex-row items-center justify-between flex-wrap gap-3">
+      <div className="border-t border-gray-100 bg-gray-50 px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
         {/* LEFT: Risk + ISIN + Code */}
-        <div className="flex items-center flex-wrap gap-1">
+        <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-3">
           {showGauge ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm">
               <svg width="28" height="16" viewBox="0 0 40 24" className="overflow-visible block">
@@ -192,7 +192,7 @@ export default function SchemeHeroCard({
                     strokeWidth="6"
                     fill="none"
                   />
-                ))}
+                 ))}
                 <g transform={`rotate(${-90 + (gaugeLevel * 36 + 18)} 20 20)`}>
                   <path d="M 18.5 20 L 20 6 L 21.5 20 Z" fill="#374151" />
                   <circle cx="20" cy="20" r="2.5" fill="#374151" />
@@ -218,11 +218,11 @@ export default function SchemeHeroCard({
             </span>
           )}
 
-          <span className="ml-4 text-xs text-gray-400">
+          <span className="text-xs text-gray-400 sm:ml-4">
             ISIN: {isin || "—"}
           </span>
 
-          <span className="ml-3 text-xs text-gray-400">
+          <span className="text-xs text-gray-400 sm:ml-3">
             Code: {schemeCode || "—"}
           </span>
         </div>
@@ -230,14 +230,21 @@ export default function SchemeHeroCard({
 
       {/* ── Exit Load (below Part B, only if present) ─────────────────────── */}
       {exitLoad && (
-        <div className="bg-amber-50 border border-amber-100 px-5 py-3 text-xs text-amber-800">
-          <span className="font-semibold">Exit Load: </span>
-          {exitLoad.split("\n").map((line, i) => (
-            <span key={i}>
-              {line}
-              <br />
-            </span>
-          ))}
+        <div className="bg-amber-50/70 border-t border-amber-100 px-5 py-3.5 text-xs text-amber-800">
+          <span className="font-bold uppercase tracking-wider text-[10px] text-amber-900 block mb-1">Exit Load</span>
+          <p className="leading-relaxed">
+            {shouldTruncateExitLoad && !isExitLoadExpanded
+              ? exitLoad.slice(0, 150) + "..."
+              : exitLoad}
+            {shouldTruncateExitLoad && (
+              <button
+                onClick={() => setIsExitLoadExpanded(!isExitLoadExpanded)}
+                className="ml-2 font-bold text-[#043F79] hover:underline cursor-pointer focus:outline-none"
+              >
+                {isExitLoadExpanded ? "Read less" : "Read more"}
+              </button>
+            )}
+          </p>
         </div>
       )}
     </div>

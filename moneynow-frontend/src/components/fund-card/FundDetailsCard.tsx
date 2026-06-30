@@ -88,78 +88,60 @@ export default function FundDetailsCard({
     upmarketCapture != null || downmarketCapture != null;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50">
-        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-          Fund Details
-        </h2>
-      </div>
+      <h2 className="text-base font-bold tracking-tight text-slate-800 mb-4">
+        Fund Details
+      </h2>
 
       {/* ── Main grid ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-gray-100">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-start">
         {cells.map(({ label, value, valueClass, subtext, isRisk }) => (
-          <div className="bg-white px-4 py-4" key={label}>
-            <p className="text-xs font-medium text-gray-400">{label}</p>
+          <div key={label} className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
             {isRisk ? (
               <span
-                className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${riskColor(riskStatus).bg} ${riskColor(riskStatus).text}`}
+                className={`mt-1.5 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${riskColor(riskStatus).bg} ${riskColor(riskStatus).text}`}
               >
                 {value}
               </span>
             ) : (
-              <>
-                <p className={`mt-1 text-sm font-bold ${valueClass ?? "text-gray-900"}`}>
+              <div className="mt-1">
+                <p className={`text-sm font-bold tabular-nums ${valueClass ?? "text-slate-800"}`}>
                   {value}
                 </p>
                 {subtext && (
-                  <p className="text-xs text-gray-400 mt-0.5">{subtext}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{subtext}</p>
                 )}
-              </>
+              </div>
             )}
           </div>
         ))}
-      </div>
 
-      {/* ── Optional: Upmarket / Downmarket Capture ─────────────────────────── */}
-      {showCaptureRow && (
-        <div className="grid grid-cols-2 gap-px bg-gray-100">
-          <div className="bg-white px-4 py-4">
-            <p className="text-xs font-medium text-gray-400">Upmarket Capture</p>
-            <p className="mt-1 text-sm font-bold text-gray-900">
-              {upmarketCapture != null
-                ? `${upmarketCapture.toFixed(0)}%`
-                : "—"}
-            </p>
-          </div>
-          <div className="bg-white px-4 py-4">
-            <p className="text-xs font-medium text-gray-400">Downmarket Capture</p>
-            <p className="mt-1 text-sm font-bold text-gray-900">
-              {downmarketCapture != null
-                ? `${downmarketCapture.toFixed(0)}%`
-                : "—"}
-            </p>
-          </div>
-        </div>
-      )}
+        {/* ── Optional: Upmarket / Downmarket Capture ─────────────────────────── */}
+        {showCaptureRow && (
+          <>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Upmarket Capture</p>
+              <p className="mt-1 text-sm font-bold text-slate-800 tabular-nums">
+                {upmarketCapture != null ? `${upmarketCapture.toFixed(0)}%` : "—"}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Downmarket Capture</p>
+              <p className="mt-1 text-sm font-bold text-slate-800 tabular-nums">
+                {downmarketCapture != null ? `${downmarketCapture.toFixed(0)}%` : "—"}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* ── Optional: Portfolio Turnover ──────────────────────────────────────── */}
       {schemeTurnover && (
-        <p className="text-xs text-gray-500 px-4 py-3 border-t border-gray-100">
-          Portfolio Turnover: {schemeTurnover}
-        </p>
-      )}
-
-      {/* ── Optional: Investment Objective ────────────────────────────────────── */}
-      {schemeObjective && (
-        <div className="bg-blue-50 border-t border-blue-100 px-5 py-4">
-          <p className="text-xs font-semibold text-blue-700 mb-1">
-            Investment Objective
-          </p>
-          <p className="text-xs text-blue-600 leading-relaxed">
-            {schemeObjective}
-          </p>
+        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+          <span>Portfolio Turnover</span>
+          <span className="font-bold text-slate-800 tabular-nums">{schemeTurnover}</span>
         </div>
       )}
     </div>

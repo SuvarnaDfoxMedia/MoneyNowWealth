@@ -82,13 +82,13 @@ export default function AssetAllocationChart({
   );
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-        <h3 className="text-sm font-bold text-gray-700">Asset Allocation</h3>
-      </div>
+    <div>
+      <h2 className="text-base font-bold tracking-tight text-slate-800 mb-4">
+        Asset Allocation
+      </h2>
 
       {items.length === 0 ? (
-        <p className="text-xs text-gray-400 italic py-8 text-center px-4">
+        <p className="text-xs text-slate-400 italic py-8 text-center px-4">
           Asset allocation data is available after importing Top Holdings.
         </p>
       ) : (

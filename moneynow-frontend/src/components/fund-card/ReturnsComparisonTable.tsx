@@ -83,10 +83,10 @@ export default function ReturnsComparisonTable({
           <button
             key={period.key}
             onClick={() => setActivePeriod(period)}
-            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition-all cursor-pointer ${
               activePeriod.key === period.key
-                ? "bg-[#043f79] text-white shadow-sm"
-                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                ? "bg-[#043f79] border-[#043f79] text-white shadow-sm"
+                : "border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             {period.label}
@@ -95,36 +95,42 @@ export default function ReturnsComparisonTable({
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {summaryCards.map(({ row, borderColor, dotColor, showDiff }, idx) => {
           const val = row?.[activePeriod.key] as number | null | undefined;
-          const name = truncate(row?.scheme_name, 30);
+          const name = row?.scheme_name || "—";
 
           return (
             <div
               key={idx}
-              className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 border-l-4 ${borderColor}`}
+              className={`bg-white rounded-xl border border-slate-200 shadow-sm p-4 border-l-4 ${borderColor} flex flex-col justify-between min-h-[110px]`}
             >
-              {/* Row label */}
-              <p className="text-xs text-gray-400 font-medium truncate">{name}</p>
+              <div>
+                {/* Row label */}
+                <p className="text-[11px] font-semibold text-slate-400 line-clamp-2 h-8 leading-snug" title={name}>
+                  {name}
+                </p>
 
-              {/* Return value */}
-              <p className={`text-2xl font-black mt-1 ${returnColor(val, activePeriod.isLongTerm)}`}>
-                {fmtReturn(val, activePeriod.isLongTerm)}
-              </p>
+                {/* Return value */}
+                <p className={`text-2xl font-black mt-1 tabular-nums ${returnColor(val, activePeriod.isLongTerm)}`}>
+                  {fmtReturn(val, activePeriod.isLongTerm)}
+                </p>
+              </div>
 
               {/* Fund vs Benchmark diff badge */}
               {showDiff && diff != null && (
-                <span
-                  className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    diff > 0
-                      ? "bg-green-100 text-green-700"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {diff > 0 ? "+" : ""}
-                  {diff.toFixed(2)}% vs Benchmark
-                </span>
+                <div className="mt-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                      diff > 0
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {diff > 0 ? "+" : ""}
+                    {diff.toFixed(2)}% vs Benchmark
+                  </span>
+                </div>
               )}
             </div>
           );
@@ -132,20 +138,20 @@ export default function ReturnsComparisonTable({
       </div>
 
       {/* ── SECTION 2: Full Comparison Table ────────────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 min-w-[180px]">
+            <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+              <th className="py-3 px-4 text-left font-bold min-w-[180px]">
                 Scheme
               </th>
               {activePeriods.map((p) => (
                 <th
                   key={p.key}
-                  className={`py-3 px-3 text-right text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${
+                  className={`py-3 px-3 text-right font-bold whitespace-nowrap ${
                     p.key === activePeriod.key
-                      ? "text-[#043f79] bg-blue-50"
-                      : "text-gray-500"
+                      ? "text-[#043f79] bg-blue-50/50"
+                      : ""
                   }`}
                 >
                   {p.label}
@@ -153,19 +159,19 @@ export default function ReturnsComparisonTable({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {rows.filter(r => activePeriods.some(p => r?.[p.key] != null)).map((row, rowIdx) => (
               <tr
                 key={rowIdx}
-                className={
+                className={`transition-colors hover:bg-slate-50/70 ${
                   rowIdx === 0
-                    ? "bg-blue-50/30 font-medium"
-                    : "hover:bg-gray-50"
-                }
+                    ? "bg-blue-50/20 font-medium"
+                    : ""
+                }`}
               >
                 {/* Scheme name cell */}
                 <td
-                  className="py-3 px-4 text-sm text-gray-800 font-medium max-w-[200px] truncate"
+                  className="py-3 px-4 text-sm text-slate-800 font-medium max-w-[200px] truncate"
                   title={row.scheme_name}
                 >
                   {rowIdx === 0 && (
@@ -192,14 +198,14 @@ export default function ReturnsComparisonTable({
                     <td
                       key={p.key}
                       className={`py-3 px-3 text-right text-sm ${
-                        p.key === activePeriod.key ? "bg-blue-50/50" : ""
+                        p.key === activePeriod.key ? "bg-blue-50/30" : ""
                       }`}
                     >
-                      <div className={`tabular-nums font-medium ${returnColor(val, p.isLongTerm)}`}>
+                      <div className={`tabular-nums font-bold ${returnColor(val, p.isLongTerm)}`}>
                         {fmtReturn(val, p.isLongTerm)}
                       </div>
                       {show10k && (
-                        <div className="text-[11px] text-gray-400 font-normal mt-0.5 tabular-nums">
+                        <div className="text-[11px] text-slate-400 font-normal mt-0.5 tabular-nums">
                           {valueOf10k(val, years)}
                         </div>
                       )}

@@ -54,6 +54,7 @@ interface MfApiSchemeRow {
   market_cap_midcap_percent?: MfPrimitive;
   market_cap_smallcap_percent?: MfPrimitive;
   scheme_inception_return?: MfPrimitive;
+  benchmark_inception_return?: MfPrimitive;
   latest_info?: unknown;
   trailing_returns?: unknown;
   risk_metrics?: unknown;
@@ -270,6 +271,7 @@ export class MfApiTransformer {
         "risk_metrics.yield_to_maturity": toN(rm.yield_to_maturity),
         "risk_metrics.average_maturity": toN(rm.average_maturity),
         
+        benchmark_inception_return: toN(apiScheme.benchmark_inception_return),
         "benchmark_returns_trailing.1w": toN(br["1w"]),
         "benchmark_returns_trailing.1m": toN(br["1m"]),
         "benchmark_returns_trailing.3m": toN(br["3m"]),

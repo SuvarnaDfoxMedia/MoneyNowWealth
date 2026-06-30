@@ -31,13 +31,11 @@ export default function PeerComparisonTable({ peers = [] }: PeerComparisonTableP
 
   if (peers.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-            Peer Comparison
-          </h2>
-        </div>
-        <p className="p-5 text-sm text-gray-400 text-center italic">
+      <div>
+        <h2 className="text-base font-bold tracking-tight text-slate-800 mb-2">
+          Peer Comparison
+        </h2>
+        <p className="text-sm text-slate-400 italic">
           No peer comparison data available.
         </p>
       </div>
@@ -45,48 +43,46 @@ export default function PeerComparisonTable({ peers = [] }: PeerComparisonTableP
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div>
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50">
-        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-          Peer Comparison
-        </h2>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {peers.length} funds in this category
-        </p>
-      </div>
+      <h2 className="text-base font-bold tracking-tight text-slate-800 mb-2">
+        Peer Comparison
+      </h2>
+      <p className="text-xs text-slate-400 mb-4">
+        {peers.length} funds in this category
+      </p>
 
       {/* ── Horizontally scrollable table ───────────────────────────────────── */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-xl border border-slate-100">
         <table className="min-w-full text-sm whitespace-nowrap">
           <thead>
-            <tr className="text-xs font-semibold uppercase tracking-wide text-gray-500 bg-gray-50 border-b border-gray-100">
+            <tr className="text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-100">
               {/* Sticky scheme name column */}
-              <th className="py-3 px-4 text-left sticky left-0 z-10 bg-gray-50 min-w-[200px]">
+              <th className="py-3 px-4 text-left font-bold sticky left-0 z-10 bg-slate-50 min-w-[200px]">
                 Scheme
               </th>
-              <th className="py-3 px-4 text-center">Rating</th>
-              <th className="py-3 px-4 text-right">Exp. Ratio</th>
-              <th className="py-3 px-4 text-right">AUM</th>
+              <th className="py-3 px-4 text-center font-bold">Rating</th>
+              <th className="py-3 px-4 text-right font-bold">Exp. Ratio</th>
+              <th className="py-3 px-4 text-right font-bold">AUM</th>
               {activePeriods.map((p) => (
-                <th key={p.key} className="py-3 px-4 text-right">
+                <th key={p.key} className="py-3 px-4 text-right font-bold">
                   {p.label}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {peers.map((row, idx) => (
               <tr
                 key={idx}
-                className={`hover:bg-gray-50 transition-colors ${
-                  idx === 0 ? "bg-blue-50/40" : ""
+                className={`hover:bg-slate-50/70 transition-colors ${
+                  idx === 0 ? "bg-blue-50/20 font-medium" : ""
                 }`}
               >
                 {/* Sticky scheme name */}
                 <td
-                  className={`py-3 px-4 font-medium text-gray-900 max-w-[220px] sticky left-0 z-10 truncate ${
-                    idx === 0 ? "bg-blue-50/40" : "bg-white"
+                  className={`py-3 px-4 font-medium text-slate-800 max-w-[220px] sticky left-0 z-10 truncate ${
+                    idx === 0 ? "bg-blue-50/20" : "bg-white"
                   }`}
                   title={row.scheme_name}
                 >
@@ -100,19 +96,19 @@ export default function PeerComparisonTable({ peers = [] }: PeerComparisonTableP
                       ★ {row.rating}
                     </span>
                   ) : (
-                    <span className="text-gray-300">—</span>
+                    <span className="text-slate-300">—</span>
                   )}
                 </td>
 
                 {/* Expense Ratio */}
-                <td className="py-3 px-4 text-right text-gray-700">
+                <td className="py-3 px-4 text-right text-slate-700">
                   {row.expense_ratio_percentage != null
                     ? `${(row.expense_ratio_percentage as number).toFixed(2)}%`
                     : "—"}
                 </td>
 
                 {/* AUM */}
-                <td className="py-3 px-4 text-right text-gray-700">
+                <td className="py-3 px-4 text-right text-slate-700">
                   {fmtCrore(row.scheme_assets)}
                 </td>
 

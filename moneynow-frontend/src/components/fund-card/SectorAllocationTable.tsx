@@ -23,52 +23,62 @@ export default function SectorAllocationTable({
     .slice(0, 10);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="bg-[#043f79] px-4 py-2.5">
-        <h3 className="text-xs font-bold text-white uppercase tracking-wide">
-          Sector Allocation (Top 10)
-        </h3>
-      </div>
+    <div>
+      <h2 className="text-base font-bold tracking-tight text-slate-800 mb-4">
+        Sector Allocation
+      </h2>
 
       {sectorList.length === 0 ? (
-        <p className="p-4 text-xs text-gray-400 text-center italic">
+        <p className="py-4 text-xs text-slate-400 text-center italic">
           No sector allocation available
         </p>
       ) : (
-        <table className="min-w-full">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              <th className="py-2 px-3 text-left text-xs text-gray-400 font-medium w-6">
-                #
-              </th>
-              <th className="py-2 px-3 text-left text-xs text-gray-400 font-medium">
-                Sector
-              </th>
-              <th className="py-2 px-3 text-right text-xs text-gray-400 font-medium w-16">
-                Assets %
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {sectorList.map((item, i) => (
-              <tr
-                key={item.sector}
-                className={i % 2 === 1 ? "bg-gray-50/60" : "bg-white"}
-              >
-                <td className="py-2.5 px-3 text-xs text-gray-300">{i + 1}</td>
-                <td
-                  className="py-2.5 px-3 text-xs font-medium text-gray-800 max-w-[200px] truncate"
-                  title={item.sector}
-                >
-                  {item.sector}
-                </td>
-                <td className="py-2.5 px-3 text-right text-xs font-bold text-gray-900">
-                  {`${item.pct.toFixed(2)}%`}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-100">
+                <th className="py-2 px-3 text-left w-6">
+                  #
+                </th>
+                <th className="py-2 px-3 text-left">
+                  Sector
+                </th>
+                <th className="py-2 px-3 text-right w-28">
+                  Assets %
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {sectorList.map((item, i) => (
+                <tr
+                  key={item.sector}
+                  className="hover:bg-slate-50/50 transition-colors"
+                >
+                  <td className="py-2 px-3 text-xs text-slate-400 font-medium">{i + 1}</td>
+                  <td
+                    className="py-2 px-3 text-xs font-medium text-slate-800 max-w-[200px] truncate"
+                    title={item.sector}
+                  >
+                    {item.sector}
+                  </td>
+                  <td className="py-2 px-3 text-right text-xs font-bold text-slate-900">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-12 bg-slate-100 h-1 rounded-full overflow-hidden hidden sm:block">
+                        <div
+                          className="bg-[#043f79] h-full rounded-full"
+                          style={{ width: `${Math.min(100, Math.max(0, item.pct))}%` }}
+                        />
+                      </div>
+                      <span className="tabular-nums">
+                        {`${item.pct.toFixed(2)}%`}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

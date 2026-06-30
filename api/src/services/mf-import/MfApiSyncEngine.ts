@@ -762,9 +762,16 @@ const extractStructuredFields = (latestInfo: RawObject) => {
   const benchmarkName = String(latestInfo?.scheme_benchmark || "").toLowerCase().trim();
 
   // Helper: does a perf-list row look like a category-average row?
-  // Category rows have names like "Equity: Sectoral-Banking..." (contains a colon).
-  const looksLikeCategory = (row: any): boolean =>
-    String(row?.scheme_name || "").includes(":");
+  const looksLikeCategory = (row: any): boolean => {
+    const name = String(row?.scheme_name || "").toLowerCase().trim();
+    const catName = String(latestInfo?.category || latestInfo?.scheme_category || "").toLowerCase().trim();
+    return (
+      name.includes(":") ||
+      name === catName ||
+      name.includes("category average") ||
+      name.includes("category avg")
+    );
+  };
 
   // ── Step 1: find the fund's own row ──────────────────────────────────────
   // Match by checking whether the row's scheme_name starts with the first
@@ -1773,6 +1780,7 @@ export const getSchemeById = async (id: string) => {
   })
     .select("_id fund_name nav_Current nav_date mf_api_synced_at is_active amc_id category_id benchmark_id returns benchmark_returns_trailing benchmark_returns_annual benchmark_inception_return benchmark_index_name")
     .populate("amc_id", "name")
+    .populate("benchmark_id")
     .populate({
       path: "category_id",
       select: "name main_category_id category_average_returns category_returns",

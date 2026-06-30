@@ -352,8 +352,37 @@ export default function MfApiSchemeDetailPage() {
     if (!manualFund) return [];
 
     const category = manualFund.category_id || {};
-    const categoryReturns = category.category_average_returns || category.category_returns || {};
+    const categoryReturns = category.category_returns || category.category_average_returns || {};
     const benchmarkTrailing = manualFund.benchmark_returns_trailing || {};
+
+    const perfList = Array.isArray((scheme as any)?.scheme_performance_list)
+      ? (scheme as any).scheme_performance_list
+      : Array.isArray(rawData?.scheme_performance_list)
+      ? rawData.scheme_performance_list
+      : [];
+
+    let resolvedBenchmarkName = manualFund.benchmark_index_name || "Benchmark";
+    if (perfList.length > 0) {
+      const fundRow = perfList.find((r: any) =>
+        String(r?.scheme_name || "").toLowerCase().includes(String(manualFund.fund_name || "").toLowerCase().slice(0, 10))
+      ) || perfList[0] || {};
+
+      const looksLikeCategory = (row: any): boolean => {
+        const name = String(row?.scheme_name || "").toLowerCase().trim();
+        const catName = String(category.name || "").toLowerCase().trim();
+        return (
+          name.includes(":") ||
+          name === catName ||
+          name.includes("category average") ||
+          name.includes("category avg")
+        );
+      };
+
+      const benchmarkRow = perfList.find((r: any) => r !== fundRow && !looksLikeCategory(r)) || perfList[1] || {};
+      if (benchmarkRow?.scheme_name) {
+        resolvedBenchmarkName = benchmarkRow.scheme_name;
+      }
+    }
 
     return [
       {
@@ -373,8 +402,8 @@ export default function MfApiSchemeDetailPage() {
           null,
         ytd_return: manualFund.returns?.annual?.ytd ?? manualFund.returns?.trailing?.ytd ?? null,
       },
-      {
-        scheme_name: manualFund.benchmark_index_name || "Benchmark",
+      ...(manualFund.benchmark_id ? [{
+        scheme_name: resolvedBenchmarkName,
         one_week_return: benchmarkTrailing?.["1w"] ?? null,
         one_month_return: benchmarkTrailing?.["1m"] ?? null,
         three_month_return: benchmarkTrailing?.["3m"] ?? null,
@@ -389,7 +418,7 @@ export default function MfApiSchemeDetailPage() {
           benchmarkTrailing?.since_launch ??
           null,
         ytd_return: benchmarkTrailing?.ytd ?? null,
-      },
+      }] : []),
       {
         scheme_name: category.name || "Category Avg",
         one_week_return: categoryReturns?.trailing?.["1w"] ?? null,
