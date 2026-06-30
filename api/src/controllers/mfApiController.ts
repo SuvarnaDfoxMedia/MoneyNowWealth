@@ -80,7 +80,7 @@ export const syncAllMfApiSchemes = async (req: Request, res: Response) => {
   try {
     const activeSync = await MfApiSyncLog.findOne({
       action: { $in: ["sync-all", "sync-resume"] },
-      status: { $in: ["running", "rate_limited"] },
+      status: "running",
     });
     if (activeSync) {
       return sendError(res, "A sync is already in progress. Please wait for it to finish or check the sync progress modal.", 409);
@@ -96,7 +96,7 @@ export const syncActiveMfApiSchemes = async (req: Request, res: Response) => {
   try {
     const activeSync = await MfApiSyncLog.findOne({
       action: { $in: ["sync-all", "sync-resume"] },
-      status: { $in: ["running", "rate_limited"] },
+      status: "running",
     });
     if (activeSync) {
       return sendError(res, "A sync is already in progress. Please wait for it to finish or check the sync progress modal.", 409);

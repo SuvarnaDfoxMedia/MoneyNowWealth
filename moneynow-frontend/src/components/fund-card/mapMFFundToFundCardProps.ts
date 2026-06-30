@@ -1,3 +1,58 @@
+const buildSchemePerformanceRow = (schemeName: string, source: any) => ({
+  scheme_name: schemeName,
+  one_week_return: source?.trailing?.["1w"] ?? source?.["1w"] ?? null,
+  one_month_return: source?.trailing?.["1m"] ?? source?.["1m"] ?? null,
+  three_month_return: source?.trailing?.["3m"] ?? source?.["3m"] ?? null,
+  six_month_return: source?.trailing?.["6m"] ?? source?.["6m"] ?? null,
+  one_year_return: source?.trailing?.["1y"] ?? source?.["1y"] ?? null,
+  two_year_return: source?.trailing?.["2y"] ?? source?.["2y"] ?? null,
+  three_year_return: source?.trailing?.["3y"] ?? source?.["3y"] ?? null,
+  five_year_return: source?.trailing?.["5y"] ?? source?.["5y"] ?? null,
+  ten_year_return: source?.trailing?.["10y"] ?? source?.["10y"] ?? null,
+  inception_year_return:
+    source?.since_inception ??
+    source?.trailing?.since_launch ??
+    source?.since_launch ??
+    null,
+  ytd_return: source?.annual?.ytd ?? source?.trailing?.ytd ?? source?.ytd ?? null,
+  scheme_assets: source?.scheme_assets ?? null,
+  expense_ratio_percentage: source?.expense_ratio_percentage ?? null,
+  rating: source?.rating ?? null,
+  rating_value: source?.rating_value ?? null,
+});
+
+const getManualPerformanceList = (fund: any) => {
+  const category = fund.category_id || {};
+  const categoryReturns = category.category_average_returns || category.category_returns || {};
+  const benchmarkTrailing = fund.benchmark_returns_trailing || {};
+
+
+  return [
+    buildSchemePerformanceRow(fund.fund_name || "Fund", fund.returns || {}),
+    buildSchemePerformanceRow(fund.benchmark_index_name || "Benchmark", {
+      trailing: benchmarkTrailing,
+      annual: { ytd: benchmarkTrailing?.ytd ?? null },
+      since_launch: benchmarkTrailing?.since_launch ?? null,
+      rating: null,
+      rating_value: null,
+    }),
+    buildSchemePerformanceRow(category.name || "Category Avg", {
+      trailing: categoryReturns?.trailing || {},
+      annual: categoryReturns?.annual || {},
+      since_launch:
+        categoryReturns?.since_launch ??
+        categoryReturns?.trailing?.since_launch ??
+        null,
+      ytd: categoryReturns?.ytd ?? null,
+      scheme_assets: null,
+      expense_ratio_percentage: null,
+      rating: null,
+      rating_value: null,
+
+    }),
+  ];
+};
+
 export const mapMFFundToFundCardProps = (fund: any) => {
   return {
     schemeName: fund.fund_name,
@@ -68,10 +123,13 @@ export const mapMFFundToFundCardProps = (fund: any) => {
     // Returns
     returns: fund.returns,
 
-    // API bridged arrays
-    performanceList: fund.mf_api_scheme_id?.scheme_performance_list || [],
+    // Manual performance comparison rows
+    performanceList: getManualPerformanceList(fund),
     riskStatsList: fund.mf_api_scheme_id?.risk_statistics_list || [],
     peerList: fund.mf_api_scheme_id?.scheme_peer_comparision_list || [],
     topHoldings: fund.top_holdings?.holdings || [],
   };
 };
+
+
+

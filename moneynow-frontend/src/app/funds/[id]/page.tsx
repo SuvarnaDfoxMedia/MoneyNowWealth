@@ -23,30 +23,56 @@ export default function FundDetailPage() {
   const id = params?.id as string;
   const [fund, setFund] = useState<any | null>(null);
   const [navHistory, setNavHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [fundLoading, setFundLoading] = useState(true);
+  const [navLoading, setNavLoading] = useState(true);
+  const [selectedDays, setSelectedDays] = useState(30);
   const { refreshTick } = useRefreshSignal();
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
+      setFundLoading(true);
       try {
-        const [res, navRes] = await Promise.all([
-          mfService.getFundById(id),
-          mfService.getFundNavHistory(id, { days: 365 }).catch(() => ({ data: [] }))
-        ]);
+        const res = await mfService.getFundById(id);
         setFund(res?.data || res || null);
-        setNavHistory(navRes?.data || navRes || []);
       } catch {
         setFund(null);
-        setNavHistory([]);
       } finally {
-        setLoading(false);
+        setFundLoading(false);
       }
     };
     if (id) load();
   }, [id, refreshTick]);
 
-  if (loading) {
+  useEffect(() => {
+    let isActive = true;
+
+    const loadNavHistory = async () => {
+      if (!id) return;
+      setNavLoading(true);
+      try {
+        const navRes = await mfService.getFundNavHistory(id, {
+          days: selectedDays,
+        });
+        if (!isActive) return;
+        setNavHistory(navRes?.data || navRes || []);
+      } catch {
+        if (!isActive) return;
+        setNavHistory([]);
+      } finally {
+        if (isActive) {
+          setNavLoading(false);
+        }
+      }
+    };
+
+    void loadNavHistory();
+
+    return () => {
+      isActive = false;
+    };
+  }, [id, refreshTick, selectedDays]);
+
+  if (fundLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F7FA]">
         <div className="text-center">
@@ -87,8 +113,18 @@ export default function FundDetailPage() {
             onClick={() => router.back()}
             className="flex items-center gap-1.5 text-white/70 hover:text-white text-[13px] mb-4 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             Back to Funds
           </button>
@@ -117,9 +153,7 @@ export default function FundDetailPage() {
           schemeCode={props.schemeCode}
         />
 
-        <InvestmentObjectiveCard
-          schemeObjective={props.fundObjective}
-        />
+        <InvestmentObjectiveCard schemeObjective={props.fundObjective} />
 
         <FundDetailsCard
           inceptionDate={props.launchDate}
@@ -131,10 +165,12 @@ export default function FundDetailPage() {
           returnsSinceInception={props.returnsSinceInception}
           upmarketCapture={props.upmarketCapture}
           downmarketCapture={props.downmarketCapture}
-          schemeTurnover={props.schemeTurnover != null ? `${props.schemeTurnover}%` : null}
+          schemeTurnover={
+            props.schemeTurnover != null ? `${props.schemeTurnover}%` : null
+          }
         />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <h2 className="mb-4 text-base font-bold tracking-tight text-slate-800">
             Performance Returns
           </h2>
@@ -145,12 +181,12 @@ export default function FundDetailPage() {
           />
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <NavMovementChart 
-            history={navHistory} 
-            isLoading={loading}
-            selectedDays={365}
-            onPeriodChange={() => {}}
+        <div className="rounded-2xl border border-slate-200 bg-white p-0 shadow-sm">
+          <NavMovementChart
+            history={navHistory}
+            isLoading={navLoading}
+            selectedDays={selectedDays}
+            onPeriodChange={setSelectedDays}
             currentNav={props.nav}
             navDate={props.navDate}
           />
@@ -214,9 +250,7 @@ export default function FundDetailPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm overflow-hidden">
-          <PeerComparisonTable
-            peers={props.peerList}
-          />
+          <PeerComparisonTable peers={props.peerList} />
         </div>
       </div>
     </div>

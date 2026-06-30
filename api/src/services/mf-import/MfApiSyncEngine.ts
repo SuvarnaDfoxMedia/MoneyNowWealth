@@ -1548,14 +1548,15 @@ export const syncOneScheme = async (
   // ─── Record NAV history snapshot (one entry per scheme per day) ─────────
   if (saved?.latest_nav != null && saved?.latest_date) {
     try {
+      const normalizedNavDate = normalizeDateOnly(new Date(saved.latest_date));
       await MfApiNavHistory.findOneAndUpdate(
-        { scheme_id: saved._id, date: saved.latest_date },
+        { scheme_id: saved._id, date: normalizedNavDate },
         {
           $setOnInsert: {
             scheme_id:      saved._id,
             scheme_name:    saved.scheme_name,
             external_key:   saved.external_key,
-            date:           saved.latest_date,
+            date:           normalizedNavDate,
             nav:            saved.latest_nav,
             nav_change:     (saved as any).nav_change ?? null,
             nav_change_pct: (saved as any).nav_change_percentage ?? null,
@@ -1651,7 +1652,7 @@ export const getDashboardSummary = async () => {
 
   const latestRunningSyncJob = await MfApiSyncLog.findOne({
     action: { $in: ["sync-all", "sync-resume"] },
-    status: { $in: ["running", "rate_limited", "queued"] },
+    status: "running",
   })
     .sort({ created_at: -1 })
     .select("message status response created_at updated_at")
@@ -1770,9 +1771,13 @@ export const getSchemeById = async (id: string) => {
     mf_api_scheme_id: scheme._id,
     is_deleted: false,
   })
-    .select("_id fund_name nav_Current nav_date mf_api_synced_at is_active amc_id category_id benchmark_id")
+    .select("_id fund_name nav_Current nav_date mf_api_synced_at is_active amc_id category_id benchmark_id returns benchmark_returns_trailing benchmark_returns_annual benchmark_inception_return benchmark_index_name")
     .populate("amc_id", "name")
-    .populate("category_id", "name")
+    .populate({
+      path: "category_id",
+      select: "name main_category_id category_average_returns category_returns",
+      populate: { path: "main_category_id", select: "name" },
+    })
     .lean();
 
   // Build a merged raw payload so the detail page can always read live API-shaped
@@ -2531,3 +2536,4 @@ export const getNavHistoryForScheme = async (schemeId: string, days: number) => 
     .select("date nav nav_change nav_change_pct")
     .lean();
 };
+

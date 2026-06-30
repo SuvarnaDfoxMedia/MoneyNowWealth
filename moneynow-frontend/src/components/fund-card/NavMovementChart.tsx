@@ -1,55 +1,45 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Chart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
 import type { MfApiNavHistoryEntry } from "./MfApiSchemeViewTypes";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
 const NAV_PERIODS = [
-  { label: "1M",  days: 30   },
-  { label: "3M",  days: 90   },
-  { label: "6M",  days: 180  },
-  { label: "1Y",  days: 365  },
-  { label: "2Y",  days: 730  },
-  { label: "3Y",  days: 1095 },
-  { label: "5Y",  days: 1825 },
+  { label: "1M", days: 30 },
+  { label: "3M", days: 90 },
+  { label: "6M", days: 180 },
+  { label: "1Y", days: 365 },
+  { label: "2Y", days: 730 },
+  { label: "3Y", days: 1095 },
+  { label: "5Y", days: 1825 },
   { label: "10Y", days: 3650 },
 ];
 
-// ── Props ─────────────────────────────────────────────────────────────────────
-
 interface NavMovementChartProps {
-  /** Pass the raw history array directly — no additional API call is made */
   history: MfApiNavHistoryEntry[];
   isLoading?: boolean;
-  /** Callback so the parent can change the requested `days` and re-fetch */
   onPeriodChange: (days: number) => void;
   selectedDays: number;
   currentNav?: number | null;
   navDate?: string | null;
 }
 
-// ── Helper ────────────────────────────────────────────────────────────────────
-
-function fmtDateShort(d: string | null | undefined): string {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleDateString("en-IN", {
-      day: "2-digit", month: "short", year: "numeric",
-    });
-  } catch {
-    return d;
-  }
+function fmtDateShort(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function returnColorClass(val: number | null | undefined): string {
-  if (val == null) return "text-gray-400";
-  if (val > 0) return "text-green-600 font-medium";
-  if (val < 0) return "text-red-600 font-medium";
+function returnColorClass(value: number | null | undefined): string {
+  if (value == null) return "text-gray-400";
+  if (value > 0) return "text-green-600 font-medium";
+  if (value < 0) return "text-red-600 font-medium";
   return "text-gray-600";
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NavMovementChart({
   history,
@@ -59,23 +49,39 @@ export default function NavMovementChart({
   currentNav,
   navDate,
 }: NavMovementChartProps) {
-  const recentRows = useMemo(
-    () => [...history].reverse().slice(0, 10),
-    [history]
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const selectedPeriodLabel =
+    NAV_PERIODS.find((period) => period.days === selectedDays)?.label ??
+    `${selectedDays}D`;
+
+  useEffect(() => {
+    setShowAllHistory(false);
+  }, [selectedDays, history.length]);
+
+  const sortedHistory = useMemo(
+    () =>
+      [...history].sort(
+        (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime(),
+      ),
+    [history],
   );
 
-  // ── Chart config ────────────────────────────────────────────────────────────
+  const recentRows = useMemo(() => {
+    const latestFirst = [...sortedHistory].reverse();
+    return showAllHistory ? latestFirst : latestFirst.slice(0, 5);
+  }, [sortedHistory, showAllHistory]);
+
   const chartSeries = useMemo(
     () => [
       {
         name: "NAV",
-        data: history.map((h) => ({
-          x: new Date(h.date).getTime(),
-          y: h.nav,
+        data: sortedHistory.map((row) => ({
+          x: new Date(row.date).getTime(),
+          y: row.nav,
         })),
       },
     ],
-    [history]
+    [sortedHistory],
   );
 
   const chartOptions: ApexOptions = useMemo(
@@ -92,10 +98,10 @@ export default function NavMovementChart({
       stroke: { curve: "smooth", width: 2 },
       fill: {
         type: "gradient",
-        gradient: { opacityFrom: 0.25, opacityTo: 0.02 },
+        gradient: { opacityFrom: 0.24, opacityTo: 0.03 },
       },
       dataLabels: { enabled: false },
-      markers: { size: history.length === 1 ? 4 : 0, hover: { size: 6 } },
+      markers: { size: sortedHistory.length === 1 ? 4 : 0, hover: { size: 6 } },
       xaxis: {
         type: "datetime",
         labels: {
@@ -108,7 +114,7 @@ export default function NavMovementChart({
       yaxis: {
         labels: {
           style: { colors: "#9CA3AF", fontSize: "11px" },
-          formatter: (val: number) => `₹${val.toFixed(2)}`,
+          formatter: (value: number) => `₹${value.toFixed(2)}`,
         },
       },
       grid: {
@@ -118,33 +124,51 @@ export default function NavMovementChart({
       },
       tooltip: {
         x: { format: "dd MMM yyyy" },
-        y: { formatter: (val: number) => `₹${val.toFixed(4)}` },
+        y: { formatter: (value: number) => `₹${value.toFixed(4)}` },
       },
     }),
-    []
+    [sortedHistory.length],
   );
 
+  const hasMoreThanFive = sortedHistory.length > 5;
+  const visibleCount = showAllHistory ? sortedHistory.length : Math.min(5, sortedHistory.length);
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-            NAV Movement
-          </h2>
-          <p className="text-xs text-gray-400 mt-0.5">Historical NAV trend</p>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+              NAV Movement
+            </h2>
+            <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+              {selectedPeriodLabel}
+            </span>
+          </div>
+          <p className="text-xs leading-5 text-slate-500">
+            Historical NAV trend with the latest records listed below.
+          </p>
         </div>
 
-        {/* Period buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
+          {hasMoreThanFive && (
+            <button
+              type="button"
+              onClick={() => setShowAllHistory((value) => !value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              {showAllHistory ? "Show less" : "View all"}
+            </button>
+          )}
           {NAV_PERIODS.map(({ label, days }) => (
             <button
               key={label}
+              type="button"
               onClick={() => onPeriodChange(days)}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                 selectedDays === days
-                  ? "bg-[#043f79] text-white"
-                  : "border border-gray-200 text-gray-500 hover:bg-gray-50"
+                  ? "bg-[#043f79] text-white shadow-sm"
+                  : "border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
               {label}
@@ -153,82 +177,80 @@ export default function NavMovementChart({
         </div>
       </div>
 
-      {/* ── Chart area ──────────────────────────────────────────────────────── */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-          <svg className="animate-spin w-5 h-5 mr-2 text-[#043f79]" fill="none" viewBox="0 0 24 24">
+        <div className="flex h-64 items-center justify-center px-4 text-sm text-slate-400">
+          <svg className="mr-2 h-5 w-5 animate-spin text-[#043f79]" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>
-          Loading NAV history…
+          Loading NAV history...
         </div>
-      ) : history.length > 0 ? (
-        <div className="p-2">
-          <Chart
-            options={chartOptions}
-            series={chartSeries}
-            type="area"
-            height={280}
-          />
-        </div>
+      ) : sortedHistory.length > 0 ? (
+        <>
+          <div className="px-2 pb-1 pt-2 sm:px-3">
+            <Chart options={chartOptions} series={chartSeries} type="area" height={280} />
+          </div>
+
+          <div className="border-t border-slate-100">
+            <div className="flex items-center justify-between px-4 py-3 sm:px-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Recent NAV Records
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Showing {visibleCount} of {sortedHistory.length}
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs text-slate-500">
+                    <th className="px-4 py-2.5 text-left font-medium sm:px-5">Date</th>
+                    <th className="px-4 py-2.5 text-right font-medium sm:px-5">NAV (₹)</th>
+                    <th className="px-4 py-2.5 text-right font-medium sm:px-5">Change</th>
+                    <th className="px-4 py-2.5 text-right font-medium sm:px-5">Change %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {recentRows.map((row) => (
+                    <tr key={row._id || `${row.date}-${row.nav}`} className="transition-colors hover:bg-slate-50/70">
+                      <td className="px-4 py-3 text-slate-700 sm:px-5">{fmtDateShort(row.date)}</td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900 sm:px-5">
+                        {row.nav.toFixed(4)}
+                      </td>
+                      <td className={`px-4 py-3 text-right tabular-nums sm:px-5 ${returnColorClass(row.nav_change)}`}>
+                        {row.nav_change != null ? row.nav_change.toFixed(4) : "—"}
+                      </td>
+                      <td className={`px-4 py-3 text-right tabular-nums sm:px-5 ${returnColorClass(row.nav_change_pct)}`}>
+                        {row.nav_change_pct != null ? `${row.nav_change_pct.toFixed(2)}%` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       ) : (
-        <div className="flex flex-col items-center justify-center h-64 text-center px-5">
-          <svg className="w-10 h-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16" />
+        <div className="flex flex-col items-center justify-center px-5 py-16 text-center">
+          <svg className="mb-3 h-10 w-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4v16"
+            />
           </svg>
-          <p className="text-sm font-medium text-gray-700 mb-1">NAV history is being built</p>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="text-sm font-medium text-slate-700">NAV history is being built</p>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
             Check back later for historical data.
           </p>
           {currentNav != null && (
-            <p className="text-xs font-medium text-gray-600">
-              Current NAV:{" "}
-              <span className="text-[#043f79] font-bold">₹{Number(currentNav).toFixed(4)}</span>
-              {navDate && (
-                <span className="text-gray-400 ml-1">as of {fmtDateShort(navDate)}</span>
-              )}
+            <p className="mt-3 text-xs font-medium text-slate-600">
+              Current NAV: <span className="font-bold text-[#043f79]">₹{Number(currentNav).toFixed(4)}</span>
+              {navDate && <span className="ml-1 text-slate-400">as of {fmtDateShort(navDate)}</span>}
             </p>
           )}
-        </div>
-      )}
-
-      {/* ── Recent NAV records table ─────────────────────────────────────────── */}
-      {recentRows.length > 0 && (
-        <div className="border-t border-gray-100">
-          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Recent NAV Records
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500 border-b border-gray-100">
-                  <th className="py-2 px-4 text-left font-medium">Date</th>
-                  <th className="py-2 px-4 text-right font-medium">NAV (₹)</th>
-                  <th className="py-2 px-4 text-right font-medium">Change</th>
-                  <th className="py-2 px-4 text-right font-medium">Change %</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {recentRows.map((row) => (
-                  <tr key={row._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-2.5 px-4 text-gray-700">{fmtDateShort(row.date)}</td>
-                    <td className="py-2.5 px-4 text-right font-mono font-semibold text-gray-900">
-                      {row.nav.toFixed(4)}
-                    </td>
-                    <td className={`py-2.5 px-4 text-right tabular-nums ${returnColorClass(row.nav_change)}`}>
-                      {row.nav_change != null ? row.nav_change.toFixed(4) : "—"}
-                    </td>
-                    <td className={`py-2.5 px-4 text-right tabular-nums ${returnColorClass(row.nav_change_pct)}`}>
-                      {row.nav_change_pct != null ? `${row.nav_change_pct.toFixed(2)}%` : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
     </div>

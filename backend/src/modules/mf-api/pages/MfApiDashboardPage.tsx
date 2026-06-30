@@ -44,11 +44,10 @@ export default function MfApiDashboardPage() {
   const dashboard = dashboardQuery.data?.data;
 
   useEffect(() => {
-    const phase = String(dashboard?.latestSyncJob?.response?.phase || "").toLowerCase();
+    const latestJob = dashboard?.latestSyncJob || null;
+    const phase = String(latestJob?.response?.phase || "").toLowerCase();
     const running =
-      dashboard?.latestSyncJob?.status === "running" ||
-      dashboard?.latestSyncJob?.status === "rate_limited" ||
-      dashboard?.latestSyncJob?.status === "queued" ||
+      latestJob?.status === "running" ||
       ["active", "inactive", "processing"].includes(phase);
     setIsRunning(running);
   }, [dashboard]);

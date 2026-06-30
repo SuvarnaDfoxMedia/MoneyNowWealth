@@ -344,87 +344,71 @@ export default function MfApiSchemeDetailPage() {
   // ── Raw API payload ─────────────────────────────────────────────────────────
   const rawPayload = (scheme as any)?.rawPayload || (scheme as any)?.raw_payload || {};
   const rawData    = rawPayload as any;
+  const linkedManualFund = (scheme as any)?.linked_manual_fund;
 
   // ── Derived data ────────────────────────────────────────────────────────────
-  const fallbackPerformanceList = useMemo(() => {
-    if (!scheme?.trailing_returns) return [];
+  const performanceList = useMemo(() => {
+    const manualFund = linkedManualFund as any;
+    if (!manualFund) return [];
+
+    const category = manualFund.category_id || {};
+    const categoryReturns = category.category_average_returns || category.category_returns || {};
+    const benchmarkTrailing = manualFund.benchmark_returns_trailing || {};
 
     return [
       {
-        scheme_name: getMfApiSchemeName(scheme),
-        one_month_return: scheme.trailing_returns?.["1m"] ?? null,
-        three_month_return: scheme.trailing_returns?.["3m"] ?? null,
-        six_month_return: scheme.trailing_returns?.["6m"] ?? null,
-        one_year_return: scheme.trailing_returns?.["1y"] ?? null,
-        two_year_return: scheme.trailing_returns?.["2y"] ?? null,
-        three_year_return: scheme.trailing_returns?.["3y"] ?? null,
-        five_year_return: scheme.trailing_returns?.["5y"] ?? null,
-        ten_year_return: scheme.trailing_returns?.["10y"] ?? null,
+        scheme_name: manualFund.fund_name || getMfApiSchemeName(scheme),
+        one_week_return: manualFund.returns?.trailing?.["1w"] ?? null,
+        one_month_return: manualFund.returns?.trailing?.["1m"] ?? null,
+        three_month_return: manualFund.returns?.trailing?.["3m"] ?? null,
+        six_month_return: manualFund.returns?.trailing?.["6m"] ?? null,
+        one_year_return: manualFund.returns?.trailing?.["1y"] ?? null,
+        two_year_return: manualFund.returns?.trailing?.["2y"] ?? null,
+        three_year_return: manualFund.returns?.trailing?.["3y"] ?? null,
+        five_year_return: manualFund.returns?.trailing?.["5y"] ?? null,
+        ten_year_return: manualFund.returns?.trailing?.["10y"] ?? null,
         inception_year_return:
-          scheme.trailing_returns?.since_launch ??
-          scheme.trailing_returns?.inception_year_return ??
+          manualFund.returns?.since_inception ??
+          manualFund.returns?.trailing?.since_launch ??
           null,
-        ytd_return:
-          scheme.annual_returns?.ytd ??
-          scheme.trailing_returns?.ytd ??
-          scheme.annual_returns?.ytd_return ??
-          null,
+        ytd_return: manualFund.returns?.annual?.ytd ?? manualFund.returns?.trailing?.ytd ?? null,
       },
       {
-        scheme_name: scheme.benchmark_returns?.benchmark_name ?? "Benchmark",
-        one_month_return: scheme.benchmark_returns?.["1m"] ?? null,
-        three_month_return: scheme.benchmark_returns?.["3m"] ?? null,
-        six_month_return: scheme.benchmark_returns?.["6m"] ?? null,
-        one_year_return: scheme.benchmark_returns?.["1y"] ?? null,
-        two_year_return: scheme.benchmark_returns?.["2y"] ?? null,
-        three_year_return: scheme.benchmark_returns?.["3y"] ?? null,
-        five_year_return: scheme.benchmark_returns?.["5y"] ?? null,
-        ten_year_return: scheme.benchmark_returns?.["10y"] ?? null,
+        scheme_name: manualFund.benchmark_index_name || "Benchmark",
+        one_week_return: benchmarkTrailing?.["1w"] ?? null,
+        one_month_return: benchmarkTrailing?.["1m"] ?? null,
+        three_month_return: benchmarkTrailing?.["3m"] ?? null,
+        six_month_return: benchmarkTrailing?.["6m"] ?? null,
+        one_year_return: benchmarkTrailing?.["1y"] ?? null,
+        two_year_return: benchmarkTrailing?.["2y"] ?? null,
+        three_year_return: benchmarkTrailing?.["3y"] ?? null,
+        five_year_return: benchmarkTrailing?.["5y"] ?? null,
+        ten_year_return: benchmarkTrailing?.["10y"] ?? null,
         inception_year_return:
-          scheme.benchmark_returns?.since_launch ??
-          scheme.benchmark_returns?.inception_year_return ??
+          manualFund.benchmark_inception_return ??
+          benchmarkTrailing?.since_launch ??
           null,
-        ytd_return: scheme.benchmark_returns?.ytd ?? scheme.benchmark_returns?.ytd_return ?? null,
+        ytd_return: benchmarkTrailing?.ytd ?? null,
       },
       {
-        scheme_name: scheme.category_avg_returns?.category_name ?? "Category Avg",
-        one_month_return: scheme.category_avg_returns?.["1m"] ?? null,
-        three_month_return: scheme.category_avg_returns?.["3m"] ?? null,
-        six_month_return: scheme.category_avg_returns?.["6m"] ?? null,
-        one_year_return: scheme.category_avg_returns?.["1y"] ?? null,
-        two_year_return: scheme.category_avg_returns?.["2y"] ?? null,
-        three_year_return: scheme.category_avg_returns?.["3y"] ?? null,
-        five_year_return: scheme.category_avg_returns?.["5y"] ?? null,
-        ten_year_return: scheme.category_avg_returns?.["10y"] ?? null,
+        scheme_name: category.name || "Category Avg",
+        one_week_return: categoryReturns?.trailing?.["1w"] ?? null,
+        one_month_return: categoryReturns?.trailing?.["1m"] ?? null,
+        three_month_return: categoryReturns?.trailing?.["3m"] ?? null,
+        six_month_return: categoryReturns?.trailing?.["6m"] ?? null,
+        one_year_return: categoryReturns?.trailing?.["1y"] ?? null,
+        two_year_return: categoryReturns?.trailing?.["2y"] ?? null,
+        three_year_return: categoryReturns?.trailing?.["3y"] ?? null,
+        five_year_return: categoryReturns?.trailing?.["5y"] ?? null,
+        ten_year_return: categoryReturns?.trailing?.["10y"] ?? null,
         inception_year_return:
-          scheme.category_avg_returns?.since_launch ??
-          scheme.category_avg_returns?.inception_year_return ??
+          categoryReturns?.since_launch ??
+          categoryReturns?.trailing?.since_launch ??
           null,
-        ytd_return: scheme.category_avg_returns?.ytd ?? scheme.category_avg_returns?.ytd_return ?? null,
+        ytd_return: categoryReturns?.annual?.ytd ?? categoryReturns?.trailing?.ytd ?? null,
       },
     ];
-  }, [
-    scheme,
-    scheme?.annual_returns,
-    scheme?.benchmark_returns,
-    scheme?.category_avg_returns,
-    scheme?.trailing_returns,
-  ]);
-
-  const performanceList = useMemo(
-    () => {
-      if (Array.isArray(rawData?.scheme_performance_list) && rawData.scheme_performance_list.length > 0) {
-        return rawData.scheme_performance_list.map((row: any) => ({
-          ...row,
-          inception_year_return: row.inception_year_return ?? row.since_launch ?? null,
-          ytd_return: row.ytd_return ?? row.ytd ?? null,
-        }));
-      }
-      return fallbackPerformanceList;
-    },
-    [rawData, fallbackPerformanceList]
-  );
-
+  }, [linkedManualFund, scheme]);
   const riskStat      = rawData?.risk_statistics_list?.[0] ?? null;
   const rawPeerList   = rawData?.scheme_peer_comparision_list ?? (scheme as any)?.scheme_peer_comparision_list ?? [];
   const peerList = useMemo(() => {
@@ -438,7 +422,6 @@ export default function MfApiSchemeDetailPage() {
   const latestDate    = getMfApiLatestDate(scheme as any);
   const syncStatus    = getMfApiSyncStatus(scheme as any);
   const isActive      = (scheme as any)?.is_active ?? false;
-  const linkedManualFund = (scheme as any)?.linked_manual_fund;
   const lastSynced    = (scheme as any)?.last_synced_at || (scheme as any)?.lastSyncedAt;
   const lastSyncError = (scheme as any)?.last_sync_error || (scheme as any)?.lastSyncError;
 
@@ -543,7 +526,7 @@ export default function MfApiSchemeDetailPage() {
         minimumTopup={rawData?.minimum_topup ?? (scheme as any)?.minimum_topup}
         sipMinimum={rawData?.sip_minimum_amount ?? (scheme as any)?.sip_minimum_amount}
         riskStatus={rawData?.riskometer_value ?? (scheme as any)?.riskometer_value}
-        returnsSinceInception={rawData?.scheme_inception_return ?? scheme?.trailing_returns?.since_launch}
+        returnsSinceInception={linkedManualFund?.returns?.since_inception ?? linkedManualFund?.returns?.trailing?.since_launch ?? rawData?.scheme_inception_return ?? scheme?.trailing_returns?.since_launch}
         schemeTurnover={rawData?.scheme_turnover ?? (scheme as any)?.scheme_turnover}
         upmarketCapture={rawData?.upmarket_capture_ratio ?? null}
         downmarketCapture={rawData?.downmarket_capture_ratio ?? null}
@@ -553,7 +536,7 @@ export default function MfApiSchemeDetailPage() {
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <SectionHeader
           title="Returns Comparison"
-          subtitle="Annualised returns — Fund vs Benchmark vs Category Avg"
+          subtitle="Manual returns — Fund vs Benchmark vs Category Avg"
         />
         <div className="p-5">
           <ReturnsComparisonTable performanceList={performanceList} />
@@ -725,3 +708,8 @@ export default function MfApiSchemeDetailPage() {
     </div>
   );
 }
+
+
+
+
+

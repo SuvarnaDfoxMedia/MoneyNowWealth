@@ -78,14 +78,12 @@ export default function MfApiSchemeListingPage() {
 
   React.useEffect(() => {
     const data = dashboardQuery.data?.data;
-    const phase = String(data?.latestSyncJob?.response?.phase || "").toLowerCase();
-    const pending = (data?.pendingSchemes ?? 0) > 0;
+    const latestJob = data?.latestSyncJob || null;
+    const phase = String(latestJob?.response?.phase || "").toLowerCase();
     const running =
-      data?.recentLogs?.[0]?.status === "running" ||
-      data?.recentLogs?.[0]?.status === "rate_limited" ||
-      data?.recentLogs?.[0]?.status === "queued" ||
+      latestJob?.status === "running" ||
       ["active", "inactive", "processing"].includes(phase);
-    setIsSyncing(pending || running);
+    setIsSyncing(running);
   }, [dashboardQuery.data]);
 
   const schemesQuery = useMfApiSchemes(role, params, {

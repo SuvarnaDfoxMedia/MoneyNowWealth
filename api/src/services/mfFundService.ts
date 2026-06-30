@@ -284,7 +284,7 @@ export const getFundById = async (id: string) => {
     .populate("amc_id", "name")
     .populate({
       path: "category_id",
-      select: "name main_category_id",
+      select: "name main_category_id category_average_returns category_returns",
       populate: { path: "main_category_id", select: "name" },
     })
     .populate({

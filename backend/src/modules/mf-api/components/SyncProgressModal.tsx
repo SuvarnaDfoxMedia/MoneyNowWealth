@@ -32,13 +32,7 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
       return bTime - aTime;
     });
 
-    return (
-      sorted.find((log) =>
-        ["running", "rate_limited", "queued", "processing"].includes(String(log.status)),
-      ) ||
-      sorted.find((log) => log.action === "sync-all" || log.action === "sync-resume") ||
-      null
-    );
+    return sorted[0] || null;
   }, [logRows]);
   const latestJob = latestLogJob || dashboard?.latestSyncJob || null;
   const totalSchemes = Number(latestJob?.response?.total ?? dashboard?.totalSchemes ?? 0) || 0;
@@ -52,13 +46,17 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
     : currentPhase.charAt(0).toUpperCase() + currentPhase.slice(1);
   const syncMessage = latestJob?.message || dashboard?.lastSyncMessage || dashboard?.runningMessage || "";
   const isCurrentlyRunning =
-    ["running", "rate_limited", "queued"].includes(String(latestJob?.status)) ||
+    String(latestJob?.status) === "running" ||
     ["active", "inactive", "processing"].includes(currentPhase);
-  const isRateLimited = latestJob?.status === "rate_limited";
+  const isRateLimited =
+    latestJob?.status === "rate_limited" ||
+    currentPhase.startsWith("aborted-rate-limit");
   const isCompleted = latestJob
     ? (latestJob.status === "success" ||
       latestJob.status === "failed" ||
-      String(latestJob.status).startsWith("partial"))
+      String(latestJob.status).startsWith("partial") ||
+      currentPhase === "complete" ||
+      currentPhase.startsWith("aborted-rate-limit"))
     : false;
 
   const handleRefresh = async () => {
