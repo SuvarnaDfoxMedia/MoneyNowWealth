@@ -3,21 +3,75 @@
 import { useEffect, useState } from "react";
 import { ArrowUpIcon, BoxIconLine, GroupIcon } from "../../icons";
 import Badge from "../ui/badge/Badge";
+import { axiosApi } from "../../api/axios";
 
 type SubscriptionUser = {
-  user: {
-    _id: string;
-    firstname: string;
-    lastname: string;
-    email: string;
-    role: string;
+  user?: {
+    _id?: string;
+    firstname?: string;
+    lastname?: string;
+    email?: string;
+    role?: string;
   };
-  subscription: any;
-  paymentHistory: any[];
-  currentStatus: string; // "active" | "none"
-  planType: string; // "Premium" | "Free" | "none"
-  isPromotional: boolean;
+  user_id?: {
+    _id?: string;
+    firstname?: string;
+    lastname?: string;
+    email?: string;
+    role?: string;
+  };
+  subscription?: {
+    status?: string;
+    is_active?: boolean;
+    planType?: string;
+    plan_type?: string;
+    plan_id?: {
+      name?: string;
+      plan_type?: string;
+    };
+  };
+  currentStatus?: string; // "active" | "none"
+  status?: string;
+  planType?: string; // "Premium" | "Free" | "none"
+  plan_type?: string;
+  isPromotional?: boolean;
 };
+
+const extractList = (payload: any) => {
+  if (!payload || typeof payload !== "object") return [];
+  if (Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload.users)) return payload.users;
+  if (Array.isArray(payload.subscriptions)) return payload.subscriptions;
+  if (Array.isArray(payload.items)) return payload.items;
+  return [];
+};
+
+const toCount = (payload: any, fallback: unknown[] = []) => {
+  const total = Number(payload?.total ?? payload?.count);
+  if (Number.isFinite(total) && total >= 0) return total;
+  return fallback.length;
+};
+
+const getPlanType = (item: SubscriptionUser) =>
+  String(
+    item.planType ||
+      item.plan_type ||
+      item.subscription?.plan_id?.name ||
+      item.subscription?.planType ||
+      item.subscription?.plan_type ||
+      item.subscription?.plan_id?.plan_type ||
+      "",
+  ).trim().toLowerCase();
+
+const getStatus = (item: SubscriptionUser) =>
+  String(
+    item.currentStatus ||
+      item.status ||
+      item.subscription?.status ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
 
 export default function EcommerceMetrics() {
   const [totalUsers, setTotalUsers] = useState<number>(0);
@@ -26,19 +80,17 @@ export default function EcommerceMetrics() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingPremium, setLoadingPremium] = useState(true);
 
-  const backendUrl = import.meta.env.VITE_API_BASE;
-
-  //  Fetch user count (your existing users API)
   const fetchUserCount = async () => {
     try {
-      const response = await fetch(`${backendUrl}/auth/users`);
-      const data = await response.json();
-
-      if (data?.success) {
-        setTotalUsers(data.total || 0);
-      }
+      const response = await axiosApi.get<any>("/auth/admin/users", {
+        page: 1,
+        limit: 1,
+      });
+      const users = extractList(response);
+      setTotalUsers(toCount(response, users));
     } catch (error) {
       console.error("Error fetching user count", error);
+      setTotalUsers(0);
     } finally {
       setLoadingUsers(false);
     }
@@ -46,21 +98,26 @@ export default function EcommerceMetrics() {
 
   const fetchPremiumUsersCount = async () => {
     try {
-      const response = await fetch(`${backendUrl}/admin/subscriptions`, {
-        credentials: "include", //  IMPORTANT if admin route is protected
+      const response = await axiosApi.get<any>("/admin/subscriptions", {
+        page: 1,
+        limit: 5000,
+        includeInactive: true,
       });
 
-      const result = await response.json();
+      const subscriptions = extractList(response) as SubscriptionUser[];
+      const premiumCount = subscriptions.filter((item) => {
+        const status = getStatus(item);
+        const planType = getPlanType(item);
+        const isActive =
+          item.subscription?.is_active === true ||
+          status === "active" ||
+          item.currentStatus === "active" ||
+          item.status === "active";
 
-      if (result?.success && Array.isArray(result?.data)) {
-        const premiumCount = result.data.filter((item: SubscriptionUser) => {
-          return item.currentStatus === "active" && item.planType === "Premium";
-        }).length;
+        return isActive && planType === "premium";
+      }).length;
 
-        setPremiumUsers(premiumCount);
-      } else {
-        setPremiumUsers(0);
-      }
+      setPremiumUsers(premiumCount);
     } catch (error) {
       console.error("Error fetching premium users count", error);
       setPremiumUsers(0);
