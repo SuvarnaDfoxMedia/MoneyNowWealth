@@ -29,12 +29,29 @@ export default function SchemeSelect({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   const { data, isLoading } = useNavSchemes(role, {
-    search,
     page: 1,
-    limit: 50,
+    all: true,
   });
 
   const schemes = useMemo<NavScheme[]>(() => data?.data ?? [], [data?.data]);
+  const filteredSchemes = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return schemes;
+
+    return schemes.filter((scheme) => {
+      const searchable = [
+        scheme.fund_name,
+        scheme.amc_id?.name,
+        scheme.scheme_code,
+        scheme.isin,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(term);
+    });
+  }, [schemes, search]);
   const selectedScheme = useMemo(
     () => schemes.find((scheme) => scheme._id === value),
     [schemes, value],
@@ -63,7 +80,10 @@ export default function SchemeSelect({
   }, [open]);
 
   return (
-    <div ref={wrapperRef} className="relative w-full min-w-[320px] max-w-[520px]">
+    <div
+      ref={wrapperRef}
+      className="relative w-full min-w-[320px] max-w-[520px]"
+    >
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -71,7 +91,9 @@ export default function SchemeSelect({
       >
         <span className="min-w-0 flex-1 truncate">
           {selectedLabel ||
-            (isLoading ? "Loading imported NAV schemes..." : "Select imported NAV scheme")}
+            (isLoading
+              ? "Loading imported NAV schemes..."
+              : "Select imported NAV scheme")}
         </span>
         <span className="flex items-center gap-2 text-gray-400">
           {isLoading ? (
@@ -106,13 +128,13 @@ export default function SchemeSelect({
               />
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Search by fund name, AMC, scheme code, or ISIN.
+              Search the full NAV scheme list by fund name, AMC, scheme code, or ISIN.
             </p>
           </div>
 
           <div className="max-h-72 overflow-y-auto custom-scrollbar">
-            {schemes.length > 0 ? (
-              schemes.map((scheme) => (
+            {filteredSchemes.length > 0 ? (
+              filteredSchemes.map((scheme) => (
                 <button
                   key={scheme._id}
                   type="button"

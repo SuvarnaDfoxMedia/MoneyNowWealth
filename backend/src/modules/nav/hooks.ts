@@ -17,7 +17,7 @@ export const useLatestNav = (role: string, schemeId: string) =>
 
 export const useNavSchemes = (
   role: string,
-  params: { search?: string; page?: number; limit?: number },
+  params: { search?: string; page?: number; limit?: number; all?: boolean },
 ) =>
   useQuery({
     queryKey: [role, "nav-schemes", params],

@@ -10,7 +10,8 @@
         "migrate:rich-text-fonts": "tsx scripts/migrateRichTextFonts.ts",
         "migrate:fund-benchmarks": "tsx scripts/migrateFundBenchmarks.ts",
         "repair:mf-indexes": "tsx scripts/repairLegacyMfIndexes.ts",
-        "migrate:mf-top-holdings-history": "tsx scripts/migrateMfTopHoldingsHistory.ts"
+        "migrate:mf-top-holdings-history": "tsx scripts/migrateMfTopHoldingsHistory.ts",
+        "resync:active": "tsx scripts/resyncActiveFunds.ts"
     },
     "dependencies": {
         "axios": "^1.13.5",

@@ -549,6 +549,7 @@ export const getNavHistory = async (schemeId: string, query: Record<string, unkn
 };
 
 export const getNavSchemes = async (query: Record<string, unknown>) => {
+  const loadAll = String(query?.all || "").trim().toLowerCase() === "true";
   const { page, limit, skip } = parsePagination(query);
   const search = String(query?.search || "").trim();
   const matchScheme = search
@@ -618,13 +619,16 @@ export const getNavSchemes = async (query: Record<string, unknown>) => {
       },
     },
     { $sort: { fund_name: 1 } },
-    {
-      $facet: {
-        data: [{ $skip: skip }, { $limit: limit }],
-        total: [{ $count: "count" }],
-      },
-    },
   ];
+
+  const facetStage: mongoose.PipelineStage.Facet = {
+    $facet: {
+      data: loadAll ? [] : [{ $skip: skip }, { $limit: limit }],
+      total: [{ $count: "count" }],
+    },
+  };
+
+  pipeline.push(facetStage);
 
   const [result] = await NavHistory.aggregate(pipeline);
   const data = result?.data || [];
@@ -634,8 +638,8 @@ export const getNavSchemes = async (query: Record<string, unknown>) => {
     data,
     total,
     currentPage: page,
-    totalPages: Math.ceil(total / limit),
-    limit,
+    totalPages: loadAll ? 1 : Math.ceil(total / limit),
+    limit: loadAll ? total || limit : limit,
   };
 };
 

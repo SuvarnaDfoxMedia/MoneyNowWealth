@@ -107,7 +107,9 @@ export default function NavHistoryPage() {
       <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-[minmax(180px,240px)_minmax(180px,240px)_auto] md:items-end">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">From</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              From
+            </label>
             <DatePicker
               selected={fromDateValue}
               onChange={(date) => {
@@ -125,7 +127,9 @@ export default function NavHistoryPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">To</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              To
+            </label>
             <DatePicker
               selected={toDateValue}
               onChange={(date) => {

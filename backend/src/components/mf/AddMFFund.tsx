@@ -1363,6 +1363,36 @@ export default function AddMFFund() {
         </div>
 
         {!isViewMode ? (
+          <section>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  className={mfCheckboxClass}
+                  checked={form.is_featured}
+                  onChange={(event) =>
+                    setField("is_featured", event.target.checked)
+                  }
+                />
+                Featured
+              </label>
+
+              <label className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  className={mfCheckboxClass}
+                  checked={form.is_popular}
+                  onChange={(event) =>
+                    setField("is_popular", event.target.checked)
+                  }
+                />
+                Popular
+              </label>
+            </div>
+          </section>
+        ) : null}
+
+        {!isViewMode ? (
           <MFFormActions
             onReset={resetForm}
             isSubmitting={saving}

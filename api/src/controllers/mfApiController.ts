@@ -16,6 +16,7 @@ import {
   getLatestTopHoldingsForScheme,
   getNavHistoryForScheme,
   resumeDetailedSyncBatch,
+  releaseStaleSyncLocks,
   buildManualBridgeResetUpdate,
   buildManualBridgeResetFilter,
 } from "../services/mfApiService";
@@ -78,6 +79,7 @@ export const getMfApiLogs = async (req: Request, res: Response) => {
 
 export const syncAllMfApiSchemes = async (req: Request, res: Response) => {
   try {
+    await releaseStaleSyncLocks();
     const activeSync = await MfApiSyncLog.findOne({
       action: { $in: ["sync-all", "sync-resume"] },
       status: "running",
@@ -94,6 +96,7 @@ export const syncAllMfApiSchemes = async (req: Request, res: Response) => {
 
 export const syncActiveMfApiSchemes = async (req: Request, res: Response) => {
   try {
+    await releaseStaleSyncLocks();
     const activeSync = await MfApiSyncLog.findOne({
       action: { $in: ["sync-all", "sync-resume"] },
       status: "running",

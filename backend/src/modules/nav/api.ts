@@ -4,6 +4,7 @@ import type {
   LatestNavResponse,
   NavHistoryItem,
   NavScheme,
+  NavSchemeQueryParams,
   ReturnsResponse,
   UploadReport,
 } from "./types";
@@ -20,7 +21,7 @@ export const fetchLatestNav = async (role: string, schemeId: string) =>
 
 export const fetchNavSchemes = async (
   role: string,
-  params: { search?: string; page?: number; limit?: number },
+  params: NavSchemeQueryParams,
 ) =>
   axiosApi.get<NavScheme[]>(
     `/${role}/nav/schemes`,

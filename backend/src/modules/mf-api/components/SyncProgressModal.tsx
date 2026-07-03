@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { FiX, FiCheckCircle, FiRefreshCw, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMfApiDashboard, useMfApiSyncActive, useMfApiSyncLogs } from "../hooks";
+import { useMfApiDashboard, useMfApiSyncLogs, useMfApiSyncResume } from "../hooks";
 
 interface SyncProgressModalProps {
   role: string;
@@ -21,7 +21,7 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
   const { data: logsData } = useMfApiSyncLogs(role, { page: 1, limit: 8 }, {
     refetchInterval: isOpen ? 2000 : false,
   });
-  const retrySyncMutation = useMfApiSyncActive(role);
+  const resumeSyncMutation = useMfApiSyncResume(role);
 
   const dashboard = data?.data;
   const logRows: any[] = logsData?.data ?? [];
@@ -192,11 +192,11 @@ export default function SyncProgressModal({ role, isOpen, onClose }: SyncProgres
           <div className="flex gap-3">
             {isRateLimited && (
               <button
-                onClick={() => retrySyncMutation.mutate()}
-                disabled={retrySyncMutation.isPending}
+                onClick={() => resumeSyncMutation.mutate()}
+                disabled={resumeSyncMutation.isPending}
                 className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {retrySyncMutation.isPending ? "Starting..." : "Retry Sync"}
+                {resumeSyncMutation.isPending ? "Starting..." : "Resume Sync"}
               </button>
             )}
             <button

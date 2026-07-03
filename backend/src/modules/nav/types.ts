@@ -22,6 +22,13 @@ export type NavScheme = {
   navCount: number;
 };
 
+export type NavSchemeQueryParams = {
+  search?: string;
+  page?: number;
+  limit?: number;
+  all?: boolean;
+};
+
 export type LatestNavResponse = {
   latest: NavHistoryItem | null;
   previous: NavHistoryItem | null;

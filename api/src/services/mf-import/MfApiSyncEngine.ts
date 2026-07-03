@@ -1176,6 +1176,43 @@ const updateSyncLogProgress = async (
   });
 };
 
+const SYNC_LOCK_STALE_AFTER_MS = 15 * 60 * 1000;
+
+const isSyncLogStale = (log: any) => {
+  if (!log || String(log.status) !== "running") return false;
+  const updatedAt = new Date(log.updated_at || log.updatedAt || log.created_at || log.createdAt || 0).getTime();
+  return Number.isFinite(updatedAt) && updatedAt > 0 && Date.now() - updatedAt > SYNC_LOCK_STALE_AFTER_MS;
+};
+
+const releaseStaleSyncLocks = async () => {
+  const staleLogs = await MfApiSyncLog.find({
+    action: { $in: ["sync-all", "sync-resume"] },
+    status: "running",
+  })
+    .sort({ updated_at: 1 })
+    .lean();
+
+  if (!staleLogs.length) return;
+
+  await Promise.all(
+    staleLogs
+      .filter(isSyncLogStale)
+      .map((log) =>
+        MfApiSyncLog.findByIdAndUpdate(log._id, {
+          status: "failed",
+          message: "Previous sync lock expired. You can start or resume sync again.",
+          response: {
+            ...(log.response || {}),
+            phase: "expired",
+            resumedFromStaleLock: true,
+          },
+        }),
+      ),
+  );
+};
+
+export { releaseStaleSyncLocks };
+
 export const processDetailedSyncBatch = async (
   parentLogId: string,
   context: SyncContext = {},
@@ -1392,7 +1429,7 @@ export const processDetailedSyncBatch = async (
 
 /**
  * Resume sync for schemes that are still in "queued" or "partial_success" (from a rate-limited abort).
- * Re-uses the active-only batch logic — only picks up incomplete schemes, skips already-synced ones.
+ * Re-runs the detailed batch so any remaining queued active or inactive schemes continue from the last stop.
  */
 export const resumeDetailedSyncBatch = async (context: SyncContext = {}) => {
   const log = await createSyncLog({
@@ -1407,14 +1444,13 @@ export const resumeDetailedSyncBatch = async (context: SyncContext = {}) => {
   await MfApiScheme.updateMany(
     {
       is_deleted: { $ne: true },
-      is_active: true,
       sync_status: { $in: ["queued", "partial_success"] },
     },
     { $set: { sync_status: "queued" } },
   );
 
-  // Kick off the same detailed batch (activeOnly so it respects is_active filter)
-  processDetailedSyncBatch(String(log._id), context, { activeOnly: true }).catch((err) => {
+  // Resume the full detailed batch. Already-synced rows are skipped because they are no longer queued.
+  processDetailedSyncBatch(String(log._id), context, {}).catch((err) => {
     console.error("Resume sync batch failed:", err);
   });
 
@@ -1619,6 +1655,8 @@ export const syncOneScheme = async (
 };
 
 export const getDashboardSummary = async () => {
+  await releaseStaleSyncLocks();
+
   const [
     totalSchemes,
     activeSchemes,
@@ -1839,6 +1877,8 @@ export const getSchemeById = async (id: string) => {
 };
 
 export const getSyncLogs = async (query: any) => {
+  await releaseStaleSyncLocks();
+
   const { page, limit, skip } = parsePagination(query);
   const filter: any = {};
   if (query?.search) {

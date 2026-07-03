@@ -190,9 +190,16 @@ export class MfAliasResolver {
     uniqueFields: { key: string, dbField: string, isObjectId?: boolean }[],
     nameField: string
   ): Promise<any> {
+    const rawInput = payload;
     if (!payload || typeof payload !== "object") {
       // If it's a string, we treat it as the name/alias search
       payload = { [nameField]: payload };
+    }
+
+    // Allow direct ObjectId lookups when forms submit selected document ids.
+    if (typeof rawInput === "string" && mongoose.Types.ObjectId.isValid(rawInput)) {
+      const idMatch = await ModelClass.findOne({ _id: rawInput, is_deleted: false });
+      if (idMatch) return idMatch;
     }
 
     // 1. Internal ID
