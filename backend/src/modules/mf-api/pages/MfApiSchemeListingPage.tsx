@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import PageHeader from "../components/PageHeader";
 import StatusPill from "../components/StatusPill";
@@ -30,13 +30,22 @@ type ActiveFilter = "all" | "active" | "inactive" | "new" | "failed";
 
 export default function MfApiSchemeListingPage() {
   const { role = "admin" } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const MODULE_KEY = `${role}-mf-api`;
   const [isMounted, setIsMounted] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("is_new") === "true") return "new";
+    if (params.get("status") === "failed") return "failed";
+    if (params.get("is_active") === "false") return "inactive";
+    if (params.get("is_active") === "true") return "active";
+    return "active";
+  });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [now, setNow] = useState(() => Date.now());
 
   const {
     page,
@@ -56,12 +65,37 @@ export default function MfApiSchemeListingPage() {
     setIsMounted(true);
   }, [MODULE_KEY, setCurrentModule]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("is_new") === "true") {
+      setActiveFilter("new");
+      return;
+    }
+    if (params.get("status") === "failed") {
+      setActiveFilter("failed");
+      return;
+    }
+    if (params.get("is_active") === "false") {
+      setActiveFilter("inactive");
+      return;
+    }
+    if (params.get("is_active") === "true") {
+      setActiveFilter("active");
+      return;
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const params = useMemo(() => {
     const base: Record<string, any> = {
       search: searchValue,
       page,
       limit: recordsPerPage,
-      sort_by: "active_first",
+      sort_by: activeFilter === "new" ? "newest" : "active_first",
     };
     if (activeFilter === "active") base.is_active = "true";
     if (activeFilter === "inactive") base.is_active = "false";
@@ -96,6 +130,12 @@ export default function MfApiSchemeListingPage() {
   const toggleActiveMutation = useMfApiToggleActive(role);
   const markReviewedMutation = useMfApiMarkReviewed(role);
   const resumeSyncMutation = useMfApiSyncResume(role);
+
+  const isFreshNewScheme = (scheme: any) => {
+    if (!scheme?.is_new) return false;
+    const seenAt = scheme.first_seen_date ? new Date(scheme.first_seen_date).getTime() : NaN;
+    return Number.isFinite(seenAt) && now - seenAt < 24 * 60 * 60 * 1000;
+  };
 
   const rows = schemeRows;
   const totalRecords = schemesQuery.data?.total ?? 0;
@@ -191,7 +231,7 @@ export default function MfApiSchemeListingPage() {
           <span className="text-xs text-gray-400">
             {row.isin || row.scheme_code || ""}
           </span>
-          {row.is_new && (
+          {isFreshNewScheme(row) && (
             <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
               NEW
             </span>

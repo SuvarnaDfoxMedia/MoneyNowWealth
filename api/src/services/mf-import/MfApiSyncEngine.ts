@@ -947,23 +947,9 @@ const upsertScheme = async (payload: RawObject, latestInfo?: RawObject | null) =
     }
   }
 
-  let is_new = existing ? existing.is_new : false;
-  if (latestInfo !== null) {
-    is_new = false;
-    const inceptionDate = normalized.scheme_inception_date;
-    if (inceptionDate) {
-      const inception = new Date(inceptionDate);
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - 180); // 180 days ago
-
-      const isCurrentlyActive = existing ? existing.is_active : false;
-      const isCurrentlyReviewed = existing ? existing.is_new === false : false;
-
-      if (inception >= cutoff && !isCurrentlyActive && !isCurrentlyReviewed) {
-        is_new = true;
-      }
-    }
-  }
+  // Preserve the review state across syncs. Newly discovered schemes start as
+  // new, and remain in the new tab until an admin clears them.
+  let is_new = existing ? Boolean(existing.is_new) : true;
 
   const updateData = {
     ...normalized,
@@ -1007,9 +993,9 @@ export const syncAllSchemes = async (context: SyncContext = {}, options: SyncOpt
 };
 
 const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOptions = {}) => {
-  // Bug 4 Fix B: expire stale is_new flags before starting the sync so that
-  // any scheme first seen more than 24 hours ago stops appearing as "New"
-  // automatically, without requiring a manual admin action.
+  // Keep the review bucket stable across sync runs.
+  // The UI now expires the badge separately, but the scheme must stay in the
+  // review tab until an admin marks it reviewed or activates it.
   await expireIsNewFlag();
 
   // For activeOnly sync: skip the master list fetch entirely.
@@ -1109,7 +1095,7 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
           },
           $setOnInsert: {
             is_active: false,
-            is_new: false,  // Initialize as false, detailed sync will set to true if inception date is recent
+            is_new: true,
             sync_status: "queued",
             first_seen_date: new Date(),
             latest_nav: null,
@@ -1156,13 +1142,12 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
 };
 
 /**
- * Bug 4 Fix B: Exported expiry helper — clears is_new on all schemes whose
- * first_seen_date is older than 24 hours.  Called automatically at the start
- * of every backgroundMasterSync run, and can also be invoked independently
- * (e.g. from a scheduled cron job) if needed.
+ * The review bucket is intentionally persistent. We no longer clear `is_new`
+ * on age alone because the admin "new schemes" tab must retain the scheme
+ * after the badge expires.
  */
 export const expireIsNewFlag = async (): Promise<void> => {
-  // Disabling 24h auto-expiry. Schemes should persist in the "New" tab until activated or reviewed.
+  // Intentionally a no-op.
 };
 
 const updateSyncLogProgress = async (
@@ -1760,10 +1745,13 @@ export const getSchemes = async (query: any) => {
   }
 
   const sortParam = String(query?.sort_by || "active_first").trim();
+  const isNewTab = query?.is_new === "true";
   const sortOrder: Record<string, any> =
     sortParam === "name"         ? { scheme_name: 1 } :
     sortParam === "nav"          ? { latest_nav: -1 } :
     sortParam === "synced"       ? { last_synced_at: -1 } :
+    sortParam === "newest" || (isNewTab && sortParam === "active_first")
+                               ? { first_seen_date: -1, updated_at: -1 } :
     /* default: active_first */    { is_active: -1, last_synced_at: -1 };
 
   const [data, total] = await Promise.all([
