@@ -98,7 +98,7 @@ export class MfManualImportValidator {
         valid = false;
       }
       return valid;
-    });
+    }, true);
 
     return validatedDto;
   }
@@ -110,7 +110,8 @@ export class MfManualImportValidator {
     summary: MfImportSummary,
     identifierField: string,
     dto: WorkbookDTO,
-    customValidator: ((item: any) => Promise<boolean>) | null
+    customValidator: ((item: any) => Promise<boolean>) | null,
+    allowDuplicates: boolean = false
   ): Promise<Record<string, any>[]> {
     items = items || [];
     const validItems: Record<string, any>[] = [];
@@ -124,7 +125,7 @@ export class MfManualImportValidator {
       let isValid = true;
 
       // Duplicate Checking
-      if (identifierField && item[identifierField]) {
+      if (!allowDuplicates && identifierField && item[identifierField]) {
         const key = `${sheetName}-${item[identifierField]}`;
         if (uniqueKeys.has(key)) {
           summary.addError(sheetName, i + 2, `Duplicate Record in payload`, identifier);

@@ -4,6 +4,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { sendError, sendSuccess } from "../utils/apiResponse";
+import { generateSafeFilename } from "../middlewares/uploadMiddleware";
 
 // Define Request interface with file property
 declare global {
@@ -30,16 +31,13 @@ const newsletterStorage = multer.diskStorage({
     cb(null, newsletterUploadDir);
   },
   filename: (_req, file, cb) => {
-    const uniqueName = `newsletter-${Date.now()}-${Math.round(
-      Math.random() * 1e9,
-    )}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
+    cb(null, generateSafeFilename("newsletter", file.originalname));
   },
 });
 
 const newsletterUpload = multer({
   storage: newsletterStorage,
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  limits: { fileSize: 25 * 1024 * 1024, fieldSize: 50 * 1024 * 1024 }, // 25MB file, 50MB field
 });
 
 /* ============================================

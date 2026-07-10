@@ -137,8 +137,33 @@ export class MfRepository {
         return existing;
       }
     }
-    
-    return await MFBenchmarkReturn.findOneAndUpdate(matchQuery, { $set: data }, { upsert: true, new: true, setDefaultsOnInsert: true, session });
+
+    const existing = await MFBenchmarkReturn.findOne(matchQuery).session(session).lean();
+    if (existing) {
+      return await MFBenchmarkReturn.findByIdAndUpdate(
+        existing._id,
+        {
+          $set: {
+            ...data,
+            is_deleted: false,
+            deleted_at: null,
+          },
+        },
+        { new: true, runValidators: true, session },
+      );
+    }
+
+    return await MFBenchmarkReturn.findOneAndUpdate(
+      { ...matchQuery, is_deleted: false },
+      {
+        $set: {
+          ...data,
+          is_deleted: false,
+          deleted_at: null,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true, session },
+    );
   }
 
   static async upsertNfo(matchQuery: any, data: any, session?: mongoose.ClientSession) {

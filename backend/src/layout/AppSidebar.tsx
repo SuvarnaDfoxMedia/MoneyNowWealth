@@ -245,6 +245,18 @@ const AppSidebar: React.FC = () => {
             roles: ["admin"],
             enquiryModule: "financial-wellness-enquiries",
           },
+          {
+            name: "Start Investing",
+            path: `/${role}/start-investing-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "start-investing-enquiries",
+          },
+          {
+            name: "Portfolio Review",
+            path: `/${role}/portfolio-review-enquiry`,
+            roles: ["admin"],
+            enquiryModule: "portfolio-review-enquiries",
+          },
         ],
       },
       {

@@ -17,6 +17,8 @@ export const syncLeadToGetResponse = async (payload: {
     | "one_crore_journey"
     | "who_we_work_with"
     | "financial_assessment"
+    | "start_investing"
+    | "portfolio_review"
     | "register";
 }) => {
   return marketingService.addContactToCampaign(payload);

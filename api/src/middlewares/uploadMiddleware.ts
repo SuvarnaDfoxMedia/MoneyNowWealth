@@ -11,6 +11,14 @@ const ensureDir = (dir: string) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
+export const generateSafeFilename = (prefix: string, originalName: string): string => {
+  const ext = path.extname(originalName).toLowerCase();
+  const nameWithoutExt = path.basename(originalName, ext);
+  const sanitizedName = nameWithoutExt.replace(/[^a-z0-9]/gi, '-').replace(/-+/g, '-').toLowerCase();
+  const randomSuffix = Math.round(Math.random() * 1e9);
+  return `${prefix}-${sanitizedName}-${Date.now()}-${randomSuffix}${ext}`;
+};
+
 /* --------------------------------------------------------
    File Filter (Only Images Allowed)
 --------------------------------------------------------- */
@@ -100,15 +108,16 @@ ensureDir(clusterDir);
 const clusterStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, clusterDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
-    const safeName = `${randomUUID()}${ext}`;
-    cb(null, safeName);
+    cb(null, generateSafeFilename('cluster-thumb', file.originalname));
   },
 });
 
 export const uploadClusterThumbnail = multer({
   storage: clusterStorage,
   fileFilter: imageFileFilter,
+  limits: {
+    fieldSize: 50 * 1024 * 1024,
+  },
 }).single("thumbnail");
 
 /* --------------------------------------------------------
@@ -120,15 +129,16 @@ ensureDir(heroDir);
 const heroStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, heroDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
-    const safeName = `${randomUUID()}${ext}`;
-    cb(null, safeName);
+    cb(null, generateSafeFilename('hero', file.originalname));
   },
 });
 
 export const uploadHeroImage = multer({
   storage: heroStorage,
   fileFilter: imageFileFilter,
+  limits: {
+    fieldSize: 50 * 1024 * 1024,
+  },
 }).single("hero_image");
 
 /* --------------------------------------------------------
@@ -140,15 +150,16 @@ ensureDir(sectionDir);
 const sectionStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, sectionDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
-    const safeName = `${randomUUID()}${ext}`;
-    cb(null, safeName);
+    cb(null, generateSafeFilename('section', file.originalname));
   },
 });
 
 export const uploadSectionImage = multer({
   storage: sectionStorage,
   fileFilter: imageFileFilter,
+  limits: {
+    fieldSize: 50 * 1024 * 1024,
+  },
 }).single("section_image");
 
 /* --------------------------------------------------------
@@ -160,15 +171,16 @@ ensureDir(articleDir);
 const articleStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, articleDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
-    const safeName = `${randomUUID()}${ext}`;
-    cb(null, safeName);
+    cb(null, generateSafeFilename('article-body', file.originalname));
   },
 });
 
 export const uploadArticleImage = multer({
   storage: articleStorage,
   fileFilter: imageFileFilter,
+  limits: {
+    fieldSize: 50 * 1024 * 1024,
+  },
 }).single("image");
 
 /* --------------------------------------------------------
@@ -180,9 +192,7 @@ ensureDir(mfImportDir);
 const mfImportStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mfImportDir),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, "");
-    const safeName = `${randomUUID()}${ext}`;
-    cb(null, safeName);
+    cb(null, generateSafeFilename('mf-data', file.originalname));
   },
 });
 
@@ -191,6 +201,7 @@ export const uploadMfExcel = multer({
   fileFilter: excelFileFilter,
   limits: {
     fileSize: 20 * 1024 * 1024,
+    fieldSize: 50 * 1024 * 1024,
   },
 }).single("file");
 
@@ -199,6 +210,7 @@ export const uploadNavDataFile = multer({
   fileFilter: navFileFilter,
   limits: {
     fileSize: 20 * 1024 * 1024,
+    fieldSize: 50 * 1024 * 1024,
   },
 }).single("file");
 
@@ -207,5 +219,6 @@ export const uploadMfApiDataFile = multer({
   fileFilter: mfApiFileFilter,
   limits: {
     fileSize: 20 * 1024 * 1024,
+    fieldSize: 50 * 1024 * 1024,
   },
 }).single("file");

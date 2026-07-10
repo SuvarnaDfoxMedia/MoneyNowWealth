@@ -3,6 +3,8 @@ import DOMPurify from "dompurify";
 import JoditEditor from "jodit-react";
 import { Jodit } from "jodit";
 import type { IJodit } from "jodit/esm/types/jodit";
+import { useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import {
   hasLooseBulletLines,
   normalizeRichTextHtml,
@@ -26,6 +28,13 @@ export const RichTextField: React.FC<RichTextFieldProps> = ({
   const isPastedRef = useRef(false);
   const [initialValue] = useState(value ?? "");
 
+  const { role } = useParams<{ role?: string }>();
+  const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.trim() || "/api";
+  
+  const uploadUrl = role 
+    ? `${API_BASE}/${role}/article/upload-section-image` 
+    : `${API_BASE}/upload-article`;
+
   const config = useMemo(
     () => ({
       readonly: readOnly,
@@ -40,7 +49,26 @@ export const RichTextField: React.FC<RichTextFieldProps> = ({
       askBeforePasteHTML: false,
       askBeforePasteFromWord: false,
       uploader: {
-        insertImageAsBase64URI: true,
+        url: uploadUrl,
+        format: "json",
+        method: "POST",
+        withCredentials: true,
+        filesVariableName: () => "image",
+        isSuccess: (resp: any) => resp.success,
+        process: (resp: any) => {
+          const fullUrl = (resp.url as string) || "";
+          const filename = resp.filename || fullUrl.split('/').pop() || "";
+          const baseurl = filename ? fullUrl.slice(0, fullUrl.lastIndexOf(filename)) : "";
+          
+          return {
+            files: filename ? [filename] : [],
+            isImages: [true],
+            path: fullUrl,
+            baseurl: baseurl,
+            error: resp.success ? 0 : 1,
+            msg: resp.message || "",
+          };
+        },
       },
       controls: {
         font: {
@@ -64,7 +92,7 @@ export const RichTextField: React.FC<RichTextFieldProps> = ({
         li: "margin: 0.35em 0;",
       },
     }),
-    [height, readOnly],
+    [height, readOnly, uploadUrl],
   );
 
   const cleanHtml = useCallback((html: string) => {

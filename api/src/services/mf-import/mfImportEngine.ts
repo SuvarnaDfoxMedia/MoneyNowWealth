@@ -7,6 +7,7 @@ import { MfTransactionService } from "./mfTransactionService";
 import { MfImportSummary } from "./mfImportSummary";
 import { MfAliasResolver } from "./MfAliasResolver";
 import { recomputeCategoryAverageReturns, recomputeAllCategoryAverageReturns } from "../mfCategoryService";
+import { createTopHolding } from "../mfTopHoldingService";
 
 const normalizeLookupKey = (value: unknown) =>
   String(value ?? "")
@@ -168,20 +169,64 @@ export class MfImportEngine {
 
     // 9. Top Holdings (Bulk)
     if (dto.topHoldings.length > 0) {
-      for (const h of dto.topHoldings) {
-        const fund = await MfAliasResolver.resolveFund(h);
-        if (fund) h.fund_id = fund._id;
+      // Group flat rows into full snapshot payloads by scheme_code + portfolio_date
+      const groupedHoldings = new Map<string, any>();
+      for (const row of dto.topHoldings) {
+        // Fallback to 0 if portfolio_date is missing, but it should be present
+        const dateKey = row.portfolio_date ? new Date(row.portfolio_date).getTime() : 0;
+        const key = `${row.scheme_code}_${dateKey}`;
+        
+        if (!groupedHoldings.has(key)) {
+          groupedHoldings.set(key, {
+            scheme_code: row.scheme_code,
+            fund_name: row.fundName || row.fund_name,
+            source_standard_name: row.source_standard_name,
+            source_isin: row.source_isin,
+            portfolio_date: row.portfolio_date,
+            prev_portfolio_date: row.prev_portfolio_date,
+            stock_holdings: row.stock_holdings,
+            bond_holdings: row.bond_holdings,
+            assets_top_10_holdings_pct: row.assets_top_10_holdings_pct,
+            turnover_pct: row.turnover_pct,
+            is_active: row.is_active !== undefined ? row.is_active : 1,
+            holdings: []
+          });
+        }
+        
+        if (row.holding_name) {
+          groupedHoldings.get(key).holdings.push({
+            name: row.holding_name,
+            net_assets_pct: row.net_assets_pct,
+            market_value: row.market_value,
+            share_amount: row.share_amount,
+            share_change: row.share_change,
+            security_type: row.security_type,
+            sector: row.sector,
+            maturity: row.maturity,
+            credit_quality_india: row.credit_quality_india,
+            country: row.country
+          });
+        }
       }
-      const validHoldings = dto.topHoldings.filter(h => h.fund_id);
-      if (validHoldings.length > 0) {
-        await MfRepository.bulkWriteTopHoldings(validHoldings.map(h => ({
-          updateOne: {
-            filter: { fund_id: h.fund_id, snapshot_hash: h.snapshot_hash },
-            update: { $set: h },
-            upsert: true
+
+      const groupedArray = Array.from(groupedHoldings.values());
+      for (const payload of groupedArray) {
+        try {
+          const fund = await MfAliasResolver.resolveFund({ scheme_code: payload.scheme_code, fund_name: payload.fund_name });
+          if (fund) {
+            payload.fund_id = fund._id.toString();
           }
-        })));
-        this.summary.incrementTotal("Top Holdings", validHoldings.length);
+
+          const result = await createTopHolding(payload);
+          this.summary.incrementTotal("Top Holdings");
+          if ((result as any)?.noChanges) {
+             this.summary.incrementUpdated("Top Holdings");
+          } else {
+             this.summary.incrementInserted("Top Holdings");
+          }
+        } catch (error: any) {
+           this.summary.addError("Top Holdings", -1, `Failed to import scheme ${payload.scheme_code || payload.fund_name}: ${error.message}`);
+        }
       }
     }
 

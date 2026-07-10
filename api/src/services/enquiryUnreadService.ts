@@ -4,6 +4,8 @@ import { PartnerEnquiry } from "../models/partnerEnquiryModel";
 import { OneCroreJourneyEnquiry } from "../models/oneCroreJourneyEnquiryModel";
 import { WhoWeWorkWithEnquiry } from "../models/whoWeWorkWithEnquiryModel";
 import FinancialAssessment from "../models/financialAssessmentModel";
+import { StartInvestingEnquiry } from "../models/startInvestingEnquiryModel";
+import { PortfolioReviewEnquiry } from "../models/portfolioReviewEnquiryModel";
 
 export const ENQUIRY_MODULES = [
   "contact-enquiries",
@@ -11,6 +13,8 @@ export const ENQUIRY_MODULES = [
   "one-crore-journey-enquiries",
   "who-we-work-with-enquiries",
   "financial-wellness-enquiries",
+  "start-investing-enquiries",
+  "portfolio-review-enquiries",
 ] as const;
 
 export type EnquiryModule = (typeof ENQUIRY_MODULES)[number];
@@ -29,6 +33,8 @@ const enquiryModels: Record<EnquiryModule, EnquiryModel> = {
   "one-crore-journey-enquiries": OneCroreJourneyEnquiry,
   "who-we-work-with-enquiries": WhoWeWorkWithEnquiry,
   "financial-wellness-enquiries": FinancialAssessment,
+  "start-investing-enquiries": StartInvestingEnquiry,
+  "portfolio-review-enquiries": PortfolioReviewEnquiry,
 };
 
 const getUnreadFilter = (
@@ -98,6 +104,8 @@ const getUnreadCountsForUser = async (userId: string) => {
       "one-crore-journey-enquiries": 0,
       "who-we-work-with-enquiries": 0,
       "financial-wellness-enquiries": 0,
+      "start-investing-enquiries": 0,
+      "portfolio-review-enquiries": 0,
     },
   );
 

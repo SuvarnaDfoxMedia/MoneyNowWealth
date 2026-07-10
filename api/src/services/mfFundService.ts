@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import MFFund, { IMFFund } from "../models/mfFundModel";
+import MFTopHolding from "../models/mfTopHoldingModel";
 import MFAmc from "../models/mfAmcModel";
 import MFCategory from "../models/mfCategoryModel";
 import MfApiNavHistory from "../models/mfApiNavHistoryModel";
@@ -294,6 +295,13 @@ export const getFundById = async (id: string) => {
     })
     .lean();
   if (!doc) throw new Error("Fund not found");
+    
+  // Fetch latest top holdings for this fund and attach to response
+  const topHolding = await MFTopHolding.findOne({ fund_id: doc._id, is_latest: true, is_deleted: false }).lean();
+  if (topHolding) {
+    (doc as any).top_holdings = topHolding;
+  }
+
   return doc;
 };
 

@@ -16,6 +16,7 @@ import { roleFromUrl } from "../middlewares/roleUrlMiddleware";
 import {
   uploadHeroImage,
   uploadArticleImage,
+  getPublicUrl,
 } from "../middlewares/uploadMiddleware";
 import { optionalUserProtect } from "../middlewares/authMiddleware";
 
@@ -87,16 +88,14 @@ router.post(
         .json({ success: false, message: "No image uploaded." });
     }
 
-    const file = req.file as unknown as {
-      pathUrl?: string;
-      relativePath?: string;
-    };
-
-    return res.status(200).json({
-      success: true,
-      url: file.pathUrl || "",
-      relativePath: file.relativePath || "",
-    });
+      const filename = req.file.filename;
+      const url = getPublicUrl(req, filename, "article");
+  
+      return res.status(200).json({
+        success: true,
+        url,
+        relativePath: `/uploads/article/${filename}`,
+      });
   },
 );
 

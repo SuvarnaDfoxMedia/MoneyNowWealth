@@ -128,6 +128,24 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
   const schemeIdentity = buildTopHoldingSchemeIdentity(schemeCode, sourceIsin);
   if (!schemeIdentity) throw new Error("scheme_code is required for top holdings identity");
 
+  let domestic_equity_pct = 0, international_equity_pct = 0, debt_pct = 0, other_pct = 0, gold_pct = 0, cash_pct = 0;
+  for (const h of holdings || []) {
+    const type = String(h.security_type || "").toLowerCase();
+    const pct = Number(h.net_assets_pct) || 0;
+    if (type.includes("equity") || type.includes("stock")) {
+      if (type.includes("foreign") || type.includes("international")) international_equity_pct += pct;
+      else domestic_equity_pct += pct;
+    } else if (type.includes("debt") || type.includes("bond") || type.includes("debenture") || type.includes("commercial paper")) {
+      debt_pct += pct;
+    } else if (type.includes("cash") || type.includes("repo") || type.includes("treps") || type.includes("net current assets") || type.includes("margin")) {
+      cash_pct += pct;
+    } else if (type.includes("gold")) {
+      gold_pct += pct;
+    } else {
+      other_pct += pct;
+    }
+  }
+
   const nextData = {
     ...fundRef,
     scheme_code: schemeCode,
@@ -138,9 +156,17 @@ export const normalizeTopHoldingImportPayload = async (payload: any) => {
     prev_portfolio_date: toDateOrNull(payload?.prev_portfolio_date),
     stock_holdings: holdings.length > 0 ? stockHoldingsCount : toNumberOrNull(payload?.stock_holdings),
     bond_holdings: holdings.length > 0 ? bondHoldingsCount : toNumberOrNull(payload?.bond_holdings),
+    asset_allocation: {
+      domestic_equity_pct: domestic_equity_pct || null,
+      international_equity_pct: international_equity_pct || null,
+      debt_pct: debt_pct || null,
+      other_pct: other_pct || null,
+      gold_pct: gold_pct || null,
+      cash_pct: cash_pct || null,
+    },
     assets_top_10_holdings_pct: toNumberOrNull(payload?.assets_top_10_holdings_pct),
     turnover_pct: toNumberOrNull(payload?.turnover_pct),
-    top_holdings_summary: normalizeHoldingsSummary(payload?.top_holdings_summary),
+    top_holdings_summary: normalizeHoldingsSummary(payload?.top_holdings_summary).length > 0 ? normalizeHoldingsSummary(payload?.top_holdings_summary) : holdings.slice(0, 5).map((h: any) => h.name),
     security_type_counts: securityTypeCounts,
     holdings,
     holdings_count: holdings.length,
@@ -423,3 +449,4 @@ export const toggleTopHoldingSchemeStatus = async (schemeId: string) => {
     is_active: nextStatus,
   };
 };
+

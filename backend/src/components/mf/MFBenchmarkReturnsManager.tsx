@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { axiosApi } from "../../api/axios";
 import { DataTable, TableColumn } from "../PagesComponent/DataTable";
 import { useDataTableStore } from "../../store/dataTableStore";
@@ -10,9 +10,11 @@ type BenchmarkOption = {
   category?: string;
   category_id?: string;
   main_category_id?: string;
+  type?: string;
 };
 type ReturnRow = {
   _id: string;
+  benchmark_id?: string | { _id?: string };
   benchmark_name?: string;
   date: string;
   category_name?: string;
@@ -34,9 +36,13 @@ type ReturnRow = {
 
 export default function MFBenchmarkReturnsManager() {
   const { role = "admin" } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const MODULE_KEY = `${role}-benchmark-returns`;
   const [benchmarks, setBenchmarks] = useState<BenchmarkOption[]>([]);
   const [selectedBenchmark, setSelectedBenchmark] = useState("");
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState("current");
   const [rows, setRows] = useState<ReturnRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -85,6 +91,20 @@ export default function MFBenchmarkReturnsManager() {
   }, [markTabSwitch]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const benchmarkId = params.get("benchmarkId") || "";
+    const searchParam = params.get("search") || "";
+    const viewParam = params.get("view") || params.get("mode") || "current";
+    if (benchmarkId) {
+      setSelectedBenchmark(benchmarkId);
+    }
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+    setViewMode(viewParam.toLowerCase() === "history" ? "history" : "current");
+  }, [location.search]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoadingFilters(true);
@@ -108,6 +128,8 @@ export default function MFBenchmarkReturnsManager() {
           `/${role}/mf/benchmark/returns`,
           {
             benchmark_id: selectedBenchmark || undefined,
+            search: search || undefined,
+            view: viewMode,
             page,
             limit: recordsPerPage,
           },
@@ -128,6 +150,8 @@ export default function MFBenchmarkReturnsManager() {
     role,
     isMounted,
     selectedBenchmark,
+    search,
+    viewMode,
     page,
     recordsPerPage,
   ]);
@@ -135,6 +159,13 @@ export default function MFBenchmarkReturnsManager() {
   useEffect(() => {
     setPage(1);
   }, [selectedBenchmark, recordsPerPage, setPage]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, setPage]);
+
+  const selectedBenchmarkName =
+    benchmarks.find((item) => item._id === selectedBenchmark)?.name || "";
 
   const annualYears = React.useMemo(() => [
     "2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017"
@@ -145,9 +176,24 @@ export default function MFBenchmarkReturnsManager() {
       {
         key: "benchmark_name",
         label: "Benchmark",
-        render: (row) => (
-          <span className="inline-block min-w-[420px]">{row.benchmark_name || "-"}</span>
-        ),
+        render: (row) => {
+          const benchmarkId =
+            typeof row.benchmark_id === "string"
+              ? row.benchmark_id
+              : row.benchmark_id?._id || "";
+          return (
+            <button
+              type="button"
+              onClick={() =>
+                benchmarkId &&
+                navigate(`/${role}/benchmark/returns?benchmarkId=${benchmarkId}&view=history`)
+              }
+              className="inline-block min-w-[420px] text-left font-medium text-blue-700 hover:underline"
+            >
+              {row.benchmark_name || "-"}
+            </button>
+          );
+        },
       },
       {
         key: "date",
@@ -184,12 +230,19 @@ export default function MFBenchmarkReturnsManager() {
     <div className="p-4 bg-gray-50 min-h-screen">
       <div className="mb-5 rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm">
         <h1 className="text-xl font-semibold text-gray-800">
-          Benchmark Returns
+          {viewMode === "history"
+            ? `Benchmark History${selectedBenchmarkName ? ` - ${selectedBenchmarkName}` : ""}`
+            : "Benchmark Returns"}
         </h1>
+        {viewMode === "history" && (
+          <p className="mt-1 text-sm text-gray-500">
+            Showing the return history for the selected benchmark.
+          </p>
+        )}
       </div>
 
       <div className="mb-6 rounded-lg bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Benchmark
@@ -207,6 +260,34 @@ export default function MFBenchmarkReturnsManager() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Search
+            </label>
+            <input
+              className="h-11 w-full rounded-md border border-gray-300 px-3"
+              placeholder={viewMode === "history" ? "Search this history" : "Search benchmark name, category or type"}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div className="flex items-end">
+            {viewMode === "history" ? (
+              <button
+                type="button"
+                className="h-11 w-full rounded-md border border-gray-300 px-3 font-medium text-gray-700"
+                onClick={() => {
+                  navigate(`/${role}/benchmark/returns`);
+                }}
+              >
+                Back to Current
+              </button>
+            ) : (
+              <div className="text-sm text-gray-500">
+                Click any benchmark name to open its history.
+              </div>
+            )}
           </div>
         </div>
       </div>

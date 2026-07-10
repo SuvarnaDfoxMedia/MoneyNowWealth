@@ -50,6 +50,8 @@ import financialAssessmentRoutes from "./routes/financialAssessmentRoutes";
 import partnerEnquiryRoutes from "./routes/partnerEnquiryRoutes";
 import oneCroreJourneyEnquiryRoutes from "./routes/oneCroreJourneyEnquiryRoutes";
 import whoWeWorkWithEnquiryRoutes from "./routes/whoWeWorkWithEnquiryRoutes";
+import startInvestingEnquiryRoutes from "./routes/startInvestingEnquiryRoutes.js";
+import portfolioReviewEnquiryRoutes from "./routes/portfolioReviewEnquiryRoutes.js";
 import enquiryUnreadRoutes from "./routes/enquiryUnreadRoutes";
 import seoRoutes from "./routes/seoRoutes";
 import navRoutes from "./routes/navRoutes";
@@ -140,7 +142,9 @@ app.use((req, res, next) => {
     path === "/api/contact-enquiries" ||
     path === "/api/partner-enquiries" ||
     path === "/api/one-crore-journey-enquiries" ||
-    path === "/api/who-we-work-with-enquiries";
+    path === "/api/who-we-work-with-enquiries" ||
+    path === "/api/start-investing-enquiries" ||
+    path === "/api/portfolio-review-enquiries";
 
   if (!shouldRateLimit) {
     return next();
@@ -216,6 +220,8 @@ app.use("/api", financialAssessmentRoutes);
 app.use("/api", partnerEnquiryRoutes);
 app.use("/api", oneCroreJourneyEnquiryRoutes);
 app.use("/api", whoWeWorkWithEnquiryRoutes);
+app.use("/api", startInvestingEnquiryRoutes);
+app.use("/api", portfolioReviewEnquiryRoutes);
 app.use("/api", enquiryUnreadRoutes);
 app.use("/api", seoRoutes);
 app.use("/api", navRoutes);

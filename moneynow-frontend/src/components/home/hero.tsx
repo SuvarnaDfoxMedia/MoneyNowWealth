@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 
 export default function HeroBanner() {
   return (
@@ -62,7 +63,8 @@ export default function HeroBanner() {
 
           {/* Buttons */}
           <div className="mt-6 lg:mt-10 flex flex-wrap gap-4">
-            <button
+            <Link
+              href="/start-investing"
               className="
               group flex items-center gap-3
               bg-[#04407B] hover:bg-[#032F5A]
@@ -77,10 +79,11 @@ export default function HeroBanner() {
               <span className="bg-white p-1 rounded-sm text-[#04407B]">
                 <ArrowUpRight size={18} />
               </span>
-            </button>
+            </Link>
 
 
-                        <button
+            <Link
+              href="/review-your-portfolio"
               className="
               group flex items-center gap-3
               bg-[#04407B] hover:bg-[#032F5A]
@@ -95,7 +98,7 @@ export default function HeroBanner() {
               <span className="bg-white p-1 rounded-sm text-[#04407B]">
                 <ArrowUpRight size={18} />
               </span>
-            </button>
+            </Link>
 
 
             {/* <button
@@ -115,7 +118,8 @@ export default function HeroBanner() {
               </span>
             </button> */}
 
-            <button
+            <Link
+              href="/contact-us"
               className="
               group flex items-center gap-3
               bg-[#04407B] hover:bg-[#032F5A]
@@ -130,7 +134,7 @@ export default function HeroBanner() {
               <span className="bg-white p-1 rounded-sm text-[#04407B]">
                 <ArrowUpRight size={18} />
               </span>
-            </button>
+            </Link>
           </div>
         </div>
 

@@ -39,6 +39,8 @@ const normalizeYearlyReturns = (input: any) => {
 
 import { normalizeReturnsObject } from "../utils/returnMapper";
 
+// ─── Benchmark Master CRUD ────────────────────────────────────────────────────
+
 export const getBenchmarks = async (query: any) => {
   const { page, limit, skip } = parsePagination(query);
   const filter: any = { is_deleted: false };
@@ -152,6 +154,8 @@ export const deleteBenchmark = async (id: string) => {
   return doc;
 };
 
+// ─── Benchmark Returns CRUD ───────────────────────────────────────────────────
+
 export const createBenchmarkReturn = async (payload: any) => {
   if (!payload.benchmark_id) throw new Error("benchmark_id is required");
   const date = normalizeDateValue(toDateOrNull(payload.date));
@@ -163,11 +167,13 @@ export const createBenchmarkReturn = async (payload: any) => {
   const { trailing, annual } = normalizeReturnsObject(payload);
 
   const doc = await MFBenchmarkReturn.findOneAndUpdate(
-    { benchmark_id: payload.benchmark_id, date, is_deleted: false },
+    { benchmark_id: benchmark._id, date },
     {
       $set: {
         trailing,
         annual,
+        is_deleted: false,
+        deleted_at: null,
       },
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
@@ -260,13 +266,23 @@ export const getBenchmarkReturns = async (benchmarkId: string, query: any = {}) 
   };
 };
 
+// ─── getBenchmarkReturnsList (used by admin list/export) ──────────────────────
+
 export const getBenchmarkReturnsList = async (query: any = {}) => {
   const selectedBenchmarkId = isObjectId(query?.benchmarkId)
     ? String(query.benchmarkId)
     : "";
+  const search = String(query?.search || "").trim();
   const benchmarkFilter: any = { is_deleted: false };
   if (selectedBenchmarkId) {
     benchmarkFilter._id = new mongoose.Types.ObjectId(selectedBenchmarkId);
+  }
+  if (search) {
+    benchmarkFilter.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { category: { $regex: search, $options: "i" } },
+      { type: { $regex: search, $options: "i" } },
+    ];
   }
 
   const benchmarks = await MFBenchmark.find(benchmarkFilter)
@@ -295,6 +311,27 @@ export const getBenchmarkReturnsList = async (query: any = {}) => {
       $in: benchmarkOptions.map((item) => new mongoose.Types.ObjectId(item._id)),
     };
   }
+  if (search && !selectedBenchmarkId) {
+    const matchingIds = benchmarkOptions
+      .filter((item) =>
+        [item.name, item.category, item.type].some((value) =>
+          String(value || "").toLowerCase().includes(search.toLowerCase()),
+        ),
+      )
+      .map((item) => new mongoose.Types.ObjectId(item._id));
+
+    if (matchingIds.length === 0) {
+      return {
+        rows: [],
+        mainCategories: [],
+        categories: [],
+        funds: [],
+        benchmarks: benchmarkOptions,
+      };
+    }
+
+    returnsFilter.benchmark_id = { $in: matchingIds };
+  }
 
   const returnRows = await MFBenchmarkReturn.find(returnsFilter)
     .populate("benchmark_id", "name category category_id")
@@ -318,6 +355,8 @@ export const getBenchmarkReturnsList = async (query: any = {}) => {
     benchmarks: benchmarkOptions,
   };
 };
+
+// ─── Hierarchy helpers ────────────────────────────────────────────────────────
 
 const parseHierarchy = (query: any = {}) => ({
   mainCategoryId: isObjectId(query?.main_category_id || query?.mainCategoryId)
@@ -347,6 +386,7 @@ export const getBenchmarkFilters = async (query: any = {}) => {
     .populate("main_category_id", "name")
     .sort({ name: 1 })
     .lean();
+
   const benchmarkOptions = benchmarks.map((item: any) => ({
     _id: String(item._id),
     name: item.name || "",
@@ -359,35 +399,135 @@ export const getBenchmarkFilters = async (query: any = {}) => {
   return { mainCategories: [], categories: [], funds: [], benchmarks: benchmarkOptions };
 };
 
+// ─── getBenchmarkReturnsByFilters (paginated returns list page) ───────────────
+//
+// FIX: Previously this function counted return ROWS after deduplication, so
+// benchmarks with zero return entries were excluded and the total was 204
+// instead of 208. Now we use MFBenchmark as the pagination source of truth
+// (matching the master list) and left-join the latest return row per benchmark.
+// Benchmarks with no returns appear with null trailing/annual fields.
+
 export const getBenchmarkReturnsByFilters = async (query: any = {}) => {
   const { benchmarkId } = parseHierarchy(query);
   const { page, limit, skip } = parsePagination(query);
-  const returnsFilter: any = { is_deleted: false };
+  const search = String(query?.search || "").trim();
+  const viewMode = String(query?.view || query?.mode || "").trim().toLowerCase();
+  const historyView = viewMode === "history" || String(query?.history || "").trim() === "1";
+
+  // Build the benchmark filter (source of truth for pagination)
+  const benchmarkFilter: any = { is_deleted: false };
   if (benchmarkId) {
-    returnsFilter.benchmark_id = new mongoose.Types.ObjectId(benchmarkId);
+    benchmarkFilter._id = new mongoose.Types.ObjectId(benchmarkId);
+  }
+  if (search) {
+    benchmarkFilter.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { category: { $regex: search, $options: "i" } },
+      { type: { $regex: search, $options: "i" } },
+    ];
   }
 
-  const [returnRows, total] = await Promise.all([
-    MFBenchmarkReturn.find(returnsFilter)
-      .populate("benchmark_id", "name category category_id")
-      .sort({ date: -1, updated_at: -1 })
+  // History view: paginate return rows directly (each row = one date entry)
+  if (historyView) {
+    const returnsFilter: any = { is_deleted: false };
+    if (benchmarkId) {
+      returnsFilter.benchmark_id = new mongoose.Types.ObjectId(benchmarkId);
+    } else if (search) {
+      const matchingBenchmarks = await MFBenchmark.find(benchmarkFilter).select("_id").lean();
+      const matchingIds = matchingBenchmarks.map((b) => new mongoose.Types.ObjectId(String(b._id)));
+      if (matchingIds.length === 0) {
+        return { data: [], total: 0, currentPage: page, totalPages: 1, limit };
+      }
+      returnsFilter.benchmark_id = { $in: matchingIds };
+    }
+
+    const [returnRows, total] = await Promise.all([
+      MFBenchmarkReturn.find(returnsFilter)
+        .populate("benchmark_id", "name category category_id")
+        .sort({ date: -1, updated_at: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      MFBenchmarkReturn.countDocuments(returnsFilter),
+    ]);
+
+    const rows = (returnRows as any[]).map((row) => ({
+      ...row,
+      benchmark_name: String((row?.benchmark_id as any)?.name || ""),
+    }));
+
+    return { data: rows, total, currentPage: page, totalPages: Math.ceil(total / limit), limit };
+  }
+
+  // Default (latest-per-benchmark) view:
+  // Use MFBenchmark as source of truth so total = 208 (matches master list).
+  const [allBenchmarks, total] = await Promise.all([
+    MFBenchmark.find(benchmarkFilter)
+      .select("_id name category category_id main_category_id type")
+      .populate("category_id", "name")
+      .sort({ name: 1 })
       .skip(skip)
       .limit(limit)
       .lean(),
-    MFBenchmarkReturn.countDocuments(returnsFilter),
+    MFBenchmark.countDocuments(benchmarkFilter),
   ]);
 
-  const rows = returnRows.map((row: any) => {
-    const benchmarkDoc = row?.benchmark_id || {};
+  if (allBenchmarks.length === 0) {
+    return { data: [], total, currentPage: page, totalPages: Math.ceil(total / limit), limit };
+  }
+
+  // Fetch the latest return row for each benchmark on this page
+  const pageIds = (allBenchmarks as any[]).map((b) => b._id);
+  const latestReturns = await MFBenchmarkReturn.find({
+    benchmark_id: { $in: pageIds },
+    is_deleted: false,
+  })
+    .populate("benchmark_id", "name category category_id")
+    .sort({ date: -1, updated_at: -1 })
+    .lean();
+
+  // Build lookup: benchmarkId → latest return row
+  const latestReturnsMap = new Map<string, any>();
+  for (const row of latestReturns as any[]) {
+    const bId = String(row.benchmark_id?._id || row.benchmark_id || "");
+    if (!latestReturnsMap.has(bId)) {
+      latestReturnsMap.set(bId, row);
+    }
+  }
+
+  // Left-join: every benchmark gets a row; missing returns → null fields
+  const rows = (allBenchmarks as any[]).map((bm) => {
+    const bmId = String(bm._id);
+    const ret = latestReturnsMap.get(bmId);
+    if (ret) {
+      return {
+        ...ret,
+        benchmark_name: String(ret?.benchmark_id?.name || bm.name || ""),
+      };
+    }
+    // Benchmark exists but has no return data uploaded yet
     return {
-      ...row,
-      benchmark_name: String(benchmarkDoc?.name || ""),
+      _id: null,
+      benchmark_id: {
+        _id: bm._id,
+        name: bm.name || "",
+        category: (bm as any)?.category_id?.name || bm.category || "",
+        category_id: (bm as any)?.category_id?._id || bm.category_id || null,
+      },
+      benchmark_name: bm.name || "",
+      date: null,
+      trailing: null,
+      annual: null,
+      is_deleted: false,
+      deleted_at: null,
+      created_at: null,
+      updated_at: null,
     };
   });
 
   return {
     data: rows,
-    total,
+    total,  // now = MFBenchmark.countDocuments → matches master list (208)
     currentPage: page,
     totalPages: Math.ceil(total / limit),
     limit,

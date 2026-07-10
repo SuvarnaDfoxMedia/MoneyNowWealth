@@ -37,6 +37,7 @@ const mfApiSyncLogSchema = new Schema<IMfApiSyncLog>(
 );
 
 mfApiSyncLogSchema.index({ created_at: -1 });
+mfApiSyncLogSchema.index({ created_at: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 });
 mfApiSyncLogSchema.index({ action: 1, status: 1, created_at: -1 });
 
 const MfApiSyncLog: Model<IMfApiSyncLog> =

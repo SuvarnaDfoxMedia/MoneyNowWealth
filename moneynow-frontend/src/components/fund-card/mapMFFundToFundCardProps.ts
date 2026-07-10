@@ -118,12 +118,12 @@ export const mapMFFundToFundCardProps = (fund: any) => {
     largeCapPct: fund.large_cap_pct,
     midCapPct: fund.mid_cap_pct,
     smallCapPct: fund.small_cap_pct,
-    domesticEquityPct: fund.domestic_equity_pct,
-    internationalEquityPct: fund.international_equity_pct,
-    debtPct: fund.debt_pct,
-    cashPct: fund.cash_pct,
-    otherPct: fund.other_pct,
-    goldPct: fund.gold_pct,
+    domesticEquityPct: fund.domestic_equity_pct ?? fund.top_holdings?.asset_allocation?.domestic_equity_pct,
+    internationalEquityPct: fund.international_equity_pct ?? fund.top_holdings?.asset_allocation?.international_equity_pct,
+    debtPct: fund.debt_pct ?? fund.top_holdings?.asset_allocation?.debt_pct,
+    cashPct: fund.cash_pct ?? fund.top_holdings?.asset_allocation?.cash_pct,
+    otherPct: fund.other_pct ?? fund.top_holdings?.asset_allocation?.other_pct,
+    goldPct: fund.gold_pct ?? fund.top_holdings?.asset_allocation?.gold_pct,
 
     // Returns
     returns: fund.returns,

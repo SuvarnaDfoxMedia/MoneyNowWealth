@@ -145,7 +145,7 @@ function TopHoldingsAdmin({ role, id, scheme }: { role: string; id: string; sche
         const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
         const holdingsArr = rawRows
           .map((r) => ({
-            name:                 String(r.name || r.stock_name || r["Stock Name"] || "").trim(),
+            name:                 String(r.name || r.holding_name || r.stock_name || r["Stock Name"] || "").trim(),
             net_assets_pct:       parseFloat(r.net_assets_pct ?? r["% of Assets"] ?? r.pct ?? "") || null,
             market_value:         parseFloat(r.market_value ?? r["Market Value"] ?? "") || null,
             share_amount:         parseFloat(r.share_amount ?? r.shares ?? "") || null,
@@ -632,6 +632,7 @@ export default function MfApiSchemeDetailPage() {
             marketCapLargecapPct={rawData?.market_cap_largecap_percent ?? scheme?.market_cap?.large_cap_pct}
             marketCapMidcapPct={rawData?.market_cap_midcap_percent ?? scheme?.market_cap?.mid_cap_pct}
             marketCapSmallcapPct={rawData?.market_cap_smallcap_percent ?? scheme?.market_cap?.small_cap_pct}
+            assetAllocation={overviewHoldings?.asset_allocation ?? null}
           />
         </div>
       </div>
@@ -737,8 +738,3 @@ export default function MfApiSchemeDetailPage() {
     </div>
   );
 }
-
-
-
-
-

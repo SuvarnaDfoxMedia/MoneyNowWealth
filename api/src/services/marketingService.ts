@@ -14,6 +14,8 @@ interface GetResponseContactInput {
     | "one_crore_journey"
     | "who_we_work_with"
     | "financial_assessment"
+    | "start_investing"
+    | "portfolio_review"
     | "register";
 }
 
@@ -60,6 +62,8 @@ class MarketingService {
       one_crore_journey: "One Crore Journey",
       who_we_work_with: "Who We Work With",
       financial_assessment: "Financial Assessment",
+      start_investing: "Start Investing",
+      portfolio_review: "Portfolio Review",
       register: "Register User List",
     };
 

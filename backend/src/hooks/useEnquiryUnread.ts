@@ -8,7 +8,9 @@ export type EnquiryModule =
   | "partner-enquiries"
   | "one-crore-journey-enquiries"
   | "who-we-work-with-enquiries"
-  | "financial-wellness-enquiries";
+  | "financial-wellness-enquiries"
+  | "start-investing-enquiries"
+  | "portfolio-review-enquiries";
 
 export interface EnquiryUnreadCounts {
   total: number;
@@ -29,6 +31,8 @@ const ENQUIRY_MODULES: EnquiryModule[] = [
   "one-crore-journey-enquiries",
   "who-we-work-with-enquiries",
   "financial-wellness-enquiries",
+  "start-investing-enquiries",
+  "portfolio-review-enquiries",
 ];
 
 const ZERO_COUNTS: Record<EnquiryModule, number> = {
@@ -37,6 +41,8 @@ const ZERO_COUNTS: Record<EnquiryModule, number> = {
   "one-crore-journey-enquiries": 0,
   "who-we-work-with-enquiries": 0,
   "financial-wellness-enquiries": 0,
+  "start-investing-enquiries": 0,
+  "portfolio-review-enquiries": 0,
 };
 
 const ENQUIRY_UNREAD_QUERY_KEY = ["admin", "enquiries", "unread-count"];

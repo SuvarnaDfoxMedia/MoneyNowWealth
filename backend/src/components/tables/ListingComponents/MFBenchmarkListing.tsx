@@ -118,6 +118,10 @@ export default function MFBenchmarkListing() {
       label: "Actions",
       render: (row) => (
         <MFRowActions
+          onHistory={() => {
+            cacheModuleState(MODULE_KEY);
+            navigate(`/${role}/benchmark/returns?benchmarkId=${row._id}`);
+          }}
           onEdit={() => {
             markEditNavigation();
             cacheModuleState(MODULE_KEY);

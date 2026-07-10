@@ -85,7 +85,23 @@ const REQUIRED_HEADERS: Record<string, string[][]> = {
   ],
 };
 
-const REQUIRED_SHEETS = ["categories", "amcs", "funds-all"];
+// Required sheets for a FULL workbook import.
+// Single-entity imports only require the sheet for that entity.
+const FULL_WORKBOOK_REQUIRED_SHEETS = ["categories", "amcs", "funds-all"];
+
+// For each entity key, what sheet(s) are required in a single-entity import.
+const ENTITY_REQUIRED_SHEETS: Record<string, string[]> = {
+  "main-categories":   ["main-categories"],
+  "categories":        ["categories"],
+  "amcs":              ["amcs"],
+  "funds":             ["funds-all"],
+  "benchmarks":        ["benchmarks"],
+  "benchmark-returns": ["benchmark-returns"],
+  "nfo":               ["nfo"],
+  "index-snapshots":   ["index-snapshots"],
+  "top-holdings":      ["top-holdings"],
+  "full-workbook":     FULL_WORKBOOK_REQUIRED_SHEETS,
+};
 
 const normalizeHeader = (h: string) =>
   h.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -102,7 +118,10 @@ const getSheetHeaders = (worksheet: XLSX.WorkSheet): string[] => {
   return headers;
 };
 
-export const validateWorkbook = (filePath: string): ValidationReport => {
+export const validateWorkbook = (filePath: string, entity = "full-workbook"): ValidationReport => {
+  // Determine which sheets are required for this entity
+  const requiredSheetsForEntity: string[] =
+    ENTITY_REQUIRED_SHEETS[entity] ?? FULL_WORKBOOK_REQUIRED_SHEETS;
   const issues: ValidationIssue[] = [];
   const sheetsFound: string[] = [];
   const sheetsMissing: string[] = [];
@@ -129,7 +148,7 @@ export const validateWorkbook = (filePath: string): ValidationReport => {
 
     if (!matchedSheetName) {
       sheetsMissing.push(aliases[0]);
-      if (REQUIRED_SHEETS.includes(entityKey)) {
+      if (requiredSheetsForEntity.includes(entityKey)) {
         issues.push({
           sheet: aliases[0],
           row: null,
@@ -160,8 +179,9 @@ export const validateWorkbook = (filePath: string): ValidationReport => {
     }
 
     // Check for completely empty sheets (header row only, no data)
+    // Only raise EMPTY_SHEET for sheets that are actually required for this entity
     const rows = XLSXModule.utils.sheet_to_json(worksheet, { defval: "" });
-    if (rows.length === 0) {
+    if (rows.length === 0 && requiredSheetsForEntity.includes(entityKey)) {
       issues.push({
         sheet:   matchedSheetName,
         row:     null,

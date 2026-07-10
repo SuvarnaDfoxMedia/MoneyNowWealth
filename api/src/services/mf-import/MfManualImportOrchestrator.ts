@@ -32,7 +32,7 @@ export class MfManualImportOrchestrator {
 
     try {
       // 1. Workbook Structure Pre-flight Validation
-      const structureReport = validateWorkbook(filePath);
+      const structureReport = validateWorkbook(filePath, entity || "full-workbook");
       if (!structureReport.valid) {
         await MfLoggingService.updateImportLog(importLog._id, {
           status: "failed",
@@ -110,6 +110,17 @@ export class MfManualImportOrchestrator {
       }
 
       if (validateOnly) {
+        // Populate validation summary with the count of valid records that are ready to process
+        engine.summary.summary.mainCategories.inserted = dto.mainCategories.length;
+        engine.summary.summary.categories.inserted = dto.categories.length;
+        engine.summary.summary.amcs.inserted = dto.amcs.length;
+        engine.summary.summary.funds.inserted = dto.funds.length;
+        engine.summary.summary.benchmarks.inserted = dto.benchmarks.length;
+        engine.summary.summary.benchmarkReturns.inserted = dto.benchmarkReturns.length;
+        engine.summary.summary.nfos.inserted = dto.nfos.length;
+        engine.summary.summary.indexSnapshots.inserted = dto.indexSnapshots.length;
+        engine.summary.summary.topHoldings.inserted = new Set(dto.topHoldings.map(h => `${h.scheme_code}_${h.portfolio_date}`)).size;
+
         await MfLoggingService.updateImportLog(importLog._id, {
           status: "completed",
           completed_at: new Date(),

@@ -167,6 +167,34 @@ export const syncApiSchemeToManual = async (id: string, options: any = {}) => {
     }
 
     let dto = MfApiTransformer.transformScheme(schemeForTransform);
+
+    // Bridge Top Holdings
+    const latestTopHolding = await (await import("../../models/mfApiTopHoldingModel")).default.findOne({ 
+      mf_api_scheme_id: schemeForTransform._id || saved._id, 
+      is_latest: true, 
+      is_deleted: { $ne: true } 
+    }).lean();
+
+    if (latestTopHolding && latestTopHolding.holdings?.length > 0) {
+      const pDate = latestTopHolding.portfolio_date ? new Date(latestTopHolding.portfolio_date).toISOString().split("T")[0] : "";
+      (dto as any).topHoldings = latestTopHolding.holdings.map((h: any) => ({
+        scheme_code: schemeForTransform.scheme_code,
+        fund_name: schemeForTransform.scheme_name,
+        holding_name: h.name,
+        net_assets_pct: h.net_assets_pct,
+        market_value: h.market_value,
+        share_amount: h.share_amount,
+        share_change: h.share_change,
+        security_type: h.security_type,
+        sector: h.sector,
+        maturity: h.maturity,
+        credit_quality_india: h.credit_quality_india,
+        country: h.country,
+        portfolio_date: pDate,
+        is_active: 1
+      }));
+    }
+
     const engine = new MfImportEngine();
     dto = await MfApiSyncValidator.validate(dto as any, engine.summary);
     if (engine.summary.errors.length > 0) {
@@ -175,7 +203,6 @@ export const syncApiSchemeToManual = async (id: string, options: any = {}) => {
       return { action: "skipped", reason: errMsg };
     }
     const existing = await MFFund.findOne({ scheme_code: saved.scheme_code });
-    await engine.processWorkbook(dto as any);
 
     // Primary lookup: by scheme_code (restore soft-deleted bridges too)
     let fund = await MFFund.findOneAndUpdate(
@@ -746,6 +773,44 @@ const createSyncLog = async (payload: {
   });
 };
 
+const buildSyncFailureResponse = (details: {
+  failureStage: string;
+  failureStep?: string;
+  error?: unknown;
+  schemeName?: string;
+  schemeId?: string;
+  externalSchemeId?: string;
+  extra?: Record<string, unknown>;
+}) => ({
+  failureStage: details.failureStage,
+  failureStep: details.failureStep || details.failureStage,
+  error:
+    details.error instanceof Error
+      ? details.error.message
+      : String(details.error || "Unknown error"),
+  stack: details.error instanceof Error ? details.error.stack || "" : "",
+  schemeName: details.schemeName || "",
+  schemeId: details.schemeId || "",
+  externalSchemeId: details.externalSchemeId || "",
+  ...(details.extra || {}),
+});
+
+const buildFriendlySyncError = (error: unknown, fallbackMessage: string) => {
+  const rawMessage =
+    error instanceof Error
+      ? error.message
+      : String(error || fallbackMessage);
+
+  const duplicateMatch = rawMessage.match(
+    /external_key_1 dup key: \{\s*external_key:\s*"([^"]+)"\s*\}/i,
+  );
+  if (duplicateMatch) {
+    return `This scheme already exists in MF API with code ${duplicateMatch[1]}. The sync tried to create it again, so it should update the existing record instead.`;
+  }
+
+  return rawMessage || fallbackMessage;
+};
+
 // ─── Extract structured fields from raw API response ─────────────────────────
 
 const extractStructuredFields = (latestInfo: RawObject) => {
@@ -1072,14 +1137,16 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
   let failed = 0;
 
   for (const row of rows) {
+    let rowFailureStage = "normalize";
     try {
       const normalized = normalizeScheme(row);
+      rowFailureStage = "upsert";
 
       // Implementation Task 1: Fix New Fund Discovery Logic
       // A fund should be considered NEW when it is first discovered by our system, 
       // regardless of when the AMC originally launched the scheme.
       const upsertResult = await MfApiScheme.findOneAndUpdate(
-        { external_key: normalized.external_key, is_deleted: { $ne: true } },
+        { external_key: normalized.external_key },
         {
           $set: {
             scheme_name: normalized.scheme_name,
@@ -1092,6 +1159,7 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
             external_scheme_id: normalized.external_scheme_id,
             raw_payload: normalized.raw_payload,
             last_seen_date: new Date(),
+            is_deleted: false,
           },
           $setOnInsert: {
             is_active: false,
@@ -1112,12 +1180,24 @@ const backgroundMasterSync = async (context: SyncContext = {}, options: SyncOpti
       }
     } catch (error: any) {
       failed += 1;
+      const friendlyError = buildFriendlySyncError(error, "Failed to sync scheme during batch sync");
       await createSyncLog({
         action: "sync-all-item",
         status: "failed",
-        message: "Failed to sync scheme during batch sync",
-        error: error?.message || "Unknown error",
+        message: friendlyError,
+        error: friendlyError,
         payloadData: row,
+        response: buildSyncFailureResponse({
+          failureStage: "sync-all-item",
+          failureStep: rowFailureStage,
+          error,
+          schemeName: row?.scheme_name || row?.schemeName || "",
+          schemeId: row?._id ? String(row._id) : "",
+          externalSchemeId: row?.external_scheme_id || row?.scheme_id || row?.schemeCode || row?.scheme_code || "",
+          extra: {
+            technicalError: error?.message || "Unknown error",
+          },
+        }),
         context,
       });
     }
@@ -1459,6 +1539,7 @@ export const syncOneScheme = async (
     payload.schemeName ||
     schemeDoc?.scheme_name ||
     "";
+  let syncFailureStage = "requestExternalLatestInfo";
 
   if (!schemeName) {
     throw new Error("schemeName or schemeId is required");
@@ -1498,7 +1579,6 @@ export const syncOneScheme = async (
       ? schemeDoc
       : await MfApiScheme.findOne({
           external_key: normalized.external_key,
-          is_deleted: { $ne: true },
         });
 
     const saved = existing
@@ -1509,11 +1589,13 @@ export const syncOneScheme = async (
             sync_status: "partial_success",
             last_synced_at: new Date(),
             last_sync_error: errorMessage,
+            is_deleted: false,
           },
           { new: true, runValidators: true },
         )
       : await MfApiScheme.create({
           ...normalized,
+          is_deleted: false,
           sync_status: "partial_success",
           last_synced_at: new Date(),
           last_sync_error: errorMessage,
@@ -1522,19 +1604,28 @@ export const syncOneScheme = async (
     await createSyncLog({
       action: "sync-one",
       status: "failed",
-      message: `Failed to sync ${saved.scheme_name}`,
-      error: errorMessage,
+      message: buildFriendlySyncError(errorMessage, `Failed to sync ${saved.scheme_name}`),
+      error: buildFriendlySyncError(errorMessage, `Failed to sync ${saved.scheme_name}`),
       scheme_id: String(saved._id),
       scheme_name: saved.scheme_name,
       external_scheme_id: saved.external_scheme_id || "",
-      response: latestInfo,
       payloadData: payload,
+      response: buildSyncFailureResponse({
+        failureStage: "requestExternalLatestInfo",
+        failureStep: "rateLimitCheck",
+        error: errorMessage,
+        schemeName: saved.scheme_name,
+        schemeId: String(saved._id),
+        externalSchemeId: saved.external_scheme_id || "",
+        extra: { latestInfo, technicalError: errorMessage },
+      }),
       context,
     });
 
     throw new Error(errorMessage);
   }
 
+  syncFailureStage = "normalizeScheme";
   const normalized = normalizeScheme(
     schemeDoc?.raw_payload || {
       scheme_name: schemeName,
@@ -1547,9 +1638,10 @@ export const syncOneScheme = async (
     latestPayload,
   );
 
-  const existing = schemeDoc
+  syncFailureStage = "findExistingScheme";
+    const existing = schemeDoc
     ? schemeDoc
-    : await MfApiScheme.findOne({ external_key: normalized.external_key, is_deleted: { $ne: true } });
+    : await MfApiScheme.findOne({ external_key: normalized.external_key });
 
   const structured = latestPayload ? extractStructuredFields(latestPayload) : {};
 
@@ -1562,12 +1654,14 @@ export const syncOneScheme = async (
           sync_status: "success",
           last_synced_at: new Date(),
           last_sync_error: "",
+          is_deleted: false,
         },
         { new: true, runValidators: true },
       )
     : await MfApiScheme.create({
         ...normalized,
         ...structured,
+        is_deleted: false,
         sync_status: "success",
         last_synced_at: new Date(),
         last_sync_error: "",
@@ -1600,15 +1694,19 @@ export const syncOneScheme = async (
   // ── Sync to manual MFFund collection (Shared Import Engine) ─────────────────────
   if (saved?.is_active) {
     try {
+      syncFailureStage = "transformScheme";
       let dto = MfApiTransformer.transformScheme(saved.toObject ? saved.toObject() : saved);
       const engine = new MfImportEngine();
+      syncFailureStage = "validateSyncPayload";
       dto = await MfApiSyncValidator.validate(dto as any, engine.summary);
       if (engine.summary.errors.length > 0) {
         const errMsg = "Validation failed: " + engine.summary.errors[0]?.message;
         console.error(`[API-Sync] Validation failed for API Scheme ${saved._id}:`, engine.summary.errors);
         await MfApiScheme.findByIdAndUpdate(saved._id, { $set: { sync_status: "partial_success", last_sync_error: errMsg } });
       } else {
+        syncFailureStage = "processWorkbook";
         await engine.processWorkbook(dto as any);
+        syncFailureStage = "bridgeToManualFund";
         const fund = await MFFund.findOneAndUpdate(
           { scheme_code: saved.scheme_code, is_deleted: false },
           {
@@ -2534,6 +2632,26 @@ export const importTopHoldingsForScheme = async (payload: {
   );
 
   const portfolioDate = portfolio_date ? new Date(portfolio_date) : new Date();
+
+  // Compute Asset Allocation
+  let domestic_equity_pct = 0, international_equity_pct = 0, debt_pct = 0, other_pct = 0, gold_pct = 0, cash_pct = 0;
+  for (const h of holdings || []) {
+    const type = String(h.security_type || "").toLowerCase();
+    const pct = Number(h.net_assets_pct) || 0;
+    if (type.includes("equity") || type.includes("stock")) {
+      if (type.includes("foreign") || type.includes("international")) international_equity_pct += pct;
+      else domestic_equity_pct += pct;
+    } else if (type.includes("debt") || type.includes("bond") || type.includes("debenture") || type.includes("commercial paper")) {
+      debt_pct += pct;
+    } else if (type.includes("cash") || type.includes("repo") || type.includes("treps") || type.includes("net current assets") || type.includes("margin")) {
+      cash_pct += pct;
+    } else if (type.includes("gold")) {
+      gold_pct += pct;
+    } else {
+      other_pct += pct;
+    }
+  }
+
   const snap = await MfApiTopHolding.create({
     mf_api_scheme_id: scheme._id,
     external_key: scheme.external_key,
@@ -2543,6 +2661,14 @@ export const importTopHoldingsForScheme = async (payload: {
     snapshot_year: portfolioDate.getFullYear(),
     holdings: holdings || [],
     holdings_count: (holdings || []).length,
+    asset_allocation: {
+      domestic_equity_pct: domestic_equity_pct || null,
+      international_equity_pct: international_equity_pct || null,
+      debt_pct: debt_pct || null,
+      other_pct: other_pct || null,
+      gold_pct: gold_pct || null,
+      cash_pct: cash_pct || null,
+    },
     is_latest: true,
     uploaded_at: new Date(),
     ...rest,

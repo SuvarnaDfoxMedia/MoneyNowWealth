@@ -25,11 +25,12 @@ import PartnershipEnquiryListing from "./components/tables/ListingComponents/Par
 import OneCroreJourneyEnquiryListing from "./components/tables/ListingComponents/OneCroreJourneyEnquiryListing";
 import WhoWeWorkWithEnquiryListing from "./components/tables/ListingComponents/WhoWeWorkWithEnquiryListing";
 import FinancialWellnessEnquiryListing from "./components/tables/ListingComponents/FinancialWellnessEnquiryListing";
+import StartInvestingEnquiryListing from "./components/tables/ListingComponents/StartInvestingEnquiryListing";
+import PortfolioReviewEnquiryListing from "./components/tables/ListingComponents/PortfolioReviewEnquiryListing";
 import CmsPageListing from "./components/tables/ListingComponents/CmsPageListing";
 import TopicListing from "./components/tables/ListingComponents/TopicListing";
 
 import ChangePasswordForm from "./components/header/ChangePasswordForm";
-
 
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
@@ -229,6 +230,14 @@ function AppRoutes() {
           element={<WhoWeWorkWithEnquiryListing />}
         />
         <Route
+          path="/:role/start-investing-enquiry"
+          element={<StartInvestingEnquiryListing />}
+        />
+        <Route
+          path="/:role/portfolio-review-enquiry"
+          element={<PortfolioReviewEnquiryListing />}
+        />
+        <Route
           path="/:role/financial-wellness-enquiry"
           element={<FinancialWellnessEnquiryListing />}
         />
@@ -327,7 +336,3 @@ function AppRoutes() {
     </Routes>
   );
 }
-
-
-
-

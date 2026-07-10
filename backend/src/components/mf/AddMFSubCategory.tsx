@@ -33,8 +33,10 @@ const TRAILING_FIELDS = [
   { key: "ytd", label: "YTD" },
 ] as const;
 
-const buildAnnualYears = (startYear = new Date().getFullYear() - 1, count = 9) =>
-  Array.from({ length: count }, (_, index) => String(startYear - index));
+const buildAnnualYears = (
+  startYear = new Date().getFullYear() - 1,
+  count = 9,
+) => Array.from({ length: count }, (_, index) => String(startYear - index));
 
 type MainCategoryOption = {
   _id: string;
@@ -60,7 +62,10 @@ const getLegacyTrailingValue = (source: any, key: string) => {
       return source.trailing.ytd?.toString?.() || "";
     }
   }
-  if (source?.trailing?.[key] !== undefined && source?.trailing?.[key] !== null) {
+  if (
+    source?.trailing?.[key] !== undefined &&
+    source?.trailing?.[key] !== null
+  ) {
     return source.trailing[key]?.toString?.() || "";
   }
   const legacyMap: Record<string, string> = {
@@ -82,9 +87,11 @@ const getLegacyTrailingValue = (source: any, key: string) => {
 
 const getAnnualYearValue = (source: any, year: string) => {
   const nested = source?.annual?.yearly_returns?.[year];
-  if (nested !== undefined && nested !== null) return nested?.toString?.() || "";
+  if (nested !== undefined && nested !== null)
+    return nested?.toString?.() || "";
   const flatAnnual = source?.annual?.[year];
-  if (flatAnnual !== undefined && flatAnnual !== null) return flatAnnual?.toString?.() || "";
+  if (flatAnnual !== undefined && flatAnnual !== null)
+    return flatAnnual?.toString?.() || "";
   return "";
 };
 
@@ -173,7 +180,10 @@ export default function AddMFCategory() {
           ...Object.fromEntries(
             TRAILING_FIELDS.map((field) => [
               field.key,
-              getLegacyTrailingValue(category.category_average_returns, field.key),
+              getLegacyTrailingValue(
+                category.category_average_returns,
+                field.key,
+              ),
             ]),
           ),
         },
@@ -364,7 +374,10 @@ export default function AddMFCategory() {
       category_returns: {
         trailing: toNumberMap(form.categoryTrailing),
         annual: {
-          ytd: form.categoryTrailing.ytd && form.categoryTrailing.ytd !== "" ? Number(form.categoryTrailing.ytd) : null,
+          ytd:
+            form.categoryTrailing.ytd && form.categoryTrailing.ytd !== ""
+              ? Number(form.categoryTrailing.ytd)
+              : null,
           yearly_returns: toNumberMap(mergedCategoryAnnual),
         },
       },
@@ -432,17 +445,15 @@ export default function AddMFCategory() {
             <div
               onClick={() => setMainCategoryDropdownOpen((prev) => !prev)}
               className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-md border px-3 ${
-                errors.main_category_id
-                  ? "border-red-500"
-                  : "border-gray-300"
+                errors.main_category_id ? "border-red-500" : "border-gray-300"
               }`}
             >
               <span>
                 {mainCategoryOptions.length === 0
                   ? "Loading categories..."
                   : mainCategoryOptions.find(
-                        (item) => item._id === form.main_category_id,
-                      )?.name || "Select Main Category"}
+                      (item) => item._id === form.main_category_id,
+                    )?.name || "Select Main Category"}
               </span>
               <svg
                 className={`h-4 w-4 transform transition-transform ${
@@ -539,7 +550,9 @@ export default function AddMFCategory() {
                     {field.label}
                   </label>
                   <input
-                    className={inputClass(errors[`categoryTrailing.${field.key}`])}
+                    className={inputClass(
+                      errors[`categoryTrailing.${field.key}`],
+                    )}
                     value={form.categoryTrailing[field.key]}
                     onChange={(event) =>
                       setNestedNumberField(
@@ -563,7 +576,11 @@ export default function AddMFCategory() {
                     className={inputClass(errors[`categoryAnnual.${year}`])}
                     value={form.categoryAnnual[year]}
                     onChange={(event) =>
-                      setNestedNumberField("categoryAnnual", year, event.target.value)
+                      setNestedNumberField(
+                        "categoryAnnual",
+                        year,
+                        event.target.value,
+                      )
                     }
                   />
                   {error(errors[`categoryAnnual.${year}`])}
@@ -572,7 +589,7 @@ export default function AddMFCategory() {
             </div>
           </div>
 
-          <div>
+          {/* <div>
             <div className="mb-2 flex items-center justify-between gap-4">
               <h3 className="text-lg font-semibold text-[#043f79]">
                 Category Average Returns
@@ -618,7 +635,7 @@ export default function AddMFCategory() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
