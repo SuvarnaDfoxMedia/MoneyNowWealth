@@ -245,7 +245,7 @@ export const getSubscriptionPaymentById = async (
     if (
       (req as any).user?.role !== "admin" &&
       (req as any).user?.role !== "editor" &&
-      recordUserId !== (req as any).user?.id
+      String(recordUserId) !== String((req as any).user?.id)
     ) {
       return sendError(res, "Access denied", 403);
     }
@@ -333,7 +333,11 @@ export const getUserSubscriptionHistory = async (
   res: Response,
 ) => {
   try {
-    const { userId } = req.params;
+    let { userId } = req.params;
+
+    if ((req as any).user?.role === "user" && (req as any).user?.id) {
+      userId = (req as any).user?.id;
+    }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return sendError(res, "Invalid user ID", 400);
@@ -342,9 +346,9 @@ export const getUserSubscriptionHistory = async (
     if (
       (req as any).user?.role !== "admin" &&
       (req as any).user?.role !== "editor" &&
-      (req as any).user?.id !== userId
+      String((req as any).user?.id) !== String(userId)
     ) {
-      return sendError(res, "Access denied", 403);
+      return sendError(res, `Access denied (History): ${(req as any).user?.id} !== ${userId}`, 403);
     }
 
     const payments = await UserSubscriptionPayment.find({
@@ -354,26 +358,40 @@ export const getUserSubscriptionHistory = async (
       .sort({ payment_date: -1 })
       .lean();
 
-    const mappedPayments = payments.map((p: any) => ({
-        _id: p._id.toString(),
-        subscriptionId: p.user_subscription_id?.toString(),
+    const mappedPayments = payments.map((p: any) => {
+        let trialTypeStr: string | null = null;
+        if (p.metadata?.is_promotional) {
+          trialTypeStr = "premium_sample";
+        } else if (p.type === "new") {
+          trialTypeStr = "free_sample";
+        } else if (p.type === "downgrade") {
+          trialTypeStr = "free";
+        } else if (p.type === "upgrade" || p.type === "renewal") {
+          trialTypeStr = "premium";
+        }
 
-        planName: p.plan_snapshot?.name || p.plan_id?.name || "Unknown",
-        amount: p.amount,
-        currency: p.currency,
+        return {
+          _id: p._id.toString(),
+          subscriptionId: p.user_subscription_id?._id?.toString() || p.user_subscription_id?.toString(),
 
-        type: p.type,
-        paymentDate: p.payment_date,
+          planName: p.plan_snapshot?.name || p.plan_id?.name || "Unknown",
+          amount: p.amount,
+          currency: p.currency,
 
-        startDate: p.start_date,
-        endDate: p.end_date,
+          type: p.type,
+          paymentDate: p.payment_date,
 
-        transactionId: p.transaction_id,
-        orderId: p.order_id,
-        paymentMethod: p.payment_method,
-        paymentStatus: p.payment_status,
-        metadata: p.metadata,
-      }));
+          startDate: p.start_date,
+          endDate: p.end_date,
+
+          transactionId: p.transaction_id,
+          orderId: p.order_id,
+          paymentMethod: p.payment_method,
+          paymentStatus: p.payment_status,
+          metadata: p.metadata,
+          trialType: trialTypeStr,
+        };
+      });
 
     return sendSuccess(
       res,
@@ -412,9 +430,9 @@ export const getInvoiceByPaymentId = async (req: Request, res: Response) => {
     if (
       (req as any).user?.role !== "admin" &&
       (req as any).user?.role !== "editor" &&
-      recordUserId !== (req as any).user?.id
+      String(recordUserId) !== String((req as any).user?.id)
     ) {
-      return sendError(res, "Access denied", 403);
+      return sendError(res, `Access denied (Invoice): ${recordUserId} !== ${(req as any).user?.id}`, 403);
     }
 
     const plan = payment.plan_id as any;

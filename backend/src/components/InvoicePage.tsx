@@ -76,16 +76,24 @@ export default function InvoicePage() {
       try {
         // Safe TypeScript cast through 'unknown'
         const rawRes = await getOne(id!);
-        const res = rawRes as unknown as InvoiceApiResponse | null;
+        
+        let subscription: any;
+        let payment: any;
+        
+        const payload = (rawRes as any)?.data || rawRes;
+        
+        if (payload?.subscription) {
+          subscription = payload.subscription;
+          payment = payload.payment;
+        } else if (payload?._id) {
+          subscription = payload;
+        }
 
-        if (!res?.subscription) {
+        if (!subscription) {
           toast.error("Invoice data not found.");
           setLoading(false);
           return;
         }
-
-        const subscription = res.subscription;
-        const payment = res.payment;
 
         const user_name = subscription?.user_id?.firstname
           ? `${subscription.user_id.firstname} ${subscription.user_id.lastname}`

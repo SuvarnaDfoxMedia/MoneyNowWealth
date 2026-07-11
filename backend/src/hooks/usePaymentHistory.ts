@@ -35,7 +35,7 @@ export const usePaymentHistory = (userId: string | undefined) => {
       try {
         // Use authenticated axios instance
         const response = await axiosInstance.get(
-          `/subscription-payment/history/${userId}`,
+          `/admin/subscriptions/user/${userId}/history`,
         );
 
         const data = response.data;
@@ -52,8 +52,8 @@ export const usePaymentHistory = (userId: string | undefined) => {
               amount: payment.amount,
               currency: payment.currency,
               type: payment.type,
-              trialType: payment.trialType,
-              status: payment.status,
+              trialType: payment.trialType || (payment.metadata && payment.metadata.trialType) || null,
+              status: payment.paymentStatus || payment.status || "pending",
               startDate: payment.startDate,
               endDate: payment.endDate,
               paymentDate: payment.paymentDate,
