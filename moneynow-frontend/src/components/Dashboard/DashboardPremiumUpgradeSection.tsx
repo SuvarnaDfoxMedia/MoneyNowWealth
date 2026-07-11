@@ -25,7 +25,8 @@ export default function DashboardPremiumUpgradeSection() {
 
   const isExpiredPremium = 
     !isPremiumActive && 
-    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
+    (currentSubscription?.promotionalTrialUsed === true || 
+     currentSubscription?.canGetPremiumTrial === false);
 
   const renderActiveSummary = () => (
     <div className="w-full bg-white rounded-lg p-6 shadow flex flex-col items-center text-center h-full justify-center">

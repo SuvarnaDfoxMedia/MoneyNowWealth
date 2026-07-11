@@ -121,7 +121,8 @@ export default function Insights() {
 
   const isExpiredPremium = 
     !isPremiumActive && 
-    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
+    (currentSubscription?.promotionalTrialUsed === true || 
+     currentSubscription?.canGetPremiumTrial === false);
 
   return (
     <div className="w-full font-inter">

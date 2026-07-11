@@ -97,7 +97,8 @@ export default function DashboardPlanUsageCard() {
 
   const isExpiredPremium = 
     !isPremiumActive && 
-    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
+    (currentSubscription?.promotionalTrialUsed === true || 
+     currentSubscription?.canGetPremiumTrial === false);
 
   const planName = isPremiumActive ? "MoneyNow EDGE" : "MoneyNow Basic";
   const percentage = isPremiumActive ? 100 : 0;

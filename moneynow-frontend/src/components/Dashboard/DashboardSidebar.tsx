@@ -16,7 +16,8 @@ export default function DashboardSidebar() {
 
   const isExpiredPremium = 
     !isPremiumActive && 
-    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
+    (currentSubscription?.promotionalTrialUsed === true || 
+     currentSubscription?.canGetPremiumTrial === false);
 
   return (
     <aside

@@ -103,7 +103,7 @@ const Footer = () => {
                   </li>
                   <li>
                     <Link
-                      href="/investments"
+                      href="/start-investing"
                       className="hover:text-[#60e6eb] transition"
                     >
                       Investments
@@ -111,7 +111,7 @@ const Footer = () => {
                   </li>
                   <li>
                     <Link
-                      href="/portfolio"
+                      href="/review-your-portfolio"
                       className="hover:text-[#60e6eb] transition"
                     >
                       My Portfolio
@@ -233,7 +233,7 @@ const Footer = () => {
               </div>
               <div className="md:col-span-2 text-left">
                 <Link
-                  href="#"
+                  href="/mutual-funds"
                   className="flex items-center gap-1 whitespace-nowrap hover:underline font-medium text-[15px]"
                 >
                   View all AMCs{" "}
@@ -254,7 +254,7 @@ const Footer = () => {
               </div>
               <div className="md:col-span-2 text-left">
                 <Link
-                  href="#"
+                  href="/free-calculators"
                   className="flex items-center gap-1 whitespace-nowrap hover:underline font-medium text-[15px]"
                 >
                   View all calculators{" "}
@@ -274,7 +274,7 @@ const Footer = () => {
               </div>
               <div className="md:col-span-2 text-left">
                 <Link
-                  href="#"
+                  href="/popular-funds"
                   className="flex items-center gap-1 whitespace-nowrap hover:underline font-medium text-[15px]"
                 >
                   Explore fund categories{" "}
