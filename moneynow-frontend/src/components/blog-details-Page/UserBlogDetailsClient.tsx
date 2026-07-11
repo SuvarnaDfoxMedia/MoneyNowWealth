@@ -14,7 +14,23 @@ import {
   FaLinkedinIn,
   FaLink,
 } from "react-icons/fa";
-import { Clock, ArrowLeft } from "lucide-react";
+import { Clock, ArrowLeft, BarChart2 } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
+
+// Custom Crown Icon to replace missing image
+const CrownIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+  >
+    <path d="M12 2L15 8L21 6L18 13H6L3 6L9 8L12 2Z" />
+    <path d="M6 15H18V19C18 20.1046 17.1046 21 16 21H8C6.89543 21 6 20.1046 6 19V15Z" />
+  </svg>
+);
+
+
 
 interface Section {
   title?: string;
@@ -76,6 +92,14 @@ const UserBlogDetailsClient = ({
   const [isMounted, setIsMounted] = useState(false);
   const [scrollPercent, setScrollPercent] = useState(0);
   const [relatedArticles, setRelatedArticles] = useState<any[]>([]);
+
+  const { currentSubscription, latestSubscription } = useSubscription();
+  
+  const isPremiumActive = currentSubscription?.isPremium === true && currentSubscription?.isActive === true;
+
+  const isExpiredPremium = 
+    !isPremiumActive && 
+    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
 
   useEffect(() => {
     setIsMounted(true);
@@ -615,29 +639,29 @@ const UserBlogDetailsClient = ({
           </div>
 
           {/* Go Premium Card */}
-          <div className="bg-white border border-[#E7ECF5] rounded-xl p-5 text-center shadow-[0_4px_20px_rgba(7,17,44,0.03)] font-poppins flex flex-col items-center">
-            <div className="w-12 h-12 shrink-0 flex items-center justify-center mb-4">
-              <Image 
-                src="/images/premium-icon.png" 
-                alt="Go Premium" 
-                width={42} 
-                height={42} 
-                className="object-contain"
-              />
-            </div>
-            
-            <h3 className="text-[18px] font-bold text-[#07112C] mb-2">Go Premium</h3>
-            <p className="text-[13px] text-[#5E6B85] leading-relaxed mb-5">
-              Unlock exclusive research, expert insights and advanced tools.
-            </p>
+          {!isPremiumActive && (
+            <div className="bg-white border border-[#E7ECF5] rounded-xl p-5 text-center shadow-[0_4px_20px_rgba(7,17,44,0.03)] font-poppins flex flex-col items-center">
+              <div className="w-12 h-12 shrink-0 flex items-center justify-center mb-4 bg-[#F2F6FD] rounded-full border border-[#DCE4F2]">
+                <CrownIcon className="w-6 h-6 text-[#F59E0B]" />
+              </div>
+              
+              <h3 className="text-[18px] font-bold text-[#07112C] mb-2">
+                {isExpiredPremium ? "Renew Premium" : "Go Premium"}
+              </h3>
+              <p className="text-[13px] text-[#5E6B85] leading-relaxed mb-5">
+                {isExpiredPremium 
+                  ? "Your premium access has expired. Renew to regain access to insights and tools." 
+                  : "Unlock exclusive research, expert insights and advanced tools."}
+              </p>
 
-            <Link 
-              href="/user/dashboard/subscription" 
-              className="w-full py-3 bg-[#0A4A87] hover:bg-[#083B6C] text-white rounded-[6px] text-[14px] font-bold transition-all inline-block text-center shadow-[0_2px_4px_rgba(10,74,135,0.1)]"
-            >
-              Upgrade Now
-            </Link>
-          </div>
+              <Link 
+                href="/user/dashboard/subscription" 
+                className="w-full py-3 bg-[#0A4A87] hover:bg-[#083B6C] text-white rounded-[6px] text-[14px] font-bold transition-all inline-block text-center shadow-[0_2px_4px_rgba(10,74,135,0.1)]"
+              >
+                {isExpiredPremium ? "Renew Now" : "Upgrade Now"}
+              </Link>
+            </div>
+          )}
 
           {/* Promotion Banner */}
           <div className="relative w-full rounded-xl overflow-hidden border border-[#E7ECF5] shadow-[0_4px_20px_rgba(7,17,44,0.03)] bg-white">

@@ -47,8 +47,6 @@ export const getUserSubscriptionById = async (req: Request, res: Response) => {
       res,
       "Subscription fetched successfully",
       { subscription, payment },
-      200,
-      { subscription, payment },
     );
   } catch (error) {
     console.error("Get subscription by ID error:", error);
@@ -273,13 +271,12 @@ export const getMySubscription = async (req: Request, res: Response) => {
       await userSubscriptionService.getPaymentHistory(userId);
 
     const canGetPremiumTrial = !subscription.promotional_trial_used;
+    const isPremium = subscription.canAccessPremiumContent();
 
     return sendSuccess(
       res,
       "Subscription fetched successfully",
-      { subscription, paymentHistory, canGetPremiumTrial },
-      200,
-      { subscription, paymentHistory, canGetPremiumTrial },
+      { subscription, paymentHistory, canGetPremiumTrial, isPremium }
     );
   } catch (error) {
     console.error("Get my subscription error:", error);
@@ -287,57 +284,7 @@ export const getMySubscription = async (req: Request, res: Response) => {
   }
 };
 
-export const purchaseSubscription = async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { plan_id } = req.body;
 
-    if (!userId) {
-      return sendError(res, "User not authenticated", 401);
-    }
-
-    if (!plan_id) {
-      return sendError(res, "plan_id is required", 400);
-    }
-
-    const planDoc = await SubscriptionPlan.findById(plan_id);
-    if (!planDoc) {
-      return sendError(res, "Invalid plan_id", 400);
-    }
-
-    const eligibility = await userSubscriptionService.checkPurchaseEligibility(
-      userId,
-      plan_id,
-    );
-    if (!eligibility.canPurchase) {
-      return sendError(res, eligibility.message, 403, null, {
-        code: eligibility.code || "PURCHASE_BLOCKED",
-      });
-    }
-
-    const subscription =
-      await userSubscriptionService.createOrUpdateSubscription(
-        userId,
-        planDoc._id.toString(),
-        planDoc.duration.value,
-        planDoc.duration.unit as "day" | "month" | "year",
-        planDoc.plan_type === "Free" ? "free_sample" : undefined,
-        true,
-        "user_purchase",
-      );
-
-    return sendSuccess(
-      res,
-      "Subscription purchased successfully",
-      subscription,
-      201,
-      { subscription },
-    );
-  } catch (error: any) {
-    console.error("Purchase subscription error:", error);
-    return sendError(res, error.message || "Internal server error", 500);
-  }
-};
 
 export const upgradeMySubscriptionToPremiumTrial = async (
   req: Request,
@@ -356,9 +303,7 @@ export const upgradeMySubscriptionToPremiumTrial = async (
     return sendSuccess(
       res,
       "Premium trial activated successfully",
-      { subscription },
-      200,
-      { subscription },
+      { subscription }
     );
   } catch (error: any) {
     console.error("Upgrade to premium trial error:", error);

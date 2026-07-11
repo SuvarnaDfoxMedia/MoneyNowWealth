@@ -1,58 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "react-hot-toast";
-import { API } from "@/app/api/axios";
+import { useRouter } from "next/navigation";
 
-interface PremiumUpgradeCardProps {
-  onUpgraded?: () => void;
+interface PurchasePremiumCardProps {
   variant?: "default" | "compact";
 }
 
-export default function PremiumUpgradeCard({
-  onUpgraded,
+export default function PurchasePremiumCard({
   variant = "default",
-}: PremiumUpgradeCardProps) {
-  const [loading, setLoading] = useState(false);
-
+}: PurchasePremiumCardProps) {
+  const router = useRouter();
+  
   const isCompact = variant === "compact";
 
-  const handleUpgrade = async () => {
-    try {
-      setLoading(true);
-      const { data } = await API.post(
-        "/api/subscriptions/upgrade-premium-trial",
-        {},
-        { withCredentials: true },
-      );
-
-      const subscription = data?.subscription || data?.data?.subscription;
-      const endDate = subscription?.end_date
-        ? new Date(subscription.end_date).toLocaleDateString("en-GB")
-        : null;
-
-      toast.success(
-        endDate
-          ? `Premium activated until ${endDate}`
-          : "Premium trial activated successfully",
-      );
-      onUpgraded?.();
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Failed to activate premium trial",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const handlePurchase = () => {
+    // Navigate to the plans page
+    router.push("/user/dashboard/subscription");
   };
 
   return (
     <div
       className={`overflow-hidden rounded-2xl border border-[#D8E6F5] bg-[linear-gradient(135deg,#043F79_0%,#0A5AA8_55%,#EAF3FF_100%)] text-white shadow-sm ${
         isCompact ? "p-5" : "p-6"
-      }`}
+      } h-full`}
     >
       <div className="max-w-xl">
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#BFD8F3]">
@@ -84,11 +54,10 @@ export default function PremiumUpgradeCard({
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
-            onClick={handleUpgrade}
-            disabled={loading}
-            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#043F79] transition hover:bg-[#F3F8FF] disabled:cursor-not-allowed disabled:opacity-70"
+            onClick={handlePurchase}
+            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#043F79] transition hover:bg-[#F3F8FF]"
           >
-            {loading ? "Activating..." : "Upgrade to Premium"}
+            Upgrade to Premium
           </button>
           <p className="text-xs text-[#D6E7F8]">
             No credit card is required.

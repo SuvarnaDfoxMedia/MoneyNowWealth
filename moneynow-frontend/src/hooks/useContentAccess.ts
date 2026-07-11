@@ -6,14 +6,6 @@ import { useRefreshSignal } from "./useRefreshSignal";
 
 type ContentAccessLevel = "free" | "premium";
 
-const isActiveForFullEndDate = (value?: string) => {
-  if (!value) return false;
-  const endDate = new Date(value);
-  const today = new Date();
-  endDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-  return endDate.getTime() >= today.getTime();
-};
 
 export const useContentAccess = () => {
   const [accessLevel, setAccessLevel] = useState<ContentAccessLevel>("free");
@@ -24,19 +16,9 @@ export const useContentAccess = () => {
     const loadAccess = async () => {
       try {
         const { data } = await API.get("/api/subscriptions/me");
-        const subscription = data?.subscription;
+        const isPremium = data?.data?.isPremium === true || data?.isPremium === true;
 
-        const planType = String(
-          subscription?.plan_type || subscription?.plan_id?.plan_type || "",
-        ).toLowerCase();
-        const status = String(subscription?.status || "").toLowerCase();
-        const endDate = subscription?.end_date;
-
-        if (
-          planType === "premium" &&
-          status !== "expired" &&
-          isActiveForFullEndDate(endDate)
-        ) {
+        if (isPremium) {
           setAccessLevel("premium");
         } else {
           setAccessLevel("free");

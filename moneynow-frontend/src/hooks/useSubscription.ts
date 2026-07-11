@@ -35,6 +35,8 @@ export interface CurrentSubscription {
   promotionalTrialUsed?: boolean;
   canGetPremiumTrial?: boolean;
   daysRemaining?: number;
+  isActive?: boolean;
+  isPremium?: boolean;
 }
 
 const normalizePaymentDates = (payment: any) => {
@@ -174,6 +176,8 @@ export const useSubscription = (page = 1, limit = 10) => {
               canGetPremiumTrial:
                 currentPayload?.canGetPremiumTrial !== false,
               daysRemaining: Number(subscription.daysRemaining || 0),
+              isActive: subscription.isActive === true,
+              isPremium: currentPayload?.isPremium === true,
             });
           } else {
             setCurrentSubscription(null);
@@ -197,6 +201,9 @@ export const useSubscription = (page = 1, limit = 10) => {
   }, [userId, page, limit, refreshTick]);
 
   const isActive = (endDate: string) => {
+    if (currentSubscription && currentSubscription.endDate === endDate) {
+      return currentSubscription.isActive === true;
+    }
     return new Date(endDate).getTime() > new Date().getTime();
   };
 

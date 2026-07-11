@@ -122,7 +122,8 @@ export const addSubscriptionPayment = async (
 export const userPurchaseSubscription = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
-    const { plan_id, payment_method = "manual", amount } = req.body;
+    // TODO: Integrate real payment gateway (Razorpay/Stripe) and remove manual payment_reference requirement
+    const { plan_id, payment_method = "manual", payment_reference } = req.body;
 
     if (!userId) {
       return sendError(res, "User not authenticated", 401);
@@ -138,6 +139,10 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
     }
 
     const isFreePlan = plan.plan_type === "Free";
+
+    if (!isFreePlan && !payment_reference) {
+      return sendError(res, "payment_reference is required for Premium plans", 400);
+    }
 
     // Check purchase eligibility for Premium
     if (plan.plan_type === "Premium") {
@@ -165,7 +170,7 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
         "user_purchase",
         false,
         {
-          amount: isFreePlan ? 0 : amount,
+          // amount is omitted to force server-side price lookup
           currency: plan.currency || "INR",
           paymentMethod: isFreePlan
             ? "free_plan"
@@ -174,6 +179,7 @@ export const userPurchaseSubscription = async (req: Request, res: Response) => {
             note: isFreePlan ? "Free plan purchase" : "Paid plan purchase",
             purchased_by_user: true,
             is_user_purchase: true,
+            payment_reference: isFreePlan ? undefined : payment_reference,
           },
         },
       );
@@ -380,30 +386,6 @@ export const getUserSubscriptionHistory = async (
     console.error("Error fetching subscription history:", err);
     return sendError(res, "Server error", 500);
   }
-};
-
-// Helper function to calculate start date for a payment
-const calculatePaymentStartDate = async (
-  payment: any,
-  currentSubscription: any,
-  plan: any,
-): Promise<Date> => {
-  // If this payment is linked to a subscription, use its start date
-  if (payment.user_subscription_id && currentSubscription) {
-    return currentSubscription.start_date;
-  }
-
-  // Otherwise calculate based on payment date
-  const startDate = new Date(payment.payment_date);
-
-  // For upgrades/downgrades, we might need to check previous payment
-  if (payment.metadata?.previous_state) {
-    // This is a state transition, so it likely started when the previous state ended
-    // We'll use the payment date as start date
-    return startDate;
-  }
-
-  return startDate;
 };
 
 export const getInvoiceByPaymentId = async (req: Request, res: Response) => {

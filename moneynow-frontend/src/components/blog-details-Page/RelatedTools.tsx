@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { Calculator, Target, TrendingUp } from "lucide-react";
 
 const RelatedTools = () => {
   return (
@@ -14,30 +14,24 @@ const RelatedTools = () => {
             title: "Lumpsum Calculator",
             description: "Calculate the future value of a one-time investment.",
             href: "/user/dashboard/calculators/lumpsum",
-            image: "/images/ud-lumpsum-cal.png",
+            icon: <TrendingUp className="w-8 h-8 text-[#0A4A87]" />,
           },
           {
             title: "SIP Calculator",
             description: "Estimate returns from regular SIP investments.",
             href: "/user/dashboard/calculators/sip",
-            image: "/images/ud-sip-cal.png",
+            icon: <Calculator className="w-8 h-8 text-[#0A4A87]" />,
           },
           {
             title: "Goal Setting Calculator",
             description: "Plan investments required to achieve your financial goals.",
             href: "/user/dashboard/calculators/goal",
-            image: "/images/ud-goal-setting-cal.png",
+            icon: <Target className="w-8 h-8 text-[#0A4A87]" />,
           },
         ].map((t, idx) => (
           <div key={idx} className="bg-white border border-[#E3E8EF] rounded-xl p-3 shadow-sm hover:shadow-md transition-all flex items-center gap-4">
-            <div className="shrink-0 relative w-[90px] h-[90px] rounded-xl overflow-hidden bg-[#E7EBE4]">
-              <Image
-                src={t.image}
-                alt={t.title}
-                fill
-                className="object-contain p-1"
-                unoptimized
-              />
+            <div className="shrink-0 flex items-center justify-center w-[70px] h-[70px] rounded-xl bg-[#F2F6FD]">
+              {t.icon}
             </div>
             <div className="flex flex-col justify-center flex-1 pr-2">
               <h4 className="text-[15px] font-semibold mb-1.5 leading-[22px]">{t.title}</h4>

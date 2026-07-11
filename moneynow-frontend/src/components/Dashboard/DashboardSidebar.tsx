@@ -6,9 +6,17 @@ import { Star } from "lucide-react";
 import DashboardIcon from "./DashboardIcon";
 import { sidebarMenuItems } from "@/lib/dashboard-data";
 import Image from "next/image";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
+  const { currentSubscription, latestSubscription } = useSubscription();
+
+  const isPremiumActive = currentSubscription?.isPremium === true && currentSubscription?.isActive === true;
+
+  const isExpiredPremium = 
+    !isPremiumActive && 
+    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
 
   return (
     <aside
@@ -66,23 +74,25 @@ export default function DashboardSidebar() {
         </nav>
       </div>
 
-      <div
-        className="mx-[14px] mb-[14px] shrink-0 rounded-[12px] p-4"
-        style={{ background: "#12316E", border: "1px solid #2E4F8A" }}
-      >
-        <div className="mb-[10px] flex items-center gap-2 text-[14px] font-semibold text-white">
-          <Star className="h-4 w-4" /> EDGE
-        </div>
-        <p className="text-[13px] leading-[22px]" style={{ color: "#C5D2F0" }}>
-          Unlock premium research &amp; advanced tools.
-        </p>
-        <button
-          className="mt-4 h-[40px] w-full rounded-[10px] border-none bg-white text-[13px] font-semibold"
-          style={{ color: "#07112C" }}
+      {!isPremiumActive && (
+        <div
+          className="mx-[14px] mb-[14px] shrink-0 rounded-[12px] p-4"
+          style={{ background: "#12316E", border: "1px solid #2E4F8A" }}
         >
-          Try EDGE Free
-        </button>
-      </div>
+          <div className="mb-[10px] flex items-center gap-2 text-[14px] font-semibold text-white">
+            <Star className="h-4 w-4" /> EDGE
+          </div>
+          <p className="text-[13px] leading-[22px]" style={{ color: "#C5D2F0" }}>
+            Unlock premium research &amp; advanced tools.
+          </p>
+          <button
+            className="mt-4 h-[40px] w-full rounded-[10px] border-none bg-white text-[13px] font-semibold"
+            style={{ color: "#07112C" }}
+          >
+            {isExpiredPremium ? "Renew EDGE" : "Try EDGE Free"}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

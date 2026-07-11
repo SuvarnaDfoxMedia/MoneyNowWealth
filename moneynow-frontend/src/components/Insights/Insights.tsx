@@ -4,8 +4,10 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Search, ChevronDown } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/Pagination";
 import { useArticles } from "@/hooks/useArticles";
+import { useSubscription } from "@/hooks/useSubscription";
 
 import { API } from "@/app/api/axios";
 
@@ -52,12 +54,14 @@ const formatDate = (dateString?: string) => {
     day: "numeric",
   });
 };
-
 export default function Insights() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+
   const [activeTab, setActiveTab] = useState("All");
   const [activeTag, setActiveTag] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [currentPage, setCurrentPage] = useState(1);
   const [clusters, setClusters] = useState<{ _id: string; title: string }[]>([]);
 
@@ -110,6 +114,14 @@ export default function Insights() {
     access_type: activeTab === "Premium" ? "premium" : undefined,
     cluster_id: activeClusterId,
   });
+
+  const { currentSubscription, latestSubscription } = useSubscription();
+
+  const isPremiumActive = currentSubscription?.isPremium === true && currentSubscription?.isActive === true;
+
+  const isExpiredPremium = 
+    !isPremiumActive && 
+    latestSubscription?.planName?.toLowerCase().includes("premium") === true;
 
   return (
     <div className="w-full font-inter">
@@ -227,7 +239,7 @@ export default function Insights() {
                       unoptimized
                     />
                     
-                    {isPremium && (
+                    {isPremium && !isPremiumActive && (
                       <>
                         {/* Crown Icon Always Visible (styled with white border as in reference) */}
                         <div className="absolute right-4 top-4 z-20 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[#0A4A87] border-[2px] border-white shadow-md">
@@ -236,11 +248,11 @@ export default function Insights() {
 
                         {/* Hover Overlay for Premium */}
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/50 backdrop-blur-[2px] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                          <p className="mb-4 mt-8 text-[16px] font-medium text-white">
-                            Unlock premium insight
+                          <p className="mb-4 mt-8 text-[16px] font-medium text-white text-center px-4">
+                            {isExpiredPremium ? "Your premium access has expired" : "Unlock premium insight"}
                           </p>
                           <button className="rounded-md bg-white px-6 py-2.5 text-[14px] font-semibold text-[#0A1633] transition-colors hover:bg-gray-50">
-                            Unlock Premium
+                            {isExpiredPremium ? "Renew Premium" : "Unlock Premium"}
                           </button>
                         </div>
                       </>

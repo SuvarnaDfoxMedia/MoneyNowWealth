@@ -12,8 +12,15 @@ export default function DashboardTopbar() {
   const { profile, profileImageUrl } = useFetchProfile();
   const clearProfile = useProfileStore((state) => state.clearProfile);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE?.trim() ?? "";
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchQuery.trim()) {
+      router.push(`/user/insights?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59,14 +66,17 @@ export default function DashboardTopbar() {
     <header className="sticky top-0 z-30 border-b border-[#E7ECF5] bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-[62px] max-w-[1440px] items-center gap-5 px-4 md:px-6">
         <div className="hidden items-center gap-7 text-[15px] font-medium text-[#3D4E79] lg:flex">
-          <a href="#" className="transition-colors hover:text-[#0A4A87]">Tools</a>
-          <a href="#" className="transition-colors hover:text-[#0A4A87]">Resources</a>
+          <Link href="/user/dashboard" className="transition-colors hover:text-[#0A4A87]">Tools</Link>
+          <Link href="/user/insights" className="transition-colors hover:text-[#0A4A87]">Resources</Link>
         </div>
 
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A1BF]" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearch}
             placeholder="Search tools, calculators, insights..."
             className="h-[40px] w-full rounded-md border border-[#DEE5F1] bg-[#ffffff] pl-11 pr-4 text-[14px] text-[#10234A] outline-none placeholder:text-[#9AA7C4] focus:border-[#0A4A87]/50"
           />
@@ -76,9 +86,9 @@ export default function DashboardTopbar() {
           <button className="grid h-10 w-10 place-items-center rounded-md text-[#4A5B83] transition-all duration-300 hover:bg-[#F2F6FD]">
             <Bell className="h-5 w-5" />
           </button>
-          <button className="h-[38px] rounded-md bg-[#0A4A87] px-5 text-[14px]  font-semibold text-white transition-all duration-300 hover:bg-[#083B6C]">
+          <Link href="/review-your-portfolio" className="flex h-[38px] items-center justify-center rounded-md bg-[#0A4A87] px-5 text-[14px] font-semibold text-white transition-all duration-300 hover:bg-[#083B6C]">
             + My Portfolio
-          </button>
+          </Link>
           {profile ? (
             <div className="relative" ref={menuRef}>
               <button

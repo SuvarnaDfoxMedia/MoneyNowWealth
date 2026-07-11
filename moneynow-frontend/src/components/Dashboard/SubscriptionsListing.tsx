@@ -15,19 +15,6 @@ const safeDate = (value?: string) => {
   return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("en-GB");
 };
 
-const isActiveForFullEndDate = (value?: string) => {
-  if (!value) return false;
-
-  const endDate = new Date(value);
-  const today = new Date();
-
-  if (isNaN(endDate.getTime())) return false;
-
-  endDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  return endDate.getTime() >= today.getTime();
-};
 
 const SubscriptionsListing = () => {
   const router = useRouter();
@@ -56,12 +43,8 @@ const SubscriptionsListing = () => {
 
   const startingIndex = (pagination.page - 1) * pagination.limit;
   const subscriptionCard = currentSubscription || latestSubscription;
-  const isSubscriptionActive = isActiveForFullEndDate(
-    subscriptionCard?.endDate,
-  );
-  const isPremiumActive =
-    currentSubscription?.planType?.toLowerCase() === "premium" &&
-    isSubscriptionActive;
+  const isSubscriptionActive = currentSubscription?.isActive === true;
+  const isPremiumActive = currentSubscription?.isPremium === true && isSubscriptionActive;
   const canShowPremiumTrialCard =
     Boolean(currentSubscription) &&
     !isPremiumActive &&
